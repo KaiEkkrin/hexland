@@ -1,0 +1,1 @@
+// Describes a tile with its contents.
