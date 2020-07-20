@@ -3,8 +3,7 @@ import './App.css';
 import './Map.css';
 import Navigation from './Navigation';
 
-import { Grid } from './models/grid';
-import { SquareTileFactory } from './models/tile';
+import { HexGrid, SquareGrid } from './models/grid';
 
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import ToggleButton from 'react-bootstrap/ToggleButton';
@@ -35,6 +34,7 @@ class MapControls extends React.Component {
 }
 
 interface IDrawingProps {
+  geometry: string;
 }
 
 class Drawing extends React.Component<IDrawingProps> {
@@ -65,7 +65,7 @@ class Drawing extends React.Component<IDrawingProps> {
     renderer.setSize(window.innerWidth, window.innerHeight);
     mount.appendChild(renderer.domElement);
 
-    var grid = new Grid(new SquareTileFactory(spacing, tileDim));
+    var grid = this.props.geometry === "hex" ? new HexGrid(spacing, tileDim) : new SquareGrid(spacing, tileDim);
     grid.addToScene(scene, 0, 0, 1);
 
     camera.position.z = 5;
@@ -85,7 +85,7 @@ function Map() {
       <Navigation />
       <MapControls />
       <div className="Map-content">
-        <Drawing />
+        <Drawing geometry="hex" />
       </div>
     </div>
   );
