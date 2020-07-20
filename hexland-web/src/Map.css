@@ -1,0 +1,12 @@
+.Map-controls {
+  min-width: 2rem;
+  width: 2rem;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+}
+
+.Map-content {
+  width: calc(100% - 2rem);
+  margin-left: 2rem;
+}

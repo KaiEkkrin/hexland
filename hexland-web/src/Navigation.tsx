@@ -5,7 +5,7 @@ import Navbar from 'react-bootstrap/Navbar';
 
 function Navigation() {
   return (
-    <Navbar bg="dark" variant="dark">
+    <Navbar bg="dark" variant="dark" sticky="top">
       <Navbar.Brand href="/">hexland</Navbar.Brand>
       <Navbar.Collapse>
         <Nav className="mr-auto">

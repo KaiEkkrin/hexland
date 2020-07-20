@@ -1,19 +1,20 @@
 import React, { RefObject } from 'react';
 import './App.css';
+import './Map.css';
 import Navigation from './Navigation';
-
-import Button from 'react-bootstrap/Button';
-import ButtonGroup from 'react-bootstrap/ButtonGroup';
 
 import * as THREE from 'three';
 
 function Controls() {
   return (
-    <ButtonGroup className="btn-group-vertical" aria-label="Controls">
-      <Button>1</Button>
-      <Button>2</Button>
-      <Button>3</Button>
-    </ButtonGroup>
+    <div className="Map-controls bg-dark">
+      <ul className="nav flex-column">
+        <li className="nav-item">A</li>
+        <li className="nav-item">B</li>
+        <li className="nav-item">C</li>
+        <li className="nav-item">D</li>
+      </ul>
+    </div>
   );
 }
 
@@ -48,7 +49,7 @@ class Drawing extends React.Component {
     mount.appendChild(renderer.domElement);
 
     // Drawing a square grid looks like this:
-    var gridMaterial = new THREE.LineBasicMaterial({ color: 0xd0d0d0 });
+    var gridMaterial = new THREE.LineBasicMaterial({ color: 0xb0b0b0 });
 
     // Vertical lines:
     var vPoints = [];
@@ -91,7 +92,10 @@ function Map() {
   return (
     <div>
       <Navigation />
-      <Drawing />
+      <Controls />
+      <div className="Map-content">
+        <Drawing />
+      </div>
     </div>
   );
 }
