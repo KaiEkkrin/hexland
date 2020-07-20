@@ -3,26 +3,39 @@ import './App.css';
 import './Map.css';
 import Navigation from './Navigation';
 
+import ButtonGroup from 'react-bootstrap/ButtonGroup';
+import ToggleButton from 'react-bootstrap/ToggleButton';
+
+import { faDrawPolygon, faMousePointer, faSquare } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
 import * as THREE from 'three';
 
-function Controls() {
-  return (
-    <div className="Map-controls bg-dark">
-      <ul className="nav flex-column">
-        <li className="nav-item">A</li>
-        <li className="nav-item">B</li>
-        <li className="nav-item">C</li>
-        <li className="nav-item">D</li>
-      </ul>
-    </div>
-  );
+class MapControls extends React.Component {
+  render() {
+    return (
+      <div className="Map-controls bg-dark">
+        <ButtonGroup toggle vertical>
+          <ToggleButton type="radio" variant="dark" value={0}>
+            <FontAwesomeIcon icon={faMousePointer} color="white" />
+          </ToggleButton>
+          <ToggleButton type="radio" variant="dark" value={1}>
+            <FontAwesomeIcon icon={faSquare} color="white" />
+          </ToggleButton>
+          <ToggleButton type="radio" variant="dark" value={2}>
+            <FontAwesomeIcon icon={faDrawPolygon} color="white" />
+          </ToggleButton>
+        </ButtonGroup>
+      </div>
+    );
+  }
 }
 
 interface IDrawingProps {
 }
 
-class Drawing extends React.Component {
-  mount: RefObject<HTMLDivElement>;
+class Drawing extends React.Component<IDrawingProps> {
+  private mount: RefObject<HTMLDivElement>;
 
   constructor(props: IDrawingProps) {
     super(props);
@@ -92,7 +105,7 @@ function Map() {
   return (
     <div>
       <Navigation />
-      <Controls />
+      <MapControls />
       <div className="Map-content">
         <Drawing />
       </div>
