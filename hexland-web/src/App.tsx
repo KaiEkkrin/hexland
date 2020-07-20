@@ -1,12 +1,14 @@
 import React from 'react';
 import logo from './logo.svg';
 import './App.css';
+import Navigation from './Navigation';
 
 import Button from 'react-bootstrap/Button';
 
 function App() {
   return (
     <div className="App">
+      <Navigation />
       <header className="App-header">
         <Button>A Bootstrap button</Button>
         <img src={logo} className="App-logo" alt="logo" />
