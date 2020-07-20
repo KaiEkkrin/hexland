@@ -3,6 +3,9 @@ import './App.css';
 import './Map.css';
 import Navigation from './Navigation';
 
+import { Grid } from './models/grid';
+import { SquareTileFactory } from './models/tile';
+
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import ToggleButton from 'react-bootstrap/ToggleButton';
 
@@ -44,6 +47,7 @@ class Drawing extends React.Component<IDrawingProps> {
 
   componentDidMount() {
     const spacing = 75.0;
+    const tileDim = 12;
 
     var mount = this.mount.current;
     if (!mount) {
@@ -61,34 +65,8 @@ class Drawing extends React.Component<IDrawingProps> {
     renderer.setSize(window.innerWidth, window.innerHeight);
     mount.appendChild(renderer.domElement);
 
-    // Drawing a square grid looks like this:
-    var gridMaterial = new THREE.LineBasicMaterial({ color: 0xb0b0b0 });
-
-    // Vertical lines:
-    var vPoints = [];
-    for (var x = left; x <= right; x += spacing * 2) {
-      vPoints.push(new THREE.Vector3(x, top, 1));
-      vPoints.push(new THREE.Vector3(x, bottom, 1));
-      vPoints.push(new THREE.Vector3(x + spacing, bottom, 1));
-      vPoints.push(new THREE.Vector3(x + spacing, top, 1));
-    }
-
-    var vGeometry = new THREE.BufferGeometry().setFromPoints(vPoints);
-    var vLines = new THREE.LineSegments(vGeometry, gridMaterial);
-    scene.add(vLines);
-
-    // Horizontal lines:
-    var hPoints = [];
-    for (var y = top; y <= bottom; y += spacing * 2) {
-      hPoints.push(new THREE.Vector3(left, y, 1));
-      hPoints.push(new THREE.Vector3(right, y, 1));
-      hPoints.push(new THREE.Vector3(right, y + spacing, 1));
-      hPoints.push(new THREE.Vector3(left, y + spacing, 1));
-    }
-
-    var hGeometry = new THREE.BufferGeometry().setFromPoints(hPoints);
-    var hLines = new THREE.LineSegments(hGeometry, gridMaterial);
-    scene.add(hLines);
+    var grid = new Grid(new SquareTileFactory(spacing, tileDim));
+    grid.addToScene(scene, 0, 0, 1);
 
     camera.position.z = 5;
     renderer.render(scene, camera);
