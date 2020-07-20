@@ -7,5 +7,5 @@ test('renders home and login', () => {
   const homeElement = getByText(/home/i);
   expect(homeElement).toBeInTheDocument();
   const loginElement = getByText(/login/i);
-  expect(loginElement).toBeInTheDOM();
+  expect(loginElement).toBeInTheDocument();
 });
