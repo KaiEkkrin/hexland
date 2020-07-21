@@ -4,7 +4,7 @@ import './Map.css';
 import Navigation from './Navigation';
 
 import { Grid } from './models/grid';
-import { HexGridGeometry, SquareGridGeometry } from './models/gridGeometry';
+import { HexGridGeometry, SquareGridGeometry, IGridGeometry } from './models/gridGeometry';
 
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import ToggleButton from 'react-bootstrap/ToggleButton';
@@ -41,11 +41,13 @@ interface IDrawingProps {
 }
 
 class Drawing extends React.Component<IDrawingProps> {
-  private mount: RefObject<HTMLDivElement>;
+  private _mount: RefObject<HTMLDivElement>;
+  private _gridGeometry: IGridGeometry | undefined;
 
   constructor(props: IDrawingProps) {
     super(props);
-    this.mount = React.createRef();
+    this._mount = React.createRef();
+    this.handleClick = this.handleClick.bind(this);
   }
 
   private get drawHexes(): boolean {
@@ -56,7 +58,7 @@ class Drawing extends React.Component<IDrawingProps> {
     const spacing = 75.0;
     const tileDim = 12;
 
-    var mount = this.mount.current;
+    var mount = this._mount.current;
     if (!mount) {
       return;
     }
@@ -72,17 +74,32 @@ class Drawing extends React.Component<IDrawingProps> {
     renderer.setSize(window.innerWidth, window.innerHeight);
     mount.appendChild(renderer.domElement);
 
-    var gridGeometry = this.drawHexes ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
-    var grid = new Grid(gridGeometry);
+    this._gridGeometry = this.drawHexes ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
+    var grid = new Grid(this._gridGeometry);
     grid.addToScene(scene, 0, 0, 1);
 
     camera.position.z = 5;
     renderer.render(scene, camera);
+
+    // TODO: Having done this, also render a 4-number texture of the grid and tile
+    // co-ordinates, so that I can use that for lookup rather than needing to do maths
+    // to reverse the transform :)
+  }
+
+  handleClick(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+    if (!this._gridGeometry) { return; }
+
+    var bounds = document.getElementById("drawingDiv")?.getBoundingClientRect();
+    if (!bounds) { return; }
+
+    var x = e.clientX - bounds.left;
+    var y = e.clientY - bounds.top;
+    alert(x + ', ' + y);
   }
 
   render() {
     return (
-      <div ref={this.mount} />
+      <div id="drawingDiv" ref={this._mount} onClick={this.handleClick} />
     );
   }
 }

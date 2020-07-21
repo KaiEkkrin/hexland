@@ -1,5 +1,16 @@
 import * as THREE from 'three';
 
+// This is the co-ordinate of a hex (or square) inside the grid.
+export class GridCoord {
+  tile: THREE.Vector2;
+  hex: THREE.Vector2; // within the tile
+
+  constructor(tile: THREE.Vector2, hex: THREE.Vector2) {
+    this.tile = tile;
+    this.hex = hex;
+  }
+}
+
 // A grid geometry describes a grid's layout (currently either squares
 // or hexagons.)
 export interface IGridGeometry {
