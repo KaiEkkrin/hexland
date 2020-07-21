@@ -8,6 +8,8 @@ import { HexGrid, SquareGrid } from './models/grid';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import ToggleButton from 'react-bootstrap/ToggleButton';
 
+import { RouteComponentProps } from 'react-router-dom';
+
 import { faDrawPolygon, faMousePointer, faSquare } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -45,6 +47,10 @@ class Drawing extends React.Component<IDrawingProps> {
     this.mount = React.createRef();
   }
 
+  private get drawHexes(): boolean {
+    return this.props.geometry === "hex";
+  }
+
   componentDidMount() {
     const spacing = 75.0;
     const tileDim = 12;
@@ -65,7 +71,7 @@ class Drawing extends React.Component<IDrawingProps> {
     renderer.setSize(window.innerWidth, window.innerHeight);
     mount.appendChild(renderer.domElement);
 
-    var grid = this.props.geometry === "hex" ? new HexGrid(spacing, tileDim) : new SquareGrid(spacing, tileDim);
+    var grid = this.drawHexes ? new HexGrid(spacing, tileDim) : new SquareGrid(spacing, tileDim);
     grid.addToScene(scene, 0, 0, 1);
 
     camera.position.z = 5;
@@ -79,13 +85,13 @@ class Drawing extends React.Component<IDrawingProps> {
   }
 }
 
-function Map() {
+function Map(props: RouteComponentProps<IDrawingProps>) {
   return (
     <div>
       <Navigation />
       <MapControls />
       <div className="Map-content">
-        <Drawing geometry="hex" />
+        <Drawing geometry={props.match.params.geometry} />
       </div>
     </div>
   );
