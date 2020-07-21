@@ -3,7 +3,8 @@ import './App.css';
 import './Map.css';
 import Navigation from './Navigation';
 
-import { HexGrid, SquareGrid } from './models/grid';
+import { Grid } from './models/grid';
+import { HexGridGeometry, SquareGridGeometry } from './models/gridGeometry';
 
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import ToggleButton from 'react-bootstrap/ToggleButton';
@@ -71,7 +72,8 @@ class Drawing extends React.Component<IDrawingProps> {
     renderer.setSize(window.innerWidth, window.innerHeight);
     mount.appendChild(renderer.domElement);
 
-    var grid = this.drawHexes ? new HexGrid(spacing, tileDim) : new SquareGrid(spacing, tileDim);
+    var gridGeometry = this.drawHexes ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
+    var grid = new Grid(gridGeometry);
     grid.addToScene(scene, 0, 0, 1);
 
     camera.position.z = 5;
