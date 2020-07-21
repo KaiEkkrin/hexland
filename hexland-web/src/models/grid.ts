@@ -48,4 +48,21 @@ export class Grid {
       }
     }
   }
+
+  addCoordColoursToScene(scene: THREE.Scene, originX: number, originY: number, radius: number) {
+    for (var y = originY - radius; y < originY + radius; ++y) {
+      for (var x = originX - radius; x < originX + radius; ++x) {
+        var tile = new THREE.Vector2(x, y);
+        var vertices = this._geometry.createSolidVertices(tile);
+        var bufferGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
+        bufferGeometry.setIndex(this._solidIndices);
+
+        var colours = this._geometry.createSolidCoordColours(tile);
+        bufferGeometry.addAttribute('color', new THREE.BufferAttribute(colours, 4));
+
+        var mesh = new THREE.Mesh(bufferGeometry, this._solidMaterial);
+        scene.add(mesh);
+      }
+    }
+  }
 }

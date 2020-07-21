@@ -82,23 +82,22 @@ class Drawing extends React.Component<IDrawingProps> {
 
     this._gridGeometry = this.drawHexes ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
     var grid = new Grid(this._gridGeometry);
-    grid.addSolidToScene(scene, 0, 0, 1);
+    grid.addGridToScene(scene, 0, 0, 1);
 
     this._renderer.render(scene, this.camera);
 
     // Texture of hex co-ordinates within the tile.
-    // TODO fix the colours :)
     var hexCoordScene = new THREE.Scene();
     this._hexCoordRenderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
-    grid.addSolidToScene(hexCoordScene, 0, 0, 1);
+    grid.addCoordColoursToScene(hexCoordScene, 0, 0, 1);
 
     this._renderer.setRenderTarget(this._hexCoordRenderTarget);
-    this._renderer.render(scene, this.camera);
+    this._renderer.render(hexCoordScene, this.camera);
     this._renderer.setRenderTarget(null);
   }
 
   handleClick(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-    if (!this._hexCoordRenderTarget) { return; }
+    if (!this._gridGeometry || !this._hexCoordRenderTarget) { return; }
 
     var bounds = document.getElementById("drawingDiv")?.getBoundingClientRect();
     if (!bounds) { return; }
@@ -108,8 +107,9 @@ class Drawing extends React.Component<IDrawingProps> {
 
     var buf = new Uint8Array(4);
     this._renderer?.readRenderTargetPixels(this._hexCoordRenderTarget, x, bounds.height - y - 1, 1, 1, buf);
+    var coord = this._gridGeometry?.decodeCoordSample(buf, 0);
 
-    alert(x + ', ' + y + ' -> ' + buf[0] + ', ' + buf[1] + ', ' + buf[2]);
+    alert(x + ', ' + y + ' -> tile ' + coord.tile.x + ', ' + coord.tile.y + ', hex ' + coord.hex.x + ', ' + coord.hex.y);
   }
 
   render() {
