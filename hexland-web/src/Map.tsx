@@ -76,7 +76,7 @@ class Drawing extends React.Component<IDrawingProps> {
 
     this._gridGeometry = this.drawHexes ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
     var grid = new Grid(this._gridGeometry);
-    grid.addToScene(scene, 0, 0, 1);
+    grid.addSolidToScene(scene, 0, 0, 1);
 
     camera.position.z = 5;
     renderer.render(scene, camera);

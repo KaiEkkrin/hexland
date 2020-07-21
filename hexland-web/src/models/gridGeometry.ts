@@ -20,6 +20,19 @@ export interface IGridGeometry {
   // Creates a buffer of indices into the output of `createGridVertices`
   // suitable for drawing a full grid of lines.
   createGridLineIndices(): number[];
+
+  // Creates the vertices involved in drawing the grid tile in solid.
+  // (TODO: This should really just be the centres of each hex.  However,
+  // it looks like Three.js support for instancing is super inadequate
+  // so I'll have to create all the vertices for now.)
+  createSolidVertices(tile: THREE.Vector2): THREE.Vector3[];
+
+  // Creates a buffer of indices into the output of `createSolidVertices`
+  // suitable for drawing a solid mesh of the grid.
+  createSolidMeshIndices(): number[];
+
+  // Creates some colours for testing the solid vertices, above.
+  createSolidTestColours(): Float32Array;
 }
 
 export class SquareGridGeometry implements IGridGeometry {
@@ -77,6 +90,64 @@ export class SquareGridGeometry implements IGridGeometry {
     }
 
     return indices;
+  }
+
+  createSolidVertices(tile: THREE.Vector2): THREE.Vector3[] {
+    var vertices = [];
+    for (var y = 0; y < this._tileDim; ++y) {
+      for (var x = 0; x < this._tileDim; ++x) {
+        var xCentre = tile.x * this._tileDim + x;
+        var yCentre = tile.y * this._tileDim + y;
+
+        vertices.push(this.createTopLeft(xCentre, yCentre));
+        vertices.push(this.createBottomLeft(xCentre, yCentre));
+        vertices.push(this.createTopRight(xCentre, yCentre));
+        vertices.push(this.createBottomRight(xCentre, yCentre));
+      }
+    }
+
+    return vertices;
+  }
+
+  // Creates a buffer of indices into the output of `createSolidVertices`
+  // suitable for drawing a solid mesh of the grid.
+  createSolidMeshIndices(): number[] {
+    var indices = [];
+
+    for (var y = 0; y < this._tileDim; ++y) {
+      for (var x = 0; x < this._tileDim; ++x) {
+        // For some reason Three.js uses triangles rather than triangle strips, grr
+        var baseIndex = y * this._tileDim * 4 + x * 4;
+
+        indices.push(baseIndex);
+        indices.push(baseIndex + 1);
+        indices.push(baseIndex + 2);
+        indices.push(-1);
+
+        indices.push(baseIndex + 1);
+        indices.push(baseIndex + 3);
+        indices.push(baseIndex + 2);
+        indices.push(-1);
+      }
+    }
+
+    return indices;
+  }
+
+  // Creates some colours for testing the solid vertices, above.
+  createSolidTestColours(): Float32Array {
+    var colours = new Float32Array(this._tileDim * this._tileDim * 12);
+    var colour = new THREE.Color();
+    for (var i = 0; i < this._tileDim * this._tileDim; ++i) {
+      colour.setHSL(i / (this._tileDim * this._tileDim), 1, 0.5);
+      for (var j = 0; j < 4; ++j) {
+        colours[i * 12 + j * 3] = colour.r;
+        colours[i * 12 + j * 3 + 1] = colour.g;
+        colours[i * 12 + j * 3 + 2] = colour.b;
+      }
+    }
+
+    return colours;
   }
 }
 
@@ -177,5 +248,80 @@ export class HexGridGeometry implements IGridGeometry {
     }
 
     return indices;
+  }
+
+  createSolidVertices(tile: THREE.Vector2): THREE.Vector3[] {
+    var vertices = [];
+    for (var y = 0; y < this._tileDim; ++y) {
+      for (var x = 0; x < this._tileDim; ++x) {
+        var centre = this.createCentre(tile.x * this._tileDim + x, tile.y * this._tileDim + y);
+        vertices.push(new THREE.Vector3(centre.x, centre.y, 1));
+        vertices.push(this.createLeft(centre));
+        vertices.push(this.createTopLeft(centre));
+        vertices.push(this.createTopRight(centre));
+        vertices.push(this.createRight(centre));
+        vertices.push(this.createBottomRight(centre));
+        vertices.push(this.createBottomLeft(centre));
+      }
+    }
+
+    return vertices;
+  }
+
+  createSolidMeshIndices(): number[] {
+    var indices = [];
+
+    for (var y = 0; y < this._tileDim; ++y) {
+      for (var x = 0; x < this._tileDim; ++x) {
+        var baseIndex = y * this._tileDim * 7 + x * 7;
+
+        indices.push(baseIndex);
+        indices.push(baseIndex + 2);
+        indices.push(baseIndex + 1);
+        indices.push(-1);
+
+        indices.push(baseIndex);
+        indices.push(baseIndex + 3);
+        indices.push(baseIndex + 2);
+        indices.push(-1);
+
+        indices.push(baseIndex);
+        indices.push(baseIndex + 4);
+        indices.push(baseIndex + 3);
+        indices.push(-1);
+
+        indices.push(baseIndex);
+        indices.push(baseIndex + 5);
+        indices.push(baseIndex + 4);
+        indices.push(-1);
+
+        indices.push(baseIndex);
+        indices.push(baseIndex + 6);
+        indices.push(baseIndex + 5);
+        indices.push(-1);
+
+        indices.push(baseIndex);
+        indices.push(baseIndex + 1);
+        indices.push(baseIndex + 6);
+        indices.push(-1);
+      }
+    }
+
+    return indices;
+  }
+
+  createSolidTestColours(): Float32Array {
+    var colours = new Float32Array(this._tileDim * this._tileDim * 21);
+    var colour = new THREE.Color();
+    for (var i = 0; i < this._tileDim * this._tileDim; ++i) {
+      colour.setHSL(i / (this._tileDim * this._tileDim), 1, 0.5);
+      for (var j = 0; j < 7; ++j) {
+        colours[i * 21 + j * 3] = colour.r;
+        colours[i * 21 + j * 3 + 1] = colour.g;
+        colours[i * 21 + j * 3 + 2] = colour.b;
+      }
+    }
+
+    return colours;
   }
 }
