@@ -43,11 +43,23 @@ interface IDrawingProps {
 class Drawing extends React.Component<IDrawingProps> {
   private _mount: RefObject<HTMLDivElement>;
   private _gridGeometry: IGridGeometry | undefined;
+  private _hexCoordRenderTarget: THREE.WebGLRenderTarget | undefined;
+  private _renderer: THREE.WebGLRenderer | undefined;
 
   constructor(props: IDrawingProps) {
     super(props);
     this._mount = React.createRef();
     this.handleClick = this.handleClick.bind(this);
+  }
+
+  private get camera(): THREE.OrthographicCamera {
+    const left = window.innerWidth / -2;
+    const right = window.innerWidth / 2;
+    const top = window.innerHeight / -2;
+    const bottom = window.innerHeight / 2;
+    var camera = new THREE.OrthographicCamera(left, right, top, bottom, 0.1, 1000);
+    camera.position.z = 5;
+    return camera;
   }
 
   private get drawHexes(): boolean {
@@ -64,37 +76,40 @@ class Drawing extends React.Component<IDrawingProps> {
     }
 
     var scene = new THREE.Scene();
-
-    const left = window.innerWidth / -2;
-    const right = window.innerWidth / 2;
-    const top = window.innerHeight / -2;
-    const bottom = window.innerHeight / 2;
-    var camera = new THREE.OrthographicCamera(left, right, top, bottom, 0.1, 1000);
-    var renderer = new THREE.WebGLRenderer();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    mount.appendChild(renderer.domElement);
+    this._renderer = new THREE.WebGLRenderer();
+    this._renderer.setSize(window.innerWidth, window.innerHeight);
+    mount.appendChild(this._renderer.domElement);
 
     this._gridGeometry = this.drawHexes ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
     var grid = new Grid(this._gridGeometry);
     grid.addSolidToScene(scene, 0, 0, 1);
 
-    camera.position.z = 5;
-    renderer.render(scene, camera);
+    this._renderer.render(scene, this.camera);
 
-    // TODO: Having done this, also render a 4-number texture of the grid and tile
-    // co-ordinates, so that I can use that for lookup rather than needing to do maths
-    // to reverse the transform :)
+    // Texture of hex co-ordinates within the tile.
+    // TODO fix the colours :)
+    var hexCoordScene = new THREE.Scene();
+    this._hexCoordRenderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
+    grid.addSolidToScene(hexCoordScene, 0, 0, 1);
+
+    this._renderer.setRenderTarget(this._hexCoordRenderTarget);
+    this._renderer.render(scene, this.camera);
+    this._renderer.setRenderTarget(null);
   }
 
   handleClick(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-    if (!this._gridGeometry) { return; }
+    if (!this._hexCoordRenderTarget) { return; }
 
     var bounds = document.getElementById("drawingDiv")?.getBoundingClientRect();
     if (!bounds) { return; }
 
     var x = e.clientX - bounds.left;
     var y = e.clientY - bounds.top;
-    alert(x + ', ' + y);
+
+    var buf = new Uint8Array(4);
+    this._renderer?.readRenderTargetPixels(this._hexCoordRenderTarget, x, bounds.height - y - 1, 1, 1, buf);
+
+    alert(x + ', ' + y + ' -> ' + buf[0] + ', ' + buf[1] + ', ' + buf[2]);
   }
 
   render() {
