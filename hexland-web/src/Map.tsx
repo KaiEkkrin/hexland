@@ -3,11 +3,7 @@ import './App.css';
 import './Map.css';
 import Navigation from './Navigation';
 
-import { Grid } from './models/grid';
-import { IGridGeometry, GridCoord } from './models/gridGeometry';
-import { HexGridGeometry } from './models/hexGridGeometry';
-import { FaceHighlight } from './models/highlight';
-import { SquareGridGeometry } from './models/squareGridGeometry';
+import { ThreeDrawing } from './models/drawing';
 
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import ToggleButton from 'react-bootstrap/ToggleButton';
@@ -17,20 +13,29 @@ import { RouteComponentProps } from 'react-router-dom';
 import { faDrawPolygon, faMousePointer, faSquare } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-import * as THREE from 'three';
+interface IMapControlsProps {
+  getEditMode(): number;
+  setEditMode(value: number): void;
+}
 
-class MapControls extends React.Component {
+class MapControls extends React.Component<IMapControlsProps> {
   render() {
     return (
       <div className="Map-controls bg-dark">
         <ButtonGroup toggle vertical>
-          <ToggleButton type="radio" variant="dark" value={0}>
+          <ToggleButton type="radio" variant="dark" value={0}
+            checked={this.props.getEditMode() === 0}
+            onChange={(e) => this.props.setEditMode(0)}>
             <FontAwesomeIcon icon={faMousePointer} color="white" />
           </ToggleButton>
-          <ToggleButton type="radio" variant="dark" value={1}>
+          <ToggleButton type="radio" variant="dark" value={1}
+            checked={this.props.getEditMode() === 1}
+            onChange={(e) => this.props.setEditMode(1)}>
             <FontAwesomeIcon icon={faSquare} color="white" />
           </ToggleButton>
-          <ToggleButton type="radio" variant="dark" value={2}>
+          <ToggleButton type="radio" variant="dark" value={2}
+            checked={this.props.getEditMode() === 2}
+            onChange={(e) => this.props.setEditMode(2)}>
             <FontAwesomeIcon icon={faDrawPolygon} color="white" />
           </ToggleButton>
         </ButtonGroup>
@@ -39,100 +44,9 @@ class MapControls extends React.Component {
   }
 }
 
-// TODO Disposal of the resources used by this when required
-class ThreeDrawing {
-  private _mount: HTMLDivElement;
-  private _gridGeometry: IGridGeometry;
-
-  private _camera: THREE.OrthographicCamera;
-  private _faceCoordRenderTarget: THREE.WebGLRenderTarget;
-  private _renderer: THREE.WebGLRenderer;
-
-  private _scene: THREE.Scene;
-  private _faceCoordScene: THREE.Scene;
-
-  private _grid: Grid;
-  private _faceHighlight: FaceHighlight;
-
-  constructor(mount: HTMLDivElement, drawHexes: boolean) {
-    const spacing = 75.0;
-    const tileDim = 12;
-
-    const left = window.innerWidth / -2;
-    const right = window.innerWidth / 2;
-    const top = window.innerHeight / -2;
-    const bottom = window.innerHeight / 2;
-    this._camera = new THREE.OrthographicCamera(left, right, top, bottom, 0.1, 1000);
-    this._camera.position.z = 5;
-
-    // TODO use the bounding rect of `mount` instead of window.innerWidth and window.innerHeight;
-    // except, it's not initialised yet (?)
-    this._mount = mount;
-    this._scene = new THREE.Scene();
-    this._renderer = new THREE.WebGLRenderer();
-    this._renderer.setSize(window.innerWidth, window.innerHeight);
-    mount.appendChild(this._renderer.domElement);
-
-    this._gridGeometry = drawHexes ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
-    this._grid = new Grid(this._gridGeometry);
-    this._grid.addGridToScene(this._scene, 0, 0, 1);
-    //grid.addSolidToScene(this._scene, 0, 0, 1);
-
-    // Texture of face co-ordinates within the tile.
-    this._faceCoordScene = new THREE.Scene();
-    this._faceCoordRenderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
-    this._grid.addCoordColoursToScene(this._faceCoordScene, 0, 0, 1);
-
-    // The face highlight
-    this._faceHighlight = new FaceHighlight(this._gridGeometry);
-    this._faceHighlight.addToScene(this._scene);
-
-    this.animate = this.animate.bind(this);
-  }
-
-  animate() {
-    requestAnimationFrame(this.animate);
-
-    // Don't re-render the visible scene unless something changed:
-    // (Careful -- don't chain these method calls up with ||, it's important
-    // I actually call each one and don't skip later ones if an early one returned
-    // true)
-    var gridNeedsRedraw = this._grid.needsRedraw();
-    var faceHighlightNeedsRedraw = this._faceHighlight.needsRedraw();
-
-    if (gridNeedsRedraw || faceHighlightNeedsRedraw) {
-      this._renderer.render(this._scene, this._camera);
-    }
-
-    if (gridNeedsRedraw) {
-      this._renderer.setRenderTarget(this._faceCoordRenderTarget);
-      this._renderer.render(this._faceCoordScene, this._camera);
-      this._renderer.setRenderTarget(null);
-    }
-  }
-
-  getGridCoordAt<T, E>(e: React.MouseEvent<T, E>): GridCoord {
-    var bounds = this._mount.getBoundingClientRect();
-    var x = e.clientX - bounds.left;
-    var y = e.clientY - bounds.top;
-
-    var buf = new Uint8Array(4);
-    this._renderer.readRenderTargetPixels(this._faceCoordRenderTarget, x, bounds.height - y - 1, 1, 1, buf);
-    return this._gridGeometry?.decodeCoordSample(buf, 0);
-  }
-
-  hideFaceHighlight() {
-    this._faceHighlight.move(undefined);
-  }
-
-  moveFaceHighlightTo<T, E>(e: React.MouseEvent<T, E>) {
-    var position = this.getGridCoordAt(e);
-    this._faceHighlight.move(position);
-  }
-}
-
 interface IDrawingProps {
   geometry: string;
+  getEditMode(): number;
 }
 
 class Drawing extends React.Component<IDrawingProps> {
@@ -179,7 +93,13 @@ class Drawing extends React.Component<IDrawingProps> {
 
   handleMouseMove(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     if (!this._drawing) { return; }
-    this._drawing.moveFaceHighlightTo(e);
+
+    var editMode = this.props.getEditMode();
+    if (editMode === 1) {
+      this._drawing.moveFaceHighlightTo(e);
+    } else {
+      this._drawing.hideFaceHighlight();
+    }
   }
 
   render() {
@@ -192,16 +112,31 @@ class Drawing extends React.Component<IDrawingProps> {
   }
 }
 
-function Map(props: RouteComponentProps<IDrawingProps>) {
-  return (
-    <div>
-      <Navigation />
-      <MapControls />
-      <div className="Map-content">
-        <Drawing geometry={props.match.params.geometry} />
+interface IMapProps {
+  geometry: string;
+}
+
+class MapState {
+  editMode = 0;
+}
+
+class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
+  constructor(props: RouteComponentProps<IMapProps>) {
+    super(props);
+    this.state = new MapState();
+  }
+
+  render() {
+    return (
+      <div>
+        <Navigation />
+        <MapControls getEditMode={() => this.state.editMode} setEditMode={(v) => { this.setState({ editMode: v }); }} />
+        <div className="Map-content">
+          <Drawing geometry={this.props.match.params.geometry} getEditMode={() => this.state.editMode} />
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 }
 
 export default Map;
