@@ -23,9 +23,34 @@ export class GridCoord {
   }
 }
 
+// This is the co-ordinate of an edge.  Each face "owns" some number
+// of the edges around it, which are identified by the `edge` number here.
+export class GridEdge extends GridCoord {
+  edge: number;
+
+  constructor(coord: GridCoord, edge: number) {
+    super(coord.tile, coord.face);
+    this.edge = edge;
+  }
+
+  equals(other: any): boolean {
+    return (other instanceof GridEdge &&
+      super.equals(other) &&
+      other.edge === this.edge);
+  }
+
+  hash(): string {
+    return super.hash() + " " + this.edge;
+  }
+}
+
 // A grid geometry describes a grid's layout (currently either squares
 // or hexagons.)
 export interface IGridGeometry {
+  // Creates the buffer involved in drawing a highlighted edge.
+  // (It will start off-screen.)
+  createEdgeHighlight(): THREE.BufferGeometry;
+
   // Creates the buffer involved in drawing a highlighted face.
   // (It will start off-screen.)
   createFaceHighlight(): THREE.BufferGeometry;
@@ -53,13 +78,28 @@ export interface IGridGeometry {
   // Creates the colours for a coord texture.
   createSolidCoordColours(tile: THREE.Vector2): Float32Array;
 
+  // Creates the vertices involved in drawing grid edges in solid.
+  // The alpha number specifies how thick the edge is drawn.
+  // This is a non-indexed mesh.
+  // TODO Get the edge highlight working first (with a bogus edge!) before
+  // moving on to making this texture, it'll be easier to debug that way around.
+  //createSolidEdgeVertices(tile: THREE.Vector2, alpha: number): THREE.Vector3[];
+
+  // Creates the colours for an edge texture using the solid edge vertices.
+  //createSolidEdgeColours(tile: THREE.Vector2): Float32Array;
+
   // Decodes the given sample from a coord texture (these must be 4 values
   // starting from the offset) into a grid coord.
   decodeCoordSample(sample: Uint8Array, offset: number): GridCoord;
 
+  // Updates the vertices of the highlighted edge to a new position.
+  //updateEdgeHighlight(buf: THREE.BufferGeometry, coord: GridEdge | undefined): void;
+
   // Updates the vertices of the highlighted face to a new position.
   updateFaceHighlight(buf: THREE.BufferGeometry, coord: GridCoord | undefined): void;
 }
+
+export class FaceCentre extends THREE.Vector3 {} // to help me not get muddled when handling centres
 
 export class BaseGeometry {
   private _tileDim: number;
@@ -90,7 +130,7 @@ export class BaseGeometry {
     return unpacked;
   }
 
-  protected toPackedXYSign(colours: Float32Array, offset: number, x: number, y: number) {
+  protected toPackedXY(colours: Float32Array, offset: number, x: number, y: number) {
     colours[offset] = this._epsilon + (Math.abs(y) * this._tileDim + Math.abs(x)) / (this._tileDim * this._tileDim);
     colours[offset + 1] = this._epsilon + (Math.sign(y) === -1 ? 0.5 : 0) + (Math.sign(x) === -1 ? 0.25 : 0);
   }

@@ -1,7 +1,5 @@
-import { BaseGeometry, GridCoord, IGridGeometry } from './gridGeometry';
+import { BaseGeometry, FaceCentre, GridEdge, GridCoord, IGridGeometry } from './gridGeometry';
 import * as THREE from 'three';
-
-class HexCentre extends THREE.Vector3 {} // to help me not get muddled, as below
 
 // A tile of hexes.
 export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
@@ -22,31 +20,31 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     this._yOffTop = this._hexSize * 0.5;
   }
 
-  private createCentre(x: number, y: number): HexCentre {
-    return new HexCentre(x * this._xStep, (y - (Math.abs(x % 2) === 1 ? 0.5 : 0.0)) * this._hexSize, 1);
+  private createCentre(x: number, y: number): FaceCentre {
+    return new FaceCentre(x * this._xStep, (y - (Math.abs(x % 2) === 1 ? 0.5 : 0.0)) * this._hexSize, 1);
   }
 
-  private createLeft(c: HexCentre): THREE.Vector3 {
+  private createLeft(c: FaceCentre): THREE.Vector3 {
     return new THREE.Vector3(c.x - this._xOffLeft, c.y, 1);
   }
 
-  private createTopLeft(c: HexCentre): THREE.Vector3 {
+  private createTopLeft(c: FaceCentre): THREE.Vector3 {
     return new THREE.Vector3(c.x - this._xOffTop, c.y - this._yOffTop, 1);
   }
 
-  private createTopRight(c: HexCentre): THREE.Vector3 {
+  private createTopRight(c: FaceCentre): THREE.Vector3 {
     return new THREE.Vector3(c.x + this._xOffTop, c.y - this._yOffTop, 1);
   }
 
-  private createRight(c: HexCentre): THREE.Vector3 {
+  private createRight(c: FaceCentre): THREE.Vector3 {
     return new THREE.Vector3(c.x + this._xOffLeft, c.y, 1);
   }
 
-  private createBottomLeft(c: HexCentre): THREE.Vector3 {
+  private createBottomLeft(c: FaceCentre): THREE.Vector3 {
     return new THREE.Vector3(c.x - this._xOffTop, c.y + this._yOffTop, 1);
   }
 
-  private createBottomRight(c: HexCentre): THREE.Vector3 {
+  private createBottomRight(c: FaceCentre): THREE.Vector3 {
     return new THREE.Vector3(c.x + this._xOffTop, c.y + this._yOffTop, 1);
   }
 
@@ -90,6 +88,14 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     var indices: number[] = [];
     this.pushHexIndices(indices, 0);
     return indices;
+  }
+
+  createEdgeHighlight(): THREE.BufferGeometry {
+    var buf = new THREE.BufferGeometry();
+    buf.setAttribute('position', new THREE.BufferAttribute(new Float32Array(12), 3));
+    buf.setIndex(this.createFaceHighlightIndices());
+    buf.setDrawRange(0, 0); // starts hidden
+    return buf;
   }
 
   createFaceHighlight(): THREE.BufferGeometry {
@@ -196,8 +202,8 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
       for (var x = 0; x < this.tileDim; ++x) {
         for (var i = 0; i < 7; ++i) {
           var offset = y * this.tileDim * 28 + x * 28 + i * 4;
-          this.toPackedXYSign(colours, offset, tile.x, tile.y);
-          this.toPackedXYSign(colours, offset + 2, x, y);
+          this.toPackedXY(colours, offset, tile.x, tile.y);
+          this.toPackedXY(colours, offset + 2, x, y);
         }
       }
     }
