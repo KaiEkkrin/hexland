@@ -9,17 +9,26 @@ export class GridCoord {
     this.tile = tile;
     this.face = face;
   }
+
+  equals(other: any): boolean {
+    return (other instanceof GridCoord &&
+      other.tile.x === this.tile.x &&
+      other.tile.y === this.tile.y &&
+      other.face.x === this.face.x &&
+      other.face.y === this.face.y);
+  }
+
+  hash(): string {
+    return this.tile.x + " " + this.tile.y + " " + this.face.x + " " + this.face.y;
+  }
 }
 
 // A grid geometry describes a grid's layout (currently either squares
 // or hexagons.)
 export interface IGridGeometry {
-  // Creates the vertices involved in drawing a highlighted face.
+  // Creates the buffer involved in drawing a highlighted face.
   // (It will start off-screen.)
-  createFaceHighlightVertices(): Float32Array;
-
-  // ...and the indices (which won't change.)
-  createFaceHighlightIndices(): number[];
+  createFaceHighlight(): THREE.BufferGeometry;
 
   // Creates the vertices involved in drawing a full grid tile.
   createGridVertices(tile: THREE.Vector2): THREE.Vector3[];
@@ -49,7 +58,7 @@ export interface IGridGeometry {
   decodeCoordSample(sample: Uint8Array, offset: number): GridCoord;
 
   // Updates the vertices of the highlighted face to a new position.
-  updateFaceHighlightVertices(vertices: Float32Array, coord: GridCoord): void;
+  updateFaceHighlight(buf: THREE.BufferGeometry, coord: GridCoord | undefined): void;
 }
 
 export class BaseGeometry {
@@ -64,12 +73,6 @@ export class BaseGeometry {
   }
 
   protected get tileDim() { return this._tileDim; }
-
-  protected fillFloats(floats: Float32Array, offset: number, vec: THREE.Vector3): void {
-    floats[offset] = vec.x;
-    floats[offset + 1] = vec.y;
-    floats[offset + 2] = vec.z;
-  }
 
   private fromPackedXYSign(sample: Uint8Array, offset: number): THREE.Vector2 {
     const absValue = Math.floor(sample[offset] * this._tileDim * this._tileDim / 255.0);

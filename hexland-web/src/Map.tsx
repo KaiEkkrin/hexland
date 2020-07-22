@@ -6,6 +6,7 @@ import Navigation from './Navigation';
 import { Grid } from './models/grid';
 import { IGridGeometry, GridCoord } from './models/gridGeometry';
 import { HexGridGeometry } from './models/hexGridGeometry';
+import { FaceHighlight } from './models/highlight';
 import { SquareGridGeometry } from './models/squareGridGeometry';
 
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
@@ -50,6 +51,8 @@ class ThreeDrawing {
   private _scene: THREE.Scene;
   private _faceCoordScene: THREE.Scene;
 
+  private _faceHighlight: FaceHighlight;
+
   constructor(mount: HTMLDivElement, drawHexes: boolean) {
     const spacing = 75.0;
     const tileDim = 12;
@@ -71,13 +74,17 @@ class ThreeDrawing {
 
     this._gridGeometry = drawHexes ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
     var grid = new Grid(this._gridGeometry);
-    //grid.addGridToScene(this._scene, 0, 0, 1);
-    grid.addSolidToScene(this._scene, 0, 0, 1);
+    grid.addGridToScene(this._scene, 0, 0, 1);
+    //grid.addSolidToScene(this._scene, 0, 0, 1);
 
     // Texture of face co-ordinates within the tile.
     this._faceCoordScene = new THREE.Scene();
     this._faceCoordRenderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
     grid.addCoordColoursToScene(this._faceCoordScene, 0, 0, 1);
+
+    // The face highlight
+    this._faceHighlight = new FaceHighlight(this._gridGeometry);
+    this._faceHighlight.addToScene(this._scene);
 
     this.animate = this.animate.bind(this);
   }
@@ -102,6 +109,15 @@ class ThreeDrawing {
     this._renderer.readRenderTargetPixels(this._faceCoordRenderTarget, x, bounds.height - y - 1, 1, 1, buf);
     return this._gridGeometry?.decodeCoordSample(buf, 0);
   }
+
+  hideFaceHighlight() {
+    this._faceHighlight.move(undefined);
+  }
+
+  moveFaceHighlightTo<T, E>(e: React.MouseEvent<T, E>) {
+    var position = this.getGridCoordAt(e);
+    this._faceHighlight.move(position);
+  }
 }
 
 interface IDrawingProps {
@@ -115,7 +131,10 @@ class Drawing extends React.Component<IDrawingProps> {
   constructor(props: IDrawingProps) {
     super(props);
     this._mount = React.createRef();
+
     this.handleClick = this.handleClick.bind(this);
+    this.handleMouseLeave = this.handleMouseLeave.bind(this);
+    this.handleMouseMove = this.handleMouseMove.bind(this);
   }
 
   private get drawHexes(): boolean {
@@ -142,9 +161,22 @@ class Drawing extends React.Component<IDrawingProps> {
     alert('tile ' + coord.tile.x + ', ' + coord.tile.y + ', face ' + coord.face.x + ', ' + coord.face.y);
   }
 
+  handleMouseLeave(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+    if (!this._drawing) { return; }
+    this._drawing.hideFaceHighlight();
+  }
+
+  handleMouseMove(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+    if (!this._drawing) { return; }
+    this._drawing.moveFaceHighlightTo(e);
+  }
+
   render() {
     return (
-      <div id="drawingDiv" ref={this._mount} onClick={this.handleClick} />
+      <div id="drawingDiv" ref={this._mount} onClick={this.handleClick}
+           onMouseEnter={this.handleMouseMove}
+           onMouseLeave={this.handleMouseLeave}
+           onMouseMove={this.handleMouseMove} />
     );
   }
 }

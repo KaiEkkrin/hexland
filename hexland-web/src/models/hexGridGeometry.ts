@@ -86,14 +86,18 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     return (y + 1) * (this.tileDim + 1) * 2 + x * 2 + v;
   }
 
-  createFaceHighlightVertices(): Float32Array {
-    return new Float32Array(21);
-  }
-
-  createFaceHighlightIndices(): number[] {
+  private createFaceHighlightIndices(): number[] {
     var indices: number[] = [];
     this.pushHexIndices(indices, 0);
     return indices;
+  }
+
+  createFaceHighlight(): THREE.BufferGeometry {
+    var buf = new THREE.BufferGeometry();
+    buf.setAttribute('position', new THREE.BufferAttribute(new Float32Array(21), 3));
+    buf.setIndex(this.createFaceHighlightIndices());
+    buf.setDrawRange(0, 0); // starts hidden
+    return buf;
   }
 
   createGridVertices(tile: THREE.Vector2): THREE.Vector3[] {
@@ -201,16 +205,38 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     return colours;
   }
 
-  updateFaceHighlightVertices(vertices: Float32Array, coord: GridCoord): void {
+  updateFaceHighlight(buf: THREE.BufferGeometry, coord: GridCoord | undefined): void {
+    if (!coord) {
+      buf.setDrawRange(0, 0);
+      return;
+    }
+
+    var position = buf.attributes.position as THREE.BufferAttribute;
     var x = coord.tile.x * this.tileDim + coord.face.x;
     var y = coord.tile.y * this.tileDim + coord.face.y;
     var centre = this.createCentre(x, y);
-    this.fillFloats(vertices, 0, centre);
-    this.fillFloats(vertices, 3, this.createLeft(centre));
-    this.fillFloats(vertices, 6, this.createTopLeft(centre));
-    this.fillFloats(vertices, 9, this.createTopRight(centre));
-    this.fillFloats(vertices, 12, this.createRight(centre));
-    this.fillFloats(vertices, 15, this.createBottomRight(centre));
-    this.fillFloats(vertices, 18, this.createBottomLeft(centre));
+    position.setXYZ(0, centre.x, centre.y, 2);
+
+    var left = this.createLeft(centre);
+    position.setXYZ(1, left.x, left.y, 2);
+
+    var topLeft = this.createTopLeft(centre);
+    position.setXYZ(2, topLeft.x, topLeft.y, 2);
+
+    var topRight = this.createTopRight(centre);
+    position.setXYZ(3, topRight.x, topRight.y, 2);
+
+    var right = this.createRight(centre);
+    position.setXYZ(4, right.x, right.y, 2);
+
+    var bottomRight = this.createBottomRight(centre);
+    position.setXYZ(5, bottomRight.x, bottomRight.y, 2);
+
+    var bottomLeft = this.createBottomLeft(centre);
+    position.setXYZ(6, bottomLeft.x, bottomLeft.y, 2);
+
+    position.needsUpdate = true;
+    buf.setDrawRange(0, buf.index?.array.length ?? 0);
+    buf.computeBoundingSphere();
   }
 }

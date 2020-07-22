@@ -37,14 +37,18 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     indices.push(-1);
   }
 
-  createFaceHighlightVertices(): Float32Array {
-    return new Float32Array(12);
-  }
-
-  createFaceHighlightIndices(): number[] {
+  private createFaceHighlightIndices(): number[] {
     var indices: number[] = [];
     this.pushSquareIndices(indices, 0);
     return indices;
+  }
+
+  createFaceHighlight(): THREE.BufferGeometry {
+    var buf = new THREE.BufferGeometry();
+    buf.setAttribute('position', new THREE.BufferAttribute(new Float32Array(12), 3));
+    buf.setIndex(this.createFaceHighlightIndices());
+    buf.setDrawRange(0, 0); // starts hidden
+    return buf;
   }
 
   createGridVertices(tile: THREE.Vector2): THREE.Vector3[] {
@@ -142,12 +146,30 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     return colours;
   }
 
-  updateFaceHighlightVertices(vertices: Float32Array, coord: GridCoord): void {
+  updateFaceHighlight(buf: THREE.BufferGeometry, coord: GridCoord | undefined): void {
+    if (!coord) {
+      buf.setDrawRange(0, 0);
+      return;
+    }
+
+    var position = buf.attributes.position as THREE.BufferAttribute;
     var x = coord.tile.x * this.tileDim + coord.face.x;
     var y = coord.tile.y * this.tileDim + coord.face.y;
-    this.fillFloats(vertices, 0, this.createTopLeft(x, y));
-    this.fillFloats(vertices, 3, this.createBottomLeft(x, y));
-    this.fillFloats(vertices, 6, this.createTopRight(x, y));
-    this.fillFloats(vertices, 9, this.createBottomRight(x, y));
+
+    var topLeft = this.createTopLeft(x, y);
+    position.setXYZ(0, topLeft.x, topLeft.y, 2);
+
+    var bottomLeft = this.createBottomLeft(x, y);
+    position.setXYZ(1, bottomLeft.x, bottomLeft.y, 2);
+
+    var topRight = this.createTopRight(x, y);
+    position.setXYZ(2, topRight.x, topRight.y, 2);
+
+    var bottomRight = this.createBottomRight(x, y);
+    position.setXYZ(3, bottomRight.x, bottomRight.y, 2);
+
+    position.needsUpdate = true;
+    buf.setDrawRange(0, buf.index?.array.length ?? 0);
+    buf.computeBoundingSphere();
   }
 }
