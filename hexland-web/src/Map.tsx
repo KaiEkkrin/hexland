@@ -4,7 +4,9 @@ import './Map.css';
 import Navigation from './Navigation';
 
 import { Grid } from './models/grid';
-import { HexGridGeometry, SquareGridGeometry, IGridGeometry } from './models/gridGeometry';
+import { IGridGeometry, GridCoord } from './models/gridGeometry';
+import { HexGridGeometry } from './models/hexGridGeometry';
+import { SquareGridGeometry } from './models/squareGridGeometry';
 
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import ToggleButton from 'react-bootstrap/ToggleButton';
@@ -36,15 +38,79 @@ class MapControls extends React.Component {
   }
 }
 
+// TODO Disposal of the resources used by this when required
+class ThreeDrawing {
+  private _mount: HTMLDivElement;
+  private _gridGeometry: IGridGeometry;
+
+  private _camera: THREE.OrthographicCamera;
+  private _faceCoordRenderTarget: THREE.WebGLRenderTarget;
+  private _renderer: THREE.WebGLRenderer;
+
+  private _scene: THREE.Scene;
+  private _faceCoordScene: THREE.Scene;
+
+  constructor(mount: HTMLDivElement, drawHexes: boolean) {
+    const spacing = 75.0;
+    const tileDim = 12;
+
+    const left = window.innerWidth / -2;
+    const right = window.innerWidth / 2;
+    const top = window.innerHeight / -2;
+    const bottom = window.innerHeight / 2;
+    this._camera = new THREE.OrthographicCamera(left, right, top, bottom, 0.1, 1000);
+    this._camera.position.z = 5;
+
+    // TODO use the bounding rect of `mount` instead of window.innerWidth and window.innerHeight;
+    // except, it's not initialised yet (?)
+    this._mount = mount;
+    this._scene = new THREE.Scene();
+    this._renderer = new THREE.WebGLRenderer();
+    this._renderer.setSize(window.innerWidth, window.innerHeight);
+    mount.appendChild(this._renderer.domElement);
+
+    this._gridGeometry = drawHexes ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
+    var grid = new Grid(this._gridGeometry);
+    //grid.addGridToScene(this._scene, 0, 0, 1);
+    grid.addSolidToScene(this._scene, 0, 0, 1);
+
+    // Texture of face co-ordinates within the tile.
+    this._faceCoordScene = new THREE.Scene();
+    this._faceCoordRenderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
+    grid.addCoordColoursToScene(this._faceCoordScene, 0, 0, 1);
+
+    this.animate = this.animate.bind(this);
+  }
+
+  animate() {
+    requestAnimationFrame(this.animate);
+
+    // TODO Don't re-render unless something changed (?)
+    this._renderer.render(this._scene, this._camera);
+
+    this._renderer.setRenderTarget(this._faceCoordRenderTarget);
+    this._renderer.render(this._faceCoordScene, this._camera);
+    this._renderer.setRenderTarget(null);
+  }
+
+  getGridCoordAt<T, E>(e: React.MouseEvent<T, E>): GridCoord {
+    var bounds = this._mount.getBoundingClientRect();
+    var x = e.clientX - bounds.left;
+    var y = e.clientY - bounds.top;
+
+    var buf = new Uint8Array(4);
+    this._renderer.readRenderTargetPixels(this._faceCoordRenderTarget, x, bounds.height - y - 1, 1, 1, buf);
+    return this._gridGeometry?.decodeCoordSample(buf, 0);
+  }
+}
+
 interface IDrawingProps {
   geometry: string;
 }
 
 class Drawing extends React.Component<IDrawingProps> {
   private _mount: RefObject<HTMLDivElement>;
-  private _gridGeometry: IGridGeometry | undefined;
-  private _hexCoordRenderTarget: THREE.WebGLRenderTarget | undefined;
-  private _renderer: THREE.WebGLRenderer | undefined;
+  private _drawing: ThreeDrawing | undefined;
 
   constructor(props: IDrawingProps) {
     super(props);
@@ -52,64 +118,28 @@ class Drawing extends React.Component<IDrawingProps> {
     this.handleClick = this.handleClick.bind(this);
   }
 
-  private get camera(): THREE.OrthographicCamera {
-    const left = window.innerWidth / -2;
-    const right = window.innerWidth / 2;
-    const top = window.innerHeight / -2;
-    const bottom = window.innerHeight / 2;
-    var camera = new THREE.OrthographicCamera(left, right, top, bottom, 0.1, 1000);
-    camera.position.z = 5;
-    return camera;
-  }
-
   private get drawHexes(): boolean {
     return this.props.geometry === "hex";
   }
 
   componentDidMount() {
-    const spacing = 75.0;
-    const tileDim = 12;
-
     var mount = this._mount.current;
     if (!mount) {
       return;
     }
 
-    var scene = new THREE.Scene();
-    this._renderer = new THREE.WebGLRenderer();
-    this._renderer.setSize(window.innerWidth, window.innerHeight);
-    mount.appendChild(this._renderer.domElement);
-
-    this._gridGeometry = this.drawHexes ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
-    var grid = new Grid(this._gridGeometry);
-    grid.addGridToScene(scene, 0, 0, 1);
-
-    this._renderer.render(scene, this.camera);
-
-    // Texture of hex co-ordinates within the tile.
-    var hexCoordScene = new THREE.Scene();
-    this._hexCoordRenderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
-    grid.addCoordColoursToScene(hexCoordScene, 0, 0, 1);
-
-    this._renderer.setRenderTarget(this._hexCoordRenderTarget);
-    this._renderer.render(hexCoordScene, this.camera);
-    this._renderer.setRenderTarget(null);
+    this._drawing = new ThreeDrawing(mount, this.drawHexes);
+    this._drawing.animate();
   }
 
   handleClick(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-    if (!this._gridGeometry || !this._hexCoordRenderTarget) { return; }
+    if (!this._drawing) { return; }
 
     var bounds = document.getElementById("drawingDiv")?.getBoundingClientRect();
     if (!bounds) { return; }
 
-    var x = e.clientX - bounds.left;
-    var y = e.clientY - bounds.top;
-
-    var buf = new Uint8Array(4);
-    this._renderer?.readRenderTargetPixels(this._hexCoordRenderTarget, x, bounds.height - y - 1, 1, 1, buf);
-    var coord = this._gridGeometry?.decodeCoordSample(buf, 0);
-
-    alert(x + ', ' + y + ' -> tile ' + coord.tile.x + ', ' + coord.tile.y + ', hex ' + coord.hex.x + ', ' + coord.hex.y);
+    var coord = this._drawing.getGridCoordAt(e);
+    alert('tile ' + coord.tile.x + ', ' + coord.tile.y + ', face ' + coord.face.x + ', ' + coord.face.y);
   }
 
   render() {

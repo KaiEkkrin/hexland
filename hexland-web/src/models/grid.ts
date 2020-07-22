@@ -41,7 +41,7 @@ export class Grid {
         bufferGeometry.setIndex(this._solidIndices);
 
         var colours = this._geometry.createSolidTestColours();
-        bufferGeometry.addAttribute('color', new THREE.BufferAttribute(colours, 3));
+        bufferGeometry.setAttribute('color', new THREE.BufferAttribute(colours, 3));
 
         var mesh = new THREE.Mesh(bufferGeometry, this._solidMaterial);
         scene.add(mesh);
@@ -58,7 +58,7 @@ export class Grid {
         bufferGeometry.setIndex(this._solidIndices);
 
         var colours = this._geometry.createSolidCoordColours(tile);
-        bufferGeometry.addAttribute('color', new THREE.BufferAttribute(colours, 4));
+        bufferGeometry.setAttribute('color', new THREE.BufferAttribute(colours, 4));
 
         var mesh = new THREE.Mesh(bufferGeometry, this._solidMaterial);
         scene.add(mesh);
