@@ -6,15 +6,13 @@ import * as THREE from 'three';
 // The highlight shows up the current face, edge etc as relevant.
 // TODO Disposal etc.
 export class FaceHighlight extends Drawn {
-  private _geometry: IGridGeometry;
   private _position: GridCoord | undefined; 
 
   private _bufferGeometry: THREE.BufferGeometry;
   private _material: THREE.MeshBasicMaterial;
 
   constructor(geometry: IGridGeometry) {
-    super();
-    this._geometry = geometry;
+    super(geometry);
     this._bufferGeometry = geometry.createFaceHighlight();
     this._material = new THREE.MeshBasicMaterial({ color: 0xa0a0a0, flatShading: true });
   }
@@ -36,7 +34,7 @@ export class FaceHighlight extends Drawn {
     }
 
     this._position = newPosition;
-    this._geometry.updateFaceHighlight(this._bufferGeometry, newPosition);
+    this.geometry.updateFaceHighlight(this._bufferGeometry, newPosition);
     this.setNeedsRedraw();
   }
 }

@@ -51,6 +51,7 @@ class ThreeDrawing {
   private _scene: THREE.Scene;
   private _faceCoordScene: THREE.Scene;
 
+  private _grid: Grid;
   private _faceHighlight: FaceHighlight;
 
   constructor(mount: HTMLDivElement, drawHexes: boolean) {
@@ -73,14 +74,14 @@ class ThreeDrawing {
     mount.appendChild(this._renderer.domElement);
 
     this._gridGeometry = drawHexes ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
-    var grid = new Grid(this._gridGeometry);
-    grid.addGridToScene(this._scene, 0, 0, 1);
+    this._grid = new Grid(this._gridGeometry);
+    this._grid.addGridToScene(this._scene, 0, 0, 1);
     //grid.addSolidToScene(this._scene, 0, 0, 1);
 
     // Texture of face co-ordinates within the tile.
     this._faceCoordScene = new THREE.Scene();
     this._faceCoordRenderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
-    grid.addCoordColoursToScene(this._faceCoordScene, 0, 0, 1);
+    this._grid.addCoordColoursToScene(this._faceCoordScene, 0, 0, 1);
 
     // The face highlight
     this._faceHighlight = new FaceHighlight(this._gridGeometry);
@@ -92,12 +93,22 @@ class ThreeDrawing {
   animate() {
     requestAnimationFrame(this.animate);
 
-    // TODO Don't re-render unless something changed (?)
-    this._renderer.render(this._scene, this._camera);
+    // Don't re-render the visible scene unless something changed:
+    // (Careful -- don't chain these method calls up with ||, it's important
+    // I actually call each one and don't skip later ones if an early one returned
+    // true)
+    var gridNeedsRedraw = this._grid.needsRedraw();
+    var faceHighlightNeedsRedraw = this._faceHighlight.needsRedraw();
 
-    this._renderer.setRenderTarget(this._faceCoordRenderTarget);
-    this._renderer.render(this._faceCoordScene, this._camera);
-    this._renderer.setRenderTarget(null);
+    if (gridNeedsRedraw || faceHighlightNeedsRedraw) {
+      this._renderer.render(this._scene, this._camera);
+    }
+
+    if (gridNeedsRedraw) {
+      this._renderer.setRenderTarget(this._faceCoordRenderTarget);
+      this._renderer.render(this._faceCoordScene, this._camera);
+      this._renderer.setRenderTarget(null);
+    }
   }
 
   getGridCoordAt<T, E>(e: React.MouseEvent<T, E>): GridCoord {
