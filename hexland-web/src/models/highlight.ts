@@ -1,7 +1,10 @@
+import { GridCoord, GridEdge } from '../data/coord';
 import { Drawn } from './drawn';
-import { GridCoord, GridEdge, IGridGeometry } from './gridGeometry';
+import { IGridGeometry } from './gridGeometry';
 
 import * as THREE from 'three';
+
+const highlightZ = 2;
 
 // The highlight shows up the current face, edge etc as relevant.
 // TODO Disposal etc.
@@ -36,7 +39,7 @@ export class EdgeHighlight extends Drawn {
     }
 
     this._position = newPosition;
-    this.geometry.updateEdgeHighlight(this._bufferGeometry, newPosition, this._alpha);
+    this.geometry.updateEdgeHighlight(this._bufferGeometry, newPosition, this._alpha, highlightZ);
     this.setNeedsRedraw();
   }
 }
@@ -70,7 +73,7 @@ export class FaceHighlight extends Drawn {
     }
 
     this._position = newPosition;
-    this.geometry.updateFaceHighlight(this._bufferGeometry, newPosition);
+    this.geometry.updateFaceHighlight(this._bufferGeometry, newPosition, highlightZ);
     this.setNeedsRedraw();
   }
 }

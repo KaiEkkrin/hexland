@@ -1,4 +1,5 @@
-import { BaseGeometry, GridCoord, IGridGeometry, GridEdge, FaceCentre, EdgeGeometry } from './gridGeometry';
+import { GridCoord, GridEdge } from '../data/coord';
+import { BaseGeometry, FaceCentre, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
 
 export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
@@ -11,31 +12,32 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     this._off = squareSize * 0.5;
   }
 
-  protected createCentre(x: number, y: number): FaceCentre {
-    return new FaceCentre(x * this._squareSize, y * this._squareSize, 1);
+  protected createCentre(x: number, y: number, z: number): FaceCentre {
+    return new FaceCentre(x * this._squareSize, y * this._squareSize, z);
   }
 
   private createTopLeft(c: FaceCentre): THREE.Vector3 {
-    return new THREE.Vector3(c.x - this._off, c.y - this._off, 1);
+    return new THREE.Vector3(c.x - this._off, c.y - this._off, c.z);
   }
 
   private createTopRight(c: FaceCentre): THREE.Vector3 {
-    return new THREE.Vector3(c.x + this._off, c.y - this._off, 1);
+    return new THREE.Vector3(c.x + this._off, c.y - this._off, c.z);
   }
 
   private createBottomLeft(c: FaceCentre): THREE.Vector3 {
-    return new THREE.Vector3(c.x - this._off, c.y + this._off, 1);
+    return new THREE.Vector3(c.x - this._off, c.y + this._off, c.z);
   }
 
   private createBottomRight(c: FaceCentre): THREE.Vector3 {
-    return new THREE.Vector3(c.x + this._off, c.y + this._off, 1);
+    return new THREE.Vector3(c.x + this._off, c.y + this._off, c.z);
   }
 
-  protected createEdgeGeometry(coord: GridEdge, alpha: number): EdgeGeometry {
-    var centre = this.createCoordCentre(coord);
+  protected createEdgeGeometry(coord: GridEdge, alpha: number, z: number): EdgeGeometry {
+    var centre = this.createCoordCentre(coord, z);
     var otherCentre = this.createCoordCentre(
       coord.edge === 0 ? coord.addFace(new THREE.Vector2(-1, 0), this.tileDim) :
-      coord.addFace(new THREE.Vector2(0, -1), this.tileDim)
+      coord.addFace(new THREE.Vector2(0, -1), this.tileDim),
+      z
     );
 
     var tip1 = coord.edge === 0 ? this.createBottomLeft(centre) : this.createTopLeft(centre);
@@ -69,11 +71,11 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     return buf;
   }
 
-  createGridVertices(tile: THREE.Vector2): THREE.Vector3[] {
+  createGridVertices(tile: THREE.Vector2, z: number): THREE.Vector3[] {
     var vertices = [];
     for (var y = 0; y <= this.tileDim; ++y) {
       for (var x = 0; x <= this.tileDim; ++x) {
-        var centre = this.createCentre(tile.x * this.tileDim + x, tile.y * this.tileDim + y);
+        var centre = this.createCentre(tile.x * this.tileDim + x, tile.y * this.tileDim + y, z);
         vertices.push(this.createTopLeft(centre));
       }
     }
@@ -101,11 +103,11 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     return indices;
   }
 
-  createSolidVertices(tile: THREE.Vector2): THREE.Vector3[] {
+  createSolidVertices(tile: THREE.Vector2, z: number): THREE.Vector3[] {
     var vertices = [];
     for (var y = 0; y < this.tileDim; ++y) {
       for (var x = 0; x < this.tileDim; ++x) {
-        var centre = this.createCentre(tile.x * this.tileDim + x, tile.y * this.tileDim + y);
+        var centre = this.createCentre(tile.x * this.tileDim + x, tile.y * this.tileDim + y, z);
         vertices.push(this.createTopLeft(centre));
         vertices.push(this.createBottomLeft(centre));
         vertices.push(this.createTopRight(centre));
@@ -163,14 +165,18 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     return colours;
   }
 
-  updateFaceHighlight(buf: THREE.BufferGeometry, coord: GridCoord | undefined): void {
+  toSingle(): IGridGeometry {
+    return new SquareGridGeometry(this._squareSize, 1);
+  }
+
+  updateFaceHighlight(buf: THREE.BufferGeometry, coord: GridCoord | undefined, z: number): void {
     if (!coord) {
       buf.setDrawRange(0, 0);
       return;
     }
 
     var position = buf.attributes.position as THREE.BufferAttribute;
-    var centre = this.createCoordCentre(coord);
+    var centre = this.createCoordCentre(coord, z);
 
     var topLeft = this.createTopLeft(centre);
     position.setXYZ(0, topLeft.x, topLeft.y, 2);

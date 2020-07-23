@@ -1,5 +1,7 @@
+import { GridCoord, GridEdge } from '../data/coord';
+import { Areas } from './areas';
 import { Grid } from './grid';
-import { IGridGeometry, GridCoord, GridEdge } from './gridGeometry';
+import { IGridGeometry} from './gridGeometry';
 import { HexGridGeometry } from './hexGridGeometry';
 import { FaceHighlight, EdgeHighlight } from './highlight';
 import { SquareGridGeometry } from './squareGridGeometry';
@@ -26,6 +28,10 @@ export class ThreeDrawing {
   private _grid: Grid;
   private _edgeHighlight: EdgeHighlight;
   private _faceHighlight: FaceHighlight;
+  private _areas: Areas;
+
+  private _colours: THREE.Color[];
+  private _colourMaterials: THREE.MeshBasicMaterial[];
 
   constructor(mount: HTMLDivElement, drawHexes: boolean) {
     const spacing = 75.0;
@@ -69,6 +75,20 @@ export class ThreeDrawing {
     this._faceHighlight = new FaceHighlight(this._gridGeometry);
     this._faceHighlight.addToScene(this._scene);
 
+    // Generate my basic colours
+    this._colours = [];
+    for (var i = 0; i < 6; ++i) {
+      var colour = new THREE.Color();
+      colour.setHSL((i + 0.5) / 6.0, 0.5, 0.2);
+      this._colours.push(colour);
+    }
+
+    this._colourMaterials = this._colours.map(c => new THREE.MeshBasicMaterial({ color: c.getHex() }));
+
+    // The filled areas
+    this._areas = new Areas(this._gridGeometry, this._colourMaterials);
+    this._areas.addToScene(this._scene);
+
     this.animate = this.animate.bind(this);
   }
 
@@ -82,8 +102,9 @@ export class ThreeDrawing {
     var gridNeedsRedraw = this._grid.needsRedraw();
     var edgeHighlightNeedsRedraw = this._edgeHighlight.needsRedraw();
     var faceHighlightNeedsRedraw = this._faceHighlight.needsRedraw();
+    var areasNeedsRedraw = this._areas.needsRedraw();
 
-    if (gridNeedsRedraw || edgeHighlightNeedsRedraw || faceHighlightNeedsRedraw) {
+    if (gridNeedsRedraw || edgeHighlightNeedsRedraw || faceHighlightNeedsRedraw || areasNeedsRedraw) {
       this._renderer.render(this._scene, this._camera);
     }
 
@@ -120,6 +141,13 @@ export class ThreeDrawing {
 
   hideEdgeHighlight() {
     this._edgeHighlight.move(undefined);
+  }
+
+  addArea<T, E>(e: React.MouseEvent<T, E>) {
+    var position = this.getGridCoordAt(e);
+    if (position) {
+      this._areas.add(position);
+    }
   }
 
   moveEdgeHighlightTo<T, E>(e: React.MouseEvent<T, E>) {

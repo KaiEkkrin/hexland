@@ -1,58 +1,6 @@
-import { modFloor, lerp } from './extraMath';
+import { GridCoord, GridEdge } from '../data/coord';
+import { lerp } from './extraMath';
 import * as THREE from 'three';
-
-// This is the co-ordinate of a face (hex or square) inside the grid.
-export class GridCoord {
-  tile: THREE.Vector2;
-  face: THREE.Vector2; // within the tile
-
-  constructor(tile: THREE.Vector2, face: THREE.Vector2) {
-    this.tile = tile;
-    this.face = face;
-  }
-
-  addFace(f: THREE.Vector2, tileDim: number): GridCoord {
-    var x = this.tile.x * tileDim + this.face.x + f.x;
-    var y = this.tile.y * tileDim + this.face.y + f.y;
-    return new GridCoord(
-      new THREE.Vector2(Math.floor(x / tileDim), Math.floor(y / tileDim)),
-      new THREE.Vector2(modFloor(x, tileDim), modFloor(y, tileDim))
-    );
-  }
-
-  equals(other: any): boolean {
-    return (other instanceof GridCoord &&
-      other.tile.x === this.tile.x &&
-      other.tile.y === this.tile.y &&
-      other.face.x === this.face.x &&
-      other.face.y === this.face.y);
-  }
-
-  hash(): string {
-    return this.tile.x + " " + this.tile.y + " " + this.face.x + " " + this.face.y;
-  }
-}
-
-// This is the co-ordinate of an edge.  Each face "owns" some number
-// of the edges around it, which are identified by the `edge` number here.
-export class GridEdge extends GridCoord {
-  edge: number;
-
-  constructor(coord: GridCoord, edge: number) {
-    super(coord.tile, coord.face);
-    this.edge = edge;
-  }
-
-  equals(other: any): boolean {
-    return (other instanceof GridEdge &&
-      super.equals(other) &&
-      other.edge === this.edge);
-  }
-
-  hash(): string {
-    return super.hash() + " " + this.edge;
-  }
-}
 
 // A grid geometry describes a grid's layout (currently either squares
 // or hexagons.)
@@ -66,7 +14,7 @@ export interface IGridGeometry {
   createFaceHighlight(): THREE.BufferGeometry;
 
   // Creates the vertices involved in drawing a full grid tile.
-  createGridVertices(tile: THREE.Vector2): THREE.Vector3[];
+  createGridVertices(tile: THREE.Vector2, z: number): THREE.Vector3[];
 
   // Creates a buffer of indices into the output of `createGridVertices`
   // suitable for drawing a full grid of lines.
@@ -76,7 +24,7 @@ export interface IGridGeometry {
   // (TODO: This should really just be the centres of each hex.  However,
   // it looks like Three.js support for instancing is super inadequate
   // so I'll have to create all the vertices for now.)
-  createSolidVertices(tile: THREE.Vector2): THREE.Vector3[];
+  createSolidVertices(tile: THREE.Vector2, z: number): THREE.Vector3[];
 
   // Creates a buffer of indices into the output of `createSolidVertices`
   // suitable for drawing a solid mesh of the grid.
@@ -91,7 +39,7 @@ export interface IGridGeometry {
   // Creates the vertices involved in drawing grid edges in solid.
   // The alpha number specifies how thick the edge is drawn.
   // This is a non-indexed mesh.
-  createSolidEdgeVertices(tile: THREE.Vector2, alpha: number): THREE.Vector3[];
+  createSolidEdgeVertices(tile: THREE.Vector2, alpha: number, z: number): THREE.Vector3[];
 
   // Creates the colours for an edge texture using the solid edge vertices.
   createSolidEdgeColours(tile: THREE.Vector2): Float32Array;
@@ -104,11 +52,19 @@ export interface IGridGeometry {
   // starting from the offset) into a grid coord.
   decodeEdgeSample(sample: Uint8Array, offset: number): GridEdge | undefined;
 
+  // Emits the same grid geometry but with a tileDim of 1; useful for initialising
+  // instanced draws.
+  toSingle(): IGridGeometry;
+
+  // Transforms the object, assumed to be at the zero co-ordinate, to be at the
+  // given one instead.
+  transformToCoord(o: THREE.Object3D, coord: GridCoord): void;
+
   // Updates the vertices of the highlighted edge to a new position.
-  updateEdgeHighlight(buf: THREE.BufferGeometry, coord: GridEdge | undefined, alpha: number): void;
+  updateEdgeHighlight(buf: THREE.BufferGeometry, coord: GridEdge | undefined, alpha: number, z: number): void;
 
   // Updates the vertices of the highlighted face to a new position.
-  updateFaceHighlight(buf: THREE.BufferGeometry, coord: GridCoord | undefined): void;
+  updateFaceHighlight(buf: THREE.BufferGeometry, coord: GridCoord | undefined, z: number): void;
 }
 
 export class FaceCentre extends THREE.Vector3 {} // to help me not get muddled when handling centres
@@ -147,13 +103,17 @@ export abstract class BaseGeometry {
   protected get tileDim() { return this._tileDim; }
   protected get maxEdge() { return this._maxEdge; }
 
-  protected abstract createCentre(x: number, y: number): FaceCentre;
+  protected abstract createCentre(x: number, y: number, z: number): FaceCentre;
 
-  protected createCoordCentre(coord: GridCoord): FaceCentre {
-    return this.createCentre(coord.tile.x * this.tileDim + coord.face.x, coord.tile.y * this.tileDim + coord.face.y);
+  protected createCoordCentre(coord: GridCoord, z: number): FaceCentre {
+    return this.createCentre(
+      coord.tile.x * this.tileDim + coord.face.x,
+      coord.tile.y * this.tileDim + coord.face.y,
+      z
+    );
   }
 
-  protected abstract createEdgeGeometry(coord: GridEdge, alpha: number): EdgeGeometry;
+  protected abstract createEdgeGeometry(coord: GridEdge, alpha: number, z: number): EdgeGeometry;
 
   private pushEdgeIndices(indices: number[], baseIndex: number) {
     indices.push(baseIndex);
@@ -229,7 +189,7 @@ export abstract class BaseGeometry {
     return buf;
   }
 
-  createSolidEdgeVertices(tile: THREE.Vector2, alpha: number): THREE.Vector3[] {
+  createSolidEdgeVertices(tile: THREE.Vector2, alpha: number, z: number): THREE.Vector3[] {
     var vertices = [];
     for (var y = 0; y < this.tileDim; ++y) {
       for (var x = 0; x < this.tileDim; ++x) {
@@ -239,7 +199,7 @@ export abstract class BaseGeometry {
             e
           );
 
-          var eg = this.createEdgeGeometry(edge, alpha);
+          var eg = this.createEdgeGeometry(edge, alpha, z);
 
           vertices.push(eg.bevel1b);
           vertices.push(eg.tip1);
@@ -300,14 +260,20 @@ export abstract class BaseGeometry {
     ) : undefined;
   }
 
-  updateEdgeHighlight(buf: THREE.BufferGeometry, coord: GridEdge | undefined, alpha: number): void {
+  transformToCoord(o: THREE.Object3D, coord: GridCoord): void {
+    var centre = this.createCoordCentre(coord, 0);
+    o.translateX(centre.x);
+    o.translateY(centre.y);
+  }
+
+  updateEdgeHighlight(buf: THREE.BufferGeometry, coord: GridEdge | undefined, alpha: number, z: number): void {
     if (!coord) {
       buf.setDrawRange(0, 0);
       return;
     }
 
     var position = buf.attributes.position as THREE.BufferAttribute;
-    var eg = this.createEdgeGeometry(coord, alpha);
+    var eg = this.createEdgeGeometry(coord, alpha, z);
 
     position.setXYZ(0, eg.bevel1b.x, eg.bevel1b.y, 2);
     position.setXYZ(1, eg.bevel2b.x, eg.bevel2b.y, 2);

@@ -53,13 +53,16 @@ class Drawing extends React.Component<IDrawingProps> {
   private _mount: RefObject<HTMLDivElement>;
   private _drawing: ThreeDrawing | undefined;
 
+  private _mouseIsDown: boolean = false;
+
   constructor(props: IDrawingProps) {
     super(props);
     this._mount = React.createRef();
 
-    this.handleClick = this.handleClick.bind(this);
+    this.handleMouseDown = this.handleMouseDown.bind(this);
     this.handleMouseLeave = this.handleMouseLeave.bind(this);
     this.handleMouseMove = this.handleMouseMove.bind(this);
+    this.handleMouseUp = this.handleMouseUp.bind(this);
   }
 
   private get drawHexes(): boolean {
@@ -76,18 +79,8 @@ class Drawing extends React.Component<IDrawingProps> {
     this._drawing.animate();
   }
 
-  handleClick(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-    if (!this._drawing) { return; }
-
-    var bounds = document.getElementById("drawingDiv")?.getBoundingClientRect();
-    if (!bounds) { return; }
-
-    var coord = this._drawing.getGridCoordAt(e);
-    if (coord) {
-      alert('tile ' + coord.tile.x + ', ' + coord.tile.y + ', face ' + coord.face.x + ', ' + coord.face.y);
-    } else {
-      alert('no tile');
-    }
+  handleMouseDown(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+    this._mouseIsDown = true;
   }
 
   handleMouseLeave(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
@@ -102,6 +95,9 @@ class Drawing extends React.Component<IDrawingProps> {
     var editMode = this.props.getEditMode();
     if (editMode === 1) {
       this._drawing.moveFaceHighlightTo(e);
+      if (this._mouseIsDown === true) {
+        this._drawing.addArea(e);
+      }
     } else {
       this._drawing.hideFaceHighlight();
     }
@@ -113,12 +109,18 @@ class Drawing extends React.Component<IDrawingProps> {
     }
   }
 
+  handleMouseUp(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+    this._mouseIsDown = false;
+  }
+
   render() {
     return (
-      <div id="drawingDiv" ref={this._mount} onClick={this.handleClick}
+      <div id="drawingDiv" ref={this._mount}
+           onMouseDown={this.handleMouseDown}
            onMouseEnter={this.handleMouseMove}
            onMouseLeave={this.handleMouseLeave}
-           onMouseMove={this.handleMouseMove} />
+           onMouseMove={this.handleMouseMove}
+           onMouseUp={this.handleMouseUp} />
     );
   }
 }
