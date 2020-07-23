@@ -169,6 +169,15 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     return new SquareGridGeometry(this._squareSize, 1);
   }
 
+  transformToEdge(o: THREE.Object3D, coord: GridEdge): void {
+    var centre = this.createCoordCentre(coord, 0);
+    o.translateX(centre.x);
+    o.translateY(centre.y);
+    if (coord.edge === 1) {
+      o.rotateZ(Math.PI * 0.5);
+    }
+  }
+
   updateFaceHighlight(buf: THREE.BufferGeometry, coord: GridCoord | undefined, z: number): void {
     if (!coord) {
       buf.setDrawRange(0, 0);

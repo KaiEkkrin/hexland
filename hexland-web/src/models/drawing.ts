@@ -1,10 +1,12 @@
 import { GridCoord, GridEdge } from '../data/coord';
 import { Areas } from './areas';
 import { Grid } from './grid';
+import { FeatureColour } from './featureColour';
 import { IGridGeometry} from './gridGeometry';
 import { HexGridGeometry } from './hexGridGeometry';
 import { FaceHighlight, EdgeHighlight } from './highlight';
 import { SquareGridGeometry } from './squareGridGeometry';
+import { Walls } from './walls';
 
 import * as THREE from 'three';
 
@@ -29,10 +31,12 @@ export class ThreeDrawing {
   private _edgeHighlight: EdgeHighlight;
   private _faceHighlight: FaceHighlight;
   private _areas: Areas;
+  private _walls: Walls;
 
-  private _colourMaterials: THREE.MeshBasicMaterial[];
+  private _darkColourMaterials: THREE.MeshBasicMaterial[];
+  private _lightColourMaterials: THREE.MeshBasicMaterial[];
 
-  constructor(colours: THREE.Color[], mount: HTMLDivElement, drawHexes: boolean) {
+  constructor(colours: FeatureColour[], mount: HTMLDivElement, drawHexes: boolean) {
     const spacing = 75.0;
     const tileDim = 12;
 
@@ -74,11 +78,16 @@ export class ThreeDrawing {
     this._faceHighlight = new FaceHighlight(this._gridGeometry);
     this._faceHighlight.addToScene(this._scene);
 
-    this._colourMaterials = colours.map(c => new THREE.MeshBasicMaterial({ color: c.getHex() }));
+    this._darkColourMaterials = colours.map(c => new THREE.MeshBasicMaterial({ color: c.dark.getHex() }));
+    this._lightColourMaterials = colours.map(c => new THREE.MeshBasicMaterial({ color: c.light.getHex() }));
 
     // The filled areas
-    this._areas = new Areas(this._gridGeometry, this._colourMaterials);
-    this._areas.addToScene(this._scene);
+    this._areas = new Areas(this._gridGeometry);
+    this._areas.addToScene(this._scene, this._darkColourMaterials);
+
+    // The walls
+    this._walls = new Walls(this._gridGeometry);
+    this._walls.addToScene(this._scene, this._lightColourMaterials);
 
     this.animate = this.animate.bind(this);
   }
@@ -94,8 +103,10 @@ export class ThreeDrawing {
     var edgeHighlightNeedsRedraw = this._edgeHighlight.needsRedraw();
     var faceHighlightNeedsRedraw = this._faceHighlight.needsRedraw();
     var areasNeedsRedraw = this._areas.needsRedraw();
+    var wallsNeedsRedraw = this._walls.needsRedraw();
 
-    if (gridNeedsRedraw || edgeHighlightNeedsRedraw || faceHighlightNeedsRedraw || areasNeedsRedraw) {
+    if (gridNeedsRedraw || edgeHighlightNeedsRedraw || faceHighlightNeedsRedraw ||
+      areasNeedsRedraw || wallsNeedsRedraw) {
       this._renderer.render(this._scene, this._camera);
     }
 
@@ -155,6 +166,17 @@ export class ThreeDrawing {
         this._areas.remove(position);
       } else {
         this._areas.add(position, colour);
+      }
+    }
+  }
+
+  setWall<T, E>(e: React.MouseEvent<T, E>, colour: number) {
+    var position = this.getGridEdgeAt(e);
+    if (position) {
+      if (colour < 0) {
+        this._walls.remove(position);
+      } else {
+        this._walls.add(position, colour);
       }
     }
   }

@@ -4,6 +4,7 @@ import './Map.css';
 import Navigation from './Navigation';
 
 import { ThreeDrawing } from './models/drawing';
+import { FeatureColour } from './models/featureColour';
 
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import ToggleButton from 'react-bootstrap/ToggleButton';
@@ -64,7 +65,7 @@ class MapControls extends React.Component<IMapControlsProps> {
 }
 
 interface IDrawingProps {
-  colours: THREE.Color[];
+  colours: FeatureColour[];
   geometry: string;
   getEditMode(): number;
   getSelectedColour(): number;
@@ -126,6 +127,9 @@ class Drawing extends React.Component<IDrawingProps> {
 
     if (editMode === 2) {
       this._drawing.moveEdgeHighlightTo(e);
+      if (this._mouseIsDown === true) {
+        this._drawing.setWall(e, this.props.getSelectedColour());
+      }
     } else {
       this._drawing.hideEdgeHighlight();
     }
@@ -157,7 +161,7 @@ class MapState {
 }
 
 class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
-  private _colours: THREE.Color[];
+  private _colours: FeatureColour[];
 
   constructor(props: RouteComponentProps<IMapProps>) {
     super(props);
@@ -166,15 +170,13 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
     // Generate my standard colours
     this._colours = [];
     for (var i = 0; i < 6; ++i) {
-      var colour = new THREE.Color();
-      colour.setHSL((i + 0.5) / 6.0, 0.5, 0.2);
-      this._colours.push(colour);
+      this._colours.push(new FeatureColour((i + 0.5) / 6.0));
     }
   }
 
   // Gets our standard colours.
   get hexColours(): string[] {
-    return this._colours.map(c => "#" + c.getHexString());
+    return this._colours.map(c => "#" + c.lightHexString);
   }
 
   render() {

@@ -44,6 +44,11 @@ export interface IGridGeometry {
   // Creates the colours for an edge texture using the solid edge vertices.
   createSolidEdgeColours(tile: THREE.Vector2): Float32Array;
 
+  // Creates the vertices for the wall instanced mesh.  This will have only
+  // edge 0 (we use the instance matrix to generate the others.)
+  // TODO Prettier walls would have intersection pieces :)
+  createWallVertices(alpha: number, z: number): THREE.Vector3[];
+
   // Decodes the given sample from a coord texture (these must be 4 values
   // starting from the offset) into a grid coord.
   decodeCoordSample(sample: Uint8Array, offset: number): GridCoord | undefined;
@@ -59,6 +64,10 @@ export interface IGridGeometry {
   // Transforms the object, assumed to be at the zero co-ordinate, to be at the
   // given one instead.
   transformToCoord(o: THREE.Object3D, coord: GridCoord): void;
+
+  // Transforms the object, assumed to be at the zero edge, to be at the
+  // given one instead.
+  transformToEdge(o: THREE.Object3D, coord: GridEdge): void;
 
   // Updates the vertices of the highlighted edge to a new position.
   updateEdgeHighlight(buf: THREE.BufferGeometry, coord: GridEdge | undefined, alpha: number, z: number): void;
@@ -114,6 +123,31 @@ export abstract class BaseGeometry {
   }
 
   protected abstract createEdgeGeometry(coord: GridEdge, alpha: number, z: number): EdgeGeometry;
+
+  private pushEdgeVertices(vertices: THREE.Vector3[], tile: THREE.Vector2, alpha: number, x: number, y: number, z: number, e: number) {
+    var edge = new GridEdge(
+      new GridCoord(tile, new THREE.Vector2(x, y)),
+      e
+    );
+
+    var eg = this.createEdgeGeometry(edge, alpha, z);
+
+    vertices.push(eg.bevel1b);
+    vertices.push(eg.tip1);
+    vertices.push(eg.bevel2b);
+
+    vertices.push(eg.bevel2b);
+    vertices.push(eg.tip1);
+    vertices.push(eg.tip2);
+
+    vertices.push(eg.tip2);
+    vertices.push(eg.tip1);
+    vertices.push(eg.bevel1a);
+
+    vertices.push(eg.tip2);
+    vertices.push(eg.bevel1a);
+    vertices.push(eg.bevel2a);
+  }
 
   private pushEdgeIndices(indices: number[], baseIndex: number) {
     indices.push(baseIndex);
@@ -190,32 +224,11 @@ export abstract class BaseGeometry {
   }
 
   createSolidEdgeVertices(tile: THREE.Vector2, alpha: number, z: number): THREE.Vector3[] {
-    var vertices = [];
+    var vertices: THREE.Vector3[] = [];
     for (var y = 0; y < this.tileDim; ++y) {
       for (var x = 0; x < this.tileDim; ++x) {
         for (var e = 0; e < this.maxEdge; ++e) {
-          var edge = new GridEdge(
-            new GridCoord(tile, new THREE.Vector2(x, y)),
-            e
-          );
-
-          var eg = this.createEdgeGeometry(edge, alpha, z);
-
-          vertices.push(eg.bevel1b);
-          vertices.push(eg.tip1);
-          vertices.push(eg.bevel2b);
-
-          vertices.push(eg.bevel2b);
-          vertices.push(eg.tip1);
-          vertices.push(eg.tip2);
-          
-          vertices.push(eg.tip2);
-          vertices.push(eg.tip1);
-          vertices.push(eg.bevel1a);
-
-          vertices.push(eg.tip2);
-          vertices.push(eg.bevel1a);
-          vertices.push(eg.bevel2a);
+          this.pushEdgeVertices(vertices, tile, alpha, x, y, z, e);
         }
       }
     }
@@ -239,6 +252,12 @@ export abstract class BaseGeometry {
     }
 
     return colours;
+  }
+
+  createWallVertices(alpha: number, z: number): THREE.Vector3[] {
+    var vertices: THREE.Vector3[] = [];
+    this.pushEdgeVertices(vertices, new THREE.Vector2(0, 0), alpha, 0, 0, z, 0);
+    return vertices;
   }
 
   decodeCoordSample(sample: Uint8Array, offset: number): GridCoord | undefined {

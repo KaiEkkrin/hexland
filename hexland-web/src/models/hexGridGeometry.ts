@@ -230,6 +230,17 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     return new HexGridGeometry(this._hexSize, 1);
   }
 
+  transformToEdge(o: THREE.Object3D, coord: GridEdge): void {
+    var centre = this.createCoordCentre(coord, 0);
+    o.translateX(centre.x);
+    o.translateY(centre.y);
+    if (coord.edge === 1) {
+      o.rotateZ(Math.PI / 3.0);
+    } else if (coord.edge === 2) {
+      o.rotateZ(Math.PI * 2.0 / 3.0);
+    }
+  }
+
   updateFaceHighlight(buf: THREE.BufferGeometry, coord: GridCoord | undefined, z: number): void {
     if (!coord) {
       buf.setDrawRange(0, 0);
