@@ -101,11 +101,11 @@ export interface IGridGeometry {
 
   // Decodes the given sample from a coord texture (these must be 4 values
   // starting from the offset) into a grid coord.
-  decodeCoordSample(sample: Uint8Array, offset: number): GridCoord;
+  decodeCoordSample(sample: Uint8Array, offset: number): GridCoord | undefined;
 
   // Decodes the given sample from an edge texture (these must be 4 values
   // starting from the offset) into a grid coord.
-  decodeEdgeSample(sample: Uint8Array, offset: number): GridEdge;
+  decodeEdgeSample(sample: Uint8Array, offset: number): GridEdge | undefined;
 
   // Updates the vertices of the highlighted edge to a new position.
   updateEdgeHighlight(buf: THREE.BufferGeometry, coord: GridEdge | undefined, alpha: number): void;
@@ -191,9 +191,13 @@ export abstract class BaseGeometry {
     return new THREE.Vector2(absValue % this._tileDim, Math.floor(absValue / this._tileDim));
   }
 
-  private fromPackedXYEdge(sample: Uint8Array, offset: number): (number | THREE.Vector2)[] {
+  private fromPackedXYEdge(sample: Uint8Array, offset: number): (number | THREE.Vector2 | undefined)[] {
     var unpacked = this.fromPackedXYAbs(sample, offset);
-    const signAndEdgeValue = Math.floor(sample[offset + 1] * 4 * this._maxEdge / 255.0);
+    const signAndEdgeValue = Math.floor(sample[offset + 1] * 8 * this._maxEdge / 255.0);
+    if (signAndEdgeValue === 0) {
+      return [undefined, undefined];
+    }
+
     if ((signAndEdgeValue % 2) === 1) {
       unpacked.x = -unpacked.x;
     }
@@ -215,8 +219,9 @@ export abstract class BaseGeometry {
     var packedSignAndEdge =
       (Math.sign(x) === -1 ? 1 : 0) +
       (Math.sign(y) === -1 ? 2 : 0) +
-      4 * edge;
-    colours[offset + 1] = this._epsilon + packedSignAndEdge / (4.0 * this._maxEdge);
+      4 * edge +
+      4 * this._maxEdge; // this value mixed in so that a 0 sign-and-edge value can be identified as "nothing"
+    colours[offset + 1] = this._epsilon + packedSignAndEdge / (8.0 * this._maxEdge);
   }
 
   createEdgeHighlight(): THREE.BufferGeometry {
@@ -279,24 +284,23 @@ export abstract class BaseGeometry {
     return colours;
   }
 
-  decodeCoordSample(sample: Uint8Array, offset: number): GridCoord {
-    var [tile, _] = this.fromPackedXYEdge(sample, offset);
-    return new GridCoord(
+  decodeCoordSample(sample: Uint8Array, offset: number): GridCoord | undefined {
+    var tile = this.fromPackedXYEdge(sample, offset)[0];
+    return tile ? new GridCoord(
       tile as THREE.Vector2,
       this.fromPackedXYAbs(sample, offset + 2)
-    );
+    ) : undefined;
   }
 
-  decodeEdgeSample(sample: Uint8Array, offset: number): GridEdge {
-    // TODO Detect areas with no edge (initialise edge texture to white?)
+  decodeEdgeSample(sample: Uint8Array, offset: number): GridEdge | undefined {
     var [tile, edge] = this.fromPackedXYEdge(sample, offset);
-    return new GridEdge(
+    return tile ? new GridEdge(
       new GridCoord(
         tile as THREE.Vector2,
         this.fromPackedXYAbs(sample, offset + 2),
       ),
       edge as number
-    );
+    ) : undefined;
   }
 
   updateEdgeHighlight(buf: THREE.BufferGeometry, coord: GridEdge | undefined, alpha: number): void {

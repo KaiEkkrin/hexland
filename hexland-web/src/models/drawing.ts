@@ -98,7 +98,7 @@ export class ThreeDrawing {
     }
   }
 
-  getGridCoordAt<T, E>(e: React.MouseEvent<T, E>): GridCoord {
+  getGridCoordAt<T, E>(e: React.MouseEvent<T, E>): GridCoord | undefined {
     var bounds = this._mount.getBoundingClientRect();
     var x = e.clientX - bounds.left;
     var y = e.clientY - bounds.top;
@@ -108,7 +108,7 @@ export class ThreeDrawing {
     return this._gridGeometry?.decodeCoordSample(buf, 0);
   }
 
-  getGridEdgeAt<T, E>(e: React.MouseEvent<T, E>): GridEdge {
+  getGridEdgeAt<T, E>(e: React.MouseEvent<T, E>): GridEdge | undefined {
     var bounds = this._mount.getBoundingClientRect();
     var x = e.clientX - bounds.left;
     var y = e.clientY - bounds.top;

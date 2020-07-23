@@ -83,7 +83,11 @@ class Drawing extends React.Component<IDrawingProps> {
     if (!bounds) { return; }
 
     var coord = this._drawing.getGridCoordAt(e);
-    alert('tile ' + coord.tile.x + ', ' + coord.tile.y + ', face ' + coord.face.x + ', ' + coord.face.y);
+    if (coord) {
+      alert('tile ' + coord.tile.x + ', ' + coord.tile.y + ', face ' + coord.face.x + ', ' + coord.face.y);
+    } else {
+      alert('no tile');
+    }
   }
 
   handleMouseLeave(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
