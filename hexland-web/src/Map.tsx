@@ -13,9 +13,14 @@ import { RouteComponentProps } from 'react-router-dom';
 import { faDrawPolygon, faMousePointer, faSquare } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
+import * as THREE from 'three';
+
 interface IMapControlsProps {
+  colours: string[];
   getEditMode(): number;
   setEditMode(value: number): void;
+  getSelectedColour(): number;
+  setSelectedColour(value: number): void;
 }
 
 class MapControls extends React.Component<IMapControlsProps> {
@@ -39,14 +44,30 @@ class MapControls extends React.Component<IMapControlsProps> {
             <FontAwesomeIcon icon={faDrawPolygon} color="white" />
           </ToggleButton>
         </ButtonGroup>
+        <ButtonGroup toggle vertical>
+          {this.props.colours.map((c, i) =>
+            <ToggleButton type="radio" variant="dark" value={i}
+              checked={this.props.getSelectedColour() === i}
+              onChange={(e) => this.props.setSelectedColour(i)}>
+              <FontAwesomeIcon icon={faSquare} color={c} />
+            </ToggleButton>
+          )}
+          <ToggleButton type="radio" variant="dark" value={-1}
+            checked={this.props.getSelectedColour() === -1}
+            onChange={(e) => this.props.setSelectedColour(-1)}>
+            <FontAwesomeIcon icon={faSquare} color="black" />
+          </ToggleButton>
+        </ButtonGroup>
       </div>
     );
   }
 }
 
 interface IDrawingProps {
+  colours: THREE.Color[];
   geometry: string;
   getEditMode(): number;
+  getSelectedColour(): number;
 }
 
 class Drawing extends React.Component<IDrawingProps> {
@@ -75,12 +96,13 @@ class Drawing extends React.Component<IDrawingProps> {
       return;
     }
 
-    this._drawing = new ThreeDrawing(mount, this.drawHexes);
+    this._drawing = new ThreeDrawing(this.props.colours, mount, this.drawHexes);
     this._drawing.animate();
   }
 
   handleMouseDown(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     this._mouseIsDown = true;
+    this.handleMouseMove(e);
   }
 
   handleMouseLeave(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
@@ -96,7 +118,7 @@ class Drawing extends React.Component<IDrawingProps> {
     if (editMode === 1) {
       this._drawing.moveFaceHighlightTo(e);
       if (this._mouseIsDown === true) {
-        this._drawing.addArea(e);
+        this._drawing.setArea(e, this.props.getSelectedColour());
       }
     } else {
       this._drawing.hideFaceHighlight();
@@ -131,21 +153,43 @@ interface IMapProps {
 
 class MapState {
   editMode = 0;
+  selectedColour = 0;
 }
 
 class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
+  private _colours: THREE.Color[];
+
   constructor(props: RouteComponentProps<IMapProps>) {
     super(props);
     this.state = new MapState();
+
+    // Generate my standard colours
+    this._colours = [];
+    for (var i = 0; i < 6; ++i) {
+      var colour = new THREE.Color();
+      colour.setHSL((i + 0.5) / 6.0, 0.5, 0.2);
+      this._colours.push(colour);
+    }
+  }
+
+  // Gets our standard colours.
+  get hexColours(): string[] {
+    return this._colours.map(c => "#" + c.getHexString());
   }
 
   render() {
     return (
       <div>
         <Navigation />
-        <MapControls getEditMode={() => this.state.editMode} setEditMode={(v) => { this.setState({ editMode: v }); }} />
+        <MapControls colours={this.hexColours}
+          getEditMode={() => this.state.editMode}
+          setEditMode={(v) => { this.setState({ editMode: v }); }}
+          getSelectedColour={() => this.state.selectedColour}
+          setSelectedColour={(v) => { this.setState({ selectedColour: v }); }} />
         <div className="Map-content">
-          <Drawing geometry={this.props.match.params.geometry} getEditMode={() => this.state.editMode} />
+          <Drawing colours={this._colours} geometry={this.props.match.params.geometry}
+            getEditMode={() => this.state.editMode}
+            getSelectedColour={() => this.state.selectedColour} />
         </div>
       </div>
     );

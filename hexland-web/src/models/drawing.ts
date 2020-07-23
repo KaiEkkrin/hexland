@@ -30,10 +30,9 @@ export class ThreeDrawing {
   private _faceHighlight: FaceHighlight;
   private _areas: Areas;
 
-  private _colours: THREE.Color[];
   private _colourMaterials: THREE.MeshBasicMaterial[];
 
-  constructor(mount: HTMLDivElement, drawHexes: boolean) {
+  constructor(colours: THREE.Color[], mount: HTMLDivElement, drawHexes: boolean) {
     const spacing = 75.0;
     const tileDim = 12;
 
@@ -75,15 +74,7 @@ export class ThreeDrawing {
     this._faceHighlight = new FaceHighlight(this._gridGeometry);
     this._faceHighlight.addToScene(this._scene);
 
-    // Generate my basic colours
-    this._colours = [];
-    for (var i = 0; i < 6; ++i) {
-      var colour = new THREE.Color();
-      colour.setHSL((i + 0.5) / 6.0, 0.5, 0.2);
-      this._colours.push(colour);
-    }
-
-    this._colourMaterials = this._colours.map(c => new THREE.MeshBasicMaterial({ color: c.getHex() }));
+    this._colourMaterials = colours.map(c => new THREE.MeshBasicMaterial({ color: c.getHex() }));
 
     // The filled areas
     this._areas = new Areas(this._gridGeometry, this._colourMaterials);
@@ -143,13 +134,6 @@ export class ThreeDrawing {
     this._edgeHighlight.move(undefined);
   }
 
-  addArea<T, E>(e: React.MouseEvent<T, E>) {
-    var position = this.getGridCoordAt(e);
-    if (position) {
-      this._areas.add(position);
-    }
-  }
-
   moveEdgeHighlightTo<T, E>(e: React.MouseEvent<T, E>) {
     var position = this.getGridEdgeAt(e);
     this._edgeHighlight.move(position);
@@ -162,5 +146,16 @@ export class ThreeDrawing {
   moveFaceHighlightTo<T, E>(e: React.MouseEvent<T, E>) {
     var position = this.getGridCoordAt(e);
     this._faceHighlight.move(position);
+  }
+
+  setArea<T, E>(e: React.MouseEvent<T, E>, colour: number) {
+    var position = this.getGridCoordAt(e);
+    if (position) {
+      if (colour < 0) {
+        this._areas.remove(position);
+      } else {
+        this._areas.add(position, colour);
+      }
+    }
   }
 }
