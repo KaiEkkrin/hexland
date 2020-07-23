@@ -1,4 +1,4 @@
-import { BaseGeometry, FaceCentre, GridEdge, GridCoord, IGridGeometry } from './gridGeometry';
+import { BaseGeometry, FaceCentre, GridEdge, GridCoord, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
 
 // A tile of hexes.
@@ -11,7 +11,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
   private _yOffTop: number;
 
   constructor(hexSize: number, tileDim: number) {
-    super(tileDim);
+    super(tileDim, 3);
     this._hexSize = hexSize;
 
     this._xStep = this._hexSize * Math.sin(Math.PI / 3.0);
@@ -20,7 +20,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     this._yOffTop = this._hexSize * 0.5;
   }
 
-  private createCentre(x: number, y: number): FaceCentre {
+  protected createCentre(x: number, y: number): FaceCentre {
     return new FaceCentre(x * this._xStep, (y - (Math.abs(x % 2) === 1 ? 0.5 : 0.0)) * this._hexSize, 1);
   }
 
@@ -46,6 +46,26 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
 
   private createBottomRight(c: FaceCentre): THREE.Vector3 {
     return new THREE.Vector3(c.x + this._xOffTop, c.y + this._yOffTop, 1);
+  }
+
+  protected createEdgeGeometry(coord: GridEdge, alpha: number): EdgeGeometry {
+    var centre = this.createCoordCentre(coord);
+    var oddYOffset = -Math.abs(coord.face.x % 2);
+    var otherCentre = this.createCoordCentre(
+      coord.edge === 0 ? coord.addFace(new THREE.Vector2(-1, oddYOffset), this.tileDim) :
+      coord.edge === 1 ? coord.addFace(new THREE.Vector2(0, -1), this.tileDim) :
+      coord.addFace(new THREE.Vector2(1, oddYOffset), this.tileDim)
+    );
+
+    var tip1 = coord.edge === 0 ? this.createLeft(centre) :
+      coord.edge === 1 ? this.createTopLeft(centre) :
+      this.createTopRight(centre);
+
+    var tip2 = coord.edge === 0 ? this.createTopLeft(centre) :
+      coord.edge === 1 ? this.createTopRight(centre) :
+      this.createRight(centre);
+
+    return new EdgeGeometry(tip1, tip2, centre, otherCentre, alpha);
   }
 
   private pushHexIndices(indices: number[], offset: number) {
@@ -88,14 +108,6 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     var indices: number[] = [];
     this.pushHexIndices(indices, 0);
     return indices;
-  }
-
-  createEdgeHighlight(): THREE.BufferGeometry {
-    var buf = new THREE.BufferGeometry();
-    buf.setAttribute('position', new THREE.BufferAttribute(new Float32Array(12), 3));
-    buf.setIndex(this.createFaceHighlightIndices());
-    buf.setDrawRange(0, 0); // starts hidden
-    return buf;
   }
 
   createFaceHighlight(): THREE.BufferGeometry {
@@ -197,13 +209,14 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   createSolidCoordColours(tile: THREE.Vector2): Float32Array {
-    var colours = new Float32Array(this.tileDim * this.tileDim * 28);
+    var colours = new Float32Array(this.tileDim * this.tileDim * 21);
+    var offset = 0;
     for (var y = 0; y < this.tileDim; ++y) {
       for (var x = 0; x < this.tileDim; ++x) {
         for (var i = 0; i < 7; ++i) {
-          var offset = y * this.tileDim * 28 + x * 28 + i * 4;
-          this.toPackedXY(colours, offset, tile.x, tile.y);
-          this.toPackedXY(colours, offset + 2, x, y);
+          this.toPackedXYEdge(colours, offset, tile.x, tile.y, 0);
+          this.toPackedXYAbs(colours, offset + 2, x, y);
+          offset += 3;
         }
       }
     }

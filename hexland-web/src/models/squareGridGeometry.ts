@@ -1,4 +1,4 @@
-import { BaseGeometry, GridCoord, IGridGeometry, GridEdge, FaceCentre } from './gridGeometry';
+import { BaseGeometry, GridCoord, IGridGeometry, GridEdge, FaceCentre, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
 
 export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
@@ -6,12 +6,12 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   private _off: number;
 
   constructor(squareSize: number, tileDim: number) {
-    super(tileDim);
+    super(tileDim, 2);
     this._squareSize = squareSize;
     this._off = squareSize * 0.5;
   }
 
-  private createCentre(x: number, y: number): FaceCentre {
+  protected createCentre(x: number, y: number): FaceCentre {
     return new FaceCentre(x * this._squareSize, y * this._squareSize, 1);
   }
 
@@ -31,6 +31,18 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     return new THREE.Vector3(c.x + this._off, c.y + this._off, 1);
   }
 
+  protected createEdgeGeometry(coord: GridEdge, alpha: number): EdgeGeometry {
+    var centre = this.createCoordCentre(coord);
+    var otherCentre = this.createCoordCentre(
+      coord.edge === 0 ? coord.addFace(new THREE.Vector2(-1, 0), this.tileDim) :
+      coord.addFace(new THREE.Vector2(0, -1), this.tileDim)
+    );
+
+    var tip1 = coord.edge === 0 ? this.createBottomLeft(centre) : this.createTopLeft(centre);
+    var tip2 = coord.edge === 0 ? this.createTopLeft(centre) : this.createTopRight(centre);
+    return new EdgeGeometry(tip1, tip2, centre, otherCentre, alpha);
+  }
+
   private pushSquareIndices(indices: number[], baseIndex: number) {
     indices.push(baseIndex);
     indices.push(baseIndex + 1);
@@ -47,14 +59,6 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     var indices: number[] = [];
     this.pushSquareIndices(indices, 0);
     return indices;
-  }
-
-  createEdgeHighlight(): THREE.BufferGeometry {
-    var buf = new THREE.BufferGeometry();
-    buf.setAttribute('position', new THREE.BufferAttribute(new Float32Array(12), 3));
-    buf.setIndex(this.createFaceHighlightIndices());
-    buf.setDrawRange(0, 0); // starts hidden
-    return buf;
   }
 
   createFaceHighlight(): THREE.BufferGeometry {
@@ -145,13 +149,14 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   createSolidCoordColours(tile: THREE.Vector2): Float32Array {
-    var colours = new Float32Array(this.tileDim * this.tileDim * 16);
+    var colours = new Float32Array(this.tileDim * this.tileDim * 12);
+    var offset = 0;
     for (var y = 0; y < this.tileDim; ++y) {
       for (var x = 0; x < this.tileDim; ++x) {
         for (var i = 0; i < 4; ++i) {
-          var offset = y * this.tileDim * 16 + x * 16 + i * 4;
-          this.toPackedXY(colours, offset, tile.x, tile.y);
-          this.toPackedXY(colours, offset + 2, x, y);
+          this.toPackedXYEdge(colours, offset, tile.x, tile.y, 0);
+          this.toPackedXYAbs(colours, offset + 2, x, y);
+          offset += 3;
         }
       }
     }
@@ -166,10 +171,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     }
 
     var position = buf.attributes.position as THREE.BufferAttribute;
-    var centre = this.createCentre(
-      coord.tile.x * this.tileDim + coord.face.x,
-      coord.tile.y * this.tileDim + coord.face.y
-    );
+    var centre = this.createCoordCentre(coord);
 
     var topLeft = this.createTopLeft(centre);
     position.setXYZ(0, topLeft.x, topLeft.y, 2);

@@ -4,13 +4,15 @@ import { IGridGeometry } from './gridGeometry';
 import * as THREE from 'three';
 
 export class Grid extends Drawn {
+  private _alpha: number;
   private _lineIndices: number[];
   private _lineMaterial: THREE.LineBasicMaterial;
   private _solidIndices: number[];
   private _solidMaterial: THREE.MeshBasicMaterial;
 
-  constructor(geometry: IGridGeometry) {
+  constructor(geometry: IGridGeometry, alpha: number) {
     super(geometry);
+    this._alpha = alpha;
     this._lineIndices = geometry.createGridLineIndices();
     this._lineMaterial = new THREE.LineBasicMaterial({ color: 0xb0b0b0 });
     this._solidIndices = geometry.createSolidMeshIndices();
@@ -58,7 +60,23 @@ export class Grid extends Drawn {
         bufferGeometry.setIndex(this._solidIndices);
 
         var colours = this.geometry.createSolidCoordColours(tile);
-        bufferGeometry.setAttribute('color', new THREE.BufferAttribute(colours, 4));
+        bufferGeometry.setAttribute('color', new THREE.BufferAttribute(colours, 3));
+
+        var mesh = new THREE.Mesh(bufferGeometry, this._solidMaterial);
+        scene.add(mesh);
+      }
+    }
+  }
+
+  addEdgeColoursToScene(scene: THREE.Scene, originX: number, originY: number, radius: number) {
+    for (var y = originY - radius; y < originY + radius; ++y) {
+      for (var x = originX - radius; x < originX + radius; ++x) {
+        var tile = new THREE.Vector2(x, y);
+        var vertices = this.geometry.createSolidEdgeVertices(tile, this._alpha);
+        var bufferGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
+
+        var colours = this.geometry.createSolidEdgeColours(tile);
+        bufferGeometry.setAttribute('color', new THREE.BufferAttribute(colours, 3));
 
         var mesh = new THREE.Mesh(bufferGeometry, this._solidMaterial);
         scene.add(mesh);

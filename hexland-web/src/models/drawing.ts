@@ -1,10 +1,12 @@
 import { Grid } from './grid';
-import { IGridGeometry, GridCoord } from './gridGeometry';
+import { IGridGeometry, GridCoord, GridEdge } from './gridGeometry';
 import { HexGridGeometry } from './hexGridGeometry';
-import { FaceHighlight } from './highlight';
+import { FaceHighlight, EdgeHighlight } from './highlight';
 import { SquareGridGeometry } from './squareGridGeometry';
 
 import * as THREE from 'three';
+
+const edgeAlpha = 0.5;
 
 // A container for the entirety of the drawing.
 // TODO Disposal of the resources used by this when required
@@ -14,12 +16,15 @@ export class ThreeDrawing {
 
   private _camera: THREE.OrthographicCamera;
   private _faceCoordRenderTarget: THREE.WebGLRenderTarget;
+  private _edgeCoordRenderTarget: THREE.WebGLRenderTarget;
   private _renderer: THREE.WebGLRenderer;
 
   private _scene: THREE.Scene;
   private _faceCoordScene: THREE.Scene;
+  private _edgeCoordScene: THREE.Scene;
 
   private _grid: Grid;
+  private _edgeHighlight: EdgeHighlight;
   private _faceHighlight: FaceHighlight;
 
   constructor(mount: HTMLDivElement, drawHexes: boolean) {
@@ -42,7 +47,7 @@ export class ThreeDrawing {
     mount.appendChild(this._renderer.domElement);
 
     this._gridGeometry = drawHexes ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
-    this._grid = new Grid(this._gridGeometry);
+    this._grid = new Grid(this._gridGeometry, edgeAlpha);
     this._grid.addGridToScene(this._scene, 0, 0, 1);
     //grid.addSolidToScene(this._scene, 0, 0, 1);
 
@@ -50,6 +55,15 @@ export class ThreeDrawing {
     this._faceCoordScene = new THREE.Scene();
     this._faceCoordRenderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
     this._grid.addCoordColoursToScene(this._faceCoordScene, 0, 0, 1);
+
+    // Texture of edge co-ordinates within the tile.
+    this._edgeCoordScene = new THREE.Scene();
+    this._edgeCoordRenderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
+    this._grid.addEdgeColoursToScene(this._edgeCoordScene, 0, 0, 1);
+
+    // The edge highlight
+    this._edgeHighlight = new EdgeHighlight(this._gridGeometry, edgeAlpha);
+    this._edgeHighlight.addToScene(this._scene);
 
     // The face highlight
     this._faceHighlight = new FaceHighlight(this._gridGeometry);
@@ -66,15 +80,20 @@ export class ThreeDrawing {
     // I actually call each one and don't skip later ones if an early one returned
     // true)
     var gridNeedsRedraw = this._grid.needsRedraw();
+    var edgeHighlightNeedsRedraw = this._edgeHighlight.needsRedraw();
     var faceHighlightNeedsRedraw = this._faceHighlight.needsRedraw();
 
-    if (gridNeedsRedraw || faceHighlightNeedsRedraw) {
+    if (gridNeedsRedraw || edgeHighlightNeedsRedraw || faceHighlightNeedsRedraw) {
       this._renderer.render(this._scene, this._camera);
     }
 
     if (gridNeedsRedraw) {
       this._renderer.setRenderTarget(this._faceCoordRenderTarget);
       this._renderer.render(this._faceCoordScene, this._camera);
+
+      this._renderer.setRenderTarget(this._edgeCoordRenderTarget);
+      this._renderer.render(this._edgeCoordScene, this._camera);
+
       this._renderer.setRenderTarget(null);
     }
   }
@@ -87,6 +106,25 @@ export class ThreeDrawing {
     var buf = new Uint8Array(4);
     this._renderer.readRenderTargetPixels(this._faceCoordRenderTarget, x, bounds.height - y - 1, 1, 1, buf);
     return this._gridGeometry?.decodeCoordSample(buf, 0);
+  }
+
+  getGridEdgeAt<T, E>(e: React.MouseEvent<T, E>): GridEdge {
+    var bounds = this._mount.getBoundingClientRect();
+    var x = e.clientX - bounds.left;
+    var y = e.clientY - bounds.top;
+
+    var buf = new Uint8Array(4);
+    this._renderer.readRenderTargetPixels(this._edgeCoordRenderTarget, x, bounds.height - y - 1, 1, 1, buf);
+    return this._gridGeometry?.decodeEdgeSample(buf, 0);
+  }
+
+  hideEdgeHighlight() {
+    this._edgeHighlight.move(undefined);
+  }
+
+  moveEdgeHighlightTo<T, E>(e: React.MouseEvent<T, E>) {
+    var position = this.getGridEdgeAt(e);
+    this._edgeHighlight.move(position);
   }
 
   hideFaceHighlight() {

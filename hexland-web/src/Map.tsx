@@ -88,6 +88,7 @@ class Drawing extends React.Component<IDrawingProps> {
 
   handleMouseLeave(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     if (!this._drawing) { return; }
+    this._drawing.hideEdgeHighlight();
     this._drawing.hideFaceHighlight();
   }
 
@@ -99,6 +100,12 @@ class Drawing extends React.Component<IDrawingProps> {
       this._drawing.moveFaceHighlightTo(e);
     } else {
       this._drawing.hideFaceHighlight();
+    }
+
+    if (editMode === 2) {
+      this._drawing.moveEdgeHighlightTo(e);
+    } else {
+      this._drawing.hideEdgeHighlight();
     }
   }
 
