@@ -12,7 +12,6 @@ export class GridCoord {
   }
 
   addFace(f: THREE.Vector2, tileDim: number): GridCoord {
-    // TODO This definitely needs a bunch of unit testing!
     var x = this.tile.x * tileDim + this.face.x + f.x;
     var y = this.tile.y * tileDim + this.face.y + f.y;
     return new GridCoord(
@@ -92,8 +91,6 @@ export interface IGridGeometry {
   // Creates the vertices involved in drawing grid edges in solid.
   // The alpha number specifies how thick the edge is drawn.
   // This is a non-indexed mesh.
-  // TODO Get the edge highlight working first (with a bogus edge!) before
-  // moving on to making this texture, it'll be easier to debug that way around.
   createSolidEdgeVertices(tile: THREE.Vector2, alpha: number): THREE.Vector3[];
 
   // Creates the colours for an edge texture using the solid edge vertices.

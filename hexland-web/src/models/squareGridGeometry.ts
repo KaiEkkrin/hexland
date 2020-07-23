@@ -82,7 +82,6 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   createGridLineIndices(): number[] {
-    // TODO Do this calculation once only
     var indices = [];
 
     // All the horizontal lines:
