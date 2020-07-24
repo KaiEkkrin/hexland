@@ -1,4 +1,5 @@
 import { GridCoord, GridEdge } from '../data/coord';
+import { lerp } from './extraMath';
 import { BaseGeometry, FaceCentre, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
 
@@ -103,15 +104,15 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     return indices;
   }
 
-  createSolidVertices(tile: THREE.Vector2, z: number): THREE.Vector3[] {
+  createSolidVertices(tile: THREE.Vector2, alpha: number, z: number): THREE.Vector3[] {
     var vertices = [];
     for (var y = 0; y < this.tileDim; ++y) {
       for (var x = 0; x < this.tileDim; ++x) {
         var centre = this.createCentre(tile.x * this.tileDim + x, tile.y * this.tileDim + y, z);
-        vertices.push(this.createTopLeft(centre));
-        vertices.push(this.createBottomLeft(centre));
-        vertices.push(this.createTopRight(centre));
-        vertices.push(this.createBottomRight(centre));
+        vertices.push(lerp(centre, this.createTopLeft(centre), alpha));
+        vertices.push(lerp(centre, this.createBottomLeft(centre), alpha));
+        vertices.push(lerp(centre, this.createTopRight(centre), alpha));
+        vertices.push(lerp(centre, this.createBottomRight(centre), alpha));
       }
     }
 

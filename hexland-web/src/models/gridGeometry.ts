@@ -21,10 +21,8 @@ export interface IGridGeometry {
   createGridLineIndices(): number[];
 
   // Creates the vertices involved in drawing the grid tile in solid.
-  // (TODO: This should really just be the centres of each hex.  However,
-  // it looks like Three.js support for instancing is super inadequate
-  // so I'll have to create all the vertices for now.)
-  createSolidVertices(tile: THREE.Vector2, z: number): THREE.Vector3[];
+  // The alpha number specifies how much of a face is covered.
+  createSolidVertices(tile: THREE.Vector2, alpha: number, z: number): THREE.Vector3[];
 
   // Creates a buffer of indices into the output of `createSolidVertices`
   // suitable for drawing a solid mesh of the grid.

@@ -6,6 +6,7 @@ import { IGridGeometry} from './gridGeometry';
 import { HexGridGeometry } from './hexGridGeometry';
 import { FaceHighlight, EdgeHighlight } from './highlight';
 import { SquareGridGeometry } from './squareGridGeometry';
+import { Tokens } from './tokens';
 import { Walls } from './walls';
 
 import * as THREE from 'three';
@@ -31,6 +32,7 @@ export class ThreeDrawing {
   private _edgeHighlight: EdgeHighlight;
   private _faceHighlight: FaceHighlight;
   private _areas: Areas;
+  private _tokens: Tokens;
   private _walls: Walls;
 
   private _darkColourMaterials: THREE.MeshBasicMaterial[];
@@ -89,6 +91,10 @@ export class ThreeDrawing {
     this._walls = new Walls(this._gridGeometry);
     this._walls.addToScene(this._scene, this._lightColourMaterials);
 
+    // The tokens
+    this._tokens = new Tokens(this._gridGeometry);
+    this._tokens.addToScene(this._scene, this._lightColourMaterials);
+
     this.animate = this.animate.bind(this);
   }
 
@@ -99,14 +105,18 @@ export class ThreeDrawing {
     // (Careful -- don't chain these method calls up with ||, it's important
     // I actually call each one and don't skip later ones if an early one returned
     // true)
+    // TODO This is nasty -- change it so that instead of us interrogating each drawn
+    // item here, the drawn items call a method on us to set a general dirty flag
+    // when required.
     var gridNeedsRedraw = this._grid.needsRedraw();
     var edgeHighlightNeedsRedraw = this._edgeHighlight.needsRedraw();
     var faceHighlightNeedsRedraw = this._faceHighlight.needsRedraw();
     var areasNeedsRedraw = this._areas.needsRedraw();
+    var tokensNeedsRedraw = this._tokens.needsRedraw();
     var wallsNeedsRedraw = this._walls.needsRedraw();
 
     if (gridNeedsRedraw || edgeHighlightNeedsRedraw || faceHighlightNeedsRedraw ||
-      areasNeedsRedraw || wallsNeedsRedraw) {
+      areasNeedsRedraw || tokensNeedsRedraw || wallsNeedsRedraw) {
       this._renderer.render(this._scene, this._camera);
     }
 
@@ -166,6 +176,17 @@ export class ThreeDrawing {
         this._areas.remove(position);
       } else {
         this._areas.add(position, colour);
+      }
+    }
+  }
+
+  setToken<T, E>(e: React.MouseEvent<T, E>, colour: number) {
+    var position = this.getGridCoordAt(e);
+    if (position) {
+      if (colour < 0) {
+        this._tokens.remove(position);
+      } else {
+        this._tokens.add(position, colour);
       }
     }
   }

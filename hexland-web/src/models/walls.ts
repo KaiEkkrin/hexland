@@ -4,7 +4,7 @@ import { InstancedFeatures } from './instancedFeatures';
 
 import * as THREE from 'three';
 
-const alpha = 0.25;
+const alpha = 0.15;
 const wallZ = 0.6;
 
 // The "walls" are the edges of the map that are coloured in one of our

@@ -11,10 +11,8 @@ import ToggleButton from 'react-bootstrap/ToggleButton';
 
 import { RouteComponentProps } from 'react-router-dom';
 
-import { faDrawPolygon, faMousePointer, faSquare } from '@fortawesome/free-solid-svg-icons';
+import { faDrawPolygon, faMousePointer, faPlus, faSquare } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-
-import * as THREE from 'three';
 
 interface IMapControlsProps {
   colours: string[];
@@ -37,11 +35,16 @@ class MapControls extends React.Component<IMapControlsProps> {
           <ToggleButton type="radio" variant="dark" value={1}
             checked={this.props.getEditMode() === 1}
             onChange={(e) => this.props.setEditMode(1)}>
-            <FontAwesomeIcon icon={faSquare} color="white" />
+            <FontAwesomeIcon icon={faPlus} color="white" />
           </ToggleButton>
           <ToggleButton type="radio" variant="dark" value={2}
             checked={this.props.getEditMode() === 2}
             onChange={(e) => this.props.setEditMode(2)}>
+            <FontAwesomeIcon icon={faSquare} color="white" />
+          </ToggleButton>
+          <ToggleButton type="radio" variant="dark" value={3}
+            checked={this.props.getEditMode() === 3}
+            onChange={(e) => this.props.setEditMode(3)}>
             <FontAwesomeIcon icon={faDrawPolygon} color="white" />
           </ToggleButton>
         </ButtonGroup>
@@ -107,36 +110,37 @@ class Drawing extends React.Component<IDrawingProps> {
   }
 
   handleMouseLeave(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-    if (!this._drawing) { return; }
-    this._drawing.hideEdgeHighlight();
-    this._drawing.hideFaceHighlight();
+    this._drawing?.hideEdgeHighlight();
+    this._drawing?.hideFaceHighlight();
   }
 
   handleMouseMove(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-    if (!this._drawing) { return; }
-
     var editMode = this.props.getEditMode();
-    if (editMode === 1) {
-      this._drawing.moveFaceHighlightTo(e);
+    if (editMode === 2) {
+      this._drawing?.moveFaceHighlightTo(e);
       if (this._mouseIsDown === true) {
-        this._drawing.setArea(e, this.props.getSelectedColour());
+        this._drawing?.setArea(e, this.props.getSelectedColour());
       }
     } else {
-      this._drawing.hideFaceHighlight();
+      this._drawing?.hideFaceHighlight();
     }
 
-    if (editMode === 2) {
-      this._drawing.moveEdgeHighlightTo(e);
+    if (editMode === 3) {
+      this._drawing?.moveEdgeHighlightTo(e);
       if (this._mouseIsDown === true) {
-        this._drawing.setWall(e, this.props.getSelectedColour());
+        this._drawing?.setWall(e, this.props.getSelectedColour());
       }
     } else {
-      this._drawing.hideEdgeHighlight();
+      this._drawing?.hideEdgeHighlight();
     }
   }
 
   handleMouseUp(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     this._mouseIsDown = false;
+    var editMode = this.props.getEditMode();
+    if (editMode === 1) {
+      this._drawing?.setToken(e, this.props.getSelectedColour());
+    }
   }
 
   render() {

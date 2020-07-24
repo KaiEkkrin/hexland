@@ -72,11 +72,11 @@ export abstract class InstancedFeatures<K extends GridCoord> extends Drawn {
     this.setNeedsRedraw();
   }
 
-  remove(oldPosition: K) {
+  remove(oldPosition: K): number | undefined { // returns the colour index of the removed thing
     var colourIndex = this._colours.get(oldPosition);
     var matrixIndex = this._indexes.get(oldPosition);
     if (colourIndex === undefined || matrixIndex === undefined) {
-      return;
+      return undefined;
     }
 
     var mesh = this._meshes[colourIndex];
@@ -94,5 +94,7 @@ export abstract class InstancedFeatures<K extends GridCoord> extends Drawn {
     this._indexes.remove(oldPosition);
     this._clearIndices[colourIndex].push(matrixIndex);
     this.setNeedsRedraw();
+
+    return colourIndex;
   }
 }

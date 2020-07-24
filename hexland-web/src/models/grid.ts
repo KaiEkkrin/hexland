@@ -40,7 +40,7 @@ export class Grid extends Drawn {
   addSolidToScene(scene: THREE.Scene, originX: number, originY: number, radius: number) {
     for (var y = originY - radius; y < originY + radius; ++y) {
       for (var x = originX - radius; x < originX + radius; ++x) {
-        var vertices = this.geometry.createSolidVertices(new THREE.Vector2(x, y), gridZ);
+        var vertices = this.geometry.createSolidVertices(new THREE.Vector2(x, y), 1.0, gridZ);
         var bufferGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
         bufferGeometry.setIndex(this._solidIndices);
 
@@ -57,7 +57,7 @@ export class Grid extends Drawn {
     for (var y = originY - radius; y < originY + radius; ++y) {
       for (var x = originX - radius; x < originX + radius; ++x) {
         var tile = new THREE.Vector2(x, y);
-        var vertices = this.geometry.createSolidVertices(tile, gridZ);
+        var vertices = this.geometry.createSolidVertices(tile, 1.0, gridZ);
         var bufferGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
         bufferGeometry.setIndex(this._solidIndices);
 
