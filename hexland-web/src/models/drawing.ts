@@ -5,6 +5,8 @@ import { FeatureColour } from './featureColour';
 import { IGridGeometry} from './gridGeometry';
 import { HexGridGeometry } from './hexGridGeometry';
 import { FaceHighlight, EdgeHighlight } from './highlight';
+import { RedrawFlag } from './redrawFlag';
+import { Selection } from './selection';
 import { SquareGridGeometry } from './squareGridGeometry';
 import { Tokens } from './tokens';
 import { Walls } from './walls';
@@ -32,11 +34,16 @@ export class ThreeDrawing {
   private _edgeHighlight: EdgeHighlight;
   private _faceHighlight: FaceHighlight;
   private _areas: Areas;
+  private _selection: Selection;
   private _tokens: Tokens;
   private _walls: Walls;
 
   private _darkColourMaterials: THREE.MeshBasicMaterial[];
   private _lightColourMaterials: THREE.MeshBasicMaterial[];
+  private _selectionMaterials: THREE.MeshBasicMaterial[];
+
+  private _gridNeedsRedraw: RedrawFlag;
+  private _needsRedraw: RedrawFlag;
 
   constructor(colours: FeatureColour[], mount: HTMLDivElement, drawHexes: boolean) {
     const spacing = 75.0;
@@ -49,6 +56,9 @@ export class ThreeDrawing {
     this._camera = new THREE.OrthographicCamera(left, right, top, bottom, 0.1, 1000);
     this._camera.position.z = 5;
 
+    this._gridNeedsRedraw = new RedrawFlag();
+    this._needsRedraw = new RedrawFlag();
+
     // TODO use the bounding rect of `mount` instead of window.innerWidth and window.innerHeight;
     // except, it's not initialised yet (?)
     this._mount = mount;
@@ -58,7 +68,7 @@ export class ThreeDrawing {
     mount.appendChild(this._renderer.domElement);
 
     this._gridGeometry = drawHexes ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
-    this._grid = new Grid(this._gridGeometry, edgeAlpha);
+    this._grid = new Grid(this._gridGeometry, this._gridNeedsRedraw, edgeAlpha);
     this._grid.addGridToScene(this._scene, 0, 0, 1);
     //grid.addSolidToScene(this._scene, 0, 0, 1);
 
@@ -73,27 +83,32 @@ export class ThreeDrawing {
     this._grid.addEdgeColoursToScene(this._edgeCoordScene, 0, 0, 1);
 
     // The edge highlight
-    this._edgeHighlight = new EdgeHighlight(this._gridGeometry, edgeAlpha);
+    this._edgeHighlight = new EdgeHighlight(this._gridGeometry, this._needsRedraw, edgeAlpha);
     this._edgeHighlight.addToScene(this._scene);
 
     // The face highlight
-    this._faceHighlight = new FaceHighlight(this._gridGeometry);
+    this._faceHighlight = new FaceHighlight(this._gridGeometry, this._needsRedraw);
     this._faceHighlight.addToScene(this._scene);
 
     this._darkColourMaterials = colours.map(c => new THREE.MeshBasicMaterial({ color: c.dark.getHex() }));
     this._lightColourMaterials = colours.map(c => new THREE.MeshBasicMaterial({ color: c.light.getHex() }));
+    this._selectionMaterials = colours.map(c => new THREE.MeshBasicMaterial({ color: 0xb0b0b0 }));
 
     // The filled areas
-    this._areas = new Areas(this._gridGeometry);
+    this._areas = new Areas(this._gridGeometry, this._needsRedraw);
     this._areas.addToScene(this._scene, this._darkColourMaterials);
 
-    // The walls
-    this._walls = new Walls(this._gridGeometry);
-    this._walls.addToScene(this._scene, this._lightColourMaterials);
+    // The selection
+    this._selection = new Selection(this._gridGeometry, this._needsRedraw);
+    this._selection.addToScene(this._scene, this._selectionMaterials);
 
     // The tokens
-    this._tokens = new Tokens(this._gridGeometry);
+    this._tokens = new Tokens(this._gridGeometry, this._needsRedraw);
     this._tokens.addToScene(this._scene, this._lightColourMaterials);
+
+    // The walls
+    this._walls = new Walls(this._gridGeometry, this._needsRedraw);
+    this._walls.addToScene(this._scene, this._lightColourMaterials);
 
     this.animate = this.animate.bind(this);
   }
@@ -108,15 +123,10 @@ export class ThreeDrawing {
     // TODO This is nasty -- change it so that instead of us interrogating each drawn
     // item here, the drawn items call a method on us to set a general dirty flag
     // when required.
-    var gridNeedsRedraw = this._grid.needsRedraw();
-    var edgeHighlightNeedsRedraw = this._edgeHighlight.needsRedraw();
-    var faceHighlightNeedsRedraw = this._faceHighlight.needsRedraw();
-    var areasNeedsRedraw = this._areas.needsRedraw();
-    var tokensNeedsRedraw = this._tokens.needsRedraw();
-    var wallsNeedsRedraw = this._walls.needsRedraw();
+    var needsRedraw = this._needsRedraw.needsRedraw();
+    var gridNeedsRedraw = this._gridNeedsRedraw.needsRedraw();
 
-    if (gridNeedsRedraw || edgeHighlightNeedsRedraw || faceHighlightNeedsRedraw ||
-      areasNeedsRedraw || tokensNeedsRedraw || wallsNeedsRedraw) {
+    if (needsRedraw) {
       this._renderer.render(this._scene, this._camera);
     }
 
@@ -149,6 +159,17 @@ export class ThreeDrawing {
     var buf = new Uint8Array(4);
     this._renderer.readRenderTargetPixels(this._edgeCoordRenderTarget, x, bounds.height - y - 1, 1, 1, buf);
     return this._gridGeometry?.decodeEdgeSample(buf, 0);
+  }
+
+  addToSelection<T, E>(e: React.MouseEvent<T, E>) {
+    var position = this.getGridCoordAt(e);
+    if (position && this._tokens.at(position) !== undefined) {
+      this._selection.add(position, 0);
+    }
+  }
+
+  clearSelection() {
+    this._selection.clear();
   }
 
   hideEdgeHighlight() {
@@ -198,6 +219,18 @@ export class ThreeDrawing {
         this._walls.remove(position);
       } else {
         this._walls.add(position, colour);
+      }
+    }
+  }
+
+  startSelection<T, E>(e: React.MouseEvent<T, E>) {
+    this._selection.clear();
+    var position = this.getGridCoordAt(e);
+    if (position) {
+      if (this._tokens.at(position) !== undefined) {
+        this._selection.add(position, 0);
+      } else {
+        this._selection.clear();
       }
     }
   }

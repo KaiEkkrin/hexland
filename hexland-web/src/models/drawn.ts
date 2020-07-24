@@ -1,23 +1,18 @@
 import { IGridGeometry } from "./gridGeometry";
+import { RedrawFlag } from "./redrawFlag";
 
 // A helpful basis for anything that we draw with Three, and
 // sometimes needs a redraw.
 export class Drawn {
   private _geometry: IGridGeometry;
-  private _needsRedraw: boolean;
+  private _redrawFlag: RedrawFlag;
 
-  constructor(geometry: IGridGeometry) {
+  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag) {
     this._geometry = geometry;
-    this._needsRedraw = true;
+    this._redrawFlag = redrawFlag;
   }
 
-  protected get geometry(): IGridGeometry { return this._geometry; }
+  protected get geometry() { return this._geometry; }
 
-  protected setNeedsRedraw() { this._needsRedraw = true; }
-
-  needsRedraw(): boolean {
-    var consumed = this._needsRedraw;
-    this._needsRedraw = false;
-    return consumed;
-  }
+  protected setNeedsRedraw() { this._redrawFlag.setNeedsRedraw(); }
 }

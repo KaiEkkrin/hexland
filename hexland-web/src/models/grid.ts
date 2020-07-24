@@ -1,5 +1,6 @@
 import { Drawn } from './drawn';
 import { IGridGeometry } from './gridGeometry';
+import { RedrawFlag } from './redrawFlag';
 
 import * as THREE from 'three';
 
@@ -12,8 +13,8 @@ export class Grid extends Drawn {
   private _solidIndices: number[];
   private _solidMaterial: THREE.MeshBasicMaterial;
 
-  constructor(geometry: IGridGeometry, alpha: number) {
-    super(geometry);
+  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, alpha: number) {
+    super(geometry, redrawFlag);
     this._alpha = alpha;
     this._lineIndices = geometry.createGridLineIndices();
     this._lineMaterial = new THREE.LineBasicMaterial({ color: 0xb0b0b0 });

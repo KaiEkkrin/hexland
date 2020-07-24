@@ -1,6 +1,7 @@
 import { GridCoord, GridEdge } from '../data/coord';
 import { Drawn } from './drawn';
 import { IGridGeometry } from './gridGeometry';
+import { RedrawFlag } from './redrawFlag';
 
 import * as THREE from 'three';
 
@@ -15,8 +16,8 @@ export class EdgeHighlight extends Drawn {
   private _bufferGeometry: THREE.BufferGeometry;
   private _material: THREE.MeshBasicMaterial;
 
-  constructor(geometry: IGridGeometry, alpha: number) {
-    super(geometry);
+  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, alpha: number) {
+    super(geometry, redrawFlag);
     this._alpha = alpha;
     this._bufferGeometry = geometry.createEdgeHighlight();
     this._material = new THREE.MeshBasicMaterial({ color: 0xa0a0a0, flatShading: true });
@@ -50,8 +51,8 @@ export class FaceHighlight extends Drawn {
   private _bufferGeometry: THREE.BufferGeometry;
   private _material: THREE.MeshBasicMaterial;
 
-  constructor(geometry: IGridGeometry) {
-    super(geometry);
+  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag) {
+    super(geometry, redrawFlag);
     this._bufferGeometry = geometry.createFaceHighlight();
     this._material = new THREE.MeshBasicMaterial({ color: 0xa0a0a0, flatShading: true });
   }

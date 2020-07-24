@@ -5,18 +5,26 @@ import { RedrawFlag } from './redrawFlag';
 
 import * as THREE from 'three';
 
-const areaZ = 0.5;
+const selectionAlpha = 0.75;
+const selectionZ = 1;
 
-// The "areas" are the faces of the map that are coloured in one of our
-// known colours.
-export class Areas extends InstancedFeatures<GridCoord> {
+// The selections outline one or more selected tokens.
+// It assumes only the first material is in use.  (TODO do I want to
+// support multiple different-colour selections?  Seems confusing to me...)
+export class Selection extends InstancedFeatures<GridCoord> {
   private _bufferGeometry: THREE.BufferGeometry;
 
   constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag) {
+    // TODO Use a lower maximum here to save memory!  I want to fix InstancedFeatures
+    // so that it can expand into more meshes when the maximum is reached first,
+    // however.
     super(geometry, redrawFlag, 1000);
 
+    // TODO : For now, I'm going to draw the selection as a slightly larger token.
+    // I'll probably want to change it to something prettier but I'm mostly concerned
+    // about getting it working at all :)
     var single = this.geometry.toSingle();
-    var vertices = single.createSolidVertices(new THREE.Vector2(0, 0), 1.0, areaZ);
+    var vertices = single.createSolidVertices(new THREE.Vector2(0, 0), selectionAlpha, selectionZ);
     var indices = single.createSolidMeshIndices();
 
     this._bufferGeometry = new THREE.BufferGeometry().setFromPoints(vertices);

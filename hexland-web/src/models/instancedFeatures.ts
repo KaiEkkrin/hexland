@@ -1,6 +1,7 @@
 import { GridCoord, CoordDictionary } from '../data/coord';
 import { Drawn } from './drawn';
 import { IGridGeometry } from "./gridGeometry";
+import { RedrawFlag } from './redrawFlag';
 
 import * as THREE from 'three';
 
@@ -20,8 +21,8 @@ export abstract class InstancedFeatures<K extends GridCoord> extends Drawn {
   // re-use one of these to avoid having to expand the number of instances.
   private _clearIndices: number[][];
 
-  constructor(geometry: IGridGeometry, maxInstances: number) {
-    super(geometry);
+  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, maxInstances: number) {
+    super(geometry, redrawFlag);
     this._maxInstances = maxInstances;
     this._colours = new CoordDictionary<K, number>();
     this._indexes = new CoordDictionary<K, number>();
@@ -29,11 +30,11 @@ export abstract class InstancedFeatures<K extends GridCoord> extends Drawn {
     this._clearIndices = [];
   }
 
-  protected abstract createMesh(m: THREE.MeshBasicMaterial, maxInstances: number): THREE.InstancedMesh;
+  protected abstract createMesh(m: THREE.Material, maxInstances: number): THREE.InstancedMesh;
   protected abstract transformTo(o: THREE.Object3D, position: K): void;
 
   // The materials parameter here should be the known colour materials in order.
-  addToScene(scene: THREE.Scene, materials: THREE.MeshBasicMaterial[]) {
+  addToScene(scene: THREE.Scene, materials: THREE.Material[]) {
     this._meshes = materials.map(m => this.createMesh(m, this._maxInstances));
     this._clearIndices = materials.map(_ => []);
     this._meshes.forEach(m => { scene.add(m); });
@@ -70,6 +71,37 @@ export abstract class InstancedFeatures<K extends GridCoord> extends Drawn {
     this._colours.set(newPosition, colour);
     this._indexes.set(newPosition, matrixIndex);
     this.setNeedsRedraw();
+  }
+
+  at(position: K): number | undefined {
+    return this._colours.get(position);
+  }
+
+  clear() {
+    this._colours.clear();
+    this._indexes.clear();
+    this._clearIndices = this._meshes.map(_ => []);
+
+    this._meshes.forEach(m => {
+      m.count = 0;
+    });
+
+    this.setNeedsRedraw();
+  }
+
+  move(oldPosition: K, newPosition: K) {
+    if (newPosition.equals(oldPosition)) {
+      // No change
+      return;
+    }
+
+    var colour = this.remove(oldPosition);
+    if (colour === undefined) {
+      // Nothing here -- nothing to add either
+      return;
+    }
+
+    this.add(newPosition, colour);
   }
 
   remove(oldPosition: K): number | undefined { // returns the colour index of the removed thing

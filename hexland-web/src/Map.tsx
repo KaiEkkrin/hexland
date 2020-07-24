@@ -138,7 +138,9 @@ class Drawing extends React.Component<IDrawingProps> {
   handleMouseUp(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     this._mouseIsDown = false;
     var editMode = this.props.getEditMode();
-    if (editMode === 1) {
+    if (editMode === 0) {
+      this._drawing?.startSelection(e);
+    } else if (editMode === 1) {
       this._drawing?.setToken(e, this.props.getSelectedColour());
     }
   }
