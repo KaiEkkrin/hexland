@@ -120,9 +120,6 @@ export class ThreeDrawing {
     // (Careful -- don't chain these method calls up with ||, it's important
     // I actually call each one and don't skip later ones if an early one returned
     // true)
-    // TODO This is nasty -- change it so that instead of us interrogating each drawn
-    // item here, the drawn items call a method on us to set a general dirty flag
-    // when required.
     var needsRedraw = this._needsRedraw.needsRedraw();
     var gridNeedsRedraw = this._gridNeedsRedraw.needsRedraw();
 
