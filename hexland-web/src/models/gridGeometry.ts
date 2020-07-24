@@ -77,12 +77,12 @@ export interface IGridGeometry {
 export class FaceCentre extends THREE.Vector3 {} // to help me not get muddled when handling centres
 
 export class EdgeGeometry { // to help me share the edge code
-  tip1: THREE.Vector3;
-  tip2: THREE.Vector3;
-  bevel1a: THREE.Vector3;
-  bevel2a: THREE.Vector3;
-  bevel1b: THREE.Vector3;
-  bevel2b: THREE.Vector3;
+  readonly tip1: THREE.Vector3;
+  readonly tip2: THREE.Vector3;
+  readonly bevel1a: THREE.Vector3;
+  readonly bevel2a: THREE.Vector3;
+  readonly bevel1b: THREE.Vector3;
+  readonly bevel2b: THREE.Vector3;
 
   constructor(tip1: THREE.Vector3, tip2: THREE.Vector3, centre: THREE.Vector3, otherCentre: THREE.Vector3, alpha: number) {
     this.tip1 = tip1;
@@ -95,9 +95,9 @@ export class EdgeGeometry { // to help me share the edge code
 }
 
 export abstract class BaseGeometry {
-  private _tileDim: number;
-  private _maxEdge: number;
-  private _epsilon: number;
+  private readonly _tileDim: number;
+  private readonly _maxEdge: number;
+  private readonly _epsilon: number;
 
   constructor(tileDim: number, maxEdge: number) {
     this._tileDim = tileDim;

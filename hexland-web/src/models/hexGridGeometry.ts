@@ -5,12 +5,12 @@ import * as THREE from 'three';
 
 // A tile of hexes.
 export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
-  private _hexSize: number;
+  private readonly _hexSize: number;
 
-  private _xStep: number;
-  private _xOffLeft: number;
-  private _xOffTop: number;
-  private _yOffTop: number;
+  private readonly _xStep: number;
+  private readonly _xOffLeft: number;
+  private readonly _xOffTop: number;
+  private readonly _yOffTop: number;
 
   constructor(hexSize: number, tileDim: number) {
     super(tileDim, 3);

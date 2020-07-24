@@ -4,8 +4,8 @@ import { BaseGeometry, FaceCentre, IGridGeometry, EdgeGeometry } from './gridGeo
 import * as THREE from 'three';
 
 export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
-  private _squareSize: number;
-  private _off: number;
+  private readonly _squareSize: number;
+  private readonly _off: number;
 
   constructor(squareSize: number, tileDim: number) {
     super(tileDim, 2);

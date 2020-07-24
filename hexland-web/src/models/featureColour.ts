@@ -3,8 +3,8 @@ import * as THREE from 'three';
 // Describes one of the standard colours we can select and use for
 // walls and features.
 export class FeatureColour {
-  private _dark: THREE.Color;
-  private _light: THREE.Color;
+  private readonly _dark: THREE.Color;
+  private readonly _light: THREE.Color;
 
   constructor(hue: number) {
     this._dark = new THREE.Color();

@@ -10,7 +10,7 @@ const areaZ = 0.5;
 // The "areas" are the faces of the map that are coloured in one of our
 // known colours.
 export class Areas extends InstancedFeatures<GridCoord> {
-  private _bufferGeometry: THREE.BufferGeometry;
+  private readonly _bufferGeometry: THREE.BufferGeometry;
 
   constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag) {
     super(geometry, redrawFlag, 1000);

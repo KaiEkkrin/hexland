@@ -7,11 +7,11 @@ import * as THREE from 'three';
 const gridZ = 1;
 
 export class Grid extends Drawn {
-  private _alpha: number;
-  private _lineIndices: number[];
-  private _lineMaterial: THREE.LineBasicMaterial;
-  private _solidIndices: number[];
-  private _solidMaterial: THREE.MeshBasicMaterial;
+  private readonly _alpha: number;
+  private readonly _lineIndices: number[];
+  private readonly _lineMaterial: THREE.LineBasicMaterial;
+  private readonly _solidIndices: number[];
+  private readonly _solidMaterial: THREE.MeshBasicMaterial;
 
   constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, alpha: number) {
     super(geometry, redrawFlag);

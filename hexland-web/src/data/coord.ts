@@ -3,8 +3,8 @@ import * as THREE from 'three';
 
 // This is the co-ordinate of a face (hex or square) inside the grid.
 export class GridCoord {
-  tile: THREE.Vector2;
-  face: THREE.Vector2; // within the tile
+  readonly tile: THREE.Vector2;
+  readonly face: THREE.Vector2; // within the tile
 
   constructor(tile: THREE.Vector2, face: THREE.Vector2) {
     this.tile = tile;
@@ -36,7 +36,7 @@ export class GridCoord {
 // This is the co-ordinate of an edge.  Each face "owns" some number
 // of the edges around it, which are identified by the `edge` number here.
 export class GridEdge extends GridCoord {
-  edge: number;
+  readonly edge: number;
 
   constructor(coord: GridCoord, edge: number) {
     super(coord.tile, coord.face);

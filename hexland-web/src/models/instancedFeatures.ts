@@ -12,9 +12,9 @@ import * as THREE from 'three';
 // TODO Handle spawning extra meshes and adding them to the scene if I exceed
 // `maxInstances` instances in one mesh
 export abstract class InstancedFeatures<K extends GridCoord> extends Drawn {
-  private _maxInstances: number;
-  private _colours: CoordDictionary<K, number>;
-  private _indexes: CoordDictionary<K, number>;
+  private readonly _maxInstances: number;
+  private readonly _colours: CoordDictionary<K, number>;
+  private readonly _indexes: CoordDictionary<K, number>;
   private _meshes: THREE.InstancedMesh[]; // one per material.
 
   // This is a queue of re-usable matrix indices for each material in order --

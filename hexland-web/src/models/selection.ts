@@ -12,7 +12,7 @@ const selectionZ = 1;
 // It assumes only the first material is in use.  (TODO do I want to
 // support multiple different-colour selections?  Seems confusing to me...)
 export class Selection extends InstancedFeatures<GridCoord> {
-  private _bufferGeometry: THREE.BufferGeometry;
+  private readonly _bufferGeometry: THREE.BufferGeometry;
 
   constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag) {
     // TODO Use a lower maximum here to save memory!  I want to fix InstancedFeatures

@@ -11,7 +11,7 @@ const wallZ = 0.6;
 // The "walls" are the edges of the map that are coloured in one of our
 // known colours.
 export class Walls extends InstancedFeatures<GridEdge> {
-  private _bufferGeometry: THREE.BufferGeometry;
+  private readonly _bufferGeometry: THREE.BufferGeometry;
 
   constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag) {
     super(geometry, redrawFlag, 1000);

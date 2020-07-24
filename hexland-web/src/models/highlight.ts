@@ -11,10 +11,10 @@ const highlightZ = 2;
 // TODO Disposal etc.
 export class EdgeHighlight extends Drawn {
   private _position: GridEdge | undefined; 
-  private _alpha: number;
+  private readonly _alpha: number;
 
-  private _bufferGeometry: THREE.BufferGeometry;
-  private _material: THREE.MeshBasicMaterial;
+  private readonly _bufferGeometry: THREE.BufferGeometry;
+  private readonly _material: THREE.MeshBasicMaterial;
 
   constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, alpha: number) {
     super(geometry, redrawFlag);

@@ -18,32 +18,32 @@ const edgeAlpha = 0.5;
 // A container for the entirety of the drawing.
 // TODO Disposal of the resources used by this when required
 export class ThreeDrawing {
-  private _mount: HTMLDivElement;
-  private _gridGeometry: IGridGeometry;
+  private readonly _mount: HTMLDivElement;
+  private readonly _gridGeometry: IGridGeometry;
 
-  private _camera: THREE.OrthographicCamera;
-  private _faceCoordRenderTarget: THREE.WebGLRenderTarget;
-  private _edgeCoordRenderTarget: THREE.WebGLRenderTarget;
-  private _renderer: THREE.WebGLRenderer;
+  private readonly _camera: THREE.OrthographicCamera;
+  private readonly _faceCoordRenderTarget: THREE.WebGLRenderTarget;
+  private readonly _edgeCoordRenderTarget: THREE.WebGLRenderTarget;
+  private readonly _renderer: THREE.WebGLRenderer;
 
-  private _scene: THREE.Scene;
-  private _faceCoordScene: THREE.Scene;
-  private _edgeCoordScene: THREE.Scene;
+  private readonly _scene: THREE.Scene;
+  private readonly _faceCoordScene: THREE.Scene;
+  private readonly _edgeCoordScene: THREE.Scene;
 
-  private _grid: Grid;
-  private _edgeHighlight: EdgeHighlight;
-  private _faceHighlight: FaceHighlight;
-  private _areas: Areas;
-  private _selection: Selection;
-  private _tokens: Tokens;
-  private _walls: Walls;
+  private readonly _grid: Grid;
+  private readonly _edgeHighlight: EdgeHighlight;
+  private readonly _faceHighlight: FaceHighlight;
+  private readonly _areas: Areas;
+  private readonly _selection: Selection;
+  private readonly _tokens: Tokens;
+  private readonly _walls: Walls;
 
-  private _darkColourMaterials: THREE.MeshBasicMaterial[];
-  private _lightColourMaterials: THREE.MeshBasicMaterial[];
-  private _selectionMaterials: THREE.MeshBasicMaterial[];
+  private readonly _darkColourMaterials: THREE.MeshBasicMaterial[];
+  private readonly _lightColourMaterials: THREE.MeshBasicMaterial[];
+  private readonly _selectionMaterials: THREE.MeshBasicMaterial[];
 
-  private _gridNeedsRedraw: RedrawFlag;
-  private _needsRedraw: RedrawFlag;
+  private readonly _gridNeedsRedraw: RedrawFlag;
+  private readonly _needsRedraw: RedrawFlag;
 
   constructor(colours: FeatureColour[], mount: HTMLDivElement, drawHexes: boolean) {
     const spacing = 75.0;

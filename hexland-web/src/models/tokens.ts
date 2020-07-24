@@ -11,7 +11,7 @@ const tokenZ = 0.6;
 // The "tokens" are moveable objects that occupy a face of the map.
 // This object also manages the selection of tokens.
 export class Tokens extends InstancedFeatures<GridCoord> {
-  private _bufferGeometry: THREE.BufferGeometry;
+  private readonly _bufferGeometry: THREE.BufferGeometry;
 
   constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag) {
     super(geometry, redrawFlag, 1000);
