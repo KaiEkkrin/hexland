@@ -8,6 +8,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
   private readonly _hexSize: number;
 
   private readonly _xStep: number;
+  private readonly _yStep: number;
   private readonly _xOffLeft: number;
   private readonly _xOffTop: number;
   private readonly _yOffTop: number;
@@ -17,13 +18,14 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     this._hexSize = hexSize;
 
     this._xStep = this._hexSize * Math.sin(Math.PI / 3.0);
+    this._yStep = this._hexSize / 2.0; // * Math.sin(Math.PI / 6.0)
     this._xOffLeft = this._xStep * 2.0 / 3.0;
     this._xOffTop = this._xStep / 3.0;
     this._yOffTop = this._hexSize * 0.5;
   }
 
   protected createCentre(x: number, y: number, z: number): FaceCentre {
-    return new FaceCentre(x * this._xStep, (y - (Math.abs(x % 2) === 1 ? 0.5 : 0.0)) * this._hexSize, z);
+    return new FaceCentre(x * this._xStep, x * this._yStep + y * this._hexSize, z);
   }
 
   private createLeft(c: FaceCentre): THREE.Vector3 {
@@ -52,11 +54,10 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
 
   protected createEdgeGeometry(coord: GridEdge, alpha: number, z: number): EdgeGeometry {
     var centre = this.createCoordCentre(coord, z);
-    var oddYOffset = -Math.abs(coord.face.x % 2);
     var otherCentre = this.createCoordCentre(
-      coord.edge === 0 ? coord.addFace(new THREE.Vector2(-1, oddYOffset), this.tileDim) :
+      coord.edge === 0 ? coord.addFace(new THREE.Vector2(-1, 0), this.tileDim) :
       coord.edge === 1 ? coord.addFace(new THREE.Vector2(0, -1), this.tileDim) :
-      coord.addFace(new THREE.Vector2(1, oddYOffset), this.tileDim),
+      coord.addFace(new THREE.Vector2(1, -1), this.tileDim),
       z
     );
 
@@ -150,13 +151,11 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
         // Top left -- 2nd vertex of the hex at (x, y)
         indices.push(this.vertexIndexOf(x, y, 1));
 
-        // Top right -- 1st vertex of the hex at (x + 1, y) if even,
-        // or (x + 1, y - 1) if odd
-        indices.push(this.vertexIndexOf(x + 1, y - (x % 2), 0));
+        // Top right -- 1st vertex of the hex at (x + 1, y - 1)
+        indices.push(this.vertexIndexOf(x + 1, y - 1, 0));
 
-        // Right -- 2nd vertex of the hex at (x + 1, y + 1) if even,
-        // or (x + 1, y) if odd
-        indices.push(this.vertexIndexOf(x + 1, y + 1 - (x % 2), 1));
+        // Right -- 2nd vertex of the hex at (x + 1, y)
+        indices.push(this.vertexIndexOf(x + 1, y, 1));
 
         // Push a primitive restart
         indices.push(-1);
