@@ -14,6 +14,8 @@ import { Walls } from './walls';
 import * as THREE from 'three';
 
 const edgeAlpha = 0.5;
+const spacing = 75.0;
+const tileDim = 12;
 
 // A container for the entirety of the drawing.
 // TODO Disposal of the resources used by this when required
@@ -35,6 +37,7 @@ export class ThreeDrawing {
   private readonly _faceHighlight: FaceHighlight;
   private readonly _areas: Areas;
   private readonly _selection: Selection;
+  private readonly _selectionDrag: Selection; // a copy of the selection shown only while dragging it
   private readonly _tokens: Tokens;
   private readonly _walls: Walls;
 
@@ -45,10 +48,11 @@ export class ThreeDrawing {
   private readonly _gridNeedsRedraw: RedrawFlag;
   private readonly _needsRedraw: RedrawFlag;
 
-  constructor(colours: FeatureColour[], mount: HTMLDivElement, drawHexes: boolean) {
-    const spacing = 75.0;
-    const tileDim = 12;
+  private _selectDragStart: GridCoord | undefined;
+  private _tokenMoveDragStart: GridCoord | undefined;
+  private _tokenMoveDragSelectionPosition: GridCoord | undefined;
 
+  constructor(colours: FeatureColour[], mount: HTMLDivElement, drawHexes: boolean) {
     const left = window.innerWidth / -2;
     const right = window.innerWidth / 2;
     const top = window.innerHeight / -2;
@@ -101,6 +105,8 @@ export class ThreeDrawing {
     // The selection
     this._selection = new Selection(this._gridGeometry, this._needsRedraw);
     this._selection.addToScene(this._scene, this._selectionMaterials);
+    this._selectionDrag = new Selection(this._gridGeometry, this._needsRedraw);
+    this._selectionDrag.addToScene(this._scene, this._selectionMaterials);
 
     // The tokens
     this._tokens = new Tokens(this._gridGeometry, this._needsRedraw);
@@ -158,13 +164,6 @@ export class ThreeDrawing {
     return this._gridGeometry?.decodeEdgeSample(buf, 0);
   }
 
-  addToSelection<T, E>(e: React.MouseEvent<T, E>) {
-    var position = this.getGridCoordAt(e);
-    if (position && this._tokens.at(position) !== undefined) {
-      this._selection.add(position, 0);
-    }
-  }
-
   clearSelection() {
     this._selection.clear();
   }
@@ -185,6 +184,24 @@ export class ThreeDrawing {
   moveFaceHighlightTo<T, E>(e: React.MouseEvent<T, E>) {
     var position = this.getGridCoordAt(e);
     this._faceHighlight.move(position);
+  }
+
+  moveSelectionTo<T, E>(e: React.MouseEvent<T, E>) {
+    if (this._tokenMoveDragSelectionPosition === undefined) {
+      return;
+    }
+
+    // TODO: Support multiple selection.  (A bit of a pain, what with not wanting to
+    // allow tokens to drop on top of each other, so I can put it off for now.)
+    var position = this.getGridCoordAt(e);
+    if (position) {
+      var delta = position.toVector(tileDim).sub(this._tokenMoveDragSelectionPosition.toVector(tileDim));
+      this._selectionDrag.all.forEach(t => {
+        this._selectionDrag.move(t, t.addFace(delta, tileDim));
+      });
+
+      this._tokenMoveDragSelectionPosition = position;
+    }
   }
 
   setArea<T, E>(e: React.MouseEvent<T, E>, colour: number) {
@@ -220,14 +237,47 @@ export class ThreeDrawing {
     }
   }
 
-  startSelection<T, E>(e: React.MouseEvent<T, E>) {
-    this._selection.clear();
+  selectionDragStart<T, E>(e: React.MouseEvent<T, E>) {
     var position = this.getGridCoordAt(e);
     if (position) {
-      if (this._tokens.at(position) !== undefined) {
-        this._selection.add(position, 0);
+      if (this._selection.at(position) !== undefined) {
+        this._tokenMoveDragStart = position;
+        this._tokenMoveDragSelectionPosition = position;
+        this._selection.all.forEach(c => {
+          this._selectionDrag.add(c, 0);
+        });
       } else {
-        this._selection.clear();
+        this._selectDragStart = position;
+      }
+    }
+  }
+
+  selectionDragEnd<T, E>(e: React.MouseEvent<T, E>) {
+    var position = this.getGridCoordAt(e);
+    if (position) {
+      if (this._tokenMoveDragStart !== undefined) {
+        // TODO: Fix it so that I can't drop tokens on top of each other.
+        // (Will require a bit of finesse!  Especially with multiple selection.)
+        var delta = position.toVector(tileDim).sub(this._tokenMoveDragStart.toVector(tileDim));
+        this._selectionDrag.clear();
+        this._selection.all.forEach(t => {
+          var destination = t.addFace(delta, tileDim);
+          this._selection.move(t, destination);
+          this._tokens.move(t, destination);
+        });
+
+        this._tokenMoveDragStart = undefined;
+        this._tokenMoveDragSelectionPosition = undefined;
+      }
+
+      if (this._selectDragStart !== undefined) {
+        if (this._tokens.at(position) !== undefined) {
+          this._selection.add(position, 0);
+        } else {
+          this._selection.clear();
+        }
+
+        this._selectDragStart = undefined;
       }
     }
   }

@@ -40,6 +40,10 @@ export abstract class InstancedFeatures<K extends GridCoord> extends Drawn {
     this._meshes.forEach(m => { scene.add(m); });
   }
 
+  get all(): K[] {
+    return this._colours.keys;
+  }
+
   add(newPosition: K, colour: number) {
     var oldColour = this._colours.get(newPosition);
     if (oldColour === colour) {

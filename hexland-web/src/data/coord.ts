@@ -2,6 +2,7 @@ import { modFloor } from '../models/extraMath';
 import * as THREE from 'three';
 
 // This is the co-ordinate of a face (hex or square) inside the grid.
+// (TODO should I drop this and be using the single Vector2 everywhere?)
 export class GridCoord {
   readonly tile: THREE.Vector2;
   readonly face: THREE.Vector2; // within the tile
@@ -12,11 +13,10 @@ export class GridCoord {
   }
 
   addFace(f: THREE.Vector2, tileDim: number): GridCoord {
-    var x = this.tile.x * tileDim + this.face.x + f.x;
-    var y = this.tile.y * tileDim + this.face.y + f.y;
+    var vec = this.toVector(tileDim).add(f);
     return new GridCoord(
-      new THREE.Vector2(Math.floor(x / tileDim), Math.floor(y / tileDim)),
-      new THREE.Vector2(modFloor(x, tileDim), modFloor(y, tileDim))
+      new THREE.Vector2(Math.floor(vec.x / tileDim), Math.floor(vec.y / tileDim)),
+      new THREE.Vector2(modFloor(vec.x, tileDim), modFloor(vec.y, tileDim))
     );
   }
 
@@ -30,6 +30,13 @@ export class GridCoord {
 
   toString(): string {
     return this.tile.x + " " + this.tile.y + " " + this.face.x + " " + this.face.y;
+  }
+
+  toVector(tileDim: number): THREE.Vector2 {
+    return new THREE.Vector2(
+      this.tile.x * tileDim + this.face.x,
+      this.tile.y * tileDim + this.face.y
+    );
   }
 }
 
