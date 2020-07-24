@@ -1,6 +1,6 @@
 import { GridCoord } from '../data/coord';
 import { IGridGeometry } from "./gridGeometry";
-import { InstancedFeatures } from './instancedFeatures';
+import { IFeature, InstancedFeatures } from './instancedFeatures';
 import { RedrawFlag } from './redrawFlag';
 
 import * as THREE from 'three';
@@ -10,7 +10,7 @@ const tokenZ = 0.6;
 
 // The "tokens" are moveable objects that occupy a face of the map.
 // This object also manages the selection of tokens.
-export class Tokens extends InstancedFeatures<GridCoord> {
+export class Tokens extends InstancedFeatures<GridCoord, IFeature<GridCoord>> {
   private readonly _bufferGeometry: THREE.BufferGeometry;
 
   constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag) {

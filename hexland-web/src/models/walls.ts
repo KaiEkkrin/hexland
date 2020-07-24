@@ -1,6 +1,6 @@
 import { GridEdge } from '../data/coord';
 import { IGridGeometry } from "./gridGeometry";
-import { InstancedFeatures } from './instancedFeatures';
+import { IFeature, InstancedFeatures } from './instancedFeatures';
 import { RedrawFlag } from './redrawFlag';
 
 import * as THREE from 'three';
@@ -10,7 +10,7 @@ const wallZ = 0.6;
 
 // The "walls" are the edges of the map that are coloured in one of our
 // known colours.
-export class Walls extends InstancedFeatures<GridEdge> {
+export class Walls extends InstancedFeatures<GridEdge, IFeature<GridEdge>> {
   private readonly _bufferGeometry: THREE.BufferGeometry;
 
   constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag) {

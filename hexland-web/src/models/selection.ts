@@ -1,17 +1,17 @@
 import { GridCoord } from '../data/coord';
 import { IGridGeometry } from "./gridGeometry";
-import { InstancedFeatures } from './instancedFeatures';
+import { IFeature, InstancedFeatures } from './instancedFeatures';
 import { RedrawFlag } from './redrawFlag';
 
 import * as THREE from 'three';
 
-const selectionAlpha = 0.75;
+const selectionAlpha = 0.9;
 const selectionZ = 1;
 
 // The selections outline one or more selected tokens.
 // It assumes only the first material is in use.  (TODO do I want to
 // support multiple different-colour selections?  Seems confusing to me...)
-export class Selection extends InstancedFeatures<GridCoord> {
+export class Selection extends InstancedFeatures<GridCoord, IFeature<GridCoord>> {
   private readonly _bufferGeometry: THREE.BufferGeometry;
 
   constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag) {

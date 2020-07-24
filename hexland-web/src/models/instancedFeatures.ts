@@ -5,13 +5,19 @@ import { RedrawFlag } from './redrawFlag';
 
 import * as THREE from 'three';
 
+// Describes a feature:
+export interface IFeature<K extends GridCoord> {
+  position: K;
+  colour: number;
+}
+
 // A helpful base class for instanced features such as areas and walls.
 // This class manages the underlying meshes and instances.
 // (Argh, more inheritance!  I don't like it, but in this case as with the geometry
 // it seems to fit the problem at hand...)
 // TODO Handle spawning extra meshes and adding them to the scene if I exceed
 // `maxInstances` instances in one mesh
-export abstract class InstancedFeatures<K extends GridCoord> extends Drawn {
+export abstract class InstancedFeatures<K extends GridCoord, F extends IFeature<K>> extends Drawn {
   private readonly _maxInstances: number;
   private readonly _colours: CoordDictionary<K, number>;
   private readonly _indexes: CoordDictionary<K, number>;
@@ -40,31 +46,41 @@ export abstract class InstancedFeatures<K extends GridCoord> extends Drawn {
     this._meshes.forEach(m => { scene.add(m); });
   }
 
-  get all(): K[] {
-    return this._colours.keys;
+  get all(): F[] {
+    // I can't use `map` and `filter` here, because Typescript's type checking doesn't
+    // realise I've excluded undefined
+    var all: F[] = [];
+    this._colours.keys.forEach(k => {
+      var here = this.at(k);
+      if (here !== undefined) {
+        all.push(here);
+      }
+    });
+
+    return all;
   }
 
-  add(newPosition: K, colour: number) {
-    var oldColour = this._colours.get(newPosition);
-    if (oldColour === colour) {
+  add(f: F) {
+    var oldColour = this._colours.get(f.position);
+    if (oldColour === f.colour) {
       // This is already set.
       return;
     }
 
     if (oldColour !== undefined) {
       // A different colour was set -- remove it first.
-      this.remove(newPosition);
+      this.remove(f.position);
     }
 
-    var mesh = this._meshes[colour];
+    var mesh = this._meshes[f.colour];
 
     // This is a new addition.  Add a suitable instance.
     var o = new THREE.Object3D();
-    this.transformTo(o, newPosition);
+    this.transformTo(o, f.position);
     o.updateMatrix();
 
     // Re-use an existing index if we can.   Otherwise, extend the instance list.
-    var matrixIndex = this._clearIndices[colour].pop();
+    var matrixIndex = this._clearIndices[f.colour].pop();
     if (!matrixIndex) {
       matrixIndex = mesh.count++;
     }
@@ -72,13 +88,18 @@ export abstract class InstancedFeatures<K extends GridCoord> extends Drawn {
     mesh.setMatrixAt(matrixIndex, o.matrix);
     mesh.instanceMatrix.needsUpdate = true;
 
-    this._colours.set(newPosition, colour);
-    this._indexes.set(newPosition, matrixIndex);
+    this._colours.set(f.position, f.colour);
+    this._indexes.set(f.position, matrixIndex);
     this.setNeedsRedraw();
   }
 
-  at(position: K): number | undefined {
-    return this._colours.get(position);
+  at(position: K): F | undefined {
+    var colour = this._colours.get(position);
+    if (colour === undefined) {
+      return undefined;
+    }
+
+    return { position: position, colour: colour } as F;
   }
 
   clear() {
@@ -93,22 +114,7 @@ export abstract class InstancedFeatures<K extends GridCoord> extends Drawn {
     this.setNeedsRedraw();
   }
 
-  move(oldPosition: K, newPosition: K) {
-    if (newPosition.equals(oldPosition)) {
-      // No change
-      return;
-    }
-
-    var colour = this.remove(oldPosition);
-    if (colour === undefined) {
-      // Nothing here -- nothing to add either
-      return;
-    }
-
-    this.add(newPosition, colour);
-  }
-
-  remove(oldPosition: K): number | undefined { // returns the colour index of the removed thing
+  remove(oldPosition: K): F | undefined {
     var colourIndex = this._colours.get(oldPosition);
     var matrixIndex = this._indexes.get(oldPosition);
     if (colourIndex === undefined || matrixIndex === undefined) {
@@ -131,6 +137,6 @@ export abstract class InstancedFeatures<K extends GridCoord> extends Drawn {
     this._clearIndices[colourIndex].push(matrixIndex);
     this.setNeedsRedraw();
 
-    return colourIndex;
+    return { position: oldPosition, colour: colourIndex } as F;
   }
 }

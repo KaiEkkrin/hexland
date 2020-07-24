@@ -96,7 +96,10 @@ export class ThreeDrawing {
 
     this._darkColourMaterials = colours.map(c => new THREE.MeshBasicMaterial({ color: c.dark.getHex() }));
     this._lightColourMaterials = colours.map(c => new THREE.MeshBasicMaterial({ color: c.light.getHex() }));
-    this._selectionMaterials = colours.map(c => new THREE.MeshBasicMaterial({ color: 0xb0b0b0 }));
+    this._selectionMaterials = colours.map(c => new THREE.MeshBasicMaterial({
+      blending: THREE.AdditiveBlending,
+      color: 0x606060,
+    }));
 
     // The filled areas
     this._areas = new Areas(this._gridGeometry, this._needsRedraw);
@@ -187,17 +190,18 @@ export class ThreeDrawing {
   }
 
   moveSelectionTo<T, E>(e: React.MouseEvent<T, E>) {
-    if (this._tokenMoveDragSelectionPosition === undefined) {
+    if (this._tokenMoveDragStart === undefined || this._tokenMoveDragSelectionPosition === undefined) {
       return;
     }
 
-    // TODO: Support multiple selection.  (A bit of a pain, what with not wanting to
-    // allow tokens to drop on top of each other, so I can put it off for now.)
+    // TODO: Support drag to create a multiple selection.
     var position = this.getGridCoordAt(e);
-    if (position) {
-      var delta = position.toVector(tileDim).sub(this._tokenMoveDragSelectionPosition.toVector(tileDim));
-      this._selectionDrag.all.forEach(t => {
-        this._selectionDrag.move(t, t.addFace(delta, tileDim));
+    if (position && !position.equals(this._tokenMoveDragSelectionPosition)) {
+      var delta = position.toVector(tileDim).sub(this._tokenMoveDragStart.toVector(tileDim));
+      this._selectionDrag.clear();
+      this._selection.all.forEach(f => {
+        var dragged = { position: f.position.addFace(delta, tileDim), colour: f.colour };
+        this._selectionDrag.add(dragged);
       });
 
       this._tokenMoveDragSelectionPosition = position;
@@ -210,7 +214,7 @@ export class ThreeDrawing {
       if (colour < 0) {
         this._areas.remove(position);
       } else {
-        this._areas.add(position, colour);
+        this._areas.add({ position: position, colour: colour });
       }
     }
   }
@@ -221,7 +225,7 @@ export class ThreeDrawing {
       if (colour < 0) {
         this._tokens.remove(position);
       } else {
-        this._tokens.add(position, colour);
+        this._tokens.add({ position: position, colour: colour });
       }
     }
   }
@@ -232,7 +236,7 @@ export class ThreeDrawing {
       if (colour < 0) {
         this._walls.remove(position);
       } else {
-        this._walls.add(position, colour);
+        this._walls.add({ position: position, colour: colour });
       }
     }
   }
@@ -243,9 +247,8 @@ export class ThreeDrawing {
       if (this._selection.at(position) !== undefined) {
         this._tokenMoveDragStart = position;
         this._tokenMoveDragSelectionPosition = position;
-        this._selection.all.forEach(c => {
-          this._selectionDrag.add(c, 0);
-        });
+        this._selectionDrag.clear();
+        this._selection.all.forEach(f => this._selectionDrag.add(f));
       } else {
         this._selectDragStart = position;
       }
@@ -256,25 +259,38 @@ export class ThreeDrawing {
     var position = this.getGridCoordAt(e);
     if (position) {
       if (this._tokenMoveDragStart !== undefined) {
-        // TODO: Fix it so that I can't drop tokens on top of each other.
+        // TODO: Fix it so that I can't drop tokens on top of each other, thereby deleting
+        // the token that used to be on the spot.
         // (Will require a bit of finesse!  Especially with multiple selection.)
         var delta = position.toVector(tileDim).sub(this._tokenMoveDragStart.toVector(tileDim));
         this._selectionDrag.clear();
-        this._selection.all.forEach(t => {
-          var destination = t.addFace(delta, tileDim);
-          this._selection.move(t, destination);
-          this._tokens.move(t, destination);
-        });
+
+        // To avoid overlap deletions, we need to first pick up every token, and then
+        // put them all down again:
+        this._selection.all.map(t => this._tokens.remove(t.position))
+          .forEach(f => {
+            if (f !== undefined) {
+              this._tokens.add({ position: f.position.addFace(delta, tileDim), colour: f.colour });
+            }
+          });
+        this._selection.all.map(t => this._selection.remove(t.position))
+          .forEach(f => {
+            if (f !== undefined) {
+              this._selection.add({ position: f.position.addFace(delta, tileDim), colour: f.colour });
+            }
+          });
 
         this._tokenMoveDragStart = undefined;
         this._tokenMoveDragSelectionPosition = undefined;
       }
 
       if (this._selectDragStart !== undefined) {
-        if (this._tokens.at(position) !== undefined) {
-          this._selection.add(position, 0);
-        } else {
+        if (!e.shiftKey) {
           this._selection.clear();
+        }
+
+        if (this._tokens.at(position) !== undefined) {
+          this._selection.add({ position: position, colour: 0 });
         }
 
         this._selectDragStart = undefined;

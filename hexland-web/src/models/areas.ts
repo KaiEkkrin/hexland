@@ -1,6 +1,6 @@
 import { GridCoord } from '../data/coord';
 import { IGridGeometry } from "./gridGeometry";
-import { InstancedFeatures } from './instancedFeatures';
+import { IFeature, InstancedFeatures } from './instancedFeatures';
 import { RedrawFlag } from './redrawFlag';
 
 import * as THREE from 'three';
@@ -9,7 +9,7 @@ const areaZ = 0.5;
 
 // The "areas" are the faces of the map that are coloured in one of our
 // known colours.
-export class Areas extends InstancedFeatures<GridCoord> {
+export class Areas extends InstancedFeatures<GridCoord, IFeature<GridCoord>> {
   private readonly _bufferGeometry: THREE.BufferGeometry;
 
   constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag) {
