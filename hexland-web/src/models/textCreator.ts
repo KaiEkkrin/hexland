@@ -23,13 +23,14 @@ export class TextCreator {
 
     var shapes = this._font.generateShapes(text, size);
     var geometry = new THREE.ShapeBufferGeometry(shapes);
+    geometry.scale(1, -1, 1); // for some reason, the text is being created upside down!
     geometry.computeBoundingBox();
 
     var mesh = new THREE.Mesh(geometry, material);
     var target = this.createTargetPosition(position, geometry.boundingBox);
     if (target !== undefined) {
       mesh.translateX(target.x);
-      mesh.translateY(target.y);
+      mesh.translateY(-target.y);
       mesh.translateZ(target.z);
     }
 

@@ -7,7 +7,10 @@ import { ThreeDrawing } from './models/drawing';
 import { FeatureColour } from './models/featureColour';
 import { TextCreator } from './models/textCreator';
 
+import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
+import Form from 'react-bootstrap/Form';
+import Modal from 'react-bootstrap/Modal';
 import ToggleButton from 'react-bootstrap/ToggleButton';
 
 import { RouteComponentProps } from 'react-router-dom';
@@ -15,11 +18,58 @@ import { RouteComponentProps } from 'react-router-dom';
 import { faDrawPolygon, faMousePointer, faPlus, faSquare } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
+import * as THREE from 'three';
+
 enum EditMode {
   Select = 1,
   Token = 2,
   Area = 3,
   Wall = 4,
+}
+
+interface INegativeColourProps {
+  includeNegative: boolean;
+  getSelectedColour(): number;
+  setSelectedColour(value: number): void;
+}
+
+function NegativeColour(props: INegativeColourProps) {
+  if (props.includeNegative === false) {
+    return null;
+  }
+
+  return (
+    <ToggleButton type="radio" variant="dark" key={-1} value={-1}
+      checked={props.getSelectedColour() === -1}
+      onChange={(e) => props.setSelectedColour(-1)}>
+      <FontAwesomeIcon icon={faSquare} color="black" />
+    </ToggleButton>
+  );
+}
+
+interface IColourSelectionProps {
+  colours: string[];
+  includeNegative: boolean;
+  isVertical: boolean;
+  getSelectedColour(): number;
+  setSelectedColour(value: number): void;
+}
+
+function ColourSelection(props: IColourSelectionProps) {
+  return (
+    <ButtonGroup toggle vertical={props.isVertical === true}>
+      {props.colours.map((c, i) =>
+        <ToggleButton type="radio" variant="dark" key={i} value={i}
+          checked={props.getSelectedColour() === i}
+          onChange={(e) => props.setSelectedColour(i)}>
+          <FontAwesomeIcon icon={faSquare} color={c} />
+        </ToggleButton>
+      )}
+      <NegativeColour includeNegative={props.includeNegative}
+        getSelectedColour={props.getSelectedColour}
+        setSelectedColour={props.setSelectedColour} />
+    </ButtonGroup>
+  );
 }
 
 interface IMapControlsProps {
@@ -30,53 +80,42 @@ interface IMapControlsProps {
   setSelectedColour(value: number): void;
 }
 
-class MapControls extends React.Component<IMapControlsProps> {
-  render() {
-    return (
-      <div className="Map-controls bg-dark">
-        <ButtonGroup toggle vertical>
-          <ToggleButton type="radio" variant="dark" key={EditMode.Select}
-            value={EditMode.Select}
-            checked={this.props.getEditMode() === EditMode.Select}
-            onChange={(e) => this.props.setEditMode(EditMode.Select)}>
-            <FontAwesomeIcon icon={faMousePointer} color="white" />
-          </ToggleButton>
-          <ToggleButton type="radio" variant="dark" key={EditMode.Token}
-            value={EditMode.Token}
-            checked={this.props.getEditMode() === EditMode.Token}
-            onChange={(e) => this.props.setEditMode(EditMode.Token)}>
-            <FontAwesomeIcon icon={faPlus} color="white" />
-          </ToggleButton>
-          <ToggleButton type="radio" variant="dark" key={EditMode.Area}
-            value={EditMode.Token}
-            checked={this.props.getEditMode() === EditMode.Area}
-            onChange={(e) => this.props.setEditMode(EditMode.Area)}>
-            <FontAwesomeIcon icon={faSquare} color="white" />
-          </ToggleButton>
-          <ToggleButton type="radio" variant="dark" key={EditMode.Wall}
-            value={EditMode.Wall}
-            checked={this.props.getEditMode() === EditMode.Wall}
-            onChange={(e) => this.props.setEditMode(EditMode.Wall)}>
-            <FontAwesomeIcon icon={faDrawPolygon} color="white" />
-          </ToggleButton>
-        </ButtonGroup>
-        <ButtonGroup toggle vertical>
-          {this.props.colours.map((c, i) =>
-            <ToggleButton type="radio" variant="dark" key={i} value={i}
-              checked={this.props.getSelectedColour() === i}
-              onChange={(e) => this.props.setSelectedColour(i)}>
-              <FontAwesomeIcon icon={faSquare} color={c} />
-            </ToggleButton>
-          )}
-          <ToggleButton type="radio" variant="dark" key={-1} value={-1}
-            checked={this.props.getSelectedColour() === -1}
-            onChange={(e) => this.props.setSelectedColour(-1)}>
-            <FontAwesomeIcon icon={faSquare} color="black" />
-          </ToggleButton>
-        </ButtonGroup>
-      </div>
-    );
-  }
+function MapControls(props: IMapControlsProps) {
+  return (
+    <div className="Map-controls bg-dark">
+      <ButtonGroup toggle vertical>
+        <ToggleButton type="radio" variant="dark" key={EditMode.Select}
+          value={EditMode.Select}
+          checked={props.getEditMode() === EditMode.Select}
+          onChange={(e) => props.setEditMode(EditMode.Select)}>
+          <FontAwesomeIcon icon={faMousePointer} color="white" />
+        </ToggleButton>
+        <ToggleButton type="radio" variant="dark" key={EditMode.Token}
+          value={EditMode.Token}
+          checked={props.getEditMode() === EditMode.Token}
+          onChange={(e) => props.setEditMode(EditMode.Token)}>
+          <FontAwesomeIcon icon={faPlus} color="white" />
+        </ToggleButton>
+        <ToggleButton type="radio" variant="dark" key={EditMode.Area}
+          value={EditMode.Token}
+          checked={props.getEditMode() === EditMode.Area}
+          onChange={(e) => props.setEditMode(EditMode.Area)}>
+          <FontAwesomeIcon icon={faSquare} color="white" />
+        </ToggleButton>
+        <ToggleButton type="radio" variant="dark" key={EditMode.Wall}
+          value={EditMode.Wall}
+          checked={props.getEditMode() === EditMode.Wall}
+          onChange={(e) => props.setEditMode(EditMode.Wall)}>
+          <FontAwesomeIcon icon={faDrawPolygon} color="white" />
+        </ToggleButton>
+      </ButtonGroup>
+      <ColourSelection colours={props.colours}
+        includeNegative={true}
+        isVertical={true}
+        getSelectedColour={props.getSelectedColour}
+        setSelectedColour={props.setSelectedColour} />
+    </div>
+  );
 }
 
 interface IMapProps {
@@ -86,6 +125,10 @@ interface IMapProps {
 class MapState {
   editMode = EditMode.Select;
   selectedColour = 0;
+  showTokenEditor = false;
+  contextualColour = 0;
+  contextualPosition: THREE.Vector2 | undefined = undefined;
+  contextualText = "";
 }
 
 class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
@@ -113,6 +156,10 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
     this.handleMouseLeave = this.handleMouseLeave.bind(this);
     this.handleMouseMove = this.handleMouseMove.bind(this);
     this.handleMouseUp = this.handleMouseUp.bind(this);
+    this.handleTokenEditorClose = this.handleTokenEditorClose.bind(this);
+    this.handleTokenEditorDelete = this.handleTokenEditorDelete.bind(this);
+    this.handleTokenEditorSave = this.handleTokenEditorSave.bind(this);
+    this.isModalSaveDisabled = this.isModalSaveDisabled.bind(this);
     this.setEditMode = this.setEditMode.bind(this);
   }
 
@@ -131,10 +178,23 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
     this._drawing.animate();
   }
 
+  private getClientPosition(e: React.MouseEvent<HTMLDivElement, MouseEvent>): THREE.Vector2 | undefined {
+    // TODO fix this positioning, which is currently slightly wrong
+    var bounds = this._mount.current?.getBoundingClientRect();
+    if (bounds === undefined) {
+      return undefined;
+    }
+
+    var x = e.clientX - bounds.left;
+    var y = e.clientY - bounds.top;
+    return new THREE.Vector2(x, bounds.height - y - 1);
+  }
+
   private handleMouseDown(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     this._mouseIsDown = true;
-    if (this.state.editMode === EditMode.Select) {
-      this._drawing?.selectionDragStart(e);
+    var cp = this.getClientPosition(e);
+    if (this.state.editMode === EditMode.Select && cp !== undefined) {
+      this._drawing?.selectionDragStart(cp);
     }
   }
 
@@ -144,23 +204,28 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
   }
 
   private handleMouseMove(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+    var cp = this.getClientPosition(e);
+    if (cp === undefined) {
+      return;
+    }
+
     if (this.state.editMode === EditMode.Select) {
-      this._drawing?.moveSelectionTo(e);
+      this._drawing?.moveSelectionTo(cp);
     }
 
     if (this.state.editMode === EditMode.Area) {
-      this._drawing?.moveFaceHighlightTo(e);
+      this._drawing?.moveFaceHighlightTo(cp);
       if (this._mouseIsDown === true) {
-        this._drawing?.setArea(e, this.state.selectedColour);
+        this._drawing?.setArea(cp, this.state.selectedColour);
       }
     } else {
       this._drawing?.hideFaceHighlight();
     }
 
     if (this.state.editMode === EditMode.Wall) {
-      this._drawing?.moveEdgeHighlightTo(e);
+      this._drawing?.moveEdgeHighlightTo(cp);
       if (this._mouseIsDown === true) {
-        this._drawing?.setWall(e, this.state.selectedColour);
+        this._drawing?.setWall(cp, this.state.selectedColour);
       }
     } else {
       this._drawing?.hideEdgeHighlight();
@@ -170,11 +235,45 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
   private handleMouseUp(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     this.handleMouseMove(e);
     this._mouseIsDown = false;
-    if (this.state.editMode === EditMode.Select) {
-      this._drawing?.selectionDragEnd(e);
-    } else if (this.state.editMode === EditMode.Token) {
-      this._drawing?.setToken(e, this.state.selectedColour);
+    var cp = this.getClientPosition(e);
+    if (this.state.editMode === EditMode.Select && cp !== undefined) {
+      this._drawing?.selectionDragEnd(cp, e.shiftKey);
+    } else if (this.state.editMode === EditMode.Token && cp !== undefined) {
+      // Show the token dialog now.  We'll create the token upon close of
+      // the dialog.
+      var token = this._drawing?.getToken(cp);
+      this.setState({
+        showTokenEditor: true,
+        contextualColour: Math.max(0, token?.colour ?? this.state.selectedColour),
+        contextualPosition: cp,
+        contextualText: token?.text ?? "",
+      });
     }
+  }
+
+  private handleTokenEditorClose() {
+    this.setState({ showTokenEditor: false, contextualPosition: undefined });
+  }
+
+  private handleTokenEditorDelete() {
+    if (this.state.contextualPosition !== undefined) {
+      this._drawing?.setToken(this.state.contextualPosition, -1, this.state.contextualText);
+    }
+
+    this.handleTokenEditorClose();
+  }
+
+  private handleTokenEditorSave() {
+    if (this.state.contextualPosition !== undefined) {
+      this._drawing?.setToken(this.state.contextualPosition, this.state.contextualColour, this.state.contextualText);
+    }
+
+    this.handleTokenEditorClose();
+  }
+
+  private isModalSaveDisabled(): boolean {
+    return this.state.contextualText === undefined ||
+      this.state.contextualText.length === 0;
   }
 
   private setEditMode(value: EditMode) {
@@ -201,6 +300,43 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
                onMouseMove={this.handleMouseMove}
                onMouseUp={this.handleMouseUp} />
         </div>
+        <Modal show={this.state.showTokenEditor} onHide={this.handleTokenEditorClose}>
+          <Modal.Header closeButton>
+            <Modal.Title>Token</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form>
+              <Form.Group>
+                <Form.Label>Text</Form.Label>
+                <Form.Control type="text" maxLength={3} value={this.state.contextualText}
+                  onChange={e => this.setState({ contextualText: e.target.value })} />
+              </Form.Group>
+              <Form.Group>
+                <Form.Label>Colour</Form.Label>
+                <Form.Row>
+                  <ColourSelection colours={this.hexColours}
+                    includeNegative={false}
+                    isVertical={false}
+                    getSelectedColour={() => this.state.contextualColour}
+                    setSelectedColour={(v) => { this.setState({ contextualColour: v }); }} />
+                </Form.Row>
+              </Form.Group>
+            </Form>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="danger" onClick={this.handleTokenEditorDelete}>
+              Delete
+            </Button>
+            <Button variant="secondary" onClick={this.handleTokenEditorClose}>
+              Close
+            </Button>
+            <Button variant="primary"
+              disabled={this.isModalSaveDisabled()}
+              onClick={this.handleTokenEditorSave}>
+              Save
+            </Button>
+          </Modal.Footer>
+        </Modal>
       </div>
     );
   }

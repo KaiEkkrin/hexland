@@ -9,7 +9,7 @@ import { RedrawFlag } from './redrawFlag';
 import { Selection } from './selection';
 import { SquareGridGeometry } from './squareGridGeometry';
 import { TextCreator } from './textCreator';
-import { Tokens } from './tokens';
+import { IToken, Tokens } from './tokens';
 import { Walls } from './walls';
 
 import * as THREE from 'three';
@@ -21,7 +21,6 @@ const tileDim = 12;
 // A container for the entirety of the drawing.
 // TODO Disposal of the resources used by this when required
 export class ThreeDrawing {
-  private readonly _mount: HTMLDivElement;
   private readonly _gridGeometry: IGridGeometry;
 
   private readonly _camera: THREE.OrthographicCamera;
@@ -67,7 +66,6 @@ export class ThreeDrawing {
 
     // TODO use the bounding rect of `mount` instead of window.innerWidth and window.innerHeight;
     // except, it's not initialised yet (?)
-    this._mount = mount;
     this._scene = new THREE.Scene();
     this._renderer = new THREE.WebGLRenderer();
     this._renderer.setSize(window.innerWidth, window.innerHeight);
@@ -76,7 +74,6 @@ export class ThreeDrawing {
     this._gridGeometry = drawHexes ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
     this._grid = new Grid(this._gridGeometry, this._gridNeedsRedraw, edgeAlpha);
     this._grid.addGridToScene(this._scene, 0, 0, 1);
-    //grid.addSolidToScene(this._scene, 0, 0, 1);
 
     // Texture of face co-ordinates within the tile.
     this._faceCoordScene = new THREE.Scene();
@@ -150,24 +147,25 @@ export class ThreeDrawing {
     }
   }
 
-  getGridCoordAt<T, E>(e: React.MouseEvent<T, E>): GridCoord | undefined {
-    var bounds = this._mount.getBoundingClientRect();
-    var x = e.clientX - bounds.left;
-    var y = e.clientY - bounds.top;
-
+  getGridCoordAt(cp: THREE.Vector2): GridCoord | undefined {
     var buf = new Uint8Array(4);
-    this._renderer.readRenderTargetPixels(this._faceCoordRenderTarget, x, bounds.height - y - 1, 1, 1, buf);
+    this._renderer.readRenderTargetPixels(this._faceCoordRenderTarget, cp.x, cp.y, 1, 1, buf);
     return this._gridGeometry?.decodeCoordSample(buf, 0);
   }
 
-  getGridEdgeAt<T, E>(e: React.MouseEvent<T, E>): GridEdge | undefined {
-    var bounds = this._mount.getBoundingClientRect();
-    var x = e.clientX - bounds.left;
-    var y = e.clientY - bounds.top;
-
+  getGridEdgeAt(cp: THREE.Vector2): GridEdge | undefined {
     var buf = new Uint8Array(4);
-    this._renderer.readRenderTargetPixels(this._edgeCoordRenderTarget, x, bounds.height - y - 1, 1, 1, buf);
+    this._renderer.readRenderTargetPixels(this._edgeCoordRenderTarget, cp.x, cp.y, 1, 1, buf);
     return this._gridGeometry?.decodeEdgeSample(buf, 0);
+  }
+
+  getToken(cp: THREE.Vector2): IToken | undefined {
+    var position = this.getGridCoordAt(cp);
+    if (position === undefined) {
+      return undefined;
+    }
+
+    return this._tokens.at(position);
   }
 
   clearSelection() {
@@ -178,8 +176,8 @@ export class ThreeDrawing {
     this._edgeHighlight.move(undefined);
   }
 
-  moveEdgeHighlightTo<T, E>(e: React.MouseEvent<T, E>) {
-    var position = this.getGridEdgeAt(e);
+  moveEdgeHighlightTo(cp: THREE.Vector2) {
+    var position = this.getGridEdgeAt(cp);
     this._edgeHighlight.move(position);
   }
 
@@ -187,18 +185,18 @@ export class ThreeDrawing {
     this._faceHighlight.move(undefined);
   }
 
-  moveFaceHighlightTo<T, E>(e: React.MouseEvent<T, E>) {
-    var position = this.getGridCoordAt(e);
+  moveFaceHighlightTo(cp: THREE.Vector2) {
+    var position = this.getGridCoordAt(cp);
     this._faceHighlight.move(position);
   }
 
-  moveSelectionTo<T, E>(e: React.MouseEvent<T, E>) {
+  moveSelectionTo(cp: THREE.Vector2) {
     if (this._tokenMoveDragStart === undefined || this._tokenMoveDragSelectionPosition === undefined) {
       return;
     }
 
     // TODO: Support drag to create a multiple selection.
-    var position = this.getGridCoordAt(e);
+    var position = this.getGridCoordAt(cp);
     if (position && !position.equals(this._tokenMoveDragSelectionPosition)) {
       var delta = position.toVector(tileDim).sub(this._tokenMoveDragStart.toVector(tileDim));
       this._selectionDrag.clear();
@@ -211,8 +209,8 @@ export class ThreeDrawing {
     }
   }
 
-  setArea<T, E>(e: React.MouseEvent<T, E>, colour: number) {
-    var position = this.getGridCoordAt(e);
+  setArea(cp: THREE.Vector2, colour: number) {
+    var position = this.getGridCoordAt(cp);
     if (position) {
       if (colour < 0) {
         this._areas.remove(position);
@@ -222,19 +220,18 @@ export class ThreeDrawing {
     }
   }
 
-  setToken<T, E>(e: React.MouseEvent<T, E>, colour: number) {
-    var position = this.getGridCoordAt(e);
+  setToken(cp: THREE.Vector2, colour: number, text: string) {
+    var position = this.getGridCoordAt(cp);
     if (position) {
-      if (colour < 0) {
-        this._tokens.remove(position);
-      } else {
-        this._tokens.add({ position: position, colour: colour, text: "OOK", textMesh: undefined });
+      this._tokens.remove(position); // replace any existing token
+      if (colour >= 0) {
+        this._tokens.add({ position: position, colour: colour, text: text, textMesh: undefined });
       }
     }
   }
 
-  setWall<T, E>(e: React.MouseEvent<T, E>, colour: number) {
-    var position = this.getGridEdgeAt(e);
+  setWall(cp: THREE.Vector2, colour: number) {
+    var position = this.getGridEdgeAt(cp);
     if (position) {
       if (colour < 0) {
         this._walls.remove(position);
@@ -244,8 +241,8 @@ export class ThreeDrawing {
     }
   }
 
-  selectionDragStart<T, E>(e: React.MouseEvent<T, E>) {
-    var position = this.getGridCoordAt(e);
+  selectionDragStart(cp: THREE.Vector2) {
+    var position = this.getGridCoordAt(cp);
     if (position) {
       if (this._selection.at(position) !== undefined) {
         this._tokenMoveDragStart = position;
@@ -258,8 +255,8 @@ export class ThreeDrawing {
     }
   }
 
-  selectionDragEnd<T, E>(e: React.MouseEvent<T, E>) {
-    var position = this.getGridCoordAt(e);
+  selectionDragEnd(cp: THREE.Vector2, shiftKey: boolean) {
+    var position = this.getGridCoordAt(cp);
     if (position) {
       if (this._tokenMoveDragStart !== undefined) {
         // TODO: Fix it so that I can't drop tokens on top of each other, thereby deleting
@@ -289,7 +286,7 @@ export class ThreeDrawing {
       }
 
       if (this._selectDragStart !== undefined) {
-        if (!e.shiftKey) {
+        if (!shiftKey) {
           this._selection.clear();
         }
 
