@@ -51,26 +51,30 @@ export class ThreeDrawing {
   private readonly _gridNeedsRedraw: RedrawFlag;
   private readonly _needsRedraw: RedrawFlag;
 
+  private _renderWidth: number;
+  private _renderHeight: number;
+
   private _selectDragStart: GridCoord | undefined;
   private _tokenMoveDragStart: GridCoord | undefined;
   private _tokenMoveDragSelectionPosition: GridCoord | undefined;
 
-  constructor(colours: FeatureColour[], mount: HTMLDivElement, textCreator: TextCreator, drawHexes: boolean) {
-    const left = window.innerWidth / -2;
-    const right = window.innerWidth / 2;
-    const top = window.innerHeight / -2;
-    const bottom = window.innerHeight / 2;
+  constructor(colours: FeatureColour[], mount: HTMLDivElement, textCreator: TextCreator, drawHexes: boolean, w: number, h: number) {
+    this._renderWidth = Math.max(1, Math.floor(w));
+    this._renderHeight = Math.max(1, Math.floor(h));
+
+    const left = this._renderWidth / -2;
+    const right = this._renderWidth / 2;
+    const top = this._renderHeight / -2;
+    const bottom = this._renderHeight / 2;
     this._camera = new THREE.OrthographicCamera(left, right, top, bottom, 0.1, 1000);
     this._camera.position.z = 5;
 
     this._gridNeedsRedraw = new RedrawFlag();
     this._needsRedraw = new RedrawFlag();
 
-    // TODO use the bounding rect of `mount` instead of window.innerWidth and window.innerHeight;
-    // except, it's not initialised yet (?)
     this._scene = new THREE.Scene();
     this._renderer = new THREE.WebGLRenderer();
-    this._renderer.setSize(window.innerWidth, window.innerHeight);
+    this._renderer.setSize(this._renderWidth, this._renderHeight, false); // TODO measure actual div size instead?
     mount.appendChild(this._renderer.domElement);
 
     this._gridGeometry = drawHexes ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
@@ -79,12 +83,12 @@ export class ThreeDrawing {
 
     // Texture of face co-ordinates within the tile.
     this._faceCoordScene = new THREE.Scene();
-    this._faceCoordRenderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
+    this._faceCoordRenderTarget = new THREE.WebGLRenderTarget(this._renderWidth, this._renderHeight);
     this._grid.addCoordColoursToScene(this._faceCoordScene, 0, 0, 1);
 
     // Texture of edge co-ordinates within the tile.
     this._edgeCoordScene = new THREE.Scene();
-    this._edgeCoordRenderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
+    this._edgeCoordRenderTarget = new THREE.WebGLRenderTarget(this._renderWidth, this._renderHeight);
     this._grid.addEdgeColoursToScene(this._edgeCoordScene, 0, 0, 1);
 
     // The edge highlight
@@ -152,6 +156,29 @@ export class ThreeDrawing {
       this._renderer.render(this._edgeCoordScene, this._camera);
 
       this._renderer.setRenderTarget(null);
+    }
+  }
+
+  resize(w: number, h: number) {
+    var width = Math.max(1, Math.floor(w));
+    var height = Math.max(1, Math.floor(h));
+    if (width !== this._renderWidth || height !== this._renderHeight) {
+      this._renderer.setSize(width, height, false);
+      this._edgeCoordRenderTarget.setSize(width, height);
+      this._faceCoordRenderTarget.setSize(width, height);
+
+      this._camera.left = width / -2.0;
+      this._camera.right = width / 2.0;
+      this._camera.top = height / -2.0;
+      this._camera.bottom = height / 2.0;
+      this._camera.updateProjectionMatrix();
+
+      // TODO Also add or remove grid tiles as required
+
+      this._renderWidth = width;
+      this._renderHeight = height;
+      this._needsRedraw.setNeedsRedraw();
+      this._gridNeedsRedraw.setNeedsRedraw();
     }
   }
 
@@ -239,9 +266,8 @@ export class ThreeDrawing {
   setArea(cp: THREE.Vector2, colour: number) {
     var position = this.getGridCoordAt(cp);
     if (position) {
-      if (colour < 0) {
-        this._areas.remove(position);
-      } else {
+      this._areas.remove(position);
+      if (colour >= 0) {
         this._areas.add({ position: position, colour: colour });
       }
     }
@@ -260,9 +286,8 @@ export class ThreeDrawing {
   setWall(cp: THREE.Vector2, colour: number) {
     var position = this.getGridEdgeAt(cp);
     if (position) {
-      if (colour < 0) {
-        this._walls.remove(position);
-      } else {
+      this._walls.remove(position);
+      if (colour >= 0) {
         this._walls.add({ position: position, colour: colour });
       }
     }

@@ -159,7 +159,9 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
     this.handleTokenEditorClose = this.handleTokenEditorClose.bind(this);
     this.handleTokenEditorDelete = this.handleTokenEditorDelete.bind(this);
     this.handleTokenEditorSave = this.handleTokenEditorSave.bind(this);
+    this.handleWindowResize = this.handleWindowResize.bind(this);
     this.isModalSaveDisabled = this.isModalSaveDisabled.bind(this);
+    this.onResize = this.onResize.bind(this);
     this.setEditMode = this.setEditMode.bind(this);
   }
 
@@ -174,8 +176,21 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
       return;
     }
 
-    this._drawing = new ThreeDrawing(this._colours, mount, this._textCreator, this.props.match.params.geometry === "hex");
+    this._drawing = new ThreeDrawing(
+      this._colours,
+      mount,
+      this._textCreator,
+      this.props.match.params.geometry === "hex",
+      window.innerWidth,
+      window.innerHeight
+    );
     this._drawing.animate();
+
+    window.addEventListener('resize', this.handleWindowResize);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('resize', this.handleWindowResize);
   }
 
   private getClientPosition(e: React.MouseEvent<HTMLDivElement, MouseEvent>): THREE.Vector2 | undefined {
@@ -271,9 +286,17 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
     this.handleTokenEditorClose();
   }
 
+  private handleWindowResize(ev: UIEvent) {
+    this._drawing?.resize(window.innerWidth, window.innerHeight);
+  }
+
   private isModalSaveDisabled(): boolean {
     return this.state.contextualText === undefined ||
       this.state.contextualText.length === 0;
+  }
+
+  private onResize(width: number, height: number) {
+    //this._drawing?.handleResize(width, height);
   }
 
   private setEditMode(value: EditMode) {
@@ -285,20 +308,22 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
 
   render() {
     return (
-      <div>
+      <div className="Map-container">
         <Navigation />
-        <MapControls colours={this.hexColours}
-          getEditMode={() => this.state.editMode}
-          setEditMode={this.setEditMode}
-          getSelectedColour={() => this.state.selectedColour}
-          setSelectedColour={(v) => { this.setState({ selectedColour: v }); }} />
-        <div className="Map-content">
-          <div id="drawingDiv" ref={this._mount}
-               onMouseDown={this.handleMouseDown}
-               onMouseEnter={this.handleMouseMove}
-               onMouseLeave={this.handleMouseLeave}
-               onMouseMove={this.handleMouseMove}
-               onMouseUp={this.handleMouseUp} />
+        <div className="Map-main">
+          <MapControls colours={this.hexColours}
+            getEditMode={() => this.state.editMode}
+            setEditMode={this.setEditMode}
+            getSelectedColour={() => this.state.selectedColour}
+            setSelectedColour={(v) => { this.setState({ selectedColour: v }); }} />
+          <div className="Map-content">
+            <div id="drawingDiv" ref={this._mount}
+              onMouseDown={this.handleMouseDown}
+              onMouseEnter={this.handleMouseMove}
+              onMouseLeave={this.handleMouseLeave}
+              onMouseMove={this.handleMouseMove}
+              onMouseUp={this.handleMouseUp} />
+          </div>
         </div>
         <Modal show={this.state.showTokenEditor} onHide={this.handleTokenEditorClose}>
           <Modal.Header closeButton>
