@@ -38,12 +38,14 @@ export class ThreeDrawing {
   private readonly _areas: Areas;
   private readonly _selection: Selection;
   private readonly _selectionDrag: Selection; // a copy of the selection shown only while dragging it
+  private readonly _selectionDragRed: Selection; // likewise, but shown if the selection couldn't be dropped there
   private readonly _tokens: Tokens;
   private readonly _walls: Walls;
 
   private readonly _darkColourMaterials: THREE.MeshBasicMaterial[];
   private readonly _lightColourMaterials: THREE.MeshBasicMaterial[];
   private readonly _selectionMaterials: THREE.MeshBasicMaterial[];
+  private readonly _invalidSelectionMaterials: THREE.MeshBasicMaterial[];
   private readonly _textMaterial: THREE.MeshBasicMaterial;
 
   private readonly _gridNeedsRedraw: RedrawFlag;
@@ -99,6 +101,10 @@ export class ThreeDrawing {
       blending: THREE.AdditiveBlending,
       color: 0x606060,
     }));
+    this._invalidSelectionMaterials = colours.map(c => new THREE.MeshBasicMaterial({
+      blending: THREE.AdditiveBlending,
+      color: 0x600000,
+    }));
     this._textMaterial = new THREE.MeshBasicMaterial({ color: 0, side: THREE.DoubleSide });
 
     // The filled areas
@@ -110,6 +116,8 @@ export class ThreeDrawing {
     this._selection.addToScene(this._scene, this._selectionMaterials);
     this._selectionDrag = new Selection(this._gridGeometry, this._needsRedraw);
     this._selectionDrag.addToScene(this._scene, this._selectionMaterials);
+    this._selectionDragRed = new Selection(this._gridGeometry, this._needsRedraw);
+    this._selectionDragRed.addToScene(this._scene, this._invalidSelectionMaterials);
 
     // The tokens
     this._tokens = new Tokens(this._gridGeometry, this._needsRedraw, textCreator, this._textMaterial);
@@ -168,6 +176,21 @@ export class ThreeDrawing {
     return this._tokens.at(position);
   }
 
+  private canDropSelectionAt(position: GridCoord) {
+    if (this._tokenMoveDragStart === undefined) {
+      return false;
+    }
+
+    // We can't drop a selection at this position if it would overwrite any un-selected
+    // tokens:
+    var delta = position.toVector(tileDim).sub(this._tokenMoveDragStart.toVector(tileDim));
+    return this._selection.all.reduce((ok, f) => {
+      var moved = f.position.addFace(delta, tileDim);
+      var alreadyThere = this._tokens.at(moved);
+      return (ok && (alreadyThere === undefined || this._selection.at(moved) !== undefined));
+    }, true);
+  }
+
   clearSelection() {
     this._selection.clear();
   }
@@ -198,11 +221,15 @@ export class ThreeDrawing {
     // TODO: Support drag to create a multiple selection.
     var position = this.getGridCoordAt(cp);
     if (position && !position.equals(this._tokenMoveDragSelectionPosition)) {
+      var selectionDrag = this.canDropSelectionAt(position) ? this._selectionDrag :
+        this._selectionDragRed;
+
       var delta = position.toVector(tileDim).sub(this._tokenMoveDragStart.toVector(tileDim));
       this._selectionDrag.clear();
+      this._selectionDragRed.clear();
       this._selection.all.forEach(f => {
         var dragged = { position: f.position.addFace(delta, tileDim), colour: f.colour };
-        this._selectionDrag.add(dragged);
+        selectionDrag.add(dragged);
       });
 
       this._tokenMoveDragSelectionPosition = position;
@@ -248,6 +275,7 @@ export class ThreeDrawing {
         this._tokenMoveDragStart = position;
         this._tokenMoveDragSelectionPosition = position;
         this._selectionDrag.clear();
+        this._selectionDragRed.clear();
         this._selection.all.forEach(f => this._selectionDrag.add(f));
       } else {
         this._selectDragStart = position;
@@ -259,27 +287,27 @@ export class ThreeDrawing {
     var position = this.getGridCoordAt(cp);
     if (position) {
       if (this._tokenMoveDragStart !== undefined) {
-        // TODO: Fix it so that I can't drop tokens on top of each other, thereby deleting
-        // the token that used to be on the spot.
-        // (Will require a bit of finesse!  Especially with multiple selection.)
         var delta = position.toVector(tileDim).sub(this._tokenMoveDragStart.toVector(tileDim));
         this._selectionDrag.clear();
+        this._selectionDragRed.clear();
 
-        // To avoid overlap deletions, we need to first pick up every token, and then
-        // put them all down again:
-        this._selection.all.map(t => this._tokens.remove(t.position))
-          .forEach(f => {
-            if (f !== undefined) {
-              f.position = f.position.addFace(delta, tileDim);
-              this._tokens.add(f);
-            }
-          });
-        this._selection.all.map(t => this._selection.remove(t.position))
-          .forEach(f => {
-            if (f !== undefined) {
-              this._selection.add({ position: f.position.addFace(delta, tileDim), colour: f.colour });
-            }
-          });
+        if (this.canDropSelectionAt(position)) {
+          // To avoid overlap deletions, we need to first pick up every token, and then
+          // put them all down again:
+          this._selection.all.map(t => this._tokens.remove(t.position))
+            .forEach(f => {
+              if (f !== undefined) {
+                f.position = f.position.addFace(delta, tileDim);
+                this._tokens.add(f);
+              }
+            });
+          this._selection.all.map(t => this._selection.remove(t.position))
+            .forEach(f => {
+              if (f !== undefined) {
+                this._selection.add({ position: f.position.addFace(delta, tileDim), colour: f.colour });
+              }
+            });
+        }
 
         this._tokenMoveDragStart = undefined;
         this._tokenMoveDragSelectionPosition = undefined;
