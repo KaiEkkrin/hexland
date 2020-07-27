@@ -15,7 +15,7 @@ import ToggleButton from 'react-bootstrap/ToggleButton';
 
 import { RouteComponentProps } from 'react-router-dom';
 
-import { faDrawPolygon, faMousePointer, faPlus, faSquare } from '@fortawesome/free-solid-svg-icons';
+import { faDotCircle, faDrawPolygon, faHandPaper, faMousePointer, faPlus, faSearch, faSquare } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import * as THREE from 'three';
@@ -25,6 +25,8 @@ enum EditMode {
   Token = 2,
   Area = 3,
   Wall = 4,
+  Pan = 5,
+  Zoom = 6,
 }
 
 interface INegativeColourProps {
@@ -78,6 +80,7 @@ interface IMapControlsProps {
   setEditMode(value: EditMode): void;
   getSelectedColour(): number;
   setSelectedColour(value: number): void;
+  resetView(): void;
 }
 
 function MapControls(props: IMapControlsProps) {
@@ -108,6 +111,23 @@ function MapControls(props: IMapControlsProps) {
           onChange={(e) => props.setEditMode(EditMode.Wall)}>
           <FontAwesomeIcon icon={faDrawPolygon} color="white" />
         </ToggleButton>
+        <ToggleButton type="radio" variant="dark" key={EditMode.Pan}
+          value={EditMode.Pan}
+          checked={props.getEditMode() === EditMode.Pan}
+          onChange={(e) => props.setEditMode(EditMode.Pan)}>
+          <FontAwesomeIcon icon={faHandPaper} color="white" />
+        </ToggleButton>
+        <ToggleButton type="radio" variant="dark" key={EditMode.Zoom}
+          value={EditMode.Zoom}
+          checked={props.getEditMode() === EditMode.Zoom}
+          onChange={(e) => props.setEditMode(EditMode.Zoom)}>
+          <FontAwesomeIcon icon={faSearch} color="white" />
+        </ToggleButton>
+      </ButtonGroup>
+      <ButtonGroup>
+        <Button variant="dark" onClick={() => props.resetView()}>
+          <FontAwesomeIcon icon={faDotCircle} color="white" />
+        </Button>
       </ButtonGroup>
       <ColourSelection colours={props.colours}
         includeNegative={true}
@@ -161,7 +181,7 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
     this.handleTokenEditorSave = this.handleTokenEditorSave.bind(this);
     this.handleWindowResize = this.handleWindowResize.bind(this);
     this.isModalSaveDisabled = this.isModalSaveDisabled.bind(this);
-    this.onResize = this.onResize.bind(this);
+    this.resetView = this.resetView.bind(this);
     this.setEditMode = this.setEditMode.bind(this);
   }
 
@@ -180,9 +200,7 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
       this._colours,
       mount,
       this._textCreator,
-      this.props.match.params.geometry === "hex",
-      window.innerWidth,
-      window.innerHeight
+      this.props.match.params.geometry === "hex"
     );
     this._drawing.animate();
 
@@ -210,6 +228,14 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
     var cp = this.getClientPosition(e);
     if (this.state.editMode === EditMode.Select && cp !== undefined) {
       this._drawing?.selectionDragStart(cp);
+    }
+
+    if (this.state.editMode === EditMode.Pan && cp !== undefined) {
+      this._drawing?.panStart(cp);
+    }
+
+    if (this.state.editMode === EditMode.Zoom && cp !== undefined) {
+      this._drawing?.zoomRotateStart(cp, e.shiftKey);
     }
   }
 
@@ -245,6 +271,14 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
     } else {
       this._drawing?.hideEdgeHighlight();
     }
+
+    if (this.state.editMode === EditMode.Pan) {
+      this._drawing?.panTo(cp);
+    }
+
+    if (this.state.editMode === EditMode.Zoom) {
+      this._drawing?.zoomRotateTo(cp);
+    }
   }
 
   private handleMouseUp(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
@@ -263,6 +297,10 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
         contextualPosition: cp,
         contextualText: token?.text ?? "",
       });
+    } else if (this.state.editMode === EditMode.Pan) {
+      this._drawing?.panEnd();
+    } else if (this.state.editMode === EditMode.Zoom) {
+      this._drawing?.zoomRotateEnd();
     }
   }
 
@@ -287,7 +325,7 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
   }
 
   private handleWindowResize(ev: UIEvent) {
-    this._drawing?.resize(window.innerWidth, window.innerHeight);
+    this._drawing?.resize();
   }
 
   private isModalSaveDisabled(): boolean {
@@ -295,8 +333,8 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
       this.state.contextualText.length === 0;
   }
 
-  private onResize(width: number, height: number) {
-    //this._drawing?.handleResize(width, height);
+  private resetView() {
+    this._drawing?.resetView();
   }
 
   private setEditMode(value: EditMode) {
@@ -315,7 +353,8 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
             getEditMode={() => this.state.editMode}
             setEditMode={this.setEditMode}
             getSelectedColour={() => this.state.selectedColour}
-            setSelectedColour={(v) => { this.setState({ selectedColour: v }); }} />
+            setSelectedColour={(v) => { this.setState({ selectedColour: v }); }}
+            resetView={this.resetView} />
           <div className="Map-content">
             <div id="drawingDiv" ref={this._mount}
               onMouseDown={this.handleMouseDown}

@@ -18,6 +18,11 @@ const edgeAlpha = 0.5;
 const spacing = 75.0;
 const tileDim = 12;
 
+const zoomStep = 1.001;
+const zoomMin = 1;
+const zoomMax = 4;
+const rotationStep = 0.004;
+
 // A container for the entirety of the drawing.
 // TODO Disposal of the resources used by this when required
 export class ThreeDrawing {
@@ -51,23 +56,38 @@ export class ThreeDrawing {
   private readonly _gridNeedsRedraw: RedrawFlag;
   private readonly _needsRedraw: RedrawFlag;
 
+  private _zoom: number;
+  private _rotation: number;
+  private _panX: number;
+  private _panY: number;
+
   private _renderWidth: number;
   private _renderHeight: number;
+
+  private _zoomRotateLast: THREE.Vector2 | undefined;
+  private _isRotating: boolean = false;
+  private _panLast: THREE.Vector2 | undefined;
 
   private _selectDragStart: GridCoord | undefined;
   private _tokenMoveDragStart: GridCoord | undefined;
   private _tokenMoveDragSelectionPosition: GridCoord | undefined;
 
-  constructor(colours: FeatureColour[], mount: HTMLDivElement, textCreator: TextCreator, drawHexes: boolean, w: number, h: number) {
-    this._renderWidth = Math.max(1, Math.floor(w));
-    this._renderHeight = Math.max(1, Math.floor(h));
+  constructor(colours: FeatureColour[], mount: HTMLDivElement, textCreator: TextCreator, drawHexes: boolean) {
+    this._zoom = 2;
+    this._rotation = 0;
+    this._panX = 0;
+    this._panY = 0;
 
-    const left = this._renderWidth / -2;
-    const right = this._renderWidth / 2;
-    const top = this._renderHeight / -2;
-    const bottom = this._renderHeight / 2;
+    this._renderWidth = Math.max(1, Math.floor(window.innerWidth));
+    this._renderHeight = Math.max(1, Math.floor(window.innerHeight));
+
+    const left = this._panX + this._renderWidth / -this._zoom;
+    const right = this._panX + this._renderWidth / this._zoom;
+    const top = this._panY + this._renderHeight / -this._zoom;
+    const bottom = this._panY + this._renderHeight / this._zoom;
     this._camera = new THREE.OrthographicCamera(left, right, top, bottom, 0.1, 1000);
     this._camera.position.z = 5;
+    this._camera.setRotationFromAxisAngle(new THREE.Vector3(0, 0, 1), this._rotation);
 
     this._gridNeedsRedraw = new RedrawFlag();
     this._needsRedraw = new RedrawFlag();
@@ -159,27 +179,78 @@ export class ThreeDrawing {
     }
   }
 
-  resize(w: number, h: number) {
-    var width = Math.max(1, Math.floor(w));
-    var height = Math.max(1, Math.floor(h));
-    if (width !== this._renderWidth || height !== this._renderHeight) {
-      this._renderer.setSize(width, height, false);
-      this._edgeCoordRenderTarget.setSize(width, height);
-      this._faceCoordRenderTarget.setSize(width, height);
+  resize() {
+    var width = Math.max(1, Math.floor(window.innerWidth));
+    var height = Math.max(1, Math.floor(window.innerHeight));
 
-      this._camera.left = width / -2.0;
-      this._camera.right = width / 2.0;
-      this._camera.top = height / -2.0;
-      this._camera.bottom = height / 2.0;
-      this._camera.updateProjectionMatrix();
+    this._renderer.setSize(width, height, false);
+    this._edgeCoordRenderTarget.setSize(width, height);
+    this._faceCoordRenderTarget.setSize(width, height);
 
-      // TODO Also add or remove grid tiles as required
+    this._camera.left = this._panX + width / -this._zoom;
+    this._camera.right = this._panX + width / this._zoom;
+    this._camera.top = this._panY + height / -this._zoom;
+    this._camera.bottom = this._panY + height / this._zoom;
+    this._camera.setRotationFromAxisAngle(new THREE.Vector3(0, 0, 1), this._rotation);
+    this._camera.updateProjectionMatrix();
 
-      this._renderWidth = width;
-      this._renderHeight = height;
-      this._needsRedraw.setNeedsRedraw();
-      this._gridNeedsRedraw.setNeedsRedraw();
+    // TODO Also add or remove grid tiles as required
+
+    this._renderWidth = width;
+    this._renderHeight = height;
+    this._needsRedraw.setNeedsRedraw();
+    this._gridNeedsRedraw.setNeedsRedraw();
+  }
+
+  resetView() {
+    this._zoom = 2;
+    this._rotation = 0;
+    this._panX = 0;
+    this._panY = 0;
+    this.resize();
+  }
+
+  zoomRotateEnd() {
+    this._zoomRotateLast = undefined;
+  }
+
+  zoomRotateStart(cp: THREE.Vector2, rotate: boolean) {
+    this._zoomRotateLast = cp;
+    this._isRotating = rotate;
+  }
+
+  zoomRotateTo(cp: THREE.Vector2) {
+    if (this._zoomRotateLast === undefined) {
+      return;
     }
+
+    if (this._isRotating === true) {
+      this._rotation -= (cp.x - this._zoomRotateLast.x) * rotationStep;
+    } else {
+      this._zoom = Math.min(zoomMax, Math.max(zoomMin, this._zoom * Math.pow(zoomStep, cp.y - this._zoomRotateLast.y)));
+    }
+
+    this.resize();
+    this._zoomRotateLast = cp;
+  }
+
+  panEnd() {
+    this._panLast = undefined;
+  }
+
+  panStart(cp: THREE.Vector2) {
+    this._panLast = cp;
+  }
+
+  panTo(cp: THREE.Vector2) {
+    if (this._panLast === undefined) {
+      return;
+    }
+
+    this._panX -= (cp.x - this._panLast.x);
+    this._panY += (cp.y - this._panLast.y);
+    this.resize();
+    this._panLast = cp;
   }
 
   getGridCoordAt(cp: THREE.Vector2): GridCoord | undefined {
