@@ -226,6 +226,10 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     return colours;
   }
 
+  faceSize(): number {
+    return this._hexSize;
+  }
+
   toSingle(): IGridGeometry {
     return new HexGridGeometry(this._hexSize, 1);
   }

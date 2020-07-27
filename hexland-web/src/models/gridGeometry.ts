@@ -55,6 +55,9 @@ export interface IGridGeometry {
   // starting from the offset) into a grid coord.
   decodeEdgeSample(sample: Uint8Array, offset: number): GridEdge | undefined;
 
+  // A measure of the face size in this geometry.
+  faceSize(): number;
+
   // Emits the same grid geometry but with a tileDim of 1; useful for initialising
   // instanced draws.
   toSingle(): IGridGeometry;
@@ -62,6 +65,10 @@ export interface IGridGeometry {
   // Transforms the object, assumed to be at the zero co-ordinate, to be at the
   // given one instead.
   transformToCoord(o: THREE.Object3D, coord: GridCoord): void;
+
+  // Transforms the object, assumed to be at the given co-ordinate, back to the
+  // origin position.
+  transformToOrigin(o: THREE.Object3D, coord: GridCoord): void;
 
   // Transforms the object, assumed to be at the zero edge, to be at the
   // given one instead.
@@ -281,6 +288,11 @@ export abstract class BaseGeometry {
     var centre = this.createCoordCentre(coord, 0);
     o.translateX(centre.x);
     o.translateY(centre.y);
+  }
+
+  transformToOrigin(o: THREE.Object3D, coord: GridCoord): void {
+    var negated = coord.negate(this.tileDim);
+    this.transformToCoord(o, negated);
   }
 
   updateEdgeHighlight(buf: THREE.BufferGeometry, coord: GridEdge | undefined, alpha: number, z: number): void {

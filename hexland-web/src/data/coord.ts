@@ -28,6 +28,13 @@ export class GridCoord {
       other.face.y === this.face.y);
   }
 
+  negate(tileDim: number): GridCoord {
+    return this.addFace(
+      this.toVector(tileDim).multiplyScalar(-2),
+      tileDim
+    );
+  }
+
   toString(): string {
     return this.tile.x + " " + this.tile.y + " " + this.face.x + " " + this.face.y;
   }

@@ -8,6 +8,7 @@ import { FaceHighlight, EdgeHighlight } from './highlight';
 import { RedrawFlag } from './redrawFlag';
 import { Selection } from './selection';
 import { SquareGridGeometry } from './squareGridGeometry';
+import { TextCreator } from './textCreator';
 import { Tokens } from './tokens';
 import { Walls } from './walls';
 
@@ -44,6 +45,7 @@ export class ThreeDrawing {
   private readonly _darkColourMaterials: THREE.MeshBasicMaterial[];
   private readonly _lightColourMaterials: THREE.MeshBasicMaterial[];
   private readonly _selectionMaterials: THREE.MeshBasicMaterial[];
+  private readonly _textMaterial: THREE.MeshBasicMaterial;
 
   private readonly _gridNeedsRedraw: RedrawFlag;
   private readonly _needsRedraw: RedrawFlag;
@@ -52,7 +54,7 @@ export class ThreeDrawing {
   private _tokenMoveDragStart: GridCoord | undefined;
   private _tokenMoveDragSelectionPosition: GridCoord | undefined;
 
-  constructor(colours: FeatureColour[], mount: HTMLDivElement, drawHexes: boolean) {
+  constructor(colours: FeatureColour[], mount: HTMLDivElement, textCreator: TextCreator, drawHexes: boolean) {
     const left = window.innerWidth / -2;
     const right = window.innerWidth / 2;
     const top = window.innerHeight / -2;
@@ -100,6 +102,7 @@ export class ThreeDrawing {
       blending: THREE.AdditiveBlending,
       color: 0x606060,
     }));
+    this._textMaterial = new THREE.MeshBasicMaterial({ color: 0, side: THREE.DoubleSide });
 
     // The filled areas
     this._areas = new Areas(this._gridGeometry, this._needsRedraw);
@@ -112,7 +115,7 @@ export class ThreeDrawing {
     this._selectionDrag.addToScene(this._scene, this._selectionMaterials);
 
     // The tokens
-    this._tokens = new Tokens(this._gridGeometry, this._needsRedraw);
+    this._tokens = new Tokens(this._gridGeometry, this._needsRedraw, textCreator, this._textMaterial);
     this._tokens.addToScene(this._scene, this._lightColourMaterials);
 
     // The walls
@@ -225,7 +228,7 @@ export class ThreeDrawing {
       if (colour < 0) {
         this._tokens.remove(position);
       } else {
-        this._tokens.add({ position: position, colour: colour });
+        this._tokens.add({ position: position, colour: colour, text: "OOK", textMesh: undefined });
       }
     }
   }
@@ -270,7 +273,8 @@ export class ThreeDrawing {
         this._selection.all.map(t => this._tokens.remove(t.position))
           .forEach(f => {
             if (f !== undefined) {
-              this._tokens.add({ position: f.position.addFace(delta, tileDim), colour: f.colour });
+              f.position = f.position.addFace(delta, tileDim);
+              this._tokens.add(f);
             }
           });
         this._selection.all.map(t => this._selection.remove(t.position))

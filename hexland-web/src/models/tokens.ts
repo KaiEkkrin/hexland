@@ -2,18 +2,28 @@ import { GridCoord } from '../data/coord';
 import { IGridGeometry } from "./gridGeometry";
 import { IFeature, InstancedFeatures } from './instancedFeatures';
 import { RedrawFlag } from './redrawFlag';
+import { TextCreator } from './textCreator';
 
 import * as THREE from 'three';
 
 const alpha = 0.7;
 const tokenZ = 0.6;
+const textZ = 1.1; // TODO for some reason the text doesn't alpha blend properly with the selection
+
+// A token has some extra properties:
+export interface IToken extends IFeature<GridCoord> {
+  text: string;
+  textMesh: THREE.Mesh | undefined; // so that a mesh already created can be re-used
+}
 
 // The "tokens" are moveable objects that occupy a face of the map.
 // This object also manages the selection of tokens.
-export class Tokens extends InstancedFeatures<GridCoord, IFeature<GridCoord>> {
+export class Tokens extends InstancedFeatures<GridCoord, IToken> {
   private readonly _bufferGeometry: THREE.BufferGeometry;
+  private readonly _textCreator: TextCreator;
+  private readonly _textMaterial: THREE.Material;
 
-  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag) {
+  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, textCreator: TextCreator, textMaterial: THREE.Material) {
     super(geometry, redrawFlag, 1000);
 
     // TODO Make them look more exciting than just a smaller, brighter face.
@@ -24,6 +34,9 @@ export class Tokens extends InstancedFeatures<GridCoord, IFeature<GridCoord>> {
 
     this._bufferGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
     this._bufferGeometry.setIndex(indices);
+
+    this._textCreator = textCreator;
+    this._textMaterial = textMaterial;
   }
 
   protected createMesh(m: THREE.Material, maxInstances: number): THREE.InstancedMesh {
@@ -35,5 +48,63 @@ export class Tokens extends InstancedFeatures<GridCoord, IFeature<GridCoord>> {
 
   protected transformTo(o: THREE.Object3D, position: GridCoord) {
     this.geometry.transformToCoord(o, position);
+  }
+
+  addToScene(scene: THREE.Scene, materials: THREE.Material[]): boolean {
+    if (!super.addToScene(scene, materials)) {
+      return false;
+    }
+
+    // Hopefully there's nothing here yet, but just in case addToScene is called late:
+    this.all.forEach(f => {
+      if (f.textMesh !== undefined) {
+        this.scene?.add(f.textMesh);
+      }
+    });
+    return true;
+  }
+
+  add(f: IToken): boolean {
+    if (!super.add(f)) {
+      return false;
+    }
+
+    if (f.textMesh === undefined) {
+      // Create the text that goes with this token now:
+      f.textMesh = this._textCreator.create(
+        f.text,
+        this.geometry.faceSize() * 0.15,
+        this._textMaterial,
+        new THREE.Vector3(0, 0, textZ)
+      );
+    }
+
+    if (f.textMesh !== undefined) {
+      // We assume it is always given to us at the origin position
+      this.geometry.transformToCoord(f.textMesh, f.position);
+      f.textMesh.updateMatrix();
+      this.scene?.add(f.textMesh);
+    }
+
+    return true;
+  }
+
+  remove(oldPosition: GridCoord): IToken | undefined {
+    var f = super.remove(oldPosition);
+    if (f === undefined) {
+      return undefined;
+    }
+
+    if (f.textMesh !== undefined) {
+      this.scene?.remove(f.textMesh);
+
+      // When removing a token from the scene, update its mesh to be at the
+      // origin again so that I can easily transform it to a new position if
+      // I re-add it:
+      this.geometry.transformToOrigin(f.textMesh, f.position);
+      f.textMesh.updateMatrix();
+    }
+
+    return f;
   }
 }

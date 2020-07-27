@@ -166,6 +166,10 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     return colours;
   }
 
+  faceSize(): number {
+    return this._squareSize;
+  }
+
   toSingle(): IGridGeometry {
     return new SquareGridGeometry(this._squareSize, 1);
   }

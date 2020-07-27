@@ -19,7 +19,7 @@ export interface IFeature<K extends GridCoord> {
 // `maxInstances` instances in one mesh
 export abstract class InstancedFeatures<K extends GridCoord, F extends IFeature<K>> extends Drawn {
   private readonly _maxInstances: number;
-  private readonly _colours: CoordDictionary<K, number>;
+  private readonly _features: CoordDictionary<K, F>;
   private readonly _indexes: CoordDictionary<K, number>;
   private _meshes: THREE.InstancedMesh[]; // one per material.
 
@@ -27,31 +27,42 @@ export abstract class InstancedFeatures<K extends GridCoord, F extends IFeature<
   // re-use one of these to avoid having to expand the number of instances.
   private _clearIndices: number[][];
 
+  // We keep hold of the scene so that things can be added and removed later:
+  private _scene: THREE.Scene | undefined;
+
   constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, maxInstances: number) {
     super(geometry, redrawFlag);
     this._maxInstances = maxInstances;
-    this._colours = new CoordDictionary<K, number>();
+    this._features = new CoordDictionary<K, F>();
     this._indexes = new CoordDictionary<K, number>();
     this._meshes = [];
     this._clearIndices = [];
   }
 
+  protected get scene(): THREE.Scene | undefined { return this._scene; }
+
   protected abstract createMesh(m: THREE.Material, maxInstances: number): THREE.InstancedMesh;
   protected abstract transformTo(o: THREE.Object3D, position: K): void;
 
   // The materials parameter here should be the known colour materials in order.
-  addToScene(scene: THREE.Scene, materials: THREE.Material[]) {
+  addToScene(scene: THREE.Scene, materials: THREE.Material[]): boolean {
+    if (this._scene !== undefined) {
+      return false;
+    }
+
     this._meshes = materials.map(m => this.createMesh(m, this._maxInstances));
     this._clearIndices = materials.map(_ => []);
     this._meshes.forEach(m => { scene.add(m); });
+    this._scene = scene;
+    return true;
   }
 
   get all(): F[] {
     // I can't use `map` and `filter` here, because Typescript's type checking doesn't
     // realise I've excluded undefined
     var all: F[] = [];
-    this._colours.keys.forEach(k => {
-      var here = this.at(k);
+    this._features.keys.forEach(k => {
+      var here = this._features.get(k);
       if (here !== undefined) {
         all.push(here);
       }
@@ -60,16 +71,11 @@ export abstract class InstancedFeatures<K extends GridCoord, F extends IFeature<
     return all;
   }
 
-  add(f: F) {
-    var oldColour = this._colours.get(f.position);
-    if (oldColour === f.colour) {
-      // This is already set.
-      return;
-    }
-
-    if (oldColour !== undefined) {
-      // A different colour was set -- remove it first.
-      this.remove(f.position);
+  add(f: F): boolean {
+    var oldFeature = this._features.get(f.position);
+    if (oldFeature !== undefined) {
+      // This position is already occupied.
+      return false;
     }
 
     var mesh = this._meshes[f.colour];
@@ -88,22 +94,18 @@ export abstract class InstancedFeatures<K extends GridCoord, F extends IFeature<
     mesh.setMatrixAt(matrixIndex, o.matrix);
     mesh.instanceMatrix.needsUpdate = true;
 
-    this._colours.set(f.position, f.colour);
+    this._features.set(f.position, f);
     this._indexes.set(f.position, matrixIndex);
     this.setNeedsRedraw();
+    return true;
   }
 
   at(position: K): F | undefined {
-    var colour = this._colours.get(position);
-    if (colour === undefined) {
-      return undefined;
-    }
-
-    return { position: position, colour: colour } as F;
+    return this._features.get(position);
   }
 
   clear() {
-    this._colours.clear();
+    this._features.clear();
     this._indexes.clear();
     this._clearIndices = this._meshes.map(_ => []);
 
@@ -115,13 +117,17 @@ export abstract class InstancedFeatures<K extends GridCoord, F extends IFeature<
   }
 
   remove(oldPosition: K): F | undefined {
-    var colourIndex = this._colours.get(oldPosition);
-    var matrixIndex = this._indexes.get(oldPosition);
-    if (colourIndex === undefined || matrixIndex === undefined) {
+    var feature = this._features.get(oldPosition);
+    if (feature === undefined) {
       return undefined;
     }
 
-    var mesh = this._meshes[colourIndex];
+    var matrixIndex = this._indexes.get(oldPosition);
+    if (matrixIndex === undefined) {
+      return undefined;
+    }
+
+    var mesh = this._meshes[feature.colour];
 
     // We find the position of its matrix transform in the instance array.
     // Rather than trying to erase it (awkward), we instead set it to a matrix
@@ -132,11 +138,11 @@ export abstract class InstancedFeatures<K extends GridCoord, F extends IFeature<
     mesh.setMatrixAt(matrixIndex, o.matrix);
     mesh.instanceMatrix.needsUpdate = true;
 
-    this._colours.remove(oldPosition);
+    this._features.remove(oldPosition);
     this._indexes.remove(oldPosition);
-    this._clearIndices[colourIndex].push(matrixIndex);
+    this._clearIndices[feature.colour].push(matrixIndex);
     this.setNeedsRedraw();
 
-    return { position: oldPosition, colour: colourIndex } as F;
+    return feature;
   }
 }

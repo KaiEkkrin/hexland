@@ -5,6 +5,7 @@ import Navigation from './Navigation';
 
 import { ThreeDrawing } from './models/drawing';
 import { FeatureColour } from './models/featureColour';
+import { TextCreator } from './models/textCreator';
 
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import ToggleButton from 'react-bootstrap/ToggleButton';
@@ -90,6 +91,7 @@ class MapState {
 class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
   private readonly _colours: FeatureColour[];
   private readonly _mount: RefObject<HTMLDivElement>;
+  private readonly _textCreator: TextCreator;
   private _drawing: ThreeDrawing | undefined;
 
   private _mouseIsDown: boolean = false;
@@ -105,6 +107,7 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
     }
 
     this._mount = React.createRef();
+    this._textCreator = new TextCreator();
 
     this.handleMouseDown = this.handleMouseDown.bind(this);
     this.handleMouseLeave = this.handleMouseLeave.bind(this);
@@ -124,7 +127,7 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
       return;
     }
 
-    this._drawing = new ThreeDrawing(this._colours, mount, this.props.match.params.geometry === "hex");
+    this._drawing = new ThreeDrawing(this._colours, mount, this._textCreator, this.props.match.params.geometry === "hex");
     this._drawing.animate();
   }
 
