@@ -86,7 +86,7 @@ interface IMapControlsProps {
 function MapControls(props: IMapControlsProps) {
   return (
     <div className="Map-controls bg-dark">
-      <ButtonGroup toggle vertical>
+      <ButtonGroup className="mb-2" toggle vertical>
         <ToggleButton type="radio" variant="dark" key={EditMode.Select}
           value={EditMode.Select}
           checked={props.getEditMode() === EditMode.Select}
@@ -124,7 +124,7 @@ function MapControls(props: IMapControlsProps) {
           <FontAwesomeIcon icon={faSearch} color="white" />
         </ToggleButton>
       </ButtonGroup>
-      <ButtonGroup>
+      <ButtonGroup className="mb-2">
         <Button variant="dark" onClick={() => props.resetView()}>
           <FontAwesomeIcon icon={faDotCircle} color="white" />
         </Button>

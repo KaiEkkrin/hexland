@@ -9,6 +9,7 @@ import { IIdentified } from './data/identified';
 import { IMap, MapType } from './data/map';
 
 import Button from 'react-bootstrap/Button';
+import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import Card from 'react-bootstrap/Card';
 import CardDeck from 'react-bootstrap/CardDeck';
 import Col from 'react-bootstrap/Col';
@@ -23,7 +24,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 interface IMapCardsProps {
   maps: IIdentified<IMap>[];
-  editMap: (id: string, adventure: IMap) => void;
+  editMap: (id: string, map: IMap) => void;
+  deleteMap: (id: string, map: IMap) => void;
 }
 
 function MapCards(props: IMapCardsProps) {
@@ -33,9 +35,13 @@ function MapCards(props: IMapCardsProps) {
         <Card key={v.id}>
           <Card.Body>
             <Card.Title>{v.record.name}</Card.Title>
+            <Card.Subtitle className="text-muted">{v.record.ty as string} map</Card.Subtitle>
             <Card.Text>{v.record.description}</Card.Text>
           </Card.Body>
-          <Button variant="primary" onClick={() => props.editMap(v.id, v.record)}>Edit</Button>
+          <ButtonGroup>
+            <Button variant="primary" onClick={() => props.editMap(v.id, v.record)}>Edit</Button>
+            <Button variant="danger" onClick={() => props.deleteMap(v.id, v.record)}>Delete</Button>
+          </ButtonGroup>
         </Card>
       )}
     </CardDeck>
@@ -55,6 +61,7 @@ class AdventureState {
   editDescription = "";
   editType = MapType.Square;
   showEditMap = false;
+  showDeleteMap = false;
 }
 
 class Adventure extends React.Component<RouteComponentProps<IAdventureProps>, AdventureState> {
@@ -67,8 +74,10 @@ class Adventure extends React.Component<RouteComponentProps<IAdventureProps>, Ad
     this.isModalSaveDisabled = this.isModalSaveDisabled.bind(this);
     this.handleNewMapClick = this.handleNewMapClick.bind(this);
     this.handleEditMapClick = this.handleEditMapClick.bind(this);
-    this.handleEditMapClose = this.handleEditMapClose.bind(this);
+    this.handleDeleteMapClick = this.handleDeleteMapClick.bind(this);
+    this.handleModalClose = this.handleModalClose.bind(this);
     this.handleEditMapSave = this.handleEditMapSave.bind(this);
+    this.handleDeleteMapSave = this.handleDeleteMapSave.bind(this);
   }
 
   private isModalSaveDisabled() {
@@ -83,12 +92,16 @@ class Adventure extends React.Component<RouteComponentProps<IAdventureProps>, Ad
     this.setState({ editId: id, editName: map.name, editDescription: map.description, editType: map.ty, showEditMap: true });
   }
 
-  private handleEditMapClose() {
-    this.setState({ showEditMap: false });
+  private handleDeleteMapClick(id: string, map: IMap) {
+    this.setState({ editId: id, editName: map.name, showDeleteMap: true });
+  }
+
+  private handleModalClose() {
+    this.setState({ editId: undefined, showEditMap: false, showDeleteMap: false });
   }
 
   private handleEditMapSave() {
-    this.handleEditMapClose();
+    this.handleModalClose();
 
     var uid = auth.currentUser?.uid;
     if (uid === undefined) {
@@ -99,6 +112,7 @@ class Adventure extends React.Component<RouteComponentProps<IAdventureProps>, Ad
     db.collection("adventures").doc(this.props.match.params.adventureId).collection("maps").doc(id).set({
       name: this.state.editName,
       description: this.state.editDescription,
+      ty: this.state.editType,
       owner: uid, // mismatches will result in an access control error, don't need to check here
     } as IMap)
     .then(() => {
@@ -107,6 +121,23 @@ class Adventure extends React.Component<RouteComponentProps<IAdventureProps>, Ad
     .catch((e) => {
       console.error("Error editing map: ", e);
     });
+  }
+
+  private handleDeleteMapSave() {
+    this.handleModalClose();
+
+    if (this.state.editId === undefined) {
+      return;
+    }
+
+    var id = this.state.editId;
+    db.collection("adventures").doc(this.props.match.params.adventureId).collection("maps").doc(id).delete()
+      .then(() => {
+        console.log("Map " + id + " successfully deleted");
+      })
+      .catch((e) => {
+        console.error("Error deleting map: ", e);
+      });
   }
 
   componentDidMount() {
@@ -174,13 +205,14 @@ class Adventure extends React.Component<RouteComponentProps<IAdventureProps>, Ad
           </Row>
           <Row>
             <Col>
-              <MapCards maps={this.state.maps} editMap={this.handleEditMapClick} />
+              <MapCards maps={this.state.maps} editMap={this.handleEditMapClick}
+                deleteMap={this.handleDeleteMapClick} />
             </Col>
           </Row>
         </Container>
-        <Modal show={this.state.showEditMap} onHide={this.handleEditMapClose}>
+        <Modal show={this.state.showEditMap} onHide={this.handleModalClose}>
           <Modal.Header closeButton>
-            <Modal.Title>New map</Modal.Title>
+            <Modal.Title>Map</Modal.Title>
           </Modal.Header>
           <Modal.Body>
             <Form>
@@ -194,14 +226,36 @@ class Adventure extends React.Component<RouteComponentProps<IAdventureProps>, Ad
                 <Form.Control as="textarea" rows={5} maxLength={300} value={this.state.editDescription}
                   onChange={e => this.setState({ editDescription: e.target.value })} />
               </Form.Group>
-              { /* TODO Type selection dropdown */}
+              <Form.Group>
+                <Form.Label>Type</Form.Label>
+                <Form.Control as="select" value={this.state.editType}
+                  disabled={this.state.editId !== undefined}
+                  onChange={e => this.setState({ editType: e.target.value as MapType })}>
+                  <option>{MapType.Hex}</option>
+                  <option>{MapType.Square}</option>
+                </Form.Control>
+              </Form.Group>
             </Form>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={this.handleEditMapClose}>Close</Button>
+            <Button variant="secondary" onClick={this.handleModalClose}>Close</Button>
             <Button variant="primary" disabled={this.isModalSaveDisabled()}
               onClick={this.handleEditMapSave}>
               Save
+            </Button>
+          </Modal.Footer>
+        </Modal>
+        <Modal show={this.state.showDeleteMap} onHide={this.handleModalClose}>
+          <Modal.Header closeButton>
+            <Modal.Title>Delete map</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <p>Do you really want to delete {this.state.editName}?</p>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={this.handleModalClose}>Close</Button>
+            <Button variant="danger" onClick={this.handleDeleteMapSave}>
+              Yes, delete!
             </Button>
           </Modal.Footer>
         </Modal>
