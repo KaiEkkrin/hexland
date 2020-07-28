@@ -4,8 +4,8 @@ export enum MapType {
 }
 
 export interface IMap {
-  name: string,
-  ty: MapType,
-
-  // TODO Add the map content here, or in sub-collections...?
+  name: string;
+  description: string;
+  owner: string; // owning uid
+  ty: MapType;
 }

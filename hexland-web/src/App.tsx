@@ -2,6 +2,7 @@ import React from 'react';
 import './App.css';
 import { auth } from './firebase';
 
+import Adventure from './Adventure';
 import Home from './Home';
 import Login from './Login';
 import Map from './Map';
@@ -44,6 +45,7 @@ class App extends React.Component<IAppProps, AppState> {
           <BrowserRouter>
             <Switch>
               <Route exact path="/" component={Home} />
+              <Route path="/adventure/:adventureId" component={Adventure} />
               <Route path="/login" component={Login} />
               <Route path="/map/:geometry" component={Map} />
             </Switch>

@@ -26,10 +26,11 @@ function AdventureCards(props: IAdventureCardsProps) {
   return (
     <CardDeck>
       {props.adventures.map((v) =>
-        <Card>
+        <Card key={v.id}>
           <Card.Body>
             <Card.Title>{v.record.name}</Card.Title>
             <Card.Text>{v.record.description}</Card.Text>
+            <Card.Link href={"/adventure/" + v.id}>Open</Card.Link>
           </Card.Body>
           <Button variant="primary" onClick={() => props.editAdventure(v.id, v.record)}>Edit</Button>
         </Card>
