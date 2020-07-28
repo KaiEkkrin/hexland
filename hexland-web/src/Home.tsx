@@ -4,6 +4,7 @@ import { auth, db } from './firebase';
 import Navigation from './Navigation';
 
 import { IAdventure } from './data/adventure';
+import { IIdentified } from './data/identified';
 
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
@@ -17,18 +18,20 @@ import Row from 'react-bootstrap/Row';
 import { v4 as uuidv4 } from 'uuid';
 
 interface IAdventureCardsProps {
-  adventures: IAdventure[];
+  adventures: IIdentified<IAdventure>[];
+  editAdventure: (id: string, adventure: IAdventure) => void;
 }
 
 function AdventureCards(props: IAdventureCardsProps) {
   return (
     <CardDeck>
-      {props.adventures.map((a) =>
+      {props.adventures.map((v) =>
         <Card>
           <Card.Body>
-            <Card.Title>{a.name}</Card.Title>
-            <Card.Text>{a.description}</Card.Text>
+            <Card.Title>{v.record.name}</Card.Title>
+            <Card.Text>{v.record.description}</Card.Text>
           </Card.Body>
+          <Button variant="primary" onClick={() => props.editAdventure(v.id, v.record)}>Edit</Button>
         </Card>
       )}
     </CardDeck>
@@ -38,10 +41,11 @@ function AdventureCards(props: IAdventureCardsProps) {
 interface IHomeProps {}
 
 class HomeState {
-  adventures: IAdventure[] = [];
-  newName = "New adventure";
-  newDescription = "";
-  showNewAdventure = false;
+  adventures: IIdentified<IAdventure>[] = [];
+  editId: string | undefined = undefined;
+  editName = "New adventure";
+  editDescription = "";
+  showEditAdventure = false;
 }
 
 class Home extends React.Component<IHomeProps, HomeState> {
@@ -54,41 +58,46 @@ class Home extends React.Component<IHomeProps, HomeState> {
 
     this.isModalSaveDisabled = this.isModalSaveDisabled.bind(this);
     this.handleNewAdventureClick = this.handleNewAdventureClick.bind(this);
-    this.handleNewAdventureClose = this.handleNewAdventureClose.bind(this);
-    this.handleNewAdventureSave = this.handleNewAdventureSave.bind(this);
+    this.handleEditAdventureClick = this.handleEditAdventureClick.bind(this);
+    this.handleEditAdventureClose = this.handleEditAdventureClose.bind(this);
+    this.handleEditAdventureSave = this.handleEditAdventureSave.bind(this);
   }
 
   private isModalSaveDisabled() {
-    return this.state.newName.length === 0;
+    return this.state.editName.length === 0;
   }
 
   private handleNewAdventureClick() {
-    this.setState({ showNewAdventure: true });
+    this.setState({ editId: undefined, editName: "New adventure", editDescription: "", showEditAdventure: true });
   }
 
-  private handleNewAdventureClose() {
-    this.setState({ showNewAdventure: false });
+  private handleEditAdventureClick(id: string, adventure: IAdventure) {
+    this.setState({ editId: id, editName: adventure.name, editDescription: adventure.description, showEditAdventure: true });
   }
 
-  private handleNewAdventureSave() {
-    this.handleNewAdventureClose();
+  private handleEditAdventureClose() {
+    this.setState({ showEditAdventure: false });
+  }
+
+  private handleEditAdventureSave() {
+    this.handleEditAdventureClose();
 
     var uid = auth.currentUser?.uid;
     if (uid === undefined) {
       return;
     }
 
-    var id = uuidv4(); // TODO learn about uuid versions, pick one least likely to clash :)
+    var id = this.state.editId ?? uuidv4(); // TODO learn about uuid versions, pick one least likely to clash :)
     db.collection("adventures").doc(id).set({
-      name: this.state.newName,
-      description: this.state.newDescription,
-      owner: uid,
+      name: this.state.editName,
+      description: this.state.editDescription,
+      owner: uid, // mismatches will result in an access control error, don't need to check here
     } as IAdventure)
     .then(() => {
-      console.log("Adventure " + id + " successfully created");
+      console.log("Adventure " + id + " successfully edited");
     })
     .catch((e) => {
-      console.error("Error creating adventure: ", e);
+      console.error("Error editing adventure: ", e);
     });
   }
 
@@ -107,12 +116,12 @@ class Home extends React.Component<IHomeProps, HomeState> {
       this._adventuresChanged = db.collection("adventures").where("owner", "==", u.uid)
         .orderBy("name")
         .onSnapshot((s) => {
-          var adventures: IAdventure[] = [];
+          var adventures: IIdentified<IAdventure>[] = [];
           s.forEach((d) => {
             var data = d.data();
             if (data !== null) {
               var adventure = data as IAdventure;
-              adventures.push(adventure);
+              adventures.push({ id: d.id, record: adventure });
             }
           });
 
@@ -148,7 +157,7 @@ class Home extends React.Component<IHomeProps, HomeState> {
     return (
       <div>
         <Navigation />
-        <Container fluid>
+        <Container>
           <Row>
             <Col>
               <Button onClick={this.handleNewAdventureClick}>New adventure</Button>
@@ -156,11 +165,11 @@ class Home extends React.Component<IHomeProps, HomeState> {
           </Row>
           <Row>
             <Col>
-              <AdventureCards adventures={this.state.adventures} />
+              <AdventureCards adventures={this.state.adventures} editAdventure={this.handleEditAdventureClick} />
             </Col>
           </Row>
         </Container>
-        <Modal show={this.state.showNewAdventure} onHide={this.handleNewAdventureClose}>
+        <Modal show={this.state.showEditAdventure} onHide={this.handleEditAdventureClose}>
           <Modal.Header closeButton>
             <Modal.Title>New adventure</Modal.Title>
           </Modal.Header>
@@ -168,21 +177,21 @@ class Home extends React.Component<IHomeProps, HomeState> {
             <Form>
               <Form.Group>
                 <Form.Label>Name</Form.Label>
-                <Form.Control type="text" maxLength={30} value={this.state.newName}
-                  onChange={e => this.setState({ newName: e.target.value })} />
+                <Form.Control type="text" maxLength={30} value={this.state.editName}
+                  onChange={e => this.setState({ editName: e.target.value })} />
               </Form.Group>
               <Form.Group>
                 <Form.Label>Description</Form.Label>
-                <Form.Control as="textarea" rows={5} maxLength={300} value={this.state.newDescription}
-                  onChange={e => this.setState({ newDescription: e.target.value })} />
+                <Form.Control as="textarea" rows={5} maxLength={300} value={this.state.editDescription}
+                  onChange={e => this.setState({ editDescription: e.target.value })} />
               </Form.Group>
             </Form>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={this.handleNewAdventureClose}>Close</Button>
+            <Button variant="secondary" onClick={this.handleEditAdventureClose}>Close</Button>
             <Button variant="primary" disabled={this.isModalSaveDisabled()}
-              onClick={this.handleNewAdventureSave}>
-              Create
+              onClick={this.handleEditAdventureSave}>
+              Save
             </Button>
           </Modal.Footer>
         </Modal>
