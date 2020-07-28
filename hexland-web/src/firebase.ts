@@ -1,4 +1,6 @@
-import firebase from 'firebase';
+import * as firebase from 'firebase/app';
+import 'firebase/auth';
+import 'firebase/firestore';
 
 // TODO DO NOT DO THIS
 // I should be able to get a proper, smart setup that keeps the config out
