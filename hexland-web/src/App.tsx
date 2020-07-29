@@ -7,7 +7,7 @@ import { DataService } from './services/dataService';
 
 import Adventure from './Adventure';
 import AllPage from './All';
-import Home from './Home';
+import HomePage from './Home';
 import Login from './Login';
 import Map from './Map';
 
@@ -77,7 +77,7 @@ class App extends React.Component<IAppProps, AppState> {
         <AppContext.Provider value={this.state}>
           <BrowserRouter>
             <Switch>
-              <Route exact path="/" component={Home} />
+              <Route exact path="/" component={HomePage} />
               <Route exact path="/all" component={AllPage} />
               <Route path="/adventure/:adventureId" component={Adventure} />
               <Route path="/login" component={Login} />

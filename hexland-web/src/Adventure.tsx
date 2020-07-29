@@ -166,9 +166,9 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
         <Navigation />
         <Container>
           {this.state.adventure !== undefined ?
-            <Row>
+            <Row className="mt-4">
               <Col>
-                <Card>
+                <Card bg="dark" text="white">
                   <Card.Body>
                     <Card.Title>{this.state.adventure.name}</Card.Title>
                     <Card.Text>{this.state.adventure.description}</Card.Text>
@@ -178,12 +178,12 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
             </Row>
             : <div></div>
           }
-          <Row>
+          <Row className="mt-4">
             <Col>
               <Button onClick={this.handleNewMapClick}>New map</Button>
             </Col>
           </Row>
-          <Row>
+          <Row className="mt-4">
             <Col>
               <MapCards maps={this.state.adventure?.maps ?? []} editMap={this.handleEditMapClick}
                 deleteMap={this.handleDeleteMapClick} />

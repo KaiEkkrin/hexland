@@ -19,12 +19,12 @@ interface IHomeProps {
 function Home(props: IHomeProps) {
   return (
     <Container>
-      <Row>
+      <Row className="mt-4">
         <Col>
           <MapCards maps={props.profile?.latestMaps ?? []} editMap={undefined} deleteMap={undefined} />
         </Col>
       </Row>
-      <Row>
+      <Row className="mt-4">
         <Col>
           <AdventureCards adventures={props.profile?.adventures ?? []} editAdventure={undefined} />
         </Col>
@@ -40,7 +40,7 @@ function HomePage(props: IHomePageProps) {
     <div>
       <Navigation />
       <AppContext.Consumer>
-        {(context: AppState) => context.user === null ? <p>Log in button TODO</p> : (
+        {(context: AppState) => context.user === null ? <div></div> : (
           <Home profile={context.profile} />
         )}
       </AppContext.Consumer>

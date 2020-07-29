@@ -18,7 +18,7 @@ function MapCards(props: IMapCardsProps) {
   return (
     <CardDeck>
       {props.maps.map((v) =>
-        <Card key={v.id}>
+        <Card bg="dark" text="white" key={v.id}>
           <Card.Body>
             <Card.Title>{v.name}</Card.Title>
             <Card.Subtitle className="text-muted">{v.ty as string} map</Card.Subtitle>

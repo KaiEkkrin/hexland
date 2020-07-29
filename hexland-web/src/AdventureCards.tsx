@@ -1,4 +1,5 @@
 import React from 'react';
+import './App.css';
 
 import { IAdventureSummary } from './data/profile';
 
@@ -15,12 +16,14 @@ function AdventureCards(props: IAdventureCardsProps) {
   return (
     <CardDeck>
       {props.adventures.map((v) =>
-        <Card key={v.id}>
+        <Card bg="dark" text="white" key={v.id}>
           <Card.Body>
             <Card.Title>{v.name}</Card.Title>
             <Card.Text>{v.description}</Card.Text>
-            <Card.Link href={"/adventure/" + v.id}>Open</Card.Link>
           </Card.Body>
+          <Card.Footer>
+            <Card.Link href={"/adventure/" + v.id}>Open</Card.Link>
+          </Card.Footer>
           {props.editAdventure === undefined ? <div></div> :
             <Button variant="primary" onClick={() => props.editAdventure?.(v.id)}>Edit</Button>
           }

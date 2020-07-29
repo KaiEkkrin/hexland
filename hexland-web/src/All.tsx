@@ -125,12 +125,12 @@ class All extends React.Component<IAllProps, AllState> {
       <div>
         <Navigation />
         <Container>
-          <Row>
+          <Row className="mt-4">
             <Col>
               <Button onClick={this.handleNewAdventureClick}>New adventure</Button>
             </Col>
           </Row>
-          <Row>
+          <Row className="mt-4">
             <Col>
               <AdventureCards adventures={this.state.adventures.map(a => new SummaryOfAdventure(a.id, a.record))}
                 editAdventure={this.handleEditAdventureClick} />
