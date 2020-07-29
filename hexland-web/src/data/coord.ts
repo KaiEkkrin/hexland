@@ -2,7 +2,10 @@ import { modFloor } from '../models/extraMath';
 import * as THREE from 'three';
 
 // This is the co-ordinate of a face (hex or square) inside the grid.
-// (TODO should I drop this and be using the single Vector2 everywhere?)
+// (TODO should I drop this and be using the single Vector2 everywhere?
+// ...Also, change this to be an interface with extension methods rather
+// than a class, so that it's easily compatible with serialising and
+// deserialising)
 export class GridCoord {
   readonly tile: THREE.Vector2;
   readonly face: THREE.Vector2; // within the tile

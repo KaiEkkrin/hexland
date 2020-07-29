@@ -15,6 +15,7 @@ function Navigation() {
       <Navbar.Collapse>
         <Nav className="mr-auto">
           <Nav.Link href="/">Home</Nav.Link>
+          <Nav.Link href="/all">All</Nav.Link>
           {
             // Temporarily, I'm adding Squares and Hexes explicitly.
             // Once I can start doing meaningful stuff with these, I want to

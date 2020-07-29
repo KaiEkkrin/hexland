@@ -8,4 +8,6 @@ export interface IMap {
   description: string;
   owner: string; // owning uid
   ty: MapType;
+
+  // TODO Enumerated contents here!
 }
