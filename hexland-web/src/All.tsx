@@ -1,14 +1,14 @@
 import React from 'react';
 import './App.css';
-import { auth } from './firebase';
 
 import AdventureCards from './AdventureCards';
-import { addRecentAdventure, AppContext, AppState } from './App';
+import { AppContext, AppState } from './App';
 import Navigation from './Navigation';
 
 import { IAdventure, SummaryOfAdventure } from './data/adventure';
 import { IIdentified } from './data/identified';
 import { IProfile } from './data/profile';
+import { propagateAdventureEdit } from './services/extensions';
 import { IDataService } from './services/interfaces';
 
 import Button from 'react-bootstrap/Button';
@@ -17,6 +17,8 @@ import Container from 'react-bootstrap/Container';
 import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
 import Row from 'react-bootstrap/Row';
+
+import { RouteComponentProps } from 'react-router-dom';
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -30,7 +32,7 @@ class AllState {
   editId: string | undefined = undefined;
   editName = "New adventure";
   editDescription = "";
-  showEditAdventure = false;
+  showEditAdventure = false; // TODO showDeleteAdventure as well
 }
 
 class All extends React.Component<IAllProps, AllState> {
@@ -90,7 +92,7 @@ class All extends React.Component<IAllProps, AllState> {
       .catch(e => console.error("Error editing adventure " + id, e));
 
     // Make this one of my latest adventures if it isn't already
-    addRecentAdventure(this.props.dataService, this.props.profile, new SummaryOfAdventure(id, adventure))
+    propagateAdventureEdit(this.props.dataService, this.props.profile, new SummaryOfAdventure(id, adventure))
       .then(() => console.log("Updated profile with adventure " + id))
       .catch(e => console.error("Error updating profile:", e));
   }
@@ -98,7 +100,8 @@ class All extends React.Component<IAllProps, AllState> {
   private watchAdventures() {
     this._stopWatchingAdventures?.();
     this._stopWatchingAdventures = this.props.dataService?.watchAdventures(
-      a => this.setState({ adventures: a })
+      a => this.setState({ adventures: a }),
+      e => console.error("Error watching adventures:", e)
     );
   }
 
@@ -118,17 +121,6 @@ class All extends React.Component<IAllProps, AllState> {
   }
 
   render() {
-    if (auth.currentUser === null) {
-      return (
-        <div>
-          <Navigation />
-          <header className="App-header">
-            <p>Log in to create or join an adventure.</p>
-          </header>
-        </div>
-      );
-    }
-
     return (
       <div>
         <Navigation />
@@ -178,7 +170,7 @@ class All extends React.Component<IAllProps, AllState> {
 
 interface IAllPageProps {}
 
-function AllPage(props: IAllPageProps) {
+function AllPage(props: RouteComponentProps<IAllPageProps>) {
   return (
     <AppContext.Consumer>
       {(context: AppState) => context.user === null ? <div></div> : (

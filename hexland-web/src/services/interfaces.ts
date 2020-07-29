@@ -19,6 +19,14 @@ export interface IDataService {
   // Creates or edits the user's profile.
   setProfile(profile: IProfile): Promise<void>;
 
+  // Watches a particular adventure.  Call the returned function to stop.
+  watchAdventure(
+    id: string,
+    onNext: (adventure: IAdventure) => void,
+    onError?: ((error: Error) => void) | undefined,
+    onCompletion?: (() => void) | undefined
+  ): () => void;
+
   // Watches all the user's adventures.  Call the returned function to stop.
   watchAdventures(
     onNext: (adventures: IIdentified<IAdventure>[]) => void,

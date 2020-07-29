@@ -1,4 +1,4 @@
-import { IIdentified } from './identified';
+import { MapType } from './map';
 import { IAdventureSummary } from "./profile";
 
 export interface IAdventure {
@@ -12,6 +12,7 @@ export interface IMapSummary {
   id: string;
   name: string;
   description: string;
+  ty: MapType;
 }
 
 export class SummaryOfAdventure implements IAdventureSummary {

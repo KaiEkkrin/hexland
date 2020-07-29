@@ -1,17 +1,18 @@
 import React from 'react';
 import './App.css';
-import { auth, db } from './firebase';
 
+import { AppContext, AppState } from './App';
+import MapCards from './MapCards';
 import Navigation from './Navigation';
 
-import { IAdventure } from './data/adventure';
-import { IIdentified } from './data/identified';
-import { IMap, MapType } from './data/map';
+import { IAdventure, IMapSummary } from './data/adventure';
+import { MapType } from './data/map';
+import { IProfile } from './data/profile';
+import { propagateMapDelete, propagateMapEdit } from './services/extensions';
+import { IDataService } from './services/interfaces';
 
 import Button from 'react-bootstrap/Button';
-import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import Card from 'react-bootstrap/Card';
-import CardDeck from 'react-bootstrap/CardDeck';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Form from 'react-bootstrap/Form';
@@ -22,40 +23,14 @@ import { RouteComponentProps } from 'react-router-dom';
 
 import { v4 as uuidv4 } from 'uuid';
 
-interface IMapCardsProps {
-  maps: IIdentified<IMap>[];
-  editMap: (id: string, map: IMap) => void;
-  deleteMap: (id: string, map: IMap) => void;
-}
-
-function MapCards(props: IMapCardsProps) {
-  return (
-    <CardDeck>
-      {props.maps.map((v) =>
-        <Card key={v.id}>
-          <Card.Body>
-            <Card.Title>{v.record.name}</Card.Title>
-            <Card.Subtitle className="text-muted">{v.record.ty as string} map</Card.Subtitle>
-            <Card.Text>{v.record.description}</Card.Text>
-          </Card.Body>
-          <ButtonGroup>
-            <Button variant="primary" onClick={() => props.editMap(v.id, v.record)}>Edit</Button>
-            <Button variant="danger" onClick={() => props.deleteMap(v.id, v.record)}>Delete</Button>
-          </ButtonGroup>
-        </Card>
-      )}
-    </CardDeck>
-  );
-}
-
 interface IAdventureProps {
+  dataService: IDataService | undefined;
+  profile: IProfile | undefined;
   adventureId: string;
 }
 
 class AdventureState {
-  adventureName: string | undefined;
-  adventureDescription: string | undefined;
-  maps: IIdentified<IMap>[] = [];
+  adventure: IAdventure | undefined = undefined;
   editId: string | undefined = undefined;
   editName = "New map";
   editDescription = "";
@@ -64,10 +39,10 @@ class AdventureState {
   showDeleteMap = false;
 }
 
-class Adventure extends React.Component<RouteComponentProps<IAdventureProps>, AdventureState> {
-  private _mapsChanged: firebase.Unsubscribe | undefined;
+class Adventure extends React.Component<IAdventureProps, AdventureState> {
+  private _stopWatchingAdventure: (() => void) | undefined;
 
-  constructor(props: RouteComponentProps<IAdventureProps>) {
+  constructor(props: IAdventureProps) {
     super(props);
     this.state = new AdventureState();
 
@@ -88,12 +63,12 @@ class Adventure extends React.Component<RouteComponentProps<IAdventureProps>, Ad
     this.setState({ editId: undefined, editName: "New map", editDescription: "", editType: MapType.Square, showEditMap: true });
   }
 
-  private handleEditMapClick(id: string, map: IMap) {
-    this.setState({ editId: id, editName: map.name, editDescription: map.description, editType: map.ty, showEditMap: true });
+  private handleEditMapClick(m: IMapSummary) {
+    this.setState({ editId: m.id, editName: m.name, editDescription: m.description, editType: m.ty, showEditMap: true });
   }
 
-  private handleDeleteMapClick(id: string, map: IMap) {
-    this.setState({ editId: id, editName: map.name, showDeleteMap: true });
+  private handleDeleteMapClick(m: IMapSummary) {
+    this.setState({ editId: m.id, editName: m.name, showDeleteMap: true });
   }
 
   private handleModalClose() {
@@ -103,81 +78,86 @@ class Adventure extends React.Component<RouteComponentProps<IAdventureProps>, Ad
   private handleEditMapSave() {
     this.handleModalClose();
 
-    var uid = auth.currentUser?.uid;
-    if (uid === undefined) {
+    var uid = this.props.dataService?.getUid();
+    if (uid === undefined || this.state.adventure === undefined) {
       return;
     }
 
     var id = this.state.editId ?? uuidv4(); // TODO learn about uuid versions, pick one least likely to clash :)
-    db.collection("adventures").doc(this.props.match.params.adventureId).collection("maps").doc(id).set({
-      name: this.state.editName,
-      description: this.state.editDescription,
-      ty: this.state.editType,
-      owner: uid, // mismatches will result in an access control error, don't need to check here
-    } as IMap)
-    .then(() => {
-      console.log("Map " + id + " successfully edited");
-    })
-    .catch((e) => {
-      console.error("Error editing map: ", e);
-    });
+    var updated = this.state.adventure.maps.find(m => m.id === id);
+    if (updated !== undefined) {
+      // Can't edit the other fields
+      updated.name = this.state.editName;
+      updated.description = this.state.editDescription;
+    } else {
+      updated = {
+        id: id,
+        name: this.state.editName,
+        description: this.state.editDescription,
+        ty: this.state.editType
+      } as IMapSummary;
+      this.state.adventure.maps.push(updated);
+    }
+
+    this.props.dataService?.setAdventure(this.props.adventureId, this.state.adventure)
+      .then(() => console.log("Adventure " + this.props.adventureId + " successfully edited"))
+      .catch(e => console.error("Error editing adventure " + this.props.adventureId, e));
+
+    propagateMapEdit(this.props.dataService, this.props.profile, updated)
+      .then(() => console.log("Propagated map edit " + id))
+      .catch(e => console.error("Error propagating map edit " + id, e));
   }
 
   private handleDeleteMapSave() {
     this.handleModalClose();
 
-    if (this.state.editId === undefined) {
+    if (this.state.editId === undefined || this.state.adventure === undefined) {
       return;
     }
 
-    var id = this.state.editId;
-    db.collection("adventures").doc(this.props.match.params.adventureId).collection("maps").doc(id).delete()
-      .then(() => {
-        console.log("Map " + id + " successfully deleted");
-      })
-      .catch((e) => {
-        console.error("Error deleting map: ", e);
-      });
+    var index = this.state.adventure.maps.findIndex(m => m.id === this.state.editId);
+    if (index < 0) {
+      return;
+    }
+
+    var updated = {
+      name: this.state.adventure.name,
+      description: this.state.adventure.description,
+      owner: this.state.adventure.owner,
+      maps: this.state.adventure.maps.filter(m => m.id !== this.state.editId)
+    } as IAdventure;
+
+    this.props.dataService?.setAdventure(this.props.adventureId, updated)
+      .then(() => console.log("Adventure " + this.props.adventureId + " successfully edited"))
+      .catch(e => console.error("Error editing adventure " + this.props.adventureId, e));
+
+    propagateMapDelete(this.props.dataService, this.props.profile, this.state.editId)
+      .then(() => console.log("Propagated map delete " + this.state.editId))
+      .catch(e => console.error("Error propagating map delete " + this.state.editId, e));
+  }
+
+  private watchAdventure() {
+    this._stopWatchingAdventure?.();
+    this._stopWatchingAdventure = this.props.dataService?.watchAdventure(
+      this.props.adventureId,
+      a => this.setState({ adventure: a }),
+      e => console.error("Error watching adventure " + this.props.adventureId + ":", e)
+    );
   }
 
   componentDidMount() {
-    // I don't feel we need to worry too much about watching for changes to the adventure
-    // details here
-    db.collection("adventures").doc(this.props.match.params.adventureId).get()
-      .then(d => {
-        var data = d.data();
-        if (data !== null) {
-          var adventure = data as IAdventure;
-          this.setState({ adventureName: adventure.name, adventureDescription: adventure.description });
-        }
-      })
-      .catch(e => {
-        console.error("Failed to fetch adventure", e);
-      });
+    this.watchAdventure();
+  }
 
-    // Watch for maps
-    this._mapsChanged = db.collection("adventures").doc(this.props.match.params.adventureId)
-      .collection("maps")
-      .orderBy("name")
-      .onSnapshot((s) => {
-        var maps: IIdentified<IMap>[] = [];
-        s.forEach((d) => {
-          var data = d.data();
-          if (data !== null) {
-            var map = data as IMap;
-            maps.push({ id: d.id, record: map });
-          }
-        });
-
-        this.setState({ maps: maps });
-      });
+  componentDidUpdate(prevProps: IAdventureProps) {
+    if (this.props.dataService !== prevProps.dataService || this.props.adventureId !== prevProps.adventureId) {
+      this.watchAdventure();
+    }
   }
 
   componentWillUnmount() {
-    if (this._mapsChanged !== undefined) {
-      this._mapsChanged();
-      this._mapsChanged = undefined;
-    }
+    this._stopWatchingAdventure?.();
+    this._stopWatchingAdventure = undefined;
   }
 
   render() {
@@ -185,13 +165,13 @@ class Adventure extends React.Component<RouteComponentProps<IAdventureProps>, Ad
       <div>
         <Navigation />
         <Container>
-          {this.state.adventureName !== undefined && this.state.adventureDescription !== undefined ?
+          {this.state.adventure !== undefined ?
             <Row>
               <Col>
                 <Card>
                   <Card.Body>
-                    <Card.Title>{this.state.adventureName}</Card.Title>
-                    <Card.Text>{this.state.adventureDescription}</Card.Text>
+                    <Card.Title>{this.state.adventure.name}</Card.Title>
+                    <Card.Text>{this.state.adventure.description}</Card.Text>
                   </Card.Body>
                 </Card>
               </Col>
@@ -205,7 +185,7 @@ class Adventure extends React.Component<RouteComponentProps<IAdventureProps>, Ad
           </Row>
           <Row>
             <Col>
-              <MapCards maps={this.state.maps} editMap={this.handleEditMapClick}
+              <MapCards maps={this.state.adventure?.maps ?? []} editMap={this.handleEditMapClick}
                 deleteMap={this.handleDeleteMapClick} />
             </Col>
           </Row>
@@ -264,4 +244,19 @@ class Adventure extends React.Component<RouteComponentProps<IAdventureProps>, Ad
   }
 }
 
-export default Adventure;
+interface IAdventurePageProps {
+  adventureId: string;
+}
+
+function AdventurePage(props: RouteComponentProps<IAdventurePageProps>) {
+  return (
+    <AppContext.Consumer>
+      {(context: AppState) => context.user === null ? <div></div> : (
+        <Adventure dataService={context.dataService} profile={context.profile}
+          adventureId={props.match.params.adventureId} />
+      )}
+    </AppContext.Consumer>
+  )
+}
+
+export default AdventurePage;

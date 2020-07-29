@@ -3,6 +3,7 @@ import './App.css';
 
 import AdventureCards from './AdventureCards';
 import { AppContext, AppState } from './App';
+import MapCards from './MapCards';
 import Navigation from './Navigation';
 
 import { IProfile } from './data/profile';
@@ -18,6 +19,11 @@ interface IHomeProps {
 function Home(props: IHomeProps) {
   return (
     <Container>
+      <Row>
+        <Col>
+          <MapCards maps={props.profile?.latestMaps ?? []} editMap={undefined} deleteMap={undefined} />
+        </Col>
+      </Row>
       <Row>
         <Col>
           <AdventureCards adventures={props.profile?.adventures ?? []} editAdventure={undefined} />

@@ -8,7 +8,6 @@ import { IProfile } from '../data/profile';
 // Well-known collection names.
 const profiles = "profiles";
 const adventures = "adventures";
-const maps = "maps";
 
 // This service is for datastore-related operations for the current user.
 export class DataService implements IDataService {
@@ -38,6 +37,20 @@ export class DataService implements IDataService {
 
   setProfile(profile: IProfile): Promise<void> {
     return db.collection(profiles).doc(this._uid).set(profile);
+  }
+  
+  watchAdventure(
+    id: string,
+    onNext: (adventure: IAdventure) => void,
+    onError?: ((error: Error) => void) | undefined,
+    onCompletion?: (() => void) | undefined
+  ) {
+    return db.collection("adventures").doc(id)
+      .onSnapshot(s => {
+        if (s.exists) {
+          onNext(s.data() as IAdventure);
+        }
+      }, onError, onCompletion);
   }
 
   watchAdventures(
