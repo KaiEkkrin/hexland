@@ -1,4 +1,4 @@
-import { GridCoord, CoordDictionary } from '../data/coord';
+import { CoordDictionary } from '../data/coord';
 import { Drawn } from './drawn';
 import { IGridGeometry } from "./gridGeometry";
 import { RedrawFlag } from './redrawFlag';
@@ -6,7 +6,7 @@ import { RedrawFlag } from './redrawFlag';
 import * as THREE from 'three';
 
 // Describes a feature:
-export interface IFeature<K extends GridCoord> {
+export interface IFeature<K> {
   position: K;
   colour: number;
 }
@@ -17,7 +17,7 @@ export interface IFeature<K extends GridCoord> {
 // it seems to fit the problem at hand...)
 // TODO Handle spawning extra meshes and adding them to the scene if I exceed
 // `maxInstances` instances in one mesh
-export abstract class InstancedFeatures<K extends GridCoord, F extends IFeature<K>> extends Drawn {
+export abstract class InstancedFeatures<K, F extends IFeature<K>> extends Drawn {
   private readonly _maxInstances: number;
   private readonly _features: CoordDictionary<K, F>;
   private readonly _indexes: CoordDictionary<K, number>;
@@ -30,11 +30,11 @@ export abstract class InstancedFeatures<K extends GridCoord, F extends IFeature<
   // We keep hold of the scene so that things can be added and removed later:
   private _scene: THREE.Scene | undefined;
 
-  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, maxInstances?: number | undefined) {
+  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, toIndex: (k: K) => string, maxInstances?: number | undefined) {
     super(geometry, redrawFlag);
     this._maxInstances = maxInstances ?? 1000;
-    this._features = new CoordDictionary<K, F>();
-    this._indexes = new CoordDictionary<K, number>();
+    this._features = new CoordDictionary<K, F>(toIndex);
+    this._indexes = new CoordDictionary<K, number>(toIndex);
     this._meshes = [];
     this._clearIndices = [];
   }

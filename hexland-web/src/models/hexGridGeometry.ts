@@ -1,4 +1,4 @@
-import { GridCoord, GridEdge } from '../data/coord';
+import { IGridEdge, coordAdd } from '../data/coord';
 import { lerp } from './extraMath';
 import { BaseGeometry, FaceCentre, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
@@ -52,12 +52,12 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     return new THREE.Vector3(c.x + this._xOffTop, c.y + this._yOffTop, c.z);
   }
 
-  protected createEdgeGeometry(coord: GridEdge, alpha: number, z: number): EdgeGeometry {
+  protected createEdgeGeometry(coord: IGridEdge, alpha: number, z: number): EdgeGeometry {
     var centre = this.createCoordCentre(coord, z);
     var otherCentre = this.createCoordCentre(
-      coord.edge === 0 ? coord.addFace(new THREE.Vector2(-1, 0), this.tileDim) :
-      coord.edge === 1 ? coord.addFace(new THREE.Vector2(0, -1), this.tileDim) :
-      coord.addFace(new THREE.Vector2(1, -1), this.tileDim),
+      coord.edge === 0 ? coordAdd(coord, { x: -1, y: 0 }) :
+      coord.edge === 1 ? coordAdd(coord, { x: 0, y: -1 }) :
+      coordAdd(coord, { x: 1, y: -1 }),
       z
     );
 
@@ -220,7 +220,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     return new HexGridGeometry(this._hexSize, 1);
   }
 
-  transformToEdge(o: THREE.Object3D, coord: GridEdge): void {
+  transformToEdge(o: THREE.Object3D, coord: IGridEdge): void {
     var centre = this.createCoordCentre(coord, 0);
     o.translateX(centre.x);
     o.translateY(centre.y);
@@ -229,40 +229,5 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     } else if (coord.edge === 2) {
       o.rotateZ(Math.PI * 2.0 / 3.0);
     }
-  }
-
-  updateFaceHighlight(buf: THREE.BufferGeometry, coord: GridCoord | undefined, z: number): void {
-    if (!coord) {
-      buf.setDrawRange(0, 0);
-      return;
-    }
-
-    var position = buf.attributes.position as THREE.BufferAttribute;
-    var x = coord.tile.x * this.tileDim + coord.face.x;
-    var y = coord.tile.y * this.tileDim + coord.face.y;
-    var centre = this.createCentre(x, y, z);
-    position.setXYZ(0, centre.x, centre.y, 2);
-
-    var left = this.createLeft(centre);
-    position.setXYZ(1, left.x, left.y, 2);
-
-    var topLeft = this.createTopLeft(centre);
-    position.setXYZ(2, topLeft.x, topLeft.y, 2);
-
-    var topRight = this.createTopRight(centre);
-    position.setXYZ(3, topRight.x, topRight.y, 2);
-
-    var right = this.createRight(centre);
-    position.setXYZ(4, right.x, right.y, 2);
-
-    var bottomRight = this.createBottomRight(centre);
-    position.setXYZ(5, bottomRight.x, bottomRight.y, 2);
-
-    var bottomLeft = this.createBottomLeft(centre);
-    position.setXYZ(6, bottomLeft.x, bottomLeft.y, 2);
-
-    position.needsUpdate = true;
-    buf.setDrawRange(0, buf.index?.array.length ?? 0);
-    buf.computeBoundingSphere();
   }
 }

@@ -1,4 +1,4 @@
-import { GridCoord, GridEdge } from '../data/coord';
+import { IGridCoord, IGridEdge, createGridCoord, createGridEdge, coordMultiplyScalar } from '../data/coord';
 import { lerp } from './extraMath';
 import * as THREE from 'three';
 
@@ -41,11 +41,11 @@ export interface IGridGeometry {
 
   // Decodes the given sample from a coord texture (these must be 4 values
   // starting from the offset) into a grid coord.
-  decodeCoordSample(sample: Uint8Array, offset: number): GridCoord | undefined;
+  decodeCoordSample(sample: Uint8Array, offset: number): IGridCoord | undefined;
 
   // Decodes the given sample from an edge texture (these must be 4 values
   // starting from the offset) into a grid coord.
-  decodeEdgeSample(sample: Uint8Array, offset: number): GridEdge | undefined;
+  decodeEdgeSample(sample: Uint8Array, offset: number): IGridEdge | undefined;
 
   // A measure of the face size in this geometry.
   faceSize(): number;
@@ -56,21 +56,15 @@ export interface IGridGeometry {
 
   // Transforms the object, assumed to be at the zero co-ordinate, to be at the
   // given one instead.
-  transformToCoord(o: THREE.Object3D, coord: GridCoord): void;
+  transformToCoord(o: THREE.Object3D, coord: IGridCoord): void;
 
   // Transforms the object, assumed to be at the given co-ordinate, back to the
   // origin position.
-  transformToOrigin(o: THREE.Object3D, coord: GridCoord): void;
+  transformToOrigin(o: THREE.Object3D, coord: IGridCoord): void;
 
   // Transforms the object, assumed to be at the zero edge, to be at the
   // given one instead.
-  transformToEdge(o: THREE.Object3D, coord: GridEdge): void;
-
-  // Updates the vertices of the highlighted edge to a new position.
-  updateEdgeHighlight(buf: THREE.BufferGeometry, coord: GridEdge | undefined, alpha: number, z: number): void;
-
-  // Updates the vertices of the highlighted face to a new position.
-  updateFaceHighlight(buf: THREE.BufferGeometry, coord: GridCoord | undefined, z: number): void;
+  transformToEdge(o: THREE.Object3D, coord: IGridEdge): void;
 }
 
 export class FaceCentre extends THREE.Vector3 {} // to help me not get muddled when handling centres
@@ -111,22 +105,14 @@ export abstract class BaseGeometry {
 
   protected abstract createCentre(x: number, y: number, z: number): FaceCentre;
 
-  protected createCoordCentre(coord: GridCoord, z: number): FaceCentre {
-    return this.createCentre(
-      coord.tile.x * this.tileDim + coord.face.x,
-      coord.tile.y * this.tileDim + coord.face.y,
-      z
-    );
+  protected createCoordCentre(coord: IGridCoord, z: number): FaceCentre {
+    return this.createCentre(coord.x, coord.y, z);
   }
 
-  protected abstract createEdgeGeometry(coord: GridEdge, alpha: number, z: number): EdgeGeometry;
+  protected abstract createEdgeGeometry(coord: IGridEdge, alpha: number, z: number): EdgeGeometry;
 
   private pushEdgeVertices(vertices: THREE.Vector3[], tile: THREE.Vector2, alpha: number, x: number, y: number, z: number, e: number) {
-    var edge = new GridEdge(
-      new GridCoord(tile, new THREE.Vector2(x, y)),
-      e
-    );
-
+    var edge = createGridEdge(tile, new THREE.Vector2(x, y), this.tileDim, e);
     var eg = this.createEdgeGeometry(edge, alpha, z);
 
     vertices.push(eg.bevel1b);
@@ -221,54 +207,27 @@ export abstract class BaseGeometry {
     return vertices;
   }
 
-  decodeCoordSample(sample: Uint8Array, offset: number): GridCoord | undefined {
+  decodeCoordSample(sample: Uint8Array, offset: number): IGridCoord | undefined {
     var tile = this.fromPackedXYEdge(sample, offset)[0];
-    return tile ? new GridCoord(
-      tile as THREE.Vector2,
-      this.fromPackedXYAbs(sample, offset + 2)
-    ) : undefined;
+    var face = this.fromPackedXYAbs(sample, offset + 2);
+    return tile instanceof THREE.Vector2 ? createGridCoord(tile, face, this.tileDim) : undefined;
   }
 
-  decodeEdgeSample(sample: Uint8Array, offset: number): GridEdge | undefined {
+  decodeEdgeSample(sample: Uint8Array, offset: number): IGridEdge | undefined {
     var [tile, edge] = this.fromPackedXYEdge(sample, offset);
-    return tile ? new GridEdge(
-      new GridCoord(
-        tile as THREE.Vector2,
-        this.fromPackedXYAbs(sample, offset + 2),
-      ),
-      edge as number
-    ) : undefined;
+    var face = this.fromPackedXYAbs(sample, offset + 2);
+    return tile instanceof THREE.Vector2 ? createGridEdge(tile, face, this.tileDim, edge as number)
+      : undefined;
   }
 
-  transformToCoord(o: THREE.Object3D, coord: GridCoord): void {
+  transformToCoord(o: THREE.Object3D, coord: IGridCoord): void {
     var centre = this.createCoordCentre(coord, 0);
     o.translateX(centre.x);
     o.translateY(centre.y);
   }
 
-  transformToOrigin(o: THREE.Object3D, coord: GridCoord): void {
-    var negated = coord.negate(this.tileDim);
+  transformToOrigin(o: THREE.Object3D, coord: IGridCoord): void {
+    var negated = coordMultiplyScalar(coord, -1);
     this.transformToCoord(o, negated);
-  }
-
-  updateEdgeHighlight(buf: THREE.BufferGeometry, coord: GridEdge | undefined, alpha: number, z: number): void {
-    if (!coord) {
-      buf.setDrawRange(0, 0);
-      return;
-    }
-
-    var position = buf.attributes.position as THREE.BufferAttribute;
-    var eg = this.createEdgeGeometry(coord, alpha, z);
-
-    position.setXYZ(0, eg.bevel1b.x, eg.bevel1b.y, 2);
-    position.setXYZ(1, eg.bevel2b.x, eg.bevel2b.y, 2);
-    position.setXYZ(2, eg.tip1.x, eg.tip1.y, 2);
-    position.setXYZ(3, eg.tip2.x, eg.tip2.y, 2);
-    position.setXYZ(4, eg.bevel1a.x, eg.bevel1a.y, 2);
-    position.setXYZ(5, eg.bevel2a.x, eg.bevel2a.y, 2);
-
-    position.needsUpdate = true;
-    buf.setDrawRange(0, buf.index?.array.length ?? 0);
-    buf.computeBoundingSphere();
   }
 }

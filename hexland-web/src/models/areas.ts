@@ -1,4 +1,4 @@
-import { GridCoord } from '../data/coord';
+import { IGridCoord, coordString } from '../data/coord';
 import { IGridGeometry } from "./gridGeometry";
 import { IFeature, InstancedFeatures } from './instancedFeatures';
 import { RedrawFlag } from './redrawFlag';
@@ -7,11 +7,11 @@ import * as THREE from 'three';
 
 // The "areas" are the faces of the map that are coloured in one of our
 // known colours.
-export class Areas extends InstancedFeatures<GridCoord, IFeature<GridCoord>> {
+export class Areas extends InstancedFeatures<IGridCoord, IFeature<IGridCoord>> {
   private readonly _bufferGeometry: THREE.BufferGeometry;
 
   constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, alpha: number, areaZ: number, maxInstances?: number | undefined) {
-    super(geometry, redrawFlag, maxInstances);
+    super(geometry, redrawFlag, coordString, maxInstances);
 
     var single = this.geometry.toSingle();
     var vertices = single.createSolidVertices(new THREE.Vector2(0, 0), alpha, areaZ);
@@ -28,7 +28,7 @@ export class Areas extends InstancedFeatures<GridCoord, IFeature<GridCoord>> {
     return mesh;
   }
 
-  protected transformTo(o: THREE.Object3D, position: GridCoord) {
+  protected transformTo(o: THREE.Object3D, position: IGridCoord) {
     this.geometry.transformToCoord(o, position);
   }
 }

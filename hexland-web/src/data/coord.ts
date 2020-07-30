@@ -2,79 +2,70 @@ import { modFloor } from '../models/extraMath';
 import * as THREE from 'three';
 
 // This is the co-ordinate of a face (hex or square) inside the grid.
-// (TODO should I drop this and be using the single Vector2 everywhere?
-// ...Also, change this to be an interface with extension methods rather
-// than a class, so that it's easily compatible with serialising and
-// deserialising)
-export class GridCoord {
-  readonly tile: THREE.Vector2;
-  readonly face: THREE.Vector2; // within the tile
+export interface IGridCoord {
+  x: number;
+  y: number;
+}
 
-  constructor(tile: THREE.Vector2, face: THREE.Vector2) {
-    this.tile = tile;
-    this.face = face;
-  }
+export function getTile(coord: IGridCoord, tileDim: number): THREE.Vector2 {
+  return new THREE.Vector2(Math.floor(coord.x / tileDim), Math.floor(coord.y / tileDim));
+}
 
-  addFace(f: THREE.Vector2, tileDim: number): GridCoord {
-    var vec = this.toVector(tileDim).add(f);
-    return new GridCoord(
-      new THREE.Vector2(Math.floor(vec.x / tileDim), Math.floor(vec.y / tileDim)),
-      new THREE.Vector2(modFloor(vec.x, tileDim), modFloor(vec.y, tileDim))
-    );
-  }
+export function getFace(coord: IGridCoord, tileDim: number): THREE.Vector2 {
+  return new THREE.Vector2(modFloor(coord.x, tileDim), modFloor(coord.y, tileDim));
+}
 
-  equals(other: any): boolean {
-    return (other instanceof GridCoord &&
-      other.tile.x === this.tile.x &&
-      other.tile.y === this.tile.y &&
-      other.face.x === this.face.x &&
-      other.face.y === this.face.y);
-  }
+export function coordAdd(a: IGridCoord, b: IGridCoord): IGridCoord {
+  return { x: a.x + b.x, y: a.y + b.y };
+}
 
-  negate(tileDim: number): GridCoord {
-    return this.addFace(
-      this.toVector(tileDim).multiplyScalar(-2),
-      tileDim
-    );
-  }
+export function coordsEqual(a: IGridCoord, b: IGridCoord | undefined): boolean {
+  return (b === undefined) ? false : (a.x === b.x && a.y === b.y);
+}
 
-  toString(): string {
-    return this.tile.x + " " + this.tile.y + " " + this.face.x + " " + this.face.y;
-  }
+export function coordMultiplyScalar(a: IGridCoord, b: number): IGridCoord {
+  return { x: a.x * b, y: a.y * b };
+}
 
-  toVector(tileDim: number): THREE.Vector2 {
-    return new THREE.Vector2(
-      this.tile.x * tileDim + this.face.x,
-      this.tile.y * tileDim + this.face.y
-    );
-  }
+export function coordString(coord: IGridCoord) {
+  return "x=" + coord.x + " y=" + coord.y;
+}
+
+export function coordSub(a: IGridCoord, b: IGridCoord): IGridCoord {
+  return { x: a.x - b.x, y: a.y - b.y };
+}
+
+export function createGridCoord(tile: THREE.Vector2, face: THREE.Vector2, tileDim: number): IGridCoord {
+  return { x: tile.x * tileDim + face.x, y: tile.y * tileDim + face.y };
 }
 
 // This is the co-ordinate of an edge.  Each face "owns" some number
 // of the edges around it, which are identified by the `edge` number here.
-export class GridEdge extends GridCoord {
-  readonly edge: number;
-
-  constructor(coord: GridCoord, edge: number) {
-    super(coord.tile, coord.face);
-    this.edge = edge;
-  }
-
-  equals(other: any): boolean {
-    return (other instanceof GridEdge &&
-      super.equals(other) &&
-      other.edge === this.edge);
-  }
-
-  toString(): string {
-    return super.toString() + " " + this.edge;
-  }
+export interface IGridEdge extends IGridCoord {
+  edge: number;
 }
 
-// A dictionary of objects keyed by grid coords.
-export class CoordDictionary<K extends GridCoord, T> {
+export function edgesEqual(a: IGridEdge, b: IGridEdge | undefined): boolean {
+  return (b === undefined) ? false : (coordsEqual(a, b) && a.edge === b.edge);
+}
+
+export function edgeString(edge: IGridEdge) {
+  return coordString(edge) + " e=" + edge.edge;
+}
+
+export function createGridEdge(tile: THREE.Vector2, face: THREE.Vector2, tileDim: number, edge: number): IGridEdge {
+  return { x: tile.x * tileDim + face.x, y: tile.y * tileDim + face.y, edge: edge };
+}
+
+// A dictionary of objects keyed by a string index.
+export class CoordDictionary<K, T> {
+  private readonly _toIndex: (coord: K) => string;
   private _coords: { [index: string]: K } = {};
   private _values: { [index: string]: T } = {};
+
+  constructor(toIndex: (coord: K) => string) {
+    this._toIndex = toIndex;
+  }
 
   get keys(): K[] {
     var keys = [];
@@ -97,7 +88,7 @@ export class CoordDictionary<K extends GridCoord, T> {
   }
 
   get(k: K): T | undefined {
-    var index = k.toString();
+    var index = this._toIndex(k);
     if (index in this._values) {
       return this._values[index];
     } else {
@@ -106,7 +97,7 @@ export class CoordDictionary<K extends GridCoord, T> {
   }
 
   remove(k: K) {
-    var index = k.toString();
+    var index = this._toIndex(k);
     if (index in this._coords) {
       delete this._coords[index];
     }
@@ -117,7 +108,7 @@ export class CoordDictionary<K extends GridCoord, T> {
   }
 
   set(k: K, v: T) {
-    var index = k.toString();
+    var index = this._toIndex(k);
     this._coords[index] = k;
     this._values[index] = v;
   }

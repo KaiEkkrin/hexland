@@ -1,4 +1,4 @@
-import { GridCoord } from '../data/coord';
+import { IGridCoord, coordString } from '../data/coord';
 import { IGridGeometry } from "./gridGeometry";
 import { IFeature, InstancedFeatures } from './instancedFeatures';
 import { RedrawFlag } from './redrawFlag';
@@ -7,14 +7,14 @@ import { TextCreator } from './textCreator';
 import * as THREE from 'three';
 
 // A token has some extra properties:
-export interface IToken extends IFeature<GridCoord> {
+export interface IToken extends IFeature<IGridCoord> {
   text: string;
   textMesh: THREE.Mesh | undefined; // so that a mesh already created can be re-used
 }
 
 // The "tokens" are moveable objects that occupy a face of the map.
 // This object also manages the selection of tokens.
-export class Tokens extends InstancedFeatures<GridCoord, IToken> {
+export class Tokens extends InstancedFeatures<IGridCoord, IToken> {
   private readonly _bufferGeometry: THREE.BufferGeometry;
   private readonly _textCreator: TextCreator;
   private readonly _textMaterial: THREE.Material;
@@ -29,7 +29,7 @@ export class Tokens extends InstancedFeatures<GridCoord, IToken> {
     tokenZ: number,
     textZ: number
   ) {
-    super(geometry, redrawFlag, 1000);
+    super(geometry, redrawFlag, coordString, 1000);
 
     // TODO Make them look more exciting than just a smaller, brighter face.
     // Maybe with a shader to draw in a ring highlight, text, an image, etc?
@@ -52,7 +52,7 @@ export class Tokens extends InstancedFeatures<GridCoord, IToken> {
     return mesh;
   }
 
-  protected transformTo(o: THREE.Object3D, position: GridCoord) {
+  protected transformTo(o: THREE.Object3D, position: IGridCoord) {
     this.geometry.transformToCoord(o, position);
   }
 
@@ -95,7 +95,7 @@ export class Tokens extends InstancedFeatures<GridCoord, IToken> {
     return true;
   }
 
-  remove(oldPosition: GridCoord): IToken | undefined {
+  remove(oldPosition: IGridCoord): IToken | undefined {
     var f = super.remove(oldPosition);
     if (f === undefined) {
       return undefined;

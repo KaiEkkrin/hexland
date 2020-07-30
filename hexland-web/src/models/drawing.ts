@@ -1,4 +1,4 @@
-import { GridCoord, GridEdge } from '../data/coord';
+import { IGridCoord, IGridEdge, coordAdd, coordsEqual, coordSub } from '../data/coord';
 import { Areas } from './areas';
 import { EdgeHighlighter, FaceHighlighter } from './dragHighlighter';
 import { FeatureColour } from './featureColour';
@@ -83,9 +83,9 @@ export class ThreeDrawing {
   private _edgeHighlighter: EdgeHighlighter;
   private _faceHighlighter: FaceHighlighter;
 
-  private _selectDragStart: GridCoord | undefined;
-  private _tokenMoveDragStart: GridCoord | undefined;
-  private _tokenMoveDragSelectionPosition: GridCoord | undefined;
+  private _selectDragStart: IGridCoord | undefined;
+  private _tokenMoveDragStart: IGridCoord | undefined;
+  private _tokenMoveDragSelectionPosition: IGridCoord | undefined;
 
   constructor(colours: FeatureColour[], mount: HTMLDivElement, textCreator: TextCreator, drawHexes: boolean) {
     this._zoom = 2;
@@ -274,13 +274,13 @@ export class ThreeDrawing {
     this._panLast = cp;
   }
 
-  getGridCoordAt(cp: THREE.Vector2): GridCoord | undefined {
+  getGridCoordAt(cp: THREE.Vector2): IGridCoord | undefined {
     var buf = new Uint8Array(4);
     this._renderer.readRenderTargetPixels(this._faceCoordRenderTarget, cp.x, cp.y, 1, 1, buf);
     return this._gridGeometry?.decodeCoordSample(buf, 0);
   }
 
-  getGridEdgeAt(cp: THREE.Vector2): GridEdge | undefined {
+  getGridEdgeAt(cp: THREE.Vector2): IGridEdge | undefined {
     var buf = new Uint8Array(4);
     this._renderer.readRenderTargetPixels(this._edgeCoordRenderTarget, cp.x, cp.y, 1, 1, buf);
     return this._gridGeometry?.decodeEdgeSample(buf, 0);
@@ -295,16 +295,16 @@ export class ThreeDrawing {
     return this._tokens.at(position);
   }
 
-  private canDropSelectionAt(position: GridCoord) {
+  private canDropSelectionAt(position: IGridCoord) {
     if (this._tokenMoveDragStart === undefined) {
       return false;
     }
 
     // We can't drop a selection at this position if it would overwrite any un-selected
     // tokens:
-    var delta = position.toVector(tileDim).sub(this._tokenMoveDragStart.toVector(tileDim));
+    var delta = coordSub(position, this._tokenMoveDragStart);
     return this._selection.all.reduce((ok, f) => {
-      var moved = f.position.addFace(delta, tileDim);
+      var moved = coordAdd(f.position, delta);
       var alreadyThere = this._tokens.at(moved);
       return (ok && (alreadyThere === undefined || this._selection.at(moved) !== undefined));
     }, true);
@@ -345,15 +345,17 @@ export class ThreeDrawing {
 
     // TODO: Support drag to create a multiple selection.
     var position = this.getGridCoordAt(cp);
-    if (position && !position.equals(this._tokenMoveDragSelectionPosition)) {
+    if (position !== undefined && !coordsEqual(position, this._tokenMoveDragSelectionPosition)) {
       var selectionDrag = this.canDropSelectionAt(position) ? this._selectionDrag :
         this._selectionDragRed;
 
-      var delta = position.toVector(tileDim).sub(this._tokenMoveDragStart.toVector(tileDim));
+      var delta = coordSub(position, this._tokenMoveDragStart);
       this._selectionDrag.clear();
       this._selectionDragRed.clear();
+      console.log("Moving " + this._selection.all.length + " selected positions");
       this._selection.all.forEach(f => {
-        var dragged = { position: f.position.addFace(delta, tileDim), colour: f.colour };
+        var dragged = { position: coordAdd(f.position, delta), colour: f.colour };
+        console.log(f.position.toString() + " -> " + dragged.position.toString());
         selectionDrag.add(dragged);
       });
 
@@ -363,7 +365,7 @@ export class ThreeDrawing {
 
   setToken(cp: THREE.Vector2, colour: number, text: string) {
     var position = this.getGridCoordAt(cp);
-    if (position) {
+    if (position !== undefined) {
       this._tokens.remove(position); // replace any existing token
       if (colour >= 0) {
         this._tokens.add({ position: position, colour: colour, text: text, textMesh: undefined });
@@ -390,7 +392,7 @@ export class ThreeDrawing {
     var position = this.getGridCoordAt(cp);
     if (position) {
       if (this._tokenMoveDragStart !== undefined) {
-        var delta = position.toVector(tileDim).sub(this._tokenMoveDragStart.toVector(tileDim));
+        var delta = coordSub(position, this._tokenMoveDragStart);
         this._selectionDrag.clear();
         this._selectionDragRed.clear();
 
@@ -400,14 +402,14 @@ export class ThreeDrawing {
           this._selection.all.map(t => this._tokens.remove(t.position))
             .forEach(f => {
               if (f !== undefined) {
-                f.position = f.position.addFace(delta, tileDim);
+                f.position = coordAdd(f.position, delta);
                 this._tokens.add(f);
               }
             });
           this._selection.all.map(t => this._selection.remove(t.position))
             .forEach(f => {
               if (f !== undefined) {
-                this._selection.add({ position: f.position.addFace(delta, tileDim), colour: f.colour });
+                this._selection.add({ position: coordAdd(f.position, delta), colour: f.colour });
               }
             });
         }

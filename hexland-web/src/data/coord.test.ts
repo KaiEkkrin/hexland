@@ -1,56 +1,53 @@
-import { GridCoord, GridEdge, CoordDictionary } from "./coord";
-import * as THREE from 'three';
+import { IGridCoord, IGridEdge, CoordDictionary, coordString, coordsEqual, edgeString, edgesEqual, getFace, getTile, createGridCoord, createGridEdge } from "./coord";
 
-test('addFace adds within the tile', () => {
-  var c = new GridCoord(new THREE.Vector2(2, 1), new THREE.Vector2(4, 5));
-  var d = c.addFace(new THREE.Vector2(1, 3), 12);
-  expect(d.tile.x).toBe(2);
-  expect(d.tile.y).toBe(1);
-  expect(d.face.x).toBe(5);
-  expect(d.face.y).toBe(8);
-});
+test('convert to and from grid coords', () => {
+  const tileDim = 12;
+  for (var i = 0; i < 5000; ++i) {
+    var x = Math.floor(Math.random() * 1000) - 500;
+    var y = Math.floor(Math.random() * 1000) - 500;
+    var coord = { x: x, y: y };
+    var tile = getTile(coord, tileDim);
+    var face = getFace(coord, tileDim);
+    var coord2 = createGridCoord(tile, face, tileDim);
 
-test('addFace adds a tile', () => {
-  var c = new GridCoord(new THREE.Vector2(2, 1), new THREE.Vector2(4, 5));
-  var d = c.addFace(new THREE.Vector2(1, 3), 8);
-  expect(d.tile.x).toBe(2);
-  expect(d.tile.y).toBe(2);
-  expect(d.face.x).toBe(5);
-  expect(d.face.y).toBe(0);
-});
+    expect(face.x).toBeGreaterThanOrEqual(0);
+    expect(face.x).toBeLessThan(tileDim);
 
-test('addFace adds a tile and subtracts two', () => {
-  var c = new GridCoord(new THREE.Vector2(2, 1), new THREE.Vector2(4, 5));
-  var d = c.addFace(new THREE.Vector2(-13, 3), 8);
-  expect(d.tile.x).toBe(0);
-  expect(d.tile.y).toBe(2);
-  expect(d.face.x).toBe(7);
-  expect(d.face.y).toBe(0);
-});
+    expect(face.y).toBeGreaterThanOrEqual(0);
+    expect(face.y).toBeLessThan(tileDim);
 
-test('addFace correctly subtracts negatives', () => {
-  var c = new GridCoord(new THREE.Vector2(-2, 0), new THREE.Vector2(4, 5));
-  var d = c.addFace(new THREE.Vector2(-6, -6), 8);
-  expect(d.tile.x).toBe(-3);
-  expect(d.tile.y).toBe(-1);
-  expect(d.face.x).toBe(6);
-  expect(d.face.y).toBe(7);
-});
+    expect(coordsEqual(coord, coord2)).toBeTruthy();
+
+    var e = Math.floor(Math.random() * 3);
+    var edge = { x: x, y: y, edge: e };
+    tile = getTile(edge, tileDim);
+    face = getFace(edge, tileDim);
+    var edge2 = createGridEdge(tile, face, tileDim, e);
+
+    expect(face.x).toBeGreaterThanOrEqual(0);
+    expect(face.x).toBeLessThan(tileDim);
+
+    expect(face.y).toBeGreaterThanOrEqual(0);
+    expect(face.y).toBeLessThan(tileDim);
+
+    expect(edgesEqual(edge, edge2)).toBeTruthy();
+  }
+})
 
 test('grid coord dictionary entries', () => {
-  var dict = new CoordDictionary<GridCoord, number>();
-  var a = new GridCoord(new THREE.Vector2(0, 0), new THREE.Vector2(0, 0));
-  var b = new GridCoord(new THREE.Vector2(0, 0), new THREE.Vector2(0, 1));
-  var c = new GridCoord(new THREE.Vector2(-1, 0), new THREE.Vector2(0, 1));
-  var d = new GridCoord(new THREE.Vector2(-1, 8), new THREE.Vector2(6, 2));
-  var e = new GridCoord(new THREE.Vector2(-1, 9), new THREE.Vector2(6, 2));
+  var dict = new CoordDictionary<IGridCoord, number>(coordString);
+  var a = { x: 0, y: 0 };
+  var b = { x: 0, y: 1 };
+  var c = { x: -8, y: 1 };
+  var d = { x: -2, y: 66 };
+  var e = { x: -2, y: 83 };
 
-  var b2 = new GridCoord(new THREE.Vector2(0, 0), new THREE.Vector2(0, 1));
+  var b2 = { x: 0, y: 1 };
 
   // At the start everything should be empty
   expect(dict.get(a)).toBeUndefined();
 
-  var allKeys: GridCoord[] = [];
+  var allKeys: IGridCoord[] = [];
   var allValues: number[] = [];
   dict.foreach((k, v) => {
     allKeys.push(k);
@@ -90,20 +87,20 @@ test('grid coord dictionary entries', () => {
   expect(allValues).toContain(66);
 
   expect(allKeys.length).toBe(3);
-  expect(allKeys.findIndex(k => k.equals(a))).toBeGreaterThanOrEqual(0);
-  expect(allKeys.findIndex(k => k.equals(b))).toBeGreaterThanOrEqual(0);
-  expect(allKeys.findIndex(k => k.equals(c))).toBeGreaterThanOrEqual(0);
-  expect(allKeys.findIndex(k => k.equals(d))).toBe(-1);
+  expect(allKeys.findIndex(k => coordsEqual(k, a))).toBeGreaterThanOrEqual(0);
+  expect(allKeys.findIndex(k => coordsEqual(k, b))).toBeGreaterThanOrEqual(0);
+  expect(allKeys.findIndex(k => coordsEqual(k, c))).toBeGreaterThanOrEqual(0);
+  expect(allKeys.findIndex(k => coordsEqual(k, d))).toBe(-1);
 });
 
 test('grid edge dictionary entries', () => {
-  var dict = new CoordDictionary<GridEdge, number>();
-  var a = new GridEdge(new GridCoord(new THREE.Vector2(0, 0), new THREE.Vector2(0, 0)), 0);
-  var b = new GridEdge(new GridCoord(new THREE.Vector2(0, 0), new THREE.Vector2(0, 1)), 0);
-  var c = new GridEdge(new GridCoord(new THREE.Vector2(0, 0), new THREE.Vector2(0, 0)), 1);
-  var d = new GridEdge(new GridCoord(new THREE.Vector2(0, 0), new THREE.Vector2(0, 1)), 1);
+  var dict = new CoordDictionary<IGridEdge, number>(edgeString);
+  var a = { x: 0, y: 0, edge: 0 };
+  var b = { x: 0, y: 1, edge: 0 };
+  var c = { x: 0, y: 0, edge: 1 };
+  var d = { x: 0, y: 1, edge: 1 };
   
-  var c2 = new GridEdge(new GridCoord(new THREE.Vector2(0, 0), new THREE.Vector2(0, 0)), 1);
+  var c2 = { x: 0, y: 0, edge: 1 };
 
   dict.set(a, 61);
   dict.set(b, 62);
@@ -114,7 +111,7 @@ test('grid edge dictionary entries', () => {
   expect(dict.get(c2)).toBe(63);
   expect(dict.get(d)).toBeUndefined();
 
-  var allKeys: GridEdge[] = [];
+  var allKeys: IGridEdge[] = [];
   var allValues: number[] = [];
   dict.foreach((k, v) => {
     allKeys.push(k);
@@ -127,8 +124,8 @@ test('grid edge dictionary entries', () => {
   expect(allValues).toContain(63);
 
   expect(allKeys.length).toBe(3);
-  expect(allKeys.findIndex(k => k.equals(a))).toBeGreaterThanOrEqual(0);
-  expect(allKeys.findIndex(k => k.equals(b))).toBeGreaterThanOrEqual(0);
-  expect(allKeys.findIndex(k => k.equals(c))).toBeGreaterThanOrEqual(0);
-  expect(allKeys.findIndex(k => k.equals(d))).toBe(-1);
+  expect(allKeys.findIndex(k => edgesEqual(k, a))).toBeGreaterThanOrEqual(0);
+  expect(allKeys.findIndex(k => edgesEqual(k, b))).toBeGreaterThanOrEqual(0);
+  expect(allKeys.findIndex(k => edgesEqual(k, c))).toBeGreaterThanOrEqual(0);
+  expect(allKeys.findIndex(k => edgesEqual(k, d))).toBe(-1);
 });
