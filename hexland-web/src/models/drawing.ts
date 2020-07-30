@@ -1,7 +1,8 @@
 import { GridCoord, GridEdge } from '../data/coord';
 import { Areas } from './areas';
-import { Grid } from './grid';
+import { EdgeHighlighter, FaceHighlighter } from './dragHighlighter';
 import { FeatureColour } from './featureColour';
+import { Grid } from './grid';
 import { IGridGeometry} from './gridGeometry';
 import { HexGridGeometry } from './hexGridGeometry';
 import { RedrawFlag } from './redrawFlag';
@@ -78,6 +79,9 @@ export class ThreeDrawing {
   private _zoomRotateLast: THREE.Vector2 | undefined;
   private _isRotating: boolean = false;
   private _panLast: THREE.Vector2 | undefined;
+
+  private _edgeHighlighter: EdgeHighlighter;
+  private _faceHighlighter: FaceHighlighter;
 
   private _selectDragStart: GridCoord | undefined;
   private _tokenMoveDragStart: GridCoord | undefined;
@@ -163,6 +167,10 @@ export class ThreeDrawing {
     // The walls
     this._walls = new Walls(this._gridGeometry, this._needsRedraw, wallAlpha, wallZ);
     this._walls.addToScene(this._scene, this._lightColourMaterials);
+
+    // The highlighters
+    this._edgeHighlighter = new EdgeHighlighter(this._walls, this._highlightedWalls);
+    this._faceHighlighter = new FaceHighlighter(this._areas, this._highlightedAreas);
 
     this.animate = this.animate.bind(this);
   }
@@ -306,28 +314,28 @@ export class ThreeDrawing {
     this._selection.clear();
   }
 
-  hideEdgeHighlight() {
-    this._highlightedWalls.clear();
+  edgeDragStart(cp: THREE.Vector2) {
+    this._edgeHighlighter.dragStart(this.getGridEdgeAt(cp));
+  }
+
+  edgeDragEnd(cp: THREE.Vector2, colour: number) {
+    this._edgeHighlighter.dragEnd(this.getGridEdgeAt(cp), colour);
+  }
+
+  faceDragStart(cp: THREE.Vector2) {
+    this._faceHighlighter.dragStart(this.getGridCoordAt(cp));
+  }
+
+  faceDragEnd(cp: THREE.Vector2, colour: number) {
+    this._faceHighlighter.dragEnd(this.getGridCoordAt(cp), colour);
   }
 
   moveEdgeHighlightTo(cp: THREE.Vector2) {
-    this._highlightedWalls.clear();
-    var position = this.getGridEdgeAt(cp);
-    if (position !== undefined) {
-      this._highlightedWalls.add({ position: position, colour: 0 });
-    }
-  }
-
-  hideFaceHighlight() {
-    this._highlightedAreas.clear();
+    this._edgeHighlighter.moveHighlight(this.getGridEdgeAt(cp));
   }
 
   moveFaceHighlightTo(cp: THREE.Vector2) {
-    this._highlightedAreas.clear();
-    var position = this.getGridCoordAt(cp);
-    if (position !== undefined) {
-      this._highlightedAreas.add({ position: position, colour: 0 });
-    }
+    this._faceHighlighter.moveHighlight(this.getGridCoordAt(cp));
   }
 
   moveSelectionTo(cp: THREE.Vector2) {
@@ -353,32 +361,12 @@ export class ThreeDrawing {
     }
   }
 
-  setArea(cp: THREE.Vector2, colour: number) {
-    var position = this.getGridCoordAt(cp);
-    if (position) {
-      this._areas.remove(position);
-      if (colour >= 0) {
-        this._areas.add({ position: position, colour: colour });
-      }
-    }
-  }
-
   setToken(cp: THREE.Vector2, colour: number, text: string) {
     var position = this.getGridCoordAt(cp);
     if (position) {
       this._tokens.remove(position); // replace any existing token
       if (colour >= 0) {
         this._tokens.add({ position: position, colour: colour, text: text, textMesh: undefined });
-      }
-    }
-  }
-
-  setWall(cp: THREE.Vector2, colour: number) {
-    var position = this.getGridEdgeAt(cp);
-    if (position) {
-      this._walls.remove(position);
-      if (colour >= 0) {
-        this._walls.add({ position: position, colour: colour });
       }
     }
   }

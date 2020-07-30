@@ -173,7 +173,6 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
     this._textCreator = new TextCreator();
 
     this.handleMouseDown = this.handleMouseDown.bind(this);
-    this.handleMouseLeave = this.handleMouseLeave.bind(this);
     this.handleMouseMove = this.handleMouseMove.bind(this);
     this.handleMouseUp = this.handleMouseUp.bind(this);
     this.handleTokenEditorClose = this.handleTokenEditorClose.bind(this);
@@ -226,22 +225,17 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
   private handleMouseDown(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     this._mouseIsDown = true;
     var cp = this.getClientPosition(e);
-    if (this.state.editMode === EditMode.Select && cp !== undefined) {
-      this._drawing?.selectionDragStart(cp);
+    if (cp === undefined) {
+      return;
     }
 
-    if (this.state.editMode === EditMode.Pan && cp !== undefined) {
-      this._drawing?.panStart(cp);
+    switch (this.state.editMode) {
+      case EditMode.Select: this._drawing?.selectionDragStart(cp); break;
+      case EditMode.Area: this._drawing?.faceDragStart(cp); break;
+      case EditMode.Wall: this._drawing?.edgeDragStart(cp); break;
+      case EditMode.Pan: this._drawing?.panStart(cp); break;
+      case EditMode.Zoom: this._drawing?.zoomRotateStart(cp, e.shiftKey); break;
     }
-
-    if (this.state.editMode === EditMode.Zoom && cp !== undefined) {
-      this._drawing?.zoomRotateStart(cp, e.shiftKey);
-    }
-  }
-
-  private handleMouseLeave(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-    this._drawing?.hideEdgeHighlight();
-    this._drawing?.hideFaceHighlight();
   }
 
   private handleMouseMove(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
@@ -250,34 +244,12 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
       return;
     }
 
-    if (this.state.editMode === EditMode.Select) {
-      this._drawing?.moveSelectionTo(cp);
-    }
-
-    if (this.state.editMode === EditMode.Area) {
-      this._drawing?.moveFaceHighlightTo(cp);
-      if (this._mouseIsDown === true) {
-        this._drawing?.setArea(cp, this.state.selectedColour);
-      }
-    } else {
-      this._drawing?.hideFaceHighlight();
-    }
-
-    if (this.state.editMode === EditMode.Wall) {
-      this._drawing?.moveEdgeHighlightTo(cp);
-      if (this._mouseIsDown === true) {
-        this._drawing?.setWall(cp, this.state.selectedColour);
-      }
-    } else {
-      this._drawing?.hideEdgeHighlight();
-    }
-
-    if (this.state.editMode === EditMode.Pan) {
-      this._drawing?.panTo(cp);
-    }
-
-    if (this.state.editMode === EditMode.Zoom) {
-      this._drawing?.zoomRotateTo(cp);
+    switch (this.state.editMode) {
+      case EditMode.Select: this._drawing?.moveSelectionTo(cp); break;
+      case EditMode.Area: this._drawing?.moveFaceHighlightTo(cp); break;
+      case EditMode.Wall: this._drawing?.moveEdgeHighlightTo(cp); break;
+      case EditMode.Pan: this._drawing?.panTo(cp); break;
+      case EditMode.Zoom: this._drawing?.zoomRotateTo(cp); break;
     }
   }
 
@@ -285,22 +257,37 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
     this.handleMouseMove(e);
     this._mouseIsDown = false;
     var cp = this.getClientPosition(e);
-    if (this.state.editMode === EditMode.Select && cp !== undefined) {
-      this._drawing?.selectionDragEnd(cp, e.shiftKey);
-    } else if (this.state.editMode === EditMode.Token && cp !== undefined) {
-      // Show the token dialog now.  We'll create the token upon close of
-      // the dialog.
-      var token = this._drawing?.getToken(cp);
-      this.setState({
-        showTokenEditor: true,
-        contextualColour: Math.max(0, token?.colour ?? this.state.selectedColour),
-        contextualPosition: cp,
-        contextualText: token?.text ?? "",
-      });
-    } else if (this.state.editMode === EditMode.Pan) {
-      this._drawing?.panEnd();
-    } else if (this.state.editMode === EditMode.Zoom) {
-      this._drawing?.zoomRotateEnd();
+    if (cp === undefined) {
+      return;
+    }
+
+    switch (this.state.editMode) {
+      case EditMode.Select:
+        this._drawing?.selectionDragEnd(cp, e.shiftKey);
+        break;
+
+      case EditMode.Token:
+        // Show the token dialog now.  We'll create the token upon close of
+        // the dialog.
+        var token = this._drawing?.getToken(cp);
+        this.setState({
+          showTokenEditor: true,
+          contextualColour: Math.max(0, token?.colour ?? this.state.selectedColour),
+          contextualPosition: cp,
+          contextualText: token?.text ?? "",
+        });
+        break;
+
+      case EditMode.Area:
+        this._drawing?.faceDragEnd(cp, this.state.selectedColour);
+        break;
+
+      case EditMode.Wall:
+        this._drawing?.edgeDragEnd(cp, this.state.selectedColour);
+        break;
+
+      case EditMode.Pan: this._drawing?.panEnd(); break;
+      case EditMode.Zoom: this._drawing?.zoomRotateEnd(); break;
     }
   }
 
@@ -358,8 +345,6 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
           <div className="Map-content">
             <div id="drawingDiv" ref={this._mount}
               onMouseDown={this.handleMouseDown}
-              onMouseEnter={this.handleMouseMove}
-              onMouseLeave={this.handleMouseLeave}
               onMouseMove={this.handleMouseMove}
               onMouseUp={this.handleMouseUp} />
           </div>
