@@ -5,16 +5,13 @@ import { RedrawFlag } from './redrawFlag';
 
 import * as THREE from 'three';
 
-const alpha = 0.15;
-const wallZ = 0.6;
-
 // The "walls" are the edges of the map that are coloured in one of our
 // known colours.
 export class Walls extends InstancedFeatures<GridEdge, IFeature<GridEdge>> {
   private readonly _bufferGeometry: THREE.BufferGeometry;
 
-  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag) {
-    super(geometry, redrawFlag, 1000);
+  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, alpha: number, wallZ: number, maxInstances?: number | undefined) {
+    super(geometry, redrawFlag, maxInstances);
 
     var single = this.geometry.toSingle();
     var vertices = single.createWallVertices(alpha, wallZ);

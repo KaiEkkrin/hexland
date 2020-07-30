@@ -6,10 +6,6 @@ import { TextCreator } from './textCreator';
 
 import * as THREE from 'three';
 
-const alpha = 0.7;
-const tokenZ = 0.6;
-const textZ = 1.1; // TODO for some reason the text doesn't alpha blend properly with the selection
-
 // A token has some extra properties:
 export interface IToken extends IFeature<GridCoord> {
   text: string;
@@ -22,8 +18,17 @@ export class Tokens extends InstancedFeatures<GridCoord, IToken> {
   private readonly _bufferGeometry: THREE.BufferGeometry;
   private readonly _textCreator: TextCreator;
   private readonly _textMaterial: THREE.Material;
+  private readonly _textZ: number;
 
-  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, textCreator: TextCreator, textMaterial: THREE.Material) {
+  constructor(
+    geometry: IGridGeometry,
+    redrawFlag: RedrawFlag,
+    textCreator: TextCreator,
+    textMaterial: THREE.Material,
+    alpha: number,
+    tokenZ: number,
+    textZ: number
+  ) {
     super(geometry, redrawFlag, 1000);
 
     // TODO Make them look more exciting than just a smaller, brighter face.
@@ -37,6 +42,7 @@ export class Tokens extends InstancedFeatures<GridCoord, IToken> {
 
     this._textCreator = textCreator;
     this._textMaterial = textMaterial;
+    this._textZ = textZ;
   }
 
   protected createMesh(m: THREE.Material, maxInstances: number): THREE.InstancedMesh {
@@ -75,7 +81,7 @@ export class Tokens extends InstancedFeatures<GridCoord, IToken> {
         f.text,
         this.geometry.faceSize() * 0.15,
         this._textMaterial,
-        new THREE.Vector3(0, 0, textZ)
+        new THREE.Vector3(0, 0, this._textZ)
       );
     }
 

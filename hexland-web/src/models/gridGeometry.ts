@@ -5,14 +5,6 @@ import * as THREE from 'three';
 // A grid geometry describes a grid's layout (currently either squares
 // or hexagons.)
 export interface IGridGeometry {
-  // Creates the buffer involved in drawing a highlighted edge.
-  // (It will start off-screen.)
-  createEdgeHighlight(): THREE.BufferGeometry;
-
-  // Creates the buffer involved in drawing a highlighted face.
-  // (It will start off-screen.)
-  createFaceHighlight(): THREE.BufferGeometry;
-
   // Creates the vertices involved in drawing a full grid tile.
   createGridVertices(tile: THREE.Vector2, z: number): THREE.Vector3[];
 
@@ -154,34 +146,6 @@ export abstract class BaseGeometry {
     vertices.push(eg.bevel2a);
   }
 
-  private pushEdgeIndices(indices: number[], baseIndex: number) {
-    indices.push(baseIndex);
-    indices.push(baseIndex + 2);
-    indices.push(baseIndex + 1);
-    indices.push(-1);
-
-    indices.push(baseIndex + 1);
-    indices.push(baseIndex + 2);
-    indices.push(baseIndex + 3);
-    indices.push(-1);
-
-    indices.push(baseIndex + 3);
-    indices.push(baseIndex + 2);
-    indices.push(baseIndex + 4);
-    indices.push(-1);
-
-    indices.push(baseIndex + 3);
-    indices.push(baseIndex + 4);
-    indices.push(baseIndex + 5);
-    indices.push(-1);
-  }
-
-  private createEdgeHighlightIndices(): number[] {
-    var indices: number[] = [];
-    this.pushEdgeIndices(indices, 0);
-    return indices;
-  }
-
   private fromPackedXYAbs(sample: Uint8Array, offset: number): THREE.Vector2 {
     const absValue = Math.floor(sample[offset] * this._tileDim * this._tileDim / 255.0);
     return new THREE.Vector2(absValue % this._tileDim, Math.floor(absValue / this._tileDim));
@@ -218,14 +182,6 @@ export abstract class BaseGeometry {
       4 * edge +
       4 * this._maxEdge; // this value mixed in so that a 0 sign-and-edge value can be identified as "nothing"
     colours[offset + 1] = this._epsilon + packedSignAndEdge / (8.0 * this._maxEdge);
-  }
-
-  createEdgeHighlight(): THREE.BufferGeometry {
-    var buf = new THREE.BufferGeometry();
-    buf.setAttribute('position', new THREE.BufferAttribute(new Float32Array(18), 3));
-    buf.setIndex(this.createEdgeHighlightIndices());
-    buf.setDrawRange(0, 0); // starts hidden
-    return buf;
   }
 
   createSolidEdgeVertices(tile: THREE.Vector2, alpha: number, z: number): THREE.Vector3[] {

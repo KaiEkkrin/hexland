@@ -108,20 +108,6 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     return (y + 1) * (this.tileDim + 1) * 2 + x * 2 + v;
   }
 
-  private createFaceHighlightIndices(): number[] {
-    var indices: number[] = [];
-    this.pushHexIndices(indices, 0);
-    return indices;
-  }
-
-  createFaceHighlight(): THREE.BufferGeometry {
-    var buf = new THREE.BufferGeometry();
-    buf.setAttribute('position', new THREE.BufferAttribute(new Float32Array(21), 3));
-    buf.setIndex(this.createFaceHighlightIndices());
-    buf.setDrawRange(0, 0); // starts hidden
-    return buf;
-  }
-
   createGridVertices(tile: THREE.Vector2, z: number): THREE.Vector3[] {
     var vertices = [];
 

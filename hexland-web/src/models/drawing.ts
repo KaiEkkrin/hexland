@@ -4,9 +4,7 @@ import { Grid } from './grid';
 import { FeatureColour } from './featureColour';
 import { IGridGeometry} from './gridGeometry';
 import { HexGridGeometry } from './hexGridGeometry';
-import { FaceHighlight, EdgeHighlight } from './highlight';
 import { RedrawFlag } from './redrawFlag';
-import { Selection } from './selection';
 import { SquareGridGeometry } from './squareGridGeometry';
 import { TextCreator } from './textCreator';
 import { IToken, Tokens } from './tokens';
@@ -14,7 +12,20 @@ import { Walls } from './walls';
 
 import * as THREE from 'three';
 
+const areaZ = 0.5;
+const tokenZ = 0.6;
+const wallZ = 0.6;
+const selectionZ = 1.0;
+const highlightZ = 1.1;
+const textZ = 1.5; // for some reason the text doesn't alpha blend correctly; putting it
+                   // on top seems to look fine
+
+const wallAlpha = 0.15;
 const edgeAlpha = 0.5;
+const tokenAlpha = 0.7;
+const selectionAlpha = 0.9;
+const areaAlpha = 1.0;
+
 const spacing = 75.0;
 const tileDim = 12;
 
@@ -38,12 +49,12 @@ export class ThreeDrawing {
   private readonly _edgeCoordScene: THREE.Scene;
 
   private readonly _grid: Grid;
-  private readonly _edgeHighlight: EdgeHighlight;
-  private readonly _faceHighlight: FaceHighlight;
   private readonly _areas: Areas;
-  private readonly _selection: Selection;
-  private readonly _selectionDrag: Selection; // a copy of the selection shown only while dragging it
-  private readonly _selectionDragRed: Selection; // likewise, but shown if the selection couldn't be dropped there
+  private readonly _highlightedAreas: Areas;
+  private readonly _highlightedWalls: Walls;
+  private readonly _selection: Areas;
+  private readonly _selectionDrag: Areas; // a copy of the selection shown only while dragging it
+  private readonly _selectionDragRed: Areas; // likewise, but shown if the selection couldn't be dropped there
   private readonly _tokens: Tokens;
   private readonly _walls: Walls;
 
@@ -111,44 +122,46 @@ export class ThreeDrawing {
     this._edgeCoordRenderTarget = new THREE.WebGLRenderTarget(this._renderWidth, this._renderHeight);
     this._grid.addEdgeColoursToScene(this._edgeCoordScene, 0, 0, 1);
 
-    // The edge highlight
-    this._edgeHighlight = new EdgeHighlight(this._gridGeometry, this._needsRedraw, edgeAlpha);
-    this._edgeHighlight.addToScene(this._scene);
-
-    // The face highlight
-    this._faceHighlight = new FaceHighlight(this._gridGeometry, this._needsRedraw);
-    this._faceHighlight.addToScene(this._scene);
-
     this._darkColourMaterials = colours.map(c => new THREE.MeshBasicMaterial({ color: c.dark.getHex() }));
     this._lightColourMaterials = colours.map(c => new THREE.MeshBasicMaterial({ color: c.light.getHex() }));
-    this._selectionMaterials = colours.map(c => new THREE.MeshBasicMaterial({
+    this._selectionMaterials = [new THREE.MeshBasicMaterial({
       blending: THREE.AdditiveBlending,
       color: 0x606060,
-    }));
-    this._invalidSelectionMaterials = colours.map(c => new THREE.MeshBasicMaterial({
+    })];
+    this._invalidSelectionMaterials = [new THREE.MeshBasicMaterial({
       blending: THREE.AdditiveBlending,
       color: 0x600000,
-    }));
+    })];
     this._textMaterial = new THREE.MeshBasicMaterial({ color: 0, side: THREE.DoubleSide });
 
     // The filled areas
-    this._areas = new Areas(this._gridGeometry, this._needsRedraw);
+    this._areas = new Areas(this._gridGeometry, this._needsRedraw, areaAlpha, areaZ);
     this._areas.addToScene(this._scene, this._darkColourMaterials);
 
+    // The highlighted areas
+    // (TODO does this need to be a different feature set from the selection?)
+    this._highlightedAreas = new Areas(this._gridGeometry, this._needsRedraw, areaAlpha, highlightZ, 100);
+    this._highlightedAreas.addToScene(this._scene, this._selectionMaterials);
+
+    // The highlighted walls
+    this._highlightedWalls = new Walls(this._gridGeometry, this._needsRedraw, edgeAlpha, highlightZ, 100);
+    this._highlightedWalls.addToScene(this._scene, this._selectionMaterials);
+
     // The selection
-    this._selection = new Selection(this._gridGeometry, this._needsRedraw);
+    this._selection = new Areas(this._gridGeometry, this._needsRedraw, selectionAlpha, selectionZ, 100);
     this._selection.addToScene(this._scene, this._selectionMaterials);
-    this._selectionDrag = new Selection(this._gridGeometry, this._needsRedraw);
+    this._selectionDrag = new Areas(this._gridGeometry, this._needsRedraw, selectionAlpha, selectionZ, 100);
     this._selectionDrag.addToScene(this._scene, this._selectionMaterials);
-    this._selectionDragRed = new Selection(this._gridGeometry, this._needsRedraw);
+    this._selectionDragRed = new Areas(this._gridGeometry, this._needsRedraw, selectionAlpha, selectionZ, 100);
     this._selectionDragRed.addToScene(this._scene, this._invalidSelectionMaterials);
 
     // The tokens
-    this._tokens = new Tokens(this._gridGeometry, this._needsRedraw, textCreator, this._textMaterial);
+    this._tokens = new Tokens(this._gridGeometry, this._needsRedraw, textCreator, this._textMaterial,
+      tokenAlpha, tokenZ, textZ);
     this._tokens.addToScene(this._scene, this._lightColourMaterials);
 
     // The walls
-    this._walls = new Walls(this._gridGeometry, this._needsRedraw);
+    this._walls = new Walls(this._gridGeometry, this._needsRedraw, wallAlpha, wallZ);
     this._walls.addToScene(this._scene, this._lightColourMaterials);
 
     this.animate = this.animate.bind(this);
@@ -294,21 +307,27 @@ export class ThreeDrawing {
   }
 
   hideEdgeHighlight() {
-    this._edgeHighlight.move(undefined);
+    this._highlightedWalls.clear();
   }
 
   moveEdgeHighlightTo(cp: THREE.Vector2) {
+    this._highlightedWalls.clear();
     var position = this.getGridEdgeAt(cp);
-    this._edgeHighlight.move(position);
+    if (position !== undefined) {
+      this._highlightedWalls.add({ position: position, colour: 0 });
+    }
   }
 
   hideFaceHighlight() {
-    this._faceHighlight.move(undefined);
+    this._highlightedAreas.clear();
   }
 
   moveFaceHighlightTo(cp: THREE.Vector2) {
+    this._highlightedAreas.clear();
     var position = this.getGridCoordAt(cp);
-    this._faceHighlight.move(position);
+    if (position !== undefined) {
+      this._highlightedAreas.add({ position: position, colour: 0 });
+    }
   }
 
   moveSelectionTo(cp: THREE.Vector2) {

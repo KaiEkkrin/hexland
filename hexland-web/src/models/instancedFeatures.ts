@@ -30,9 +30,9 @@ export abstract class InstancedFeatures<K extends GridCoord, F extends IFeature<
   // We keep hold of the scene so that things can be added and removed later:
   private _scene: THREE.Scene | undefined;
 
-  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, maxInstances: number) {
+  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, maxInstances?: number | undefined) {
     super(geometry, redrawFlag);
-    this._maxInstances = maxInstances;
+    this._maxInstances = maxInstances ?? 1000;
     this._features = new CoordDictionary<K, F>();
     this._indexes = new CoordDictionary<K, number>();
     this._meshes = [];

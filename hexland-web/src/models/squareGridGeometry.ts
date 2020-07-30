@@ -58,20 +58,6 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     indices.push(-1);
   }
 
-  private createFaceHighlightIndices(): number[] {
-    var indices: number[] = [];
-    this.pushSquareIndices(indices, 0);
-    return indices;
-  }
-
-  createFaceHighlight(): THREE.BufferGeometry {
-    var buf = new THREE.BufferGeometry();
-    buf.setAttribute('position', new THREE.BufferAttribute(new Float32Array(12), 3));
-    buf.setIndex(this.createFaceHighlightIndices());
-    buf.setDrawRange(0, 0); // starts hidden
-    return buf;
-  }
-
   createGridVertices(tile: THREE.Vector2, z: number): THREE.Vector3[] {
     var vertices = [];
     for (var y = 0; y <= this.tileDim; ++y) {

@@ -5,18 +5,16 @@ import { RedrawFlag } from './redrawFlag';
 
 import * as THREE from 'three';
 
-const areaZ = 0.5;
-
 // The "areas" are the faces of the map that are coloured in one of our
 // known colours.
 export class Areas extends InstancedFeatures<GridCoord, IFeature<GridCoord>> {
   private readonly _bufferGeometry: THREE.BufferGeometry;
 
-  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag) {
-    super(geometry, redrawFlag, 1000);
+  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, alpha: number, areaZ: number, maxInstances?: number | undefined) {
+    super(geometry, redrawFlag, maxInstances);
 
     var single = this.geometry.toSingle();
-    var vertices = single.createSolidVertices(new THREE.Vector2(0, 0), 1.0, areaZ);
+    var vertices = single.createSolidVertices(new THREE.Vector2(0, 0), alpha, areaZ);
     var indices = single.createSolidMeshIndices();
 
     this._bufferGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
