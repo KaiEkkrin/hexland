@@ -2,6 +2,7 @@ import React from 'react';
 import './App.css';
 
 import AdventureCards from './AdventureCards';
+import AdventureModal from './AdventureModal';
 import { AppContext, AppState } from './App';
 import Navigation from './Navigation';
 
@@ -14,8 +15,6 @@ import { IDataService } from './services/interfaces';
 import Button from 'react-bootstrap/Button';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
-import Form from 'react-bootstrap/Form';
-import Modal from 'react-bootstrap/Modal';
 import Row from 'react-bootstrap/Row';
 
 import { RouteComponentProps } from 'react-router-dom';
@@ -42,15 +41,9 @@ class All extends React.Component<IAllProps, AllState> {
     super(props);
     this.state = new AllState();
 
-    this.isModalSaveDisabled = this.isModalSaveDisabled.bind(this);
     this.handleNewAdventureClick = this.handleNewAdventureClick.bind(this);
     this.handleEditAdventureClick = this.handleEditAdventureClick.bind(this);
-    this.handleEditAdventureClose = this.handleEditAdventureClose.bind(this);
     this.handleEditAdventureSave = this.handleEditAdventureSave.bind(this);
-  }
-
-  private isModalSaveDisabled() {
-    return this.state.editName.length === 0;
   }
 
   private handleNewAdventureClick() {
@@ -66,12 +59,8 @@ class All extends React.Component<IAllProps, AllState> {
     this.setState({ editId: id, editName: adventure.name, editDescription: adventure.description, showEditAdventure: true });
   }
 
-  private handleEditAdventureClose() {
-    this.setState({ showEditAdventure: false });
-  }
-
   private handleEditAdventureSave() {
-    this.handleEditAdventureClose();
+    this.setState({ showEditAdventure: false });
 
     var uid = this.props.dataService?.getUid();
     if (uid === undefined) {
@@ -137,32 +126,13 @@ class All extends React.Component<IAllProps, AllState> {
             </Col>
           </Row>
         </Container>
-        <Modal show={this.state.showEditAdventure} onHide={this.handleEditAdventureClose}>
-          <Modal.Header closeButton>
-            <Modal.Title>New adventure</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <Form>
-              <Form.Group>
-                <Form.Label>Name</Form.Label>
-                <Form.Control type="text" maxLength={30} value={this.state.editName}
-                  onChange={e => this.setState({ editName: e.target.value })} />
-              </Form.Group>
-              <Form.Group>
-                <Form.Label>Description</Form.Label>
-                <Form.Control as="textarea" rows={5} maxLength={300} value={this.state.editDescription}
-                  onChange={e => this.setState({ editDescription: e.target.value })} />
-              </Form.Group>
-            </Form>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={this.handleEditAdventureClose}>Close</Button>
-            <Button variant="primary" disabled={this.isModalSaveDisabled()}
-              onClick={this.handleEditAdventureSave}>
-              Save
-            </Button>
-          </Modal.Footer>
-        </Modal>
+        <AdventureModal getDescription={() => this.state.editDescription}
+          getName={() => this.state.editName}
+          getShow={() => this.state.showEditAdventure}
+          handleClose={() => this.setState({ showEditAdventure: false })}
+          handleSave={this.handleEditAdventureSave}
+          setDescription={(value: string) => this.setState({ editDescription: value })}
+          setName={(value: string) => this.setState({ editName: value })} />
       </div>
     );
   }
