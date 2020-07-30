@@ -14,7 +14,7 @@ function Login() {
     <AppContext.Consumer>
       {(context: AppState) => context.user !== null ? <Redirect to="/" /> : (
         <div>
-          <Navigation />
+          <Navigation getTitle={() => undefined} />
           <header className="App-header">
             <Button onClick={() => auth.signInWithPopup(googleAuthProvider)}>
               Sign in with Google

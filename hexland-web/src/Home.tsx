@@ -38,7 +38,7 @@ interface IHomePageProps {}
 function HomePage(props: IHomePageProps) {
   return (
     <div>
-      <Navigation />
+      <Navigation getTitle={() => undefined} />
       <AppContext.Consumer>
         {(context: AppState) => context.user === null ? <div></div> : (
           <Home profile={context.profile} />

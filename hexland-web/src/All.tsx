@@ -123,7 +123,7 @@ class All extends React.Component<IAllProps, AllState> {
   render() {
     return (
       <div>
-        <Navigation />
+        <Navigation getTitle={() => undefined}/>
         <Container>
           <Row className="mt-4">
             <Col>

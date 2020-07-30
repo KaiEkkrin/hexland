@@ -372,7 +372,7 @@ class Map extends React.Component<IMapProps, MapState> {
   render() {
     return (
       <div className="Map-container">
-        <Navigation />
+        <Navigation getTitle={() => this.state.record?.name} />
         <div className="Map-main">
           <MapControls colours={this.hexColours}
             getEditMode={() => this.state.editMode}

@@ -165,7 +165,7 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
   render() {
     return (
       <div>
-        <Navigation />
+        <Navigation getTitle={() => this.state.adventure?.name} />
         <Container>
           {this.state.adventure !== undefined ?
             <Row className="mt-4">
