@@ -16,23 +16,47 @@ import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
+import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import ToggleButton from 'react-bootstrap/ToggleButton';
+import Tooltip from 'react-bootstrap/Tooltip';
 
 import { RouteComponentProps } from 'react-router-dom';
 
-import { faDotCircle, faDrawPolygon, faHandPaper, faMousePointer, faPlus, faSearch, faSquare } from '@fortawesome/free-solid-svg-icons';
+import { faDotCircle, faDrawPolygon, faHandPaper, faMousePointer, faPlus, faSearch, faSquare, IconDefinition } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import * as THREE from 'three';
 import { registerMapAsRecent } from './services/extensions';
 
 enum EditMode {
-  Select = 1,
-  Token = 2,
-  Area = 3,
-  Wall = 4,
-  Pan = 5,
-  Zoom = 6,
+  Select = "select",
+  Token = "token",
+  Area = "area",
+  Wall = "wall",
+  Pan = "pan",
+  Zoom = "zoom",
+}
+
+interface IEditModeButtonProps {
+  mode: EditMode;
+  icon: IconDefinition;
+  tooltip: string;
+  getEditMode(): EditMode;
+  setEditMode(value: EditMode): void;
+}
+
+function EditModeButton(props: IEditModeButtonProps) {
+  return (
+    <OverlayTrigger key={props.mode} placement="right" overlay={
+      <Tooltip id={props.mode + "-tooltip"}>{props.tooltip}</Tooltip>
+    }>
+      <ToggleButton type="radio" variant="dark" key={props.mode} value={props.mode}
+        checked={props.getEditMode() === props.mode}
+        onChange={(e) => props.setEditMode(props.mode)}>
+        <FontAwesomeIcon icon={props.icon} color="white" />
+      </ToggleButton>
+    </OverlayTrigger>
+  );
 }
 
 interface INegativeColourProps {
@@ -93,47 +117,27 @@ function MapControls(props: IMapControlsProps) {
   return (
     <div className="Map-controls bg-dark">
       <ButtonGroup className="mb-2" toggle vertical>
-        <ToggleButton type="radio" variant="dark" key={EditMode.Select}
-          value={EditMode.Select}
-          checked={props.getEditMode() === EditMode.Select}
-          onChange={(e) => props.setEditMode(EditMode.Select)}>
-          <FontAwesomeIcon icon={faMousePointer} color="white" />
-        </ToggleButton>
-        <ToggleButton type="radio" variant="dark" key={EditMode.Token}
-          value={EditMode.Token}
-          checked={props.getEditMode() === EditMode.Token}
-          onChange={(e) => props.setEditMode(EditMode.Token)}>
-          <FontAwesomeIcon icon={faPlus} color="white" />
-        </ToggleButton>
-        <ToggleButton type="radio" variant="dark" key={EditMode.Area}
-          value={EditMode.Token}
-          checked={props.getEditMode() === EditMode.Area}
-          onChange={(e) => props.setEditMode(EditMode.Area)}>
-          <FontAwesomeIcon icon={faSquare} color="white" />
-        </ToggleButton>
-        <ToggleButton type="radio" variant="dark" key={EditMode.Wall}
-          value={EditMode.Wall}
-          checked={props.getEditMode() === EditMode.Wall}
-          onChange={(e) => props.setEditMode(EditMode.Wall)}>
-          <FontAwesomeIcon icon={faDrawPolygon} color="white" />
-        </ToggleButton>
-        <ToggleButton type="radio" variant="dark" key={EditMode.Pan}
-          value={EditMode.Pan}
-          checked={props.getEditMode() === EditMode.Pan}
-          onChange={(e) => props.setEditMode(EditMode.Pan)}>
-          <FontAwesomeIcon icon={faHandPaper} color="white" />
-        </ToggleButton>
-        <ToggleButton type="radio" variant="dark" key={EditMode.Zoom}
-          value={EditMode.Zoom}
-          checked={props.getEditMode() === EditMode.Zoom}
-          onChange={(e) => props.setEditMode(EditMode.Zoom)}>
-          <FontAwesomeIcon icon={faSearch} color="white" />
-        </ToggleButton>
+        <EditModeButton mode={EditMode.Select} icon={faMousePointer} tooltip="Select and move tokens"
+          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
+        <EditModeButton mode={EditMode.Token} icon={faPlus} tooltip="Add and edit tokens"
+          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
+        <EditModeButton mode={EditMode.Area} icon={faSquare} tooltip="Paint areas"
+          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
+        <EditModeButton mode={EditMode.Wall} icon={faDrawPolygon} tooltip="Paint walls"
+          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
+        <EditModeButton mode={EditMode.Pan} icon={faHandPaper} tooltip="Pan the map view"
+          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
+        <EditModeButton mode={EditMode.Zoom} icon={faSearch} tooltip="Zoom the map view, or Shift-click to rotate"
+          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
       </ButtonGroup>
       <ButtonGroup className="mb-2">
-        <Button variant="dark" onClick={() => props.resetView()}>
-          <FontAwesomeIcon icon={faDotCircle} color="white" />
-        </Button>
+        <OverlayTrigger placement="right" overlay={
+          <Tooltip id="reset-tooltip">Reset the map view</Tooltip>
+        }>
+          <Button variant="dark" onClick={() => props.resetView()}>
+            <FontAwesomeIcon icon={faDotCircle} color="white" />
+          </Button>
+        </OverlayTrigger>
       </ButtonGroup>
       <ColourSelection colours={props.colours}
         includeNegative={true}
