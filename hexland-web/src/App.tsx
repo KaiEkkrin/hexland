@@ -9,7 +9,7 @@ import Adventure from './Adventure';
 import AllPage from './All';
 import HomePage from './Home';
 import Login from './Login';
-import Map from './Map';
+import MapPage from './Map';
 
 import { BrowserRouter, Route, Switch } from 'react-router-dom';
 import { IDataService } from './services/interfaces';
@@ -21,8 +21,6 @@ export class AppState {
   dataService: IDataService | undefined = undefined;
   profile: IProfile | undefined = undefined;
 }
-
-// TODO add-recent-map too
 
 export const AppContext = React.createContext(new AppState());
 
@@ -81,7 +79,7 @@ class App extends React.Component<IAppProps, AppState> {
               <Route exact path="/all" component={AllPage} />
               <Route path="/adventure/:adventureId" component={Adventure} />
               <Route path="/login" component={Login} />
-              <Route path="/map/:geometry" component={Map} />
+              <Route path="/map/:mapId" component={MapPage} />
             </Switch>
           </BrowserRouter>
         </AppContext.Provider>

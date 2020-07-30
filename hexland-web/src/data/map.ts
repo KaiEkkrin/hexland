@@ -1,3 +1,6 @@
+import { IGridCoord, IGridEdge } from "./coord";
+import { IFeature, IToken } from "./feature";
+
 export enum MapType {
   Hex = "hex",
   Square = "square",
@@ -9,5 +12,7 @@ export interface IMap {
   owner: string; // owning uid
   ty: MapType;
 
-  // TODO Enumerated contents here!
+  areas: IFeature<IGridCoord>[];
+  tokens: IToken[];
+  walls: IFeature<IGridEdge>[];
 }

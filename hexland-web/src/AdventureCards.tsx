@@ -6,6 +6,7 @@ import { IAdventureSummary } from './data/profile';
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
 import CardDeck from 'react-bootstrap/CardDeck';
+import { LinkContainer } from 'react-router-bootstrap';
 
 interface IAdventureCardsProps {
   adventures: IAdventureSummary[];
@@ -22,7 +23,9 @@ function AdventureCards(props: IAdventureCardsProps) {
             <Card.Text>{v.description}</Card.Text>
           </Card.Body>
           <Card.Footer>
-            <Card.Link href={"/adventure/" + v.id}>Open</Card.Link>
+            <LinkContainer to={"/adventure/" + v.id}>
+              <Card.Link>Open</Card.Link>
+            </LinkContainer>
           </Card.Footer>
           {props.editAdventure === undefined ? <div></div> :
             <Button variant="primary" onClick={() => props.editAdventure?.(v.id)}>Edit</Button>

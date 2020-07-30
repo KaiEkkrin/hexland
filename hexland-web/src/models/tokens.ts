@@ -1,20 +1,21 @@
 import { IGridCoord, coordString } from '../data/coord';
+import { IToken } from '../data/feature';
 import { IGridGeometry } from "./gridGeometry";
-import { IFeature, InstancedFeatures } from './instancedFeatures';
+import { InstancedFeatures } from './instancedFeatures';
 import { RedrawFlag } from './redrawFlag';
 import { TextCreator } from './textCreator';
 
 import * as THREE from 'three';
 
-// A token has some extra properties:
-export interface IToken extends IFeature<IGridCoord> {
-  text: string;
+// We store text meshes along with our tokens so that they can be propagated
+// upon token move rather than re-created:
+export interface IInstancedToken extends IToken {
   textMesh: THREE.Mesh | undefined; // so that a mesh already created can be re-used
 }
 
 // The "tokens" are moveable objects that occupy a face of the map.
 // This object also manages the selection of tokens.
-export class Tokens extends InstancedFeatures<IGridCoord, IToken> {
+export class Tokens extends InstancedFeatures<IGridCoord, IInstancedToken> {
   private readonly _bufferGeometry: THREE.BufferGeometry;
   private readonly _textCreator: TextCreator;
   private readonly _textMaterial: THREE.Material;
@@ -70,7 +71,7 @@ export class Tokens extends InstancedFeatures<IGridCoord, IToken> {
     return true;
   }
 
-  add(f: IToken): boolean {
+  add(f: IInstancedToken): boolean {
     if (!super.add(f)) {
       return false;
     }
@@ -95,7 +96,7 @@ export class Tokens extends InstancedFeatures<IGridCoord, IToken> {
     return true;
   }
 
-  remove(oldPosition: IGridCoord): IToken | undefined {
+  remove(oldPosition: IGridCoord): IInstancedToken | undefined {
     var f = super.remove(oldPosition);
     if (f === undefined) {
       return undefined;

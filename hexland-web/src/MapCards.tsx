@@ -7,6 +7,7 @@ import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import Card from 'react-bootstrap/Card';
 import CardDeck from 'react-bootstrap/CardDeck';
+import { LinkContainer } from 'react-router-bootstrap';
 
 export interface IMapCardsProps {
   maps: IMapSummary[];
@@ -24,6 +25,11 @@ function MapCards(props: IMapCardsProps) {
             <Card.Subtitle className="text-muted">{v.ty as string} map</Card.Subtitle>
             <Card.Text>{v.description}</Card.Text>
           </Card.Body>
+          <Card.Footer>
+            <LinkContainer to={"/map/" + v.id}>
+              <Card.Link>Open</Card.Link>
+            </LinkContainer>
+          </Card.Footer>
           <ButtonGroup>
             {props.editMap === undefined ? <div></div> :
               <Button variant="primary" onClick={() => props.editMap?.(v)}>Edit</Button>

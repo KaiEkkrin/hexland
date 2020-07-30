@@ -1,4 +1,5 @@
 import { IGridCoord, IGridEdge, coordAdd, coordsEqual, coordSub } from '../data/coord';
+import { IToken } from '../data/feature';
 import { Areas } from './areas';
 import { EdgeHighlighter, FaceHighlighter } from './dragHighlighter';
 import { FeatureColour } from './featureColour';
@@ -8,10 +9,11 @@ import { HexGridGeometry } from './hexGridGeometry';
 import { RedrawFlag } from './redrawFlag';
 import { SquareGridGeometry } from './squareGridGeometry';
 import { TextCreator } from './textCreator';
-import { IToken, Tokens } from './tokens';
+import { IInstancedToken, Tokens } from './tokens';
 import { Walls } from './walls';
 
 import * as THREE from 'three';
+import { IMap } from '../data/map';
 
 const areaZ = 0.5;
 const tokenZ = 0.6;
@@ -198,6 +200,41 @@ export class ThreeDrawing {
 
       this._renderer.setRenderTarget(null);
     }
+  }
+
+  loadFeatures(record: IMap) {
+    // We clear out everything currently here before applying the record's contents:
+    this._areas.clear();
+    this._tokens.clear();
+    this._walls.clear();
+
+    record.areas.forEach(a => { this._areas.add(a); });
+    record.walls.forEach(w => { this._walls.add(w); });
+    record.tokens.forEach(t => {
+      // This should ensure we re-create the text mesh:
+      // TODO For some reason it still occasionally doesn't draw it until you jiggle the
+      // token about (?!)
+      this._tokens.add({
+        position: t.position,
+        colour: t.colour,
+        text: t.text,
+        textMesh: undefined
+      } as IInstancedToken);
+    });
+  }
+
+  saveFeatures(record: IMap) {
+    record.areas = this._areas.all;
+    record.walls = this._walls.all;
+
+    // When serialising tokens, remember to drop the meshes :)
+    record.tokens = this._tokens.all.map(t => {
+      return {
+        position: t.position,
+        colour: t.colour,
+        text: t.text
+      } as IToken;
+    });
   }
 
   resize() {

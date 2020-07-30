@@ -1,5 +1,6 @@
 import { IGridCoord, IGridEdge, edgesEqual, coordsEqual } from "../data/coord";
-import { IFeature, InstancedFeatures } from "./instancedFeatures";
+import { IFeature } from '../data/feature';
+import { InstancedFeatures } from "./instancedFeatures";
 
 // Helps handling a hover highlight with drag to select many and release to commit
 // them into new features.

@@ -1,6 +1,7 @@
 import { IGridEdge, edgeString } from '../data/coord';
+import { IFeature } from '../data/feature';
 import { IGridGeometry } from "./gridGeometry";
-import { IFeature, InstancedFeatures } from './instancedFeatures';
+import { InstancedFeatures } from './instancedFeatures';
 import { RedrawFlag } from './redrawFlag';
 
 import * as THREE from 'three';

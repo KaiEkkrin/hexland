@@ -3,11 +3,13 @@ import { db } from '../firebase';
 import { IDataService } from './interfaces';
 import { IAdventure } from '../data/adventure';
 import { IIdentified } from '../data/identified';
+import { IMap } from '../data/map';
 import { IProfile } from '../data/profile';
 
 // Well-known collection names.
 const profiles = "profiles";
 const adventures = "adventures";
+const maps = "maps";
 
 // This service is for datastore-related operations for the current user.
 export class DataService implements IDataService {
@@ -22,6 +24,11 @@ export class DataService implements IDataService {
     return d.exists ? (d.data() as IAdventure) : undefined;
   }
 
+  async getMap(id: string): Promise<IMap | undefined> {
+    var d = await db.collection(maps).doc(id).get();
+    return d.exists ? (d.data() as IMap) : undefined;
+  }
+
   async getProfile(): Promise<IProfile | undefined> {
     var d = await db.collection(profiles).doc(this._uid).get();
     return d.exists ? (d.data() as IProfile) : undefined;
@@ -33,6 +40,10 @@ export class DataService implements IDataService {
 
   setAdventure(id: string, adventure: IAdventure): Promise<void> {
     return db.collection(adventures).doc(id).set(adventure);
+  }
+
+  setMap(id: string, map: IMap): Promise<void> {
+    return db.collection(maps).doc(id).set(map);
   }
 
   setProfile(profile: IProfile): Promise<void> {

@@ -3,6 +3,11 @@ import './App.css';
 import './Map.css';
 import Navigation from './Navigation';
 
+import { AppContext, AppState } from './App';
+import { MapType, IMap } from './data/map';
+import { IProfile } from './data/profile';
+import { IDataService } from './services/interfaces';
+
 import { ThreeDrawing } from './models/drawing';
 import { FeatureColour } from './models/featureColour';
 import { TextCreator } from './models/textCreator';
@@ -19,6 +24,7 @@ import { faDotCircle, faDrawPolygon, faHandPaper, faMousePointer, faPlus, faSear
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import * as THREE from 'three';
+import { registerMapAsRecent } from './services/extensions';
 
 enum EditMode {
   Select = 1,
@@ -139,27 +145,28 @@ function MapControls(props: IMapControlsProps) {
 }
 
 interface IMapProps {
-  geometry: string;
+  dataService: IDataService | undefined;
+  profile: IProfile | undefined;
+  mapId: string;
 }
 
 class MapState {
+  record: IMap | undefined;
   editMode = EditMode.Select;
   selectedColour = 0;
   showTokenEditor = false;
   contextualColour = 0;
-  contextualPosition: THREE.Vector2 | undefined = undefined;
+  contextualPosition: THREE.Vector2 | undefined;
   contextualText = "";
 }
 
-class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
+class Map extends React.Component<IMapProps, MapState> {
   private readonly _colours: FeatureColour[];
   private readonly _mount: RefObject<HTMLDivElement>;
   private readonly _textCreator: TextCreator;
   private _drawing: ThreeDrawing | undefined;
 
-  private _mouseIsDown: boolean = false;
-
-  constructor(props: RouteComponentProps<IMapProps>) {
+  constructor(props: IMapProps) {
     super(props);
     this.state = new MapState();
 
@@ -189,24 +196,53 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
     return this._colours.map(c => "#" + c.lightHexString);
   }
 
-  componentDidMount() {
-    var mount = this._mount.current;
-    if (!mount) {
+  private async loadMap(mount: HTMLDivElement): Promise<void> {
+    // This is assumed to be a one-time operation right now :)
+    var record = await this.props.dataService?.getMap(this.props.mapId);
+    if (record === undefined) {
       return;
     }
+
+    this.setState({ record: record });
+
+    await registerMapAsRecent(this.props.dataService, this.props.profile, {
+      id: this.props.mapId, name: record.name, description: record.description, ty: record.ty
+    });
 
     this._drawing = new ThreeDrawing(
       this._colours,
       mount,
       this._textCreator,
-      this.props.match.params.geometry === "hex"
+      record.ty === MapType.Hex
     );
-    this._drawing.animate();
 
+    this._drawing.loadFeatures(record);
+    this._drawing.animate();
+  }
+
+  componentDidMount() {
     window.addEventListener('resize', this.handleWindowResize);
+
+    var mount = this._mount.current;
+    if (!mount) {
+      return;
+    }
+
+    this.loadMap(mount)
+      .then(() => console.log("Map " + this.props.mapId + " successfully loaded"))
+      .catch(e => console.error("Error loading map " + this.props.mapId, e));
   }
 
   componentWillUnmount() {
+    if (this.state.record !== undefined && this._drawing !== undefined) {
+      // Save changes to the map.  TODO Should be able to eventually remove this!
+      // Since I don't have map sharing right now, it's okay as a temporary measure.
+      this._drawing.saveFeatures(this.state.record);
+      this.props.dataService?.setMap(this.props.mapId, this.state.record)
+        .then(() => console.log("Map " + this.props.mapId + " successfully saved"))
+        .catch(e => console.error("Error saving map " + this.props.mapId, e));
+    }
+
     window.removeEventListener('resize', this.handleWindowResize);
   }
 
@@ -223,7 +259,6 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
   }
 
   private handleMouseDown(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-    this._mouseIsDown = true;
     var cp = this.getClientPosition(e);
     if (cp === undefined) {
       return;
@@ -255,7 +290,6 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
 
   private handleMouseUp(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     this.handleMouseMove(e);
-    this._mouseIsDown = false;
     var cp = this.getClientPosition(e);
     if (cp === undefined) {
       return;
@@ -391,4 +425,19 @@ class Map extends React.Component<RouteComponentProps<IMapProps>, MapState> {
   }
 }
 
-export default Map;
+interface IMapPageProps {
+  mapId: string;
+}
+
+function MapPage(props: RouteComponentProps<IMapPageProps>) {
+  return (
+    <AppContext.Consumer>
+      {(context: AppState) => context.user === null ? <div></div> : (
+        <Map dataService={context.dataService} profile={context.profile}
+          mapId={props.match.params.mapId} />
+      )}
+    </AppContext.Consumer>
+  )
+}
+
+export default MapPage;

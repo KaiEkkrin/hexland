@@ -1,15 +1,10 @@
 import { CoordDictionary } from '../data/coord';
+import { IFeature } from '../data/feature';
 import { Drawn } from './drawn';
 import { IGridGeometry } from "./gridGeometry";
 import { RedrawFlag } from './redrawFlag';
 
 import * as THREE from 'three';
-
-// Describes a feature:
-export interface IFeature<K> {
-  position: K;
-  colour: number;
-}
 
 // A helpful base class for instanced features such as areas and walls.
 // This class manages the underlying meshes and instances.

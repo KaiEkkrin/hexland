@@ -1,6 +1,7 @@
 import { IMapSummary } from '../data/adventure';
 import { IAdventureSummary, IProfile } from '../data/profile';
 import { IDataService } from './interfaces';
+import { IMap } from '../data/map';
 
 const maxProfileEntries = 6;
 
@@ -62,11 +63,16 @@ export async function propagateMapEdit(dataService: IDataService | undefined, pr
     return;
   }
 
-  // TODO Echo the changes into the map record itself here.
-  // (Do it as a transaction!)
+  // Echo the changes into the map record itself here.
+  // (TODO Do it as a transaction!)
+  await updateMapFromSummary(dataService, m);
 
   // Update the profile to include this as a latest map:
-  if (profile === undefined) {
+  await registerMapAsRecent(dataService, profile, m);
+}
+
+export async function registerMapAsRecent(dataService: IDataService | undefined, profile: IProfile | undefined, m: IMapSummary): Promise<void> {
+  if (dataService === undefined || profile === undefined) {
     return;
   }
 
@@ -93,4 +99,29 @@ export async function propagateMapEdit(dataService: IDataService | undefined, pr
   }
 
   return await dataService.setProfile(profile);
+}
+
+async function updateMapFromSummary(dataService: IDataService, m: IMapSummary): Promise<void> {
+  var record = await dataService.getMap(m.id);
+  if (record !== undefined) {
+    if (record.name === m.name && record.description === m.description && record.ty === m.ty) {
+      return;
+    }
+
+    record.name = m.name;
+    record.description = m.description;
+    record.ty = m.ty;
+  } else {
+    record = {
+      name: m.name,
+      description: m.description,
+      owner: dataService.getUid(),
+      ty: m.ty,
+      areas: [],
+      tokens: [],
+      walls: []
+    } as IMap;
+  }
+
+  await dataService.setMap(m.id, record);
 }

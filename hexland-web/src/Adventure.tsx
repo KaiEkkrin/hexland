@@ -83,6 +83,8 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
       return;
     }
 
+    // TODO Make this whole thing a transaction so that we can't end up in an
+    // inconsistent state (and look for other places where I should do that too)
     var id = this.state.editId ?? uuidv4(); // TODO learn about uuid versions, pick one least likely to clash :)
     var updated = this.state.adventure.maps.find(m => m.id === id);
     if (updated !== undefined) {
