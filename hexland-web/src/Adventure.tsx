@@ -2,21 +2,18 @@ import React from 'react';
 import './App.css';
 
 import { AppContext, AppState } from './App';
-import MapCards from './MapCards';
+import MapCollection from './MapCollection';
 import Navigation from './Navigation';
 
-import { IAdventure, IMapSummary, SummaryOfAdventure } from './data/adventure';
+import { IMapSummary, IAdventure } from './data/adventure';
 import { MapType } from './data/map';
 import { IProfile } from './data/profile';
-import { propagateMapDelete, propagateMapEdit } from './services/extensions';
+import { deleteMap, editMap, registerAdventureAsRecent } from './services/extensions';
 import { IDataService } from './services/interfaces';
 
-import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
-import Form from 'react-bootstrap/Form';
-import Modal from 'react-bootstrap/Modal';
 import Row from 'react-bootstrap/Row';
 
 import { RouteComponentProps } from 'react-router-dom';
@@ -31,12 +28,6 @@ interface IAdventureProps {
 
 class AdventureState {
   adventure: IAdventure | undefined = undefined;
-  editId: string | undefined = undefined;
-  editName = "New map";
-  editDescription = "";
-  editType = MapType.Square;
-  showEditMap = false;
-  showDeleteMap = false;
 }
 
 class Adventure extends React.Component<IAdventureProps, AdventureState> {
@@ -46,98 +37,34 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
     super(props);
     this.state = new AdventureState();
 
-    this.isModalSaveDisabled = this.isModalSaveDisabled.bind(this);
-    this.handleNewMapClick = this.handleNewMapClick.bind(this);
-    this.handleEditMapClick = this.handleEditMapClick.bind(this);
-    this.handleDeleteMapClick = this.handleDeleteMapClick.bind(this);
-    this.handleModalClose = this.handleModalClose.bind(this);
-    this.handleEditMapSave = this.handleEditMapSave.bind(this);
-    this.handleDeleteMapSave = this.handleDeleteMapSave.bind(this);
+    this.setMap = this.setMap.bind(this);
+    this.deleteMap = this.deleteMap.bind(this);
   }
 
-  private isModalSaveDisabled() {
-    return this.state.editName.length === 0;
-  }
-
-  private handleNewMapClick() {
-    this.setState({ editId: undefined, editName: "New map", editDescription: "", editType: MapType.Square, showEditMap: true });
-  }
-
-  private handleEditMapClick(m: IMapSummary) {
-    this.setState({ editId: m.id, editName: m.name, editDescription: m.description, editType: m.ty, showEditMap: true });
-  }
-
-  private handleDeleteMapClick(m: IMapSummary) {
-    this.setState({ editId: m.id, editName: m.name, showDeleteMap: true });
-  }
-
-  private handleModalClose() {
-    this.setState({ editId: undefined, showEditMap: false, showDeleteMap: false });
-  }
-
-  private handleEditMapSave() {
-    this.handleModalClose();
-
+  private setMap(id: string | undefined, name: string, description: string, ty: MapType) {
     var uid = this.props.dataService?.getUid();
-    if (uid === undefined || this.state.adventure === undefined) {
+    if (uid === undefined) {
       return;
     }
 
-    var a = new SummaryOfAdventure(this.props.adventureId, this.state.adventure);
+    var isNew = id === undefined;
+    var updated = {
+      id: id ?? uuidv4(),
+      name: name,
+      description: description,
+      owner: uid,
+      ty: ty
+    } as IMapSummary;
 
-    // TODO Make this whole thing a transaction so that we can't end up in an
-    // inconsistent state (and look for other places where I should do that too)
-    var id = this.state.editId ?? uuidv4(); // TODO learn about uuid versions, pick one least likely to clash :)
-    var updated = this.state.adventure.maps.find(m => m.id === id);
-    if (updated !== undefined) {
-      // Can't edit the other fields
-      updated.name = this.state.editName;
-      updated.description = this.state.editDescription;
-    } else {
-      updated = {
-        id: id,
-        name: this.state.editName,
-        description: this.state.editDescription,
-        ty: this.state.editType
-      } as IMapSummary;
-      this.state.adventure.maps.push(updated);
-    }
-
-    this.props.dataService?.setAdventure(this.props.adventureId, this.state.adventure)
-      .then(() => console.log("Adventure " + this.props.adventureId + " successfully edited"))
-      .catch(e => console.error("Error editing adventure " + this.props.adventureId, e));
-
-    propagateMapEdit(this.props.dataService, this.props.profile, a, updated)
-      .then(() => console.log("Propagated map edit " + id))
-      .catch(e => console.error("Error propagating map edit " + id, e));
+    editMap(this.props.dataService, this.props.adventureId, isNew, updated)
+      .then(() => console.log("Map " + updated.id + " successfully edited"))
+      .catch(e => console.error("Error editing map " + updated.id, e));
   }
 
-  private handleDeleteMapSave() {
-    this.handleModalClose();
-
-    if (this.state.editId === undefined || this.state.adventure === undefined) {
-      return;
-    }
-
-    var index = this.state.adventure.maps.findIndex(m => m.id === this.state.editId);
-    if (index < 0) {
-      return;
-    }
-
-    var updated = {
-      name: this.state.adventure.name,
-      description: this.state.adventure.description,
-      owner: this.state.adventure.owner,
-      maps: this.state.adventure.maps.filter(m => m.id !== this.state.editId)
-    } as IAdventure;
-
-    this.props.dataService?.setAdventure(this.props.adventureId, updated)
-      .then(() => console.log("Adventure " + this.props.adventureId + " successfully edited"))
-      .catch(e => console.error("Error editing adventure " + this.props.adventureId, e));
-
-    propagateMapDelete(this.props.dataService, this.props.profile, this.state.editId)
-      .then(() => console.log("Propagated map delete " + this.state.editId))
-      .catch(e => console.error("Error propagating map delete " + this.state.editId, e));
+  private deleteMap(id: string) {
+    deleteMap(this.props.dataService, this.props.adventureId, id)
+      .then(() => console.log("Map " + id + " successfully deleted"))
+      .catch(e => console.error("Error deleting map " + id, e));
   }
 
   private watchAdventure() {
@@ -153,9 +80,19 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
     this.watchAdventure();
   }
 
-  componentDidUpdate(prevProps: IAdventureProps) {
+  componentDidUpdate(prevProps: IAdventureProps, prevState: AdventureState) {
     if (this.props.dataService !== prevProps.dataService || this.props.adventureId !== prevProps.adventureId) {
       this.watchAdventure();
+    }
+
+    if (this.state.adventure !== undefined && this.state.adventure !== prevState.adventure) {
+      registerAdventureAsRecent(this.props.dataService, this.props.profile, {
+        id: this.props.adventureId,
+        name: this.state.adventure.name,
+        description: this.state.adventure.description,
+        owner: this.state.adventure.owner,
+      })
+      .catch(e => console.error("Failed to register " + this.props.adventureId + " as recent", e));
     }
   }
 
@@ -174,7 +111,6 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
               <Col>
                 <Card bg="dark" text="white">
                   <Card.Body>
-                    <Card.Title>{this.state.adventure.name}</Card.Title>
                     <Card.Text>{this.state.adventure.description}</Card.Text>
                   </Card.Body>
                 </Card>
@@ -182,67 +118,9 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
             </Row>
             : <div></div>
           }
-          <Row className="mt-4">
-            <Col>
-              <Button onClick={this.handleNewMapClick}>New map</Button>
-            </Col>
-          </Row>
-          <Row className="mt-4">
-            <Col>
-              <MapCards maps={this.state.adventure?.maps ?? []} editMap={this.handleEditMapClick}
-                deleteMap={this.handleDeleteMapClick} />
-            </Col>
-          </Row>
+          <MapCollection editable={true} getMaps={() => this.state.adventure?.maps ?? []}
+            setMap={this.setMap} deleteMap={this.deleteMap} />
         </Container>
-        <Modal show={this.state.showEditMap} onHide={this.handleModalClose}>
-          <Modal.Header closeButton>
-            <Modal.Title>Map</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <Form>
-              <Form.Group>
-                <Form.Label>Name</Form.Label>
-                <Form.Control type="text" maxLength={30} value={this.state.editName}
-                  onChange={e => this.setState({ editName: e.target.value })} />
-              </Form.Group>
-              <Form.Group>
-                <Form.Label>Description</Form.Label>
-                <Form.Control as="textarea" rows={5} maxLength={300} value={this.state.editDescription}
-                  onChange={e => this.setState({ editDescription: e.target.value })} />
-              </Form.Group>
-              <Form.Group>
-                <Form.Label>Type</Form.Label>
-                <Form.Control as="select" value={this.state.editType}
-                  disabled={this.state.editId !== undefined}
-                  onChange={e => this.setState({ editType: e.target.value as MapType })}>
-                  <option>{MapType.Hex}</option>
-                  <option>{MapType.Square}</option>
-                </Form.Control>
-              </Form.Group>
-            </Form>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={this.handleModalClose}>Close</Button>
-            <Button variant="primary" disabled={this.isModalSaveDisabled()}
-              onClick={this.handleEditMapSave}>
-              Save
-            </Button>
-          </Modal.Footer>
-        </Modal>
-        <Modal show={this.state.showDeleteMap} onHide={this.handleModalClose}>
-          <Modal.Header closeButton>
-            <Modal.Title>Delete map</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <p>Do you really want to delete {this.state.editName}?</p>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={this.handleModalClose}>Close</Button>
-            <Button variant="danger" onClick={this.handleDeleteMapSave}>
-              Yes, delete!
-            </Button>
-          </Modal.Footer>
-        </Modal>
       </div>
     );
   }

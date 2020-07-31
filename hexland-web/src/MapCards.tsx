@@ -10,6 +10,7 @@ import CardDeck from 'react-bootstrap/CardDeck';
 import { LinkContainer } from 'react-router-bootstrap';
 
 export interface IMapCardsProps {
+  editable: boolean;
   maps: IMapSummary[];
   editMap: ((map: IMapSummary) => void) | undefined;
   deleteMap: ((map: IMapSummary) => void) | undefined;
@@ -30,14 +31,15 @@ function MapCards(props: IMapCardsProps) {
               <Card.Link>Open</Card.Link>
             </LinkContainer>
           </Card.Footer>
-          <ButtonGroup>
-            {props.editMap === undefined ? <div></div> :
-              <Button variant="primary" onClick={() => props.editMap?.(v)}>Edit</Button>
-            }
-            {props.deleteMap === undefined ? <div></div> :
-              <Button variant="danger" onClick={() => props.deleteMap?.(v)}>Delete</Button>
-            }
-          </ButtonGroup>
+          {props.editable === true ?
+            <ButtonGroup>
+              {props.editMap === undefined ? <div></div> :
+                <Button variant="primary" onClick={() => props.editMap?.(v)}>Edit</Button>
+              }
+              {props.deleteMap === undefined ? <div></div> :
+                <Button variant="danger" onClick={() => props.deleteMap?.(v)}>Delete</Button>
+              }
+            </ButtonGroup> : <div></div>}
         </Card>
       )}
     </CardDeck>

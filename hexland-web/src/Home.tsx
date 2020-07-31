@@ -3,16 +3,15 @@ import './App.css';
 
 import AdventureCollection from './AdventureCollection';
 import { AppContext, AppState } from './App';
-import MapCards from './MapCards';
+import MapCollection from './MapCollection';
 import Navigation from './Navigation';
 
+import { MapType } from './data/map';
 import { IAdventureSummary, IProfile } from './data/profile';
 import { editAdventure } from './services/extensions';
 import { IDataService } from './services/interfaces';
 
-import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -41,13 +40,13 @@ function Home(props: IHomeProps) {
       .catch(e => console.error("Error editing adventure " + id, e));
   };
 
+  var setMap = function (id: string | undefined, name: string, description: string, ty: MapType) {
+    // TODO Handle creating a new map directly from the home page, with an adventure dropdown.
+  }
+
   return (
     <Container>
-      <Row className="mt-4">
-        <Col>
-          <MapCards maps={props.profile?.latestMaps ?? []} editMap={undefined} deleteMap={undefined} />
-        </Col>
-      </Row>
+      <MapCollection editable={false} getMaps={() => props.profile?.latestMaps ?? []} setMap={setMap} deleteMap={undefined} />
       <AdventureCollection getAdventures={() => props.profile?.adventures ?? []} setAdventure={setAdventure} />
     </Container>
   );

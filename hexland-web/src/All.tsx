@@ -87,7 +87,7 @@ class All extends React.Component<IAllProps, AllState> {
   render() {
     return (
       <div>
-        <Navigation getTitle={() => undefined}/>
+        <Navigation getTitle={() => "All adventures"}/>
         <Container>
           <AdventureCollection getAdventures={this.getAdventures} setAdventure={this.setAdventure} />
         </Container>

@@ -6,6 +6,7 @@ import Navigation from './Navigation';
 import { AppContext, AppState } from './App';
 import { MapType, IMap } from './data/map';
 import { IProfile } from './data/profile';
+import { registerMapAsRecent } from './services/extensions';
 import { IDataService } from './services/interfaces';
 
 import { ThreeDrawing } from './models/drawing';
@@ -26,8 +27,6 @@ import { faDotCircle, faDrawPolygon, faHandPaper, faMousePointer, faPlus, faSear
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import * as THREE from 'three';
-import { registerMapAsRecent } from './services/extensions';
-
 enum EditMode {
   Select = "select",
   Token = "token",
