@@ -6,14 +6,15 @@ import { AppContext, AppState } from './App';
 import MapCollection from './MapCollection';
 import Navigation from './Navigation';
 
-import { MapType } from './data/map';
+import { IMapSummary } from './data/adventure';
 import { IAdventureSummary, IProfile } from './data/profile';
-import { editAdventure } from './services/extensions';
+import { editAdventure, editMap } from './services/extensions';
 import { IDataService } from './services/interfaces';
 
 import Container from 'react-bootstrap/Container';
 
 import { v4 as uuidv4 } from 'uuid';
+import { MapType } from './data/map';
 
 interface IHomeProps {
   dataService: IDataService | undefined;
@@ -40,13 +41,33 @@ function Home(props: IHomeProps) {
       .catch(e => console.error("Error editing adventure " + id, e));
   };
 
-  var setMap = function (id: string | undefined, name: string, description: string, ty: MapType) {
-    // TODO Handle creating a new map directly from the home page, with an adventure dropdown.
+  var setMap = function (adventureId: string, id: string | undefined, name: string, description: string, ty: MapType) {
+    if (props.dataService === undefined) {
+      return;
+    }
+
+    if (id !== undefined) { // We don't support editing from here
+      return;
+    }
+
+    var newMap = {
+      id: uuidv4(),
+      name: name,
+      description: description,
+      ty: ty,
+    } as IMapSummary;
+    editMap(props.dataService, adventureId, true, newMap)
+      .then(() => console.log("Map " + newMap.id + " successfully added"))
+      .catch(e => console.error("Error adding map " + newMap.id, e));
   }
 
   return (
     <Container>
-      <MapCollection editable={false} getMaps={() => props.profile?.latestMaps ?? []} setMap={setMap} deleteMap={undefined} />
+      <MapCollection editable={false}
+        showAdventureSelection={true}
+        getAdventures={() => props.profile?.adventures ?? []}
+        getMaps={() => props.profile?.latestMaps ?? []}
+        setMap={setMap} deleteMap={undefined} />
       <AdventureCollection getAdventures={() => props.profile?.adventures ?? []} setAdventure={setAdventure} />
     </Container>
   );

@@ -6,8 +6,7 @@ import MapCollection from './MapCollection';
 import Navigation from './Navigation';
 
 import { IMapSummary, IAdventure } from './data/adventure';
-import { MapType } from './data/map';
-import { IProfile } from './data/profile';
+import { IProfile, IAdventureSummary } from './data/profile';
 import { deleteMap, editMap, registerAdventureAsRecent } from './services/extensions';
 import { IDataService } from './services/interfaces';
 
@@ -19,6 +18,7 @@ import Row from 'react-bootstrap/Row';
 import { RouteComponentProps } from 'react-router-dom';
 
 import { v4 as uuidv4 } from 'uuid';
+import { MapType } from './data/map';
 
 interface IAdventureProps {
   dataService: IDataService | undefined;
@@ -37,11 +37,21 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
     super(props);
     this.state = new AdventureState();
 
+    this.getAdventures = this.getAdventures.bind(this);
     this.setMap = this.setMap.bind(this);
     this.deleteMap = this.deleteMap.bind(this);
   }
 
-  private setMap(id: string | undefined, name: string, description: string, ty: MapType) {
+  private getAdventures(): IAdventureSummary[] {
+    return this.state.adventure === undefined ? [] : [{
+      id: this.props.adventureId,
+      name: this.state.adventure.name,
+      description: this.state.adventure.description,
+      owner: this.state.adventure.owner
+    }];
+  }
+
+  private setMap(adventureId: string, id: string | undefined, name: string, description: string, ty: MapType) {
     var uid = this.props.dataService?.getUid();
     if (uid === undefined) {
       return;
@@ -56,7 +66,7 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
       ty: ty
     } as IMapSummary;
 
-    editMap(this.props.dataService, this.props.adventureId, isNew, updated)
+    editMap(this.props.dataService, adventureId, isNew, updated)
       .then(() => console.log("Map " + updated.id + " successfully edited"))
       .catch(e => console.error("Error editing map " + updated.id, e));
   }
@@ -118,7 +128,9 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
             </Row>
             : <div></div>
           }
-          <MapCollection editable={true} getMaps={() => this.state.adventure?.maps ?? []}
+          <MapCollection editable={true} showAdventureSelection={false}
+            getAdventures={this.getAdventures}
+            getMaps={() => this.state.adventure?.maps ?? []}
             setMap={this.setMap} deleteMap={this.deleteMap} />
         </Container>
       </div>

@@ -5,6 +5,7 @@ import MapCards from './MapCards';
 
 import { IMapSummary } from './data/adventure';
 import { MapType } from './data/map';
+import { IAdventureSummary } from './data/profile';
 
 import Button from 'react-bootstrap/Button';
 import Col from 'react-bootstrap/Col';
@@ -14,12 +15,15 @@ import Row from 'react-bootstrap/Row';
 
 interface IMapCollectionProps {
   editable: boolean,
+  showAdventureSelection: boolean,
+  getAdventures: () => IAdventureSummary[];
   getMaps: () => IMapSummary[];
-  setMap: ((id: string | undefined, name: string, description: string, ty: MapType) => void) | undefined;
+  setMap: ((adventureId: string, id: string | undefined, name: string, description: string, ty: MapType) => void) | undefined;
   deleteMap: ((id: string) => void) | undefined;
 }
 
 class MapCollectionState {
+  editAdventureId: string | undefined = undefined;
   editId: string | undefined = undefined;
   editName = "New map";
   editDescription = "";
@@ -42,16 +46,35 @@ class MapCollection extends React.Component<IMapCollectionProps, MapCollectionSt
     this.handleModalClose = this.handleModalClose.bind(this);
   }
 
+  private getFirstAdventureId(): string | undefined {
+    var adventures = this.props.getAdventures();
+    return adventures.length > 0 ? adventures[0].id : undefined;
+  }
+
   private isModalSaveDisabled() {
-    return this.state.editName.length === 0;
+    return this.state.editAdventureId === undefined || this.state.editName.length === 0;
   }
 
   private handleNewMapClick() {
-    this.setState({ editId: undefined, editName: "New map", editDescription: "", editType: MapType.Square, showEditMap: true });
+    this.setState({
+      editAdventureId: this.getFirstAdventureId(),
+      editId: undefined,
+      editName: "New map",
+      editDescription: "",
+      editType: MapType.Square,
+      showEditMap: true
+    });
   }
 
   private handleEditMapClick(m: IMapSummary) {
-    this.setState({ editId: m.id, editName: m.name, editDescription: m.description, editType: m.ty, showEditMap: true });
+    this.setState({
+      editAdventureId: this.getFirstAdventureId(), // we presume!
+      editId: m.id,
+      editName: m.name,
+      editDescription: m.description,
+      editType: m.ty,
+      showEditMap: true
+    });
   }
 
   private handleDeleteMapClick(m: IMapSummary) {
@@ -59,7 +82,17 @@ class MapCollection extends React.Component<IMapCollectionProps, MapCollectionSt
   }
 
   private handleEditMapSave() {
-    this.props.setMap?.(this.state.editId, this.state.editName, this.state.editDescription, this.state.editType);
+    if (this.state.editAdventureId === undefined) {
+      return;
+    }
+
+    this.props.setMap?.(
+      this.state.editAdventureId,
+      this.state.editId,
+      this.state.editName,
+      this.state.editDescription,
+      this.state.editType
+    );
     this.handleModalClose();
   }
 
@@ -101,6 +134,15 @@ class MapCollection extends React.Component<IMapCollectionProps, MapCollectionSt
                 <Form.Control type="text" maxLength={30} value={this.state.editName}
                   onChange={e => this.setState({ editName: e.target.value })} />
               </Form.Group>
+              {(this.props.showAdventureSelection === false) ? <div></div> :
+                <Form.Group>
+                  <Form.Label>Adventure</Form.Label>
+                  <Form.Control as="select" value={this.state.editAdventureId}
+                    onChange={e => this.setState({ editAdventureId: e.target.value })}>
+                    {this.props.getAdventures().map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </Form.Control>
+                </Form.Group>
+              }
               <Form.Group>
                 <Form.Label>Description</Form.Label>
                 <Form.Control as="textarea" rows={5} maxLength={300} value={this.state.editDescription}

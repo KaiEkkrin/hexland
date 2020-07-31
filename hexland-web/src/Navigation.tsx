@@ -24,9 +24,13 @@ function Navigation(props: INavigationProps) {
           <LinkContainer to="/">
             <Nav.Link>Home</Nav.Link>
           </LinkContainer>
-          <LinkContainer to="/all">
-            <Nav.Link>All</Nav.Link>
-          </LinkContainer>
+          <AppContext.Consumer>
+            {(context: AppState) => context.user === null ? <div></div> :
+              <LinkContainer to="/all">
+                <Nav.Link>All</Nav.Link>
+              </LinkContainer>
+            }
+          </AppContext.Consumer>
         </Nav>
       </Navbar.Collapse>
       <Navbar.Collapse className="justify-content-center">
