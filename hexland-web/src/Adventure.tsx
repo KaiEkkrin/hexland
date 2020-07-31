@@ -5,7 +5,7 @@ import { AppContext, AppState } from './App';
 import MapCards from './MapCards';
 import Navigation from './Navigation';
 
-import { IAdventure, IMapSummary } from './data/adventure';
+import { IAdventure, IMapSummary, SummaryOfAdventure } from './data/adventure';
 import { MapType } from './data/map';
 import { IProfile } from './data/profile';
 import { propagateMapDelete, propagateMapEdit } from './services/extensions';
@@ -83,6 +83,8 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
       return;
     }
 
+    var a = new SummaryOfAdventure(this.props.adventureId, this.state.adventure);
+
     // TODO Make this whole thing a transaction so that we can't end up in an
     // inconsistent state (and look for other places where I should do that too)
     var id = this.state.editId ?? uuidv4(); // TODO learn about uuid versions, pick one least likely to clash :)
@@ -105,7 +107,7 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
       .then(() => console.log("Adventure " + this.props.adventureId + " successfully edited"))
       .catch(e => console.error("Error editing adventure " + this.props.adventureId, e));
 
-    propagateMapEdit(this.props.dataService, this.props.profile, updated)
+    propagateMapEdit(this.props.dataService, this.props.profile, a, updated)
       .then(() => console.log("Propagated map edit " + id))
       .catch(e => console.error("Error propagating map edit " + id, e));
   }

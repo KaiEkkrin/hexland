@@ -26,20 +26,19 @@ export const AppContext = React.createContext(new AppState());
 
 class App extends React.Component<IAppProps, AppState> {
   private _authStateChanged: firebase.Unsubscribe | undefined;
+  private _stopWatchingProfile: (() => void) | undefined;
 
   constructor(props: IAppProps) {
     super(props);
     this.state = new AppState();
   }
 
-  private async syncProfile(u: firebase.User, dataService: IDataService): Promise<IProfile> {
+  private async syncProfile(u: firebase.User, dataService: IDataService) {
     var profile = await dataService.getProfile();
     if (profile === undefined) {
       profile = { name: u.displayName ?? "Unknown User", adventures: [], latestMaps: [] };
       await dataService.setProfile(profile);
     }
-
-    return profile;
   }
 
   componentDidMount() {
@@ -50,23 +49,42 @@ class App extends React.Component<IAppProps, AppState> {
       // Fetch this user's profile.  Create it if it doesn't exist.
       if (u !== null && dataService !== undefined) {
         this.syncProfile(u, dataService)
-          .then(p => this.setState({ profile: p }))
           .catch(e => console.error("Failed to sync profile: ", e));
+
+        // Watch the profile, in case changes get made elsewhere:
+        this._stopWatchingProfile = dataService.watchProfile(
+          p => this.setState({ profile: p }),
+          e => console.error("Failed to watch profile: ", e)
+        );
       }
     });
   }
 
   componentDidUpdate(prevProps: IAppProps, prevState: AppState) {
-    if (this.state.user?.displayName !== prevState.user?.displayName) {
+    if (this.state.user?.uid !== prevState.user?.uid) {
       console.log("User changed to " + this.state.user?.displayName ?? "(none)");
+    }
+
+    // Sync and watch the new user's profile instead
+    this._stopWatchingProfile?.();
+    if (this.state.user !== null && this.state.dataService !== undefined) {
+      this.syncProfile(this.state.user, this.state.dataService)
+        .catch(e => console.error("Failed to sync profile: ", e));
+
+      // Watch the profile, in case changes get made elsewhere:
+      this._stopWatchingProfile = this.state.dataService.watchProfile(
+        p => this.setState({ profile: p }),
+        e => console.error("Failed to watch profile: ", e)
+      );
     }
   }
 
   componentWillUnmount() {
-    if (this._authStateChanged !== undefined) {
-      this._authStateChanged();
-      this._authStateChanged = undefined;
-    }
+    this._stopWatchingProfile?.();
+    this._stopWatchingProfile = undefined;
+
+    this._authStateChanged?.();
+    this._authStateChanged = undefined;
   }
 
   render() {
