@@ -108,7 +108,8 @@ class MapCollection extends React.Component<IMapCollectionProps, MapCollectionSt
   }
 
   render() {
-    var newMapCard =
+    // Don't provide the new map card if no adventures would be selectable
+    var newMapCard = (this.props.showAdventureSelection && this.props.getAdventures().length === 0) ? undefined :
       <Card className="mt-4" style={{ minWidth: '16rem', maxWidth: '16rem' }}
         bg="dark" text="white" key="new">
         <Card.Body>

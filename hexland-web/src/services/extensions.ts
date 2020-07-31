@@ -72,8 +72,11 @@ export async function editAdventure(
   // go with it.
   var profileRef = dataService.getProfileRef();
   var adventureRef = dataService.getAdventureRef(changed.id);
-  var adventure = rec ?? (await dataService.get(adventureRef));
-  var mapRefs = adventure?.maps.map(m => dataService.getMapRef(m.id)) ?? [];
+  var mapRefs: IDataReference<IMap>[] = [];
+  if (isNew === false) {
+    var adventure = rec ?? (await dataService.get(adventureRef));
+    mapRefs = adventure?.maps.map(m => dataService.getMapRef(m.id)) ?? [];
+  }
 
   await dataService.runTransaction(view =>
     editAdventureTransaction(view, dataService.getUid(), profileRef, adventureRef, mapRefs, isNew, changed)

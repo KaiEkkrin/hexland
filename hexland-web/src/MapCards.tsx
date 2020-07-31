@@ -10,7 +10,7 @@ import CardDeck from 'react-bootstrap/CardDeck';
 import { LinkContainer } from 'react-router-bootstrap';
 
 export interface IMapCardsProps {
-  newMapCard: JSX.Element;
+  newMapCard: JSX.Element | undefined;
   editable: boolean;
   maps: IMapSummary[];
   editMap: ((map: IMapSummary) => void) | undefined;
