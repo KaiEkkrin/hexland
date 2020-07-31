@@ -11,7 +11,9 @@ import { IAdventureSummary, IProfile } from './data/profile';
 import { editAdventure } from './services/extensions';
 import { IDataService } from './services/interfaces';
 
+import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
+import Row from 'react-bootstrap/Row';
 
 import { RouteComponentProps } from 'react-router-dom';
 
@@ -88,8 +90,12 @@ class All extends React.Component<IAllProps, AllState> {
     return (
       <div>
         <Navigation getTitle={() => "All adventures"}/>
-        <Container>
-          <AdventureCollection getAdventures={this.getAdventures} setAdventure={this.setAdventure} />
+        <Container fluid>
+          <Row>
+            <Col>
+              <AdventureCollection getAdventures={this.getAdventures} setAdventure={this.setAdventure} />
+            </Col>
+          </Row>
         </Container>
       </div>
     );

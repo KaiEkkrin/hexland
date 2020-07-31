@@ -7,8 +7,7 @@ import AdventureModal from './AdventureModal';
 import { IAdventureSummary } from './data/profile';
 
 import Button from 'react-bootstrap/Button';
-import Col from 'react-bootstrap/Col';
-import Row from 'react-bootstrap/Row';
+import Card from 'react-bootstrap/Card';
 
 interface IAdventureCollectionProps {
   getAdventures: () => IAdventureSummary[];
@@ -56,19 +55,18 @@ class AdventureCollection extends React.Component<IAdventureCollectionProps, Adv
   }
 
   render() {
+    var newAdventureCard =
+      <Card className="mt-4" style={{ minWidth: '16rem', maxWidth: '16rem' }}
+        bg="dark" text="white" key="new">
+        <Card.Body>
+          <Button onClick={this.handleNewAdventureClick}>New adventure</Button>
+        </Card.Body>
+      </Card>;
+
     return (
       <div>
-        <Row className="mt-4">
-          <Col>
-            <Button onClick={this.handleNewAdventureClick}>New adventure</Button>
-          </Col>
-        </Row>
-        <Row className="mt-4">
-          <Col>
-            <AdventureCards adventures={this.props.getAdventures()}
-              editAdventure={this.handleEditAdventureClick} />
-          </Col>
-        </Row>
+        <AdventureCards newAdventureCard={newAdventureCard} adventures={this.props.getAdventures()}
+          editAdventure={this.handleEditAdventureClick} />
         <AdventureModal getDescription={() => this.state.editDescription}
           getName={() => this.state.editName}
           getShow={() => this.state.showEditAdventure}

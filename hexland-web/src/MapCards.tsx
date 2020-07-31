@@ -10,6 +10,7 @@ import CardDeck from 'react-bootstrap/CardDeck';
 import { LinkContainer } from 'react-router-bootstrap';
 
 export interface IMapCardsProps {
+  newMapCard: JSX.Element;
   editable: boolean;
   maps: IMapSummary[];
   editMap: ((map: IMapSummary) => void) | undefined;
@@ -19,8 +20,10 @@ export interface IMapCardsProps {
 function MapCards(props: IMapCardsProps) {
   return (
     <CardDeck>
+      {props.newMapCard}
       {props.maps.map((v) =>
-        <Card className="mb-4" style={{ minWidth: '16rem' }} bg="dark" text="white" key={v.id}>
+        <Card className="mt-4" style={{ minWidth: '16rem', maxWidth: '16rem' }}
+          bg="dark" text="white" key={v.id}>
           <Card.Body>
             <Card.Title>{v.name}</Card.Title>
             <Card.Subtitle className="text-muted">{v.ty as string} map</Card.Subtitle>

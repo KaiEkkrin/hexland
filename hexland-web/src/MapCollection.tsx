@@ -8,10 +8,9 @@ import { MapType } from './data/map';
 import { IAdventureSummary } from './data/profile';
 
 import Button from 'react-bootstrap/Button';
-import Col from 'react-bootstrap/Col';
+import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
-import Row from 'react-bootstrap/Row';
 
 interface IMapCollectionProps {
   editable: boolean,
@@ -109,20 +108,19 @@ class MapCollection extends React.Component<IMapCollectionProps, MapCollectionSt
   }
 
   render() {
+    var newMapCard =
+      <Card className="mt-4" style={{ minWidth: '16rem', maxWidth: '16rem' }}
+        bg="dark" text="white" key="new">
+        <Card.Body>
+          <Button onClick={this.handleNewMapClick}>New map</Button>
+        </Card.Body>
+      </Card>;
+
     return (
       <div>
-        <Row className="mt-4">
-          <Col>
-            <Button onClick={this.handleNewMapClick}>New map</Button>
-          </Col>
-        </Row>
-        <Row className="mt-4">
-          <Col>
-            <MapCards editable={this.props.editable} maps={this.props.getMaps()}
-              editMap={this.handleEditMapClick}
-              deleteMap={this.handleDeleteMapClick} />
-          </Col>
-        </Row>
+        <MapCards newMapCard={newMapCard} editable={this.props.editable} maps={this.props.getMaps()}
+          editMap={this.handleEditMapClick}
+          deleteMap={this.handleDeleteMapClick} />
         <Modal show={this.state.showEditMap} onHide={this.handleModalClose}>
           <Modal.Header closeButton>
             <Modal.Title>Map</Modal.Title>

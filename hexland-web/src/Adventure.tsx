@@ -115,7 +115,7 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
     return (
       <div>
         <Navigation getTitle={() => this.state.adventure?.name} />
-        <Container>
+        <Container fluid>
           {this.state.adventure !== undefined ?
             <Row className="mt-4">
               <Col>
@@ -128,10 +128,14 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
             </Row>
             : <div></div>
           }
-          <MapCollection editable={true} showAdventureSelection={false}
-            getAdventures={this.getAdventures}
-            getMaps={() => this.state.adventure?.maps ?? []}
-            setMap={this.setMap} deleteMap={this.deleteMap} />
+          <Row className="mt-4">
+            <Col>
+              <MapCollection editable={true} showAdventureSelection={false}
+                getAdventures={this.getAdventures}
+                getMaps={() => this.state.adventure?.maps ?? []}
+                setMap={this.setMap} deleteMap={this.deleteMap} />
+            </Col>
+          </Row>
         </Container>
       </div>
     );

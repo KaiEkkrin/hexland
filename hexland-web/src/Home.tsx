@@ -11,7 +11,9 @@ import { IAdventureSummary, IProfile } from './data/profile';
 import { editAdventure, editMap } from './services/extensions';
 import { IDataService } from './services/interfaces';
 
+import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
+import Row from 'react-bootstrap/Row';
 
 import { v4 as uuidv4 } from 'uuid';
 import { MapType } from './data/map';
@@ -62,13 +64,21 @@ function Home(props: IHomeProps) {
   }
 
   return (
-    <Container>
-      <MapCollection editable={false}
-        showAdventureSelection={true}
-        getAdventures={() => props.profile?.adventures ?? []}
-        getMaps={() => props.profile?.latestMaps ?? []}
-        setMap={setMap} deleteMap={undefined} />
-      <AdventureCollection getAdventures={() => props.profile?.adventures ?? []} setAdventure={setAdventure} />
+    <Container fluid>
+      <Row>
+        <Col xl>
+          <h5 className="mt-4">Latest maps</h5>
+          <MapCollection editable={false}
+            showAdventureSelection={true}
+            getAdventures={() => props.profile?.adventures ?? []}
+            getMaps={() => props.profile?.latestMaps ?? []}
+            setMap={setMap} deleteMap={undefined} />
+        </Col>
+        <Col xl>
+          <h5 className="mt-4">Latest adventures</h5>
+          <AdventureCollection getAdventures={() => props.profile?.adventures ?? []} setAdventure={setAdventure} />
+        </Col>
+      </Row>
     </Container>
   );
 }
