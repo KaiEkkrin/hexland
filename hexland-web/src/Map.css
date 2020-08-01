@@ -1,7 +1,11 @@
+.Map-container {
+  display: flex;
+  flex-direction: column;
+}
+
 .Map-controls {
   display: flex;
   flex-direction: column;
-  position: relative;
   min-width: 3rem;
   width: 3rem;
   z-index: 1;
@@ -17,8 +21,6 @@
 }
 
 .Map-nav {
-  position: fixed;
-  left: 0;
-  top: 0;
+  width: 100vw;
   z-index: 1;
 }
