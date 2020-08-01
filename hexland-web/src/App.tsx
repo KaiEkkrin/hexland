@@ -63,19 +63,19 @@ class App extends React.Component<IAppProps, AppState> {
   componentDidUpdate(prevProps: IAppProps, prevState: AppState) {
     if (this.state.user?.uid !== prevState.user?.uid) {
       console.log("User changed to " + this.state.user?.displayName ?? "(none)");
-    }
 
-    // Sync and watch the new user's profile instead
-    this._stopWatchingProfile?.();
-    if (this.state.user !== null && this.state.dataService !== undefined) {
-      this.syncProfile(this.state.user, this.state.dataService)
-        .catch(e => console.error("Failed to sync profile: ", e));
+      // Sync and watch the new user's profile instead
+      this._stopWatchingProfile?.();
+      if (this.state.user !== null && this.state.dataService !== undefined) {
+        this.syncProfile(this.state.user, this.state.dataService)
+          .catch(e => console.error("Failed to sync profile: ", e));
 
-      // Watch the profile, in case changes get made elsewhere:
-      this._stopWatchingProfile = this.state.dataService.watchProfile(
-        p => this.setState({ profile: p }),
-        e => console.error("Failed to watch profile: ", e)
-      );
+        // Watch the profile, in case changes get made elsewhere:
+        this._stopWatchingProfile = this.state.dataService.watchProfile(
+          p => this.setState({ profile: p }),
+          e => console.error("Failed to watch profile: ", e)
+        );
+      }
     }
   }
 

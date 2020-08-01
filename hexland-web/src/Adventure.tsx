@@ -77,11 +77,18 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
       .catch(e => console.error("Error deleting map " + id, e));
   }
 
+  private adventureLoaded(id: string, a: IAdventure) {
+    this.setState({ adventure: a });
+    registerAdventureAsRecent(this.props.dataService, this.props.profile, id, a)
+      .catch(e => console.error("Failed to register adventure " + id + " as recent", e));
+  }
+
   private watchAdventure() {
     this._stopWatchingAdventure?.();
+    var id = this.props.adventureId;
     this._stopWatchingAdventure = this.props.dataService?.watchAdventure(
-      this.props.adventureId,
-      a => this.setState({ adventure: a }),
+      id,
+      a => this.adventureLoaded(id, a),
       e => console.error("Error watching adventure " + this.props.adventureId + ":", e)
     );
   }
@@ -93,16 +100,6 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
   componentDidUpdate(prevProps: IAdventureProps, prevState: AdventureState) {
     if (this.props.dataService !== prevProps.dataService || this.props.adventureId !== prevProps.adventureId) {
       this.watchAdventure();
-    }
-
-    if (this.state.adventure !== undefined && this.state.adventure !== prevState.adventure) {
-      registerAdventureAsRecent(this.props.dataService, this.props.profile, {
-        id: this.props.adventureId,
-        name: this.state.adventure.name,
-        description: this.state.adventure.description,
-        owner: this.state.adventure.owner,
-      })
-      .catch(e => console.error("Failed to register " + this.props.adventureId + " as recent", e));
     }
   }
 

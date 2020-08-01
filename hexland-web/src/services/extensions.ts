@@ -3,7 +3,7 @@ import { IAdventureSummary, IProfile } from '../data/profile';
 import { IDataService, IDataView, IDataReference } from './interfaces';
 import { IMap } from '../data/map';
 
-const maxProfileEntries = 6;
+const maxProfileEntries = 7;
 
 function updateProfileAdventures(adventures: IAdventureSummary[] | undefined, changed: IAdventureSummary): IAdventureSummary[] {
   var existingIndex = adventures?.findIndex(a => a.id === changed.id) ?? -1;
@@ -232,57 +232,77 @@ export async function deleteMap(
 async function registerAdventureAsRecentTransaction(
   view: IDataView,
   profileRef: IDataReference<IProfile>,
-  a: IAdventureSummary
+  id: string,
+  a: IAdventure
 ) {
   var profile = await view.get(profileRef);
   if (profile === undefined) {
     return Promise.reject("No such profile");
   }
 
-  var updated = updateProfileAdventures(profile.adventures, a);
+  var updated = updateProfileAdventures(profile.adventures, {
+    id: id,
+    name: a.name,
+    description: a.description,
+    owner: a.owner
+  });
   view.update(profileRef, { adventures: updated });
 }
 
 export async function registerAdventureAsRecent(
   dataService: IDataService | undefined,
   profile: IProfile | undefined,
-  a: IAdventureSummary
+  id: string,
+  a: IAdventure
 ) {
   if (dataService === undefined || profile === undefined) {
     return;
   }
 
-  if (profile.adventures?.find(l => l.id === a.id) !== undefined) {
+  if (profile.adventures?.find(l => l.id === id) !== undefined) {
     return;
   }
 
   var profileRef = dataService.getProfileRef();
-  await dataService.runTransaction(view => registerAdventureAsRecentTransaction(view, profileRef, a));
+  await dataService.runTransaction(
+    view => registerAdventureAsRecentTransaction(view, profileRef, id, a)
+  );
 }
 
 async function registerMapAsRecentTransaction(
   view: IDataView,
   profileRef: IDataReference<IProfile>,
-  m: IMapSummary
+  id: string,
+  m: IMap
 ) {
   var profile = await view.get(profileRef);
   if (profile === undefined) {
     return Promise.reject("No such profile");
   }
 
-  var updated = updateProfileMaps(profile.latestMaps, m);
+  var updated = updateProfileMaps(profile.latestMaps, {
+    id: id,
+    name: m.name,
+    description: m.description,
+    ty: m.ty
+  });
   view.update(profileRef, { latestMaps: updated });
 }
 
-export async function registerMapAsRecent(dataService: IDataService | undefined, profile: IProfile | undefined, m: IMapSummary): Promise<void> {
+export async function registerMapAsRecent(
+  dataService: IDataService | undefined,
+  profile: IProfile | undefined,
+  id: string,
+  m: IMap
+): Promise<void> {
   if (dataService === undefined || profile === undefined) {
     return;
   }
 
-  if (profile.latestMaps?.find(l => l.id === m.id) !== undefined) {
+  if (profile.latestMaps?.find(l => l.id === id) !== undefined) {
     return;
   }
 
   var profileRef = dataService.getProfileRef();
-  await dataService.runTransaction(view => registerMapAsRecentTransaction(view, profileRef, m));
+  await dataService.runTransaction(view => registerMapAsRecentTransaction(view, profileRef, id, m));
 }

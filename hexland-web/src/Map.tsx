@@ -200,18 +200,13 @@ class Map extends React.Component<IMapProps, MapState> {
   }
 
   private async loadMap(mount: HTMLDivElement): Promise<void> {
-    // This is assumed to be a one-time operation right now :)
     var record = await this.props.dataService?.getMap(this.props.mapId);
     if (record === undefined) {
       return;
     }
 
     this.setState({ record: record });
-
-    await registerMapAsRecent(this.props.dataService, this.props.profile, {
-      id: this.props.mapId, name: record.name, description: record.description, ty: record.ty
-    });
-
+    await registerMapAsRecent(this.props.dataService, this.props.profile, this.props.mapId, record);
     this._drawing = new ThreeDrawing(
       this._colours,
       mount,
@@ -234,6 +229,19 @@ class Map extends React.Component<IMapProps, MapState> {
     this.loadMap(mount)
       .then(() => console.log("Map " + this.props.mapId + " successfully loaded"))
       .catch(e => console.error("Error loading map " + this.props.mapId, e));
+  }
+
+  componentDidUpdate(prevProps: IMapProps, prevState: MapState) {
+    if (this.props.dataService !== prevProps.dataService || this.props.mapId !== prevProps.mapId) {
+      var mount = this._mount.current;
+      if (!mount) {
+        return;
+      }
+
+      this.loadMap(mount)
+        .then(() => console.log("Map " + this.props.mapId + " successfully loaded"))
+        .catch(e => console.error("Error loading map " + this.props.mapId, e));
+    }
   }
 
   componentWillUnmount() {
