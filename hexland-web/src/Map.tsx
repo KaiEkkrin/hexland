@@ -378,21 +378,19 @@ class Map extends React.Component<IMapProps, MapState> {
 
   render() {
     return (
-      <div className="Map-container">
-        <Navigation getTitle={() => this.state.record?.name} />
-        <div className="Map-main">
-          <MapControls colours={this.hexColours}
-            getEditMode={() => this.state.editMode}
-            setEditMode={this.setEditMode}
-            getSelectedColour={() => this.state.selectedColour}
-            setSelectedColour={(v) => { this.setState({ selectedColour: v }); }}
-            resetView={this.resetView} />
-          <div className="Map-content">
-            <div id="drawingDiv" ref={this._mount}
-              onMouseDown={this.handleMouseDown}
-              onMouseMove={this.handleMouseMove}
-              onMouseUp={this.handleMouseUp} />
-          </div>
+      <div>
+        <Navigation className="Map-nav" getTitle={() => this.state.record?.name} />
+        <MapControls colours={this.hexColours}
+          getEditMode={() => this.state.editMode}
+          setEditMode={this.setEditMode}
+          getSelectedColour={() => this.state.selectedColour}
+          setSelectedColour={(v) => { this.setState({ selectedColour: v }); }}
+          resetView={this.resetView} />
+        <div className="Map-content">
+          <div id="drawingDiv" ref={this._mount}
+            onMouseDown={this.handleMouseDown}
+            onMouseMove={this.handleMouseMove}
+            onMouseUp={this.handleMouseUp} />
         </div>
         <Modal show={this.state.showTokenEditor} onHide={this.handleTokenEditorClose}>
           <Modal.Header closeButton>

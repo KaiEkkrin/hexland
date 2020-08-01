@@ -10,12 +10,13 @@ import Navbar from 'react-bootstrap/Navbar';
 import { LinkContainer } from 'react-router-bootstrap';
 
 interface INavigationProps {
+  className?: string | undefined;
   getTitle: () => string | undefined;
 }
 
 function Navigation(props: INavigationProps) {
   return (
-    <Navbar bg="dark" variant="dark" sticky="top">
+    <Navbar className={props.className} bg="dark" variant="dark" sticky="top">
       <LinkContainer to="/">
         <Navbar.Brand>hexland</Navbar.Brand>
       </LinkContainer>

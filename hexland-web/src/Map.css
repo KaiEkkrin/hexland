@@ -1,18 +1,24 @@
-.Map-container {
+.Map-controls {
   display: flex;
   flex-direction: column;
-}
-
-.Map-main {
-  display: flex;
-  flex-grow: 1;
-}
-
-.Map-controls {
+  position: relative;
   min-width: 3rem;
   width: 3rem;
+  z-index: 1;
 }
 
 .Map-content {
-  flex-grow: 1;
+  display: block;
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+}
+
+.Map-nav {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1;
 }
