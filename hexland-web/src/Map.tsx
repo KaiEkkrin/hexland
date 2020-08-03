@@ -8,7 +8,7 @@ import { IChanges, IChange } from './data/change';
 import { trackChanges } from './data/changeTracking';
 import { MapType, IMap } from './data/map';
 import { IProfile } from './data/profile';
-import { registerMapAsRecent } from './services/extensions';
+import { registerMapAsRecent, consolidateMapChanges } from './services/extensions';
 import { IDataService } from './services/interfaces';
 
 import { ThreeDrawing } from './models/drawing';
@@ -204,6 +204,10 @@ class Map extends React.Component<IMapProps, MapState> {
   }
 
   private async loadMap(mount: HTMLDivElement): Promise<void> {
+    // Detach from any existing map
+    this._stopWatchingMap?.();
+    this._stopWatchingMap = undefined;
+
     var record = await this.props.dataService?.getMap(this.props.mapId);
     if (record === undefined) {
       return;
@@ -218,9 +222,12 @@ class Map extends React.Component<IMapProps, MapState> {
       record.ty === MapType.Hex
     );
 
+    // If relevant, consolidate any existing changes to this map to reduce the amount
+    // of database clutter
+    await consolidateMapChanges(this.props.dataService, this.props.mapId, record);
+
     // TODO Before doing this, do a reconcile transaction to group together existing incremental
     // changes into a single base change if possible.
-    this._stopWatchingMap?.();
     this._stopWatchingMap = this.props.dataService?.watchChanges(
       this.props.mapId,
       (chs: IChanges) => { if (this._drawing !== undefined) { trackChanges(drawing, chs.chs); } },

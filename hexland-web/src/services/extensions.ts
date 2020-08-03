@@ -1,7 +1,10 @@
 import { IAdventure, IMapSummary } from '../data/adventure';
-import { IAdventureSummary, IProfile } from '../data/profile';
-import { IDataService, IDataView, IDataReference } from './interfaces';
+import { IChange, IChanges } from '../data/change';
+import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
 import { IMap } from '../data/map';
+import { IAdventureSummary, IProfile } from '../data/profile';
+import { IDataService, IDataView, IDataReference, IDataAndReference } from './interfaces';
+import { timestampProvider } from '../firebase';
 
 const maxProfileEntries = 7;
 
@@ -305,4 +308,67 @@ export async function registerMapAsRecent(
 
   var profileRef = dataService.getProfileRef();
   await dataService.runTransaction(view => registerMapAsRecentTransaction(view, profileRef, id, m));
+}
+
+async function consolidateMapChangesTransaction(
+  view: IDataView,
+  baseChangeRef: IDataReference<IChanges>,
+  changes: IDataAndReference<IChanges>[],
+  consolidated: IChange[],
+  uid: string
+) {
+  // Check that the base change hasn't changed since we did the query.
+  // If it has, we'll simply abort -- someone else has done this recently
+  var baseChanges = changes.filter(c => c.data.incremental === false);
+  var baseChange = baseChanges.length > 0 ? baseChanges[0].data : undefined;
+
+  var latestBaseChange = await view.get(baseChangeRef);
+  if (baseChange !== undefined && latestBaseChange !== undefined) {
+    if (!latestBaseChange.timestamp.isEqual(baseChange.timestamp)) {
+      return Promise.reject("Map changes have already been consolidated");
+    }
+  }
+
+  // Update the base change
+  await view.set(baseChangeRef, {
+    chs: consolidated,
+    timestamp: timestampProvider(),
+    incremental: false,
+    user: uid
+  });
+
+  // Delete all the others
+  await Promise.all(
+    changes.filter(c => c.data.incremental === true).map(c => view.delete(c))
+  );
+}
+
+// TODO So that things are consolidated more regularly, pick a suitable
+// count and run this as a Firebase Function when that many changes are
+// added to the map?
+export async function consolidateMapChanges(
+  dataService: IDataService | undefined,
+  mapId: string,
+  m: IMap
+): Promise<void> {
+  if (dataService === undefined || dataService.getUid() !== m.owner) {
+    return;
+  }
+
+  // Fetch all the current changes for this map, along with their refs
+  var baseChangeRef = await dataService.getMapBaseChangeRef(mapId);
+  var changes = await dataService.getMapChangesRefs(mapId);
+  if (changes === undefined) {
+    return;
+  }
+
+  // Consolidate all of that
+  var tracker = new SimpleChangeTracker();
+  changes.forEach(c => trackChanges(tracker, c.data.chs));
+  var consolidated = tracker.getConsolidated();
+
+  // Apply it
+  await dataService.runTransaction(view =>
+    consolidateMapChangesTransaction(view, baseChangeRef, changes ?? [], consolidated, dataService.getUid())
+  );
 }

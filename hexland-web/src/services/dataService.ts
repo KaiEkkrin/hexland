@@ -1,6 +1,6 @@
 import { db, timestampProvider } from '../firebase';
 
-import { IDataService, IDataReference, IDataView } from './interfaces';
+import { IDataService, IDataReference, IDataView, IDataAndReference } from './interfaces';
 import { IAdventure } from '../data/adventure';
 import { IChange, IChanges } from '../data/change';
 import { IIdentified } from '../data/identified';
@@ -12,6 +12,7 @@ const profiles = "profiles";
 const adventures = "adventures";
 const maps = "maps";
 const changes = "changes";
+const baseChange = "base";
 
 class DataReference<T> implements IDataReference<T> {
   private readonly _dref: firebase.firestore.DocumentReference<firebase.firestore.DocumentData>;
@@ -26,6 +27,22 @@ class DataReference<T> implements IDataReference<T> {
 
   convert(rawData: any): T {
     return rawData as T;
+  }
+}
+
+class DataAndReference<T> extends DataReference<T> implements IDataAndReference<T> {
+  private readonly _data: firebase.firestore.DocumentData;
+
+  constructor(
+    dref: firebase.firestore.DocumentReference<firebase.firestore.DocumentData>,
+    data: firebase.firestore.DocumentData
+  ) {
+    super(dref);
+    this._data = data;
+  }
+
+  get data(): T {
+    return this.convert(this._data);
   }
 }
 
@@ -89,6 +106,18 @@ export class DataService implements IDataService {
   getMapRef(id: string): IDataReference<IMap> {
     var d = db.collection(maps).doc(id);
     return new DataReference<IMap>(d);
+  }
+
+  getMapBaseChangeRef(id: string): IDataReference<IChanges> {
+    var d = db.collection(maps).doc(id).collection(changes).doc(baseChange);
+    return new DataReference<IChanges>(d);
+  }
+
+  async getMapChangesRefs(id: string): Promise<IDataAndReference<IChanges>[] | undefined> {
+    var s = await db.collection(maps).doc(id).collection(changes)
+      .orderBy("timestamp")
+      .get();
+    return s.empty ? undefined : s.docs.map(d => new DataAndReference(d.ref, d.data()));
   }
 
   async getProfile(): Promise<IProfile | undefined> {
@@ -165,11 +194,13 @@ export class DataService implements IDataService {
     onCompletion?: (() => void) | undefined
   ) {
     return db.collection(maps).doc(mapId).collection(changes)
+      .orderBy("incremental") // base change must always be first even if it has a later timestamp
       .orderBy("timestamp")
       .onSnapshot(s => {
         s.docChanges().forEach(d => {
+          // We're only interested in newly added documents -- these are new
+          // changes to the map
           if (d.doc.exists && d.oldIndex === -1) {
-            // This is a newly added change
             var chs = d.doc.data() as IChanges;
             onNext(chs);
           }

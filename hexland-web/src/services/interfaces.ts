@@ -9,6 +9,11 @@ export interface IDataReference<T> {
   convert(rawData: any): T;
 }
 
+// A reference to stored data, *and* the data fetched.
+export interface IDataAndReference<T> extends IDataReference<T> {
+  data: T;
+}
+
 // This service is for datastore-related operations.
 export interface IDataService extends IDataView {
   // Adds incremental changes to a map.
@@ -21,6 +26,9 @@ export interface IDataService extends IDataView {
   // Gets a map.
   getMap(id: string): Promise<IMap | undefined>;
   getMapRef(id: string): IDataReference<IMap>;
+
+  getMapBaseChangeRef(id: string): IDataReference<IChanges>;
+  getMapChangesRefs(id: string): Promise<IDataAndReference<IChanges>[] | undefined>;
 
   // Gets the user's profile.
   getProfile(): Promise<IProfile | undefined>;

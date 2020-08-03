@@ -1,4 +1,4 @@
-import { IChange, ITokenRemove, ChangeType, ChangeCategory, ITokenAdd, ITokenMove } from '../data/change';
+import { IAreaAdd, IWallAdd, IChange, ITokenRemove, ChangeType, ChangeCategory, ITokenAdd, ITokenMove } from '../data/change';
 import { IChangeTracker } from '../data/changeTracking';
 import { IGridCoord, IGridEdge, coordAdd, coordsEqual, coordSub } from '../data/coord';
 import { IToken, IFeature } from '../data/feature';
@@ -227,6 +227,29 @@ export class ThreeDrawing implements IChangeTracker {
 
   wallRemove(position: IGridEdge) {
     return this._walls.remove(position);
+  }
+
+  getConsolidated(): IChange[] {
+    var all: IChange[] = [];
+    this._areas.all.forEach(v => all.push({
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Area,
+      feature: v
+    } as IAreaAdd));
+    
+    this._tokens.all.forEach(v => all.push({
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Token,
+      feature: v
+    } as ITokenAdd));
+
+    this._walls.all.forEach(v => all.push({
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Wall,
+      feature: v
+    } as IWallAdd));
+
+    return all;
   }
 
   // == Other things ==

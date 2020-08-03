@@ -9,6 +9,9 @@ export interface IChangeTracker {
   tokenRemove: (position: IGridCoord) => IToken | undefined;
   wallAdd: (feature: IFeature<IGridEdge>) => boolean;
   wallRemove: (position: IGridEdge) => IFeature<IGridEdge> | undefined;
+
+  // Gets a minimal collection of changes to add everything in this tracker.
+  getConsolidated: () => IChange[];
 }
 
 // A simple implementation for testing, etc.
@@ -45,6 +48,29 @@ export class SimpleChangeTracker implements IChangeTracker {
 
   wallRemove(position: IGridEdge) {
     return this._walls.removeFeature(position);
+  }
+
+  getConsolidated(): IChange[] {
+    var all: IChange[] = [];
+    this._areas.foreach((k, v) => all.push({
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Area,
+      feature: v
+    } as IAreaAdd));
+    
+    this._tokens.foreach((k, v) => all.push({
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Token,
+      feature: v
+    } as ITokenAdd));
+
+    this._walls.foreach((k, v) => all.push({
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Wall,
+      feature: v
+    } as IWallAdd));
+
+    return all;
   }
 }
 
