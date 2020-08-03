@@ -76,6 +76,17 @@ export class CoordDictionary<K, T> {
     return keys;
   }
 
+  add(k: K, v: T): boolean {
+    var index = this._toIndex(k);
+    if (index in this._values) {
+      return false;
+    }
+
+    this._coords[index] = k;
+    this._values[index] = v;
+    return true;
+  }
+
   clear() {
     this._coords = {};
     this._values = {};
@@ -96,15 +107,19 @@ export class CoordDictionary<K, T> {
     }
   }
 
-  remove(k: K) {
+  remove(k: K): T | undefined {
+    var value: T | undefined = undefined;
     var index = this._toIndex(k);
     if (index in this._coords) {
       delete this._coords[index];
     }
 
     if (index in this._values) {
+      value = this._values[index];
       delete this._values[index];
     }
+
+    return value;
   }
 
   set(k: K, v: T) {

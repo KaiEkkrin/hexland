@@ -32,7 +32,7 @@ test('convert to and from grid coords', () => {
 
     expect(edgesEqual(edge, edge2)).toBeTruthy();
   }
-})
+});
 
 test('grid coord dictionary entries', () => {
   var dict = new CoordDictionary<IGridCoord, number>(coordString);
