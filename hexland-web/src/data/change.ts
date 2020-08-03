@@ -6,7 +6,7 @@ export interface IChanges {
   chs: IChange[];
   timestamp: firebase.firestore.FieldValue; // initialise this to `serverTimestamp`
   incremental: boolean;
-  user: string; // the uid that made these changes
+  user: string; // the uid that made these changes.  TODO a "visible-to" field too?
 }
 
 // This represents any change made to the map.
