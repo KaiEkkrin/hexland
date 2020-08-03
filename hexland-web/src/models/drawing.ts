@@ -1,5 +1,7 @@
+import { IChange, ITokenRemove, ChangeType, ChangeCategory, ITokenAdd, ITokenMove } from '../data/change';
+import { IChangeTracker } from '../data/changeTracking';
 import { IGridCoord, IGridEdge, coordAdd, coordsEqual, coordSub } from '../data/coord';
-import { IToken } from '../data/feature';
+import { IToken, IFeature } from '../data/feature';
 import { Areas } from './areas';
 import { EdgeHighlighter, FaceHighlighter } from './dragHighlighter';
 import { FeatureColour } from './featureColour';
@@ -13,7 +15,6 @@ import { IInstancedToken, Tokens } from './tokens';
 import { Walls } from './walls';
 
 import * as THREE from 'three';
-import { IMap } from '../data/map';
 
 const areaZ = 0.5;
 const tokenZ = 0.6;
@@ -39,7 +40,7 @@ const rotationStep = 0.004;
 
 // A container for the entirety of the drawing.
 // TODO Disposal of the resources used by this when required
-export class ThreeDrawing {
+export class ThreeDrawing implements IChangeTracker {
   private readonly _gridGeometry: IGridGeometry;
 
   private readonly _camera: THREE.OrthographicCamera;
@@ -202,40 +203,33 @@ export class ThreeDrawing {
     }
   }
 
-  loadFeatures(record: IMap) {
-    // We clear out everything currently here before applying the record's contents:
-    this._areas.clear();
-    this._tokens.clear();
-    this._walls.clear();
+  // == IChangeTracker implementation ==
 
-    record.areas.forEach(a => { this._areas.add(a); });
-    record.walls.forEach(w => { this._walls.add(w); });
-    record.tokens.forEach(t => {
-      // This should ensure we re-create the text mesh:
-      // TODO For some reason it still occasionally doesn't draw it until you jiggle the
-      // token about (?!)
-      this._tokens.add({
-        position: t.position,
-        colour: t.colour,
-        text: t.text,
-        textMesh: undefined
-      } as IInstancedToken);
-    });
+  areaAdd(feature: IFeature<IGridCoord>) {
+    return this._areas.add(feature);
   }
 
-  saveFeatures(record: IMap) {
-    record.areas = this._areas.all;
-    record.walls = this._walls.all;
-
-    // When serialising tokens, remember to drop the meshes :)
-    record.tokens = this._tokens.all.map(t => {
-      return {
-        position: t.position,
-        colour: t.colour,
-        text: t.text
-      } as IToken;
-    });
+  areaRemove(position: IGridCoord) {
+    return this._areas.remove(position);
   }
+
+  tokenAdd(feature: IToken) {
+    return this._tokens.add(feature as IInstancedToken);
+  }
+
+  tokenRemove(position: IGridCoord) {
+    return this._tokens.remove(position);
+  }
+
+  wallAdd(feature: IFeature<IGridEdge>) {
+    return this._walls.add(feature);
+  }
+
+  wallRemove(position: IGridEdge) {
+    return this._walls.remove(position);
+  }
+
+  // == Other things ==
 
   resize() {
     var width = Math.max(1, Math.floor(window.innerWidth));
@@ -355,16 +349,16 @@ export class ThreeDrawing {
     this._edgeHighlighter.dragStart(this.getGridEdgeAt(cp));
   }
 
-  edgeDragEnd(cp: THREE.Vector2, colour: number) {
-    this._edgeHighlighter.dragEnd(this.getGridEdgeAt(cp), colour);
+  edgeDragEnd(cp: THREE.Vector2, colour: number): IChange[] {
+    return this._edgeHighlighter.dragEnd(this.getGridEdgeAt(cp), colour);
   }
 
   faceDragStart(cp: THREE.Vector2) {
     this._faceHighlighter.dragStart(this.getGridCoordAt(cp));
   }
 
-  faceDragEnd(cp: THREE.Vector2, colour: number) {
-    this._faceHighlighter.dragEnd(this.getGridCoordAt(cp), colour);
+  faceDragEnd(cp: THREE.Vector2, colour: number): IChange[] {
+    return this._faceHighlighter.dragEnd(this.getGridCoordAt(cp), colour);
   }
 
   moveEdgeHighlightTo(cp: THREE.Vector2) {
@@ -400,14 +394,33 @@ export class ThreeDrawing {
     }
   }
 
-  setToken(cp: THREE.Vector2, colour: number, text: string) {
+  setToken(cp: THREE.Vector2, colour: number, text: string): IChange[] {
     var position = this.getGridCoordAt(cp);
+    var chs: IChange[] = [];
     if (position !== undefined) {
-      this._tokens.remove(position); // replace any existing token
+      if (this._tokens.at(position) !== undefined) {
+        // Replace the existing token
+        chs.push({
+          ty: ChangeType.Remove,
+          cat: ChangeCategory.Token,
+          position: position
+        } as ITokenRemove);
+      }
+
       if (colour >= 0) {
-        this._tokens.add({ position: position, colour: colour, text: text, textMesh: undefined });
+        chs.push({
+          ty: ChangeType.Add,
+          cat: ChangeCategory.Token,
+          feature: {
+            position: position,
+            colour: colour,
+            text: text
+          }
+        } as ITokenAdd);
       }
     }
+
+    return chs;
   }
 
   selectionDragStart(cp: THREE.Vector2) {
@@ -425,8 +438,9 @@ export class ThreeDrawing {
     }
   }
 
-  selectionDragEnd(cp: THREE.Vector2, shiftKey: boolean) {
+  selectionDragEnd(cp: THREE.Vector2, shiftKey: boolean): IChange[] {
     var position = this.getGridCoordAt(cp);
+    var chs: IChange[] = [];
     if (position) {
       if (this._tokenMoveDragStart !== undefined) {
         var delta = coordSub(position, this._tokenMoveDragStart);
@@ -434,15 +448,17 @@ export class ThreeDrawing {
         this._selectionDragRed.clear();
 
         if (this.canDropSelectionAt(position)) {
-          // To avoid overlap deletions, we need to first pick up every token, and then
-          // put them all down again:
-          this._selection.all.map(t => this._tokens.remove(t.position))
-            .forEach(f => {
-              if (f !== undefined) {
-                f.position = coordAdd(f.position, delta);
-                this._tokens.add(f);
-              }
-            });
+          // Create commands that move all the tokens
+          chs.push(...this._selection.all.map(t => {
+            return {
+              ty: ChangeType.Move,
+              cat: ChangeCategory.Token,
+              newPosition: coordAdd(t.position, delta),
+              oldPosition: t.position
+            } as ITokenMove;
+          }));
+
+          // Move the selection to the target positions
           this._selection.all.map(t => this._selection.remove(t.position))
             .forEach(f => {
               if (f !== undefined) {
@@ -467,5 +483,7 @@ export class ThreeDrawing {
         this._selectDragStart = undefined;
       }
     }
+
+    return chs;
   }
 }

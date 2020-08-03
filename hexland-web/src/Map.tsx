@@ -4,6 +4,8 @@ import './Map.css';
 import Navigation from './Navigation';
 
 import { AppContext, AppState } from './App';
+import { IChanges, IChange } from './data/change';
+import { trackChanges } from './data/changeTracking';
 import { MapType, IMap } from './data/map';
 import { IProfile } from './data/profile';
 import { registerMapAsRecent } from './services/extensions';
@@ -27,6 +29,7 @@ import { faDotCircle, faDrawPolygon, faHandPaper, faMousePointer, faPlus, faSear
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import * as THREE from 'three';
+
 enum EditMode {
   Select = "select",
   Token = "token",
@@ -168,6 +171,7 @@ class Map extends React.Component<IMapProps, MapState> {
   private readonly _mount: RefObject<HTMLDivElement>;
   private readonly _textCreator: TextCreator;
   private _drawing: ThreeDrawing | undefined;
+  private _stopWatchingMap: (() => void) | undefined;
 
   constructor(props: IMapProps) {
     super(props);
@@ -207,15 +211,37 @@ class Map extends React.Component<IMapProps, MapState> {
 
     this.setState({ record: record });
     await registerMapAsRecent(this.props.dataService, this.props.profile, this.props.mapId, record);
-    this._drawing = new ThreeDrawing(
+    var drawing = new ThreeDrawing(
       this._colours,
       mount,
       this._textCreator,
       record.ty === MapType.Hex
     );
 
-    this._drawing.loadFeatures(record);
+    // TODO Before doing this, do a reconcile transaction to group together existing incremental
+    // changes into a single base change if possible.
+    this._stopWatchingMap?.();
+    this._stopWatchingMap = this.props.dataService?.watchChanges(
+      this.props.mapId,
+      (chs: IChanges) => { if (this._drawing !== undefined) { trackChanges(drawing, chs.chs); } },
+      (e: Error) => console.error("Error watching map changes:", e)
+    );
+
+    this._drawing = drawing; // TODO dispose any old one
     this._drawing.animate();
+  }
+
+  private addChanges(changes: IChange[] | undefined) {
+    if (changes === undefined ||
+      changes.length === 0 ||
+      this.props.dataService === undefined
+    ) {
+      return;
+    }
+
+    this.props.dataService.addChanges(this.props.mapId, changes)
+      .then(() => console.log("Added " + changes.length + " changes"))
+      .catch(e => console.error("Error adding " + changes.length + " changes", e));
   }
 
   componentDidMount() {
@@ -245,15 +271,8 @@ class Map extends React.Component<IMapProps, MapState> {
   }
 
   componentWillUnmount() {
-    if (this.state.record !== undefined && this._drawing !== undefined) {
-      // Save changes to the map.  TODO Should be able to eventually remove this!
-      // Since I don't have map sharing right now, it's okay as a temporary measure.
-      this._drawing.saveFeatures(this.state.record);
-      this.props.dataService?.setMap(this.props.mapId, this.state.record)
-        .then(() => console.log("Map " + this.props.mapId + " successfully saved"))
-        .catch(e => console.error("Error saving map " + this.props.mapId, e));
-    }
-
+    this._stopWatchingMap?.();
+    this._stopWatchingMap = undefined;
     window.removeEventListener('resize', this.handleWindowResize);
   }
 
@@ -308,7 +327,7 @@ class Map extends React.Component<IMapProps, MapState> {
 
     switch (this.state.editMode) {
       case EditMode.Select:
-        this._drawing?.selectionDragEnd(cp, e.shiftKey);
+        this.addChanges(this._drawing?.selectionDragEnd(cp, e.shiftKey));
         break;
 
       case EditMode.Token:
@@ -324,11 +343,11 @@ class Map extends React.Component<IMapProps, MapState> {
         break;
 
       case EditMode.Area:
-        this._drawing?.faceDragEnd(cp, this.state.selectedColour);
+        this.addChanges(this._drawing?.faceDragEnd(cp, this.state.selectedColour));
         break;
 
       case EditMode.Wall:
-        this._drawing?.edgeDragEnd(cp, this.state.selectedColour);
+        this.addChanges(this._drawing?.edgeDragEnd(cp, this.state.selectedColour));
         break;
 
       case EditMode.Pan: this._drawing?.panEnd(); break;
@@ -342,7 +361,9 @@ class Map extends React.Component<IMapProps, MapState> {
 
   private handleTokenEditorDelete() {
     if (this.state.contextualPosition !== undefined) {
-      this._drawing?.setToken(this.state.contextualPosition, -1, this.state.contextualText);
+      this.addChanges(
+        this._drawing?.setToken(this.state.contextualPosition, -1, this.state.contextualText)
+      );
     }
 
     this.handleTokenEditorClose();
@@ -350,7 +371,13 @@ class Map extends React.Component<IMapProps, MapState> {
 
   private handleTokenEditorSave() {
     if (this.state.contextualPosition !== undefined) {
-      this._drawing?.setToken(this.state.contextualPosition, this.state.contextualColour, this.state.contextualText);
+      this.addChanges(
+        this._drawing?.setToken(
+          this.state.contextualPosition,
+          this.state.contextualColour,
+          this.state.contextualText
+        )
+      );
     }
 
     this.handleTokenEditorClose();

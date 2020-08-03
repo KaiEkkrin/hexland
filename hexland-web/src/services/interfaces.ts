@@ -1,4 +1,5 @@
 import { IAdventure } from '../data/adventure';
+import { IChange, IChanges } from '../data/change';
 import { IIdentified } from '../data/identified';
 import { IMap } from '../data/map';
 import { IProfile } from '../data/profile';
@@ -10,6 +11,9 @@ export interface IDataReference<T> {
 
 // This service is for datastore-related operations.
 export interface IDataService extends IDataView {
+  // Adds incremental changes to a map.
+  addChanges(mapId: string, changes: IChange[]): Promise<void>;
+
   // Gets an adventure.
   getAdventure(id: string): Promise<IAdventure | undefined>;
   getAdventureRef(id: string): IDataReference<IAdventure>;
@@ -49,6 +53,14 @@ export interface IDataService extends IDataView {
   // Watches all the user's adventures.  Call the returned function to stop.
   watchAdventures(
     onNext: (adventures: IIdentified<IAdventure>[]) => void,
+    onError?: ((error: Error) => void) | undefined,
+    onCompletion?: (() => void) | undefined
+  ): () => void;
+
+  // Watches changes to a map.
+  watchChanges(
+    mapId: string,
+    onNext: (changes: IChanges) => void,
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ): () => void;

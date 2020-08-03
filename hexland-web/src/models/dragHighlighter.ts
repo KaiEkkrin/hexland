@@ -1,3 +1,4 @@
+import { IChange, ChangeType, ChangeCategory, IWallAdd, IWallRemove, IAreaAdd, IAreaRemove } from "../data/change";
 import { IGridCoord, IGridEdge, edgesEqual, coordsEqual } from "../data/coord";
 import { IFeature } from '../data/feature';
 import { InstancedFeatures } from "./instancedFeatures";
@@ -5,7 +6,7 @@ import { InstancedFeatures } from "./instancedFeatures";
 // Helps handling a hover highlight with drag to select many and release to commit
 // them into new features.
 abstract class DragHighlighter<K, F extends IFeature<K>> {
-  private readonly _features: InstancedFeatures<K, F>;
+  private readonly _features: InstancedFeatures<K, F>; // inspect, but do not edit directly!
   private readonly _highlights: InstancedFeatures<K, F>;
 
   private _inDrag: boolean = false;
@@ -17,7 +18,8 @@ abstract class DragHighlighter<K, F extends IFeature<K>> {
   }
 
   protected abstract keysEqual(a: K, b: K | undefined): boolean;
-  protected abstract createFeature(position: K, colour: number): F;
+  protected abstract createFeatureAdd(position: K, colour: number): IChange;
+  protected abstract createFeatureRemove(position: K): IChange;
   protected abstract createHighlight(position: K): F;
 
   dragStart(position?: K | undefined) {
@@ -25,16 +27,22 @@ abstract class DragHighlighter<K, F extends IFeature<K>> {
     this._inDrag = true;
   }
 
-  dragEnd(position: K | undefined, colour: number) {
+  // Returns a list of changes that would apply this edit to the map, so that it can be
+  // synchronised with other clients.
+  dragEnd(position: K | undefined, colour: number): IChange[] {
     this.moveHighlight(position);
     if (this._inDrag === false) {
-      return;
+      return [];
     }
 
+    var changes: IChange[] = [];
     this._highlights.all.forEach(f => {
-      this._features.remove(f.position);
+      if (this._features.at(f.position) !== undefined) {
+        changes.push(this.createFeatureRemove(f.position));
+      }
+
       if (colour >= 0) {
-        this._features.add(this.createFeature(f.position, colour));
+        changes.push(this.createFeatureAdd(f.position, colour));
       }
 
       if (f.position !== position) {
@@ -43,6 +51,7 @@ abstract class DragHighlighter<K, F extends IFeature<K>> {
     });
 
     this._inDrag = false;
+    return changes;
   }
 
   moveHighlight(position?: K | undefined) {
@@ -72,8 +81,23 @@ export class EdgeHighlighter extends DragHighlighter<IGridEdge, IFeature<IGridEd
     return edgesEqual(a, b);
   }
 
-  protected createFeature(position: IGridEdge, colour: number): IFeature<IGridEdge> {
-    return { position: position, colour: colour };
+  protected createFeatureAdd(position: IGridEdge, colour: number): IChange {
+    return {
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Wall,
+      feature: {
+        position: position,
+        colour: colour
+      }
+    } as IWallAdd;
+  }
+
+  protected createFeatureRemove(position: IGridEdge): IChange {
+    return {
+      ty: ChangeType.Remove,
+      cat: ChangeCategory.Wall,
+      position: position
+    } as IWallRemove;
   }
 
   protected createHighlight(position: IGridEdge): IFeature<IGridEdge> {
@@ -86,8 +110,23 @@ export class FaceHighlighter extends DragHighlighter<IGridCoord, IFeature<IGridC
     return coordsEqual(a, b);
   }
 
-  protected createFeature(position: IGridCoord, colour: number): IFeature<IGridCoord> {
-    return { position: position, colour: colour };
+  protected createFeatureAdd(position: IGridCoord, colour: number): IChange {
+    return {
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Area,
+      feature: {
+        position: position,
+        colour: colour
+      }
+    } as IAreaAdd;
+  }
+
+  protected createFeatureRemove(position: IGridCoord): IChange {
+    return {
+      ty: ChangeType.Remove,
+      cat: ChangeCategory.Area,
+      position: position
+    } as IAreaRemove;
   }
 
   protected createHighlight(position: IGridCoord): IFeature<IGridCoord> {

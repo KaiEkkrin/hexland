@@ -387,11 +387,7 @@ test('A token can be moved around', () => {
   var chs2 = [{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
-    feature: {
-      position: { x: 2, y: 2 },
-      colour: 3,
-      text: "a"
-    },
+    newPosition: { x: 2, y: 2 },
     oldPosition: { x: 1, y: 2 }
   }];
 
@@ -401,11 +397,7 @@ test('A token can be moved around', () => {
   var chs3 = [{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
-    feature: {
-      position: { x: 1, y: 2 },
-      colour: 3,
-      text: "a"
-    },
+    newPosition: { x: 1, y: 2 },
     oldPosition: { x: 2, y: 2 }
   }];
 
@@ -413,15 +405,11 @@ test('A token can be moved around', () => {
   expect(ok).toBeTruthy();
 
   // A redundant move from its current position back to the same position
-  // should be fine (that's how we can change its text for example)
+  // should be fine
   var chs4 = [{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
-    feature: {
-      position: { x: 1, y: 2 },
-      colour: 3,
-      text: "b"
-    },
+    newPosition: { x: 1, y: 2 },
     oldPosition: { x: 1, y: 2 }
   }];
 
@@ -432,11 +420,7 @@ test('A token can be moved around', () => {
   var chs5 = [{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
-    feature: {
-      position: { x: 3, y: 2 },
-      colour: 3,
-      text: "b"
-    },
+    newPosition: { x: 3, y: 2 },
     oldPosition: { x: 2, y: 2 }
   }];
 
@@ -480,20 +464,12 @@ test('Multiple tokens can be moved together', () => {
   var chs2 = [{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
-    feature: {
-      position: { x: 0, y: 3 },
-      colour: 3,
-      text: "a"
-    },
+    newPosition: { x: 0, y: 3 },
     oldPosition: { x: 1, y: 2 }
   }, {
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
-    feature: {
-      position: { x: 1, y: 3 },
-      colour: 2,
-      text: "c"
-    },
+    newPosition: { x: 1, y: 3 },
     oldPosition: { x: 2, y: 2 }
   }];
 
@@ -505,20 +481,12 @@ test('Multiple tokens can be moved together', () => {
   var chs3 = [{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
-    feature: {
-      position: { x: 0, y: 2 },
-      colour: 3,
-      text: "a"
-    },
+    newPosition: { x: 0, y: 2 },
     oldPosition: { x: 1, y: 2 }
   }, {
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
-    feature: {
-      position: { x: 1, y: 2 },
-      colour: 2,
-      text: "c"
-    },
+    newPosition: { x: 1, y: 2 },
     oldPosition: { x: 2, y: 2 }
   }];
 
@@ -562,20 +530,12 @@ test('Multiple tokens can be moved together (in the other order)', () => {
   var chs2 = [{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
-    feature: {
-      position: { x: 1, y: 3 },
-      colour: 3,
-      text: "c"
-    },
+    newPosition: { x: 1, y: 3 },
     oldPosition: { x: 2, y: 2 }
   }, {
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
-    feature: {
-      position: { x: 0, y: 3 },
-      colour: 2,
-      text: "a"
-    },
+    newPosition: { x: 0, y: 3 },
     oldPosition: { x: 1, y: 2 }
   }];
 
@@ -587,20 +547,12 @@ test('Multiple tokens can be moved together (in the other order)', () => {
   var chs3 = [{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
-    feature: {
-      position: { x: 1, y: 2 },
-      colour: 3,
-      text: "c"
-    },
+    newPosition: { x: 1, y: 2 },
     oldPosition: { x: 2, y: 2 }
   }, {
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
-    feature: {
-      position: { x: 0, y: 2 },
-      colour: 2,
-      text: "a"
-    },
+    newPosition: { x: 0, y: 2 },
     oldPosition: { x: 1, y: 2 }
   }];
 
@@ -643,11 +595,7 @@ test('I can move a token and add another one in its place', () => {
   }, {
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
-    feature: {
-      position: { x: 2, y: 2 },
-      colour: 3,
-      text: "a"
-    },
+    newPosition: { x: 2, y: 2 },
     oldPosition: { x: 1, y: 2 }
   }];
 
@@ -666,11 +614,7 @@ test('I can move a token and add another one in its place', () => {
   }, {
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
-    feature: {
-      position: { x: 2, y: 2 },
-      colour: 3,
-      text: "a"
-    },
+    newPosition: { x: 2, y: 2 },
     oldPosition: { x: 1, y: 2 }
   }];
 

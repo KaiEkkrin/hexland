@@ -1,7 +1,8 @@
-import { db } from '../firebase';
+import { db, timestampProvider } from '../firebase';
 
 import { IDataService, IDataReference, IDataView } from './interfaces';
 import { IAdventure } from '../data/adventure';
+import { IChange, IChanges } from '../data/change';
 import { IIdentified } from '../data/identified';
 import { IMap } from '../data/map';
 import { IProfile } from '../data/profile';
@@ -10,6 +11,7 @@ import { IProfile } from '../data/profile';
 const profiles = "profiles";
 const adventures = "adventures";
 const maps = "maps";
+const changes = "changes";
 
 class DataReference<T> implements IDataReference<T> {
   private readonly _dref: firebase.firestore.DocumentReference<firebase.firestore.DocumentData>;
@@ -59,6 +61,15 @@ export class DataService implements IDataService {
   }
 
   // IDataService implementation
+
+  async addChanges(mapId: string, chs: IChange[]): Promise<void> {
+    await db.collection(maps).doc(mapId).collection(changes).add({
+      chs: chs,
+      timestamp: timestampProvider(),
+      incremental: true,
+      user: this._uid
+    });
+  }
 
   async getAdventure(id: string): Promise<IAdventure | undefined> {
     var d = await db.collection(adventures).doc(id).get();
@@ -144,6 +155,25 @@ export class DataService implements IDataService {
           }
         });
         onNext(adventures);
+      }, onError, onCompletion);
+  }
+
+  watchChanges(
+    mapId: string,
+    onNext: (chs: IChanges) => void,
+    onError?: ((error: Error) => void) | undefined,
+    onCompletion?: (() => void) | undefined
+  ) {
+    return db.collection(maps).doc(mapId).collection(changes)
+      .orderBy("timestamp")
+      .onSnapshot(s => {
+        s.docChanges().forEach(d => {
+          if (d.doc.exists && d.oldIndex === -1) {
+            // This is a newly added change
+            var chs = d.doc.data() as IChanges;
+            onNext(chs);
+          }
+        });
       }, onError, onCompletion);
   }
 

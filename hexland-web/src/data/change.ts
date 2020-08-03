@@ -5,6 +5,7 @@ import { IFeature, IToken } from "./feature";
 export interface IChanges {
   chs: IChange[];
   timestamp: firebase.firestore.FieldValue; // initialise this to `serverTimestamp`
+  incremental: boolean;
   user: string; // the uid that made these changes
 }
 
@@ -40,7 +41,7 @@ export interface ITokenAdd extends IChange {
 }
 
 export interface ITokenMove extends IChange {
-  feature: IToken;
+  newPosition: IGridCoord;
   oldPosition: IGridCoord;
 }
 

@@ -185,16 +185,21 @@ function trackTokenChange(tracker: IChangeTracker, ch: IChange): IChangeApplicat
 
     case ChangeType.Move:
       var chMove = ch as ITokenMove;
-      var removed = tracker.tokenRemove(chMove.oldPosition);
-      return removed === undefined ? undefined : {
+      var moved = tracker.tokenRemove(chMove.oldPosition);
+      return moved === undefined ? undefined : {
         revert: function (tr: IChangeTracker) {
-          if (removed !== undefined) { tr.tokenAdd(removed); }
+          if (moved !== undefined) { tr.tokenAdd(moved); }
         },
         continue: function (tr: IChangeTracker) {
-          var added = tr.tokenAdd(chMove.feature);
+          // The Object.assign() jiggle here should ensure we retain any extra properties
+          // of the existing object as we create the moved one
+          var toAdd = {};
+          Object.assign(toAdd, moved);
+          (toAdd as IToken).position = chMove.newPosition;
+          var added = tr.tokenAdd(toAdd as IToken);
           return added ? {
             revert: function revert(tr2: IChangeTracker) {
-              tr2.tokenRemove(chMove.feature.position);
+              tr2.tokenRemove(chMove.newPosition);
             }
           } : undefined;
         }
