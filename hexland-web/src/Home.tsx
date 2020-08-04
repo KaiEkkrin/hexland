@@ -72,13 +72,15 @@ function Home(props: IHomeProps) {
           <h5 className="mt-4">Latest maps</h5>
           <MapCollection editable={false}
             showAdventureSelection={true}
-            getAdventures={() => props.profile?.adventures ?? []}
+            getAdventures={() => props.profile?.adventures?.filter(a => a.owner === props.dataService?.getUid()) ?? []}
             getMaps={() => props.profile?.latestMaps ?? []}
             setMap={setMap} deleteMap={undefined} />
         </Col>
         <Col xl>
           <h5 className="mt-4">Latest adventures</h5>
-          <AdventureCollection getAdventures={() => props.profile?.adventures ?? []} setAdventure={setAdventure} />
+          <AdventureCollection
+            uid={props.dataService?.getUid()}
+            getAdventures={() => props.profile?.adventures ?? []} setAdventure={setAdventure} />
         </Col>
       </Row>
     </Container>

@@ -10,6 +10,7 @@ import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
 
 interface IAdventureCollectionProps {
+  uid: string | undefined;
   getAdventures: () => IAdventureSummary[];
   setAdventure: (id: string | undefined, name: string, description: string) => void;
 }
@@ -26,9 +27,14 @@ class AdventureCollection extends React.Component<IAdventureCollectionProps, Adv
     super(props);
     this.state = new AdventureCollectionState();
 
+    this.canEditAdventure = this.canEditAdventure.bind(this);
     this.handleNewAdventureClick = this.handleNewAdventureClick.bind(this);
     this.handleEditAdventureClick = this.handleEditAdventureClick.bind(this);
     this.handleEditAdventureSave = this.handleEditAdventureSave.bind(this);
+  }
+
+  private canEditAdventure(a: IAdventureSummary) {
+    return a.owner === this.props.uid;
   }
 
   private handleNewAdventureClick() {
@@ -66,7 +72,7 @@ class AdventureCollection extends React.Component<IAdventureCollectionProps, Adv
     return (
       <div>
         <AdventureCards newAdventureCard={newAdventureCard} adventures={this.props.getAdventures()}
-          editAdventure={this.handleEditAdventureClick} />
+          canEditAdventure={this.canEditAdventure} editAdventure={this.handleEditAdventureClick} />
         <AdventureModal getDescription={() => this.state.editDescription}
           getName={() => this.state.editName}
           getShow={() => this.state.showEditAdventure}

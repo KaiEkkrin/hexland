@@ -5,20 +5,21 @@ import { AppContext, AppState } from './App';
 import MapCollection from './MapCollection';
 import Navigation from './Navigation';
 
-import { IMapSummary, IAdventure } from './data/adventure';
+import { IMapSummary, IAdventure, summariseAdventure } from './data/adventure';
+import { MapType } from './data/map';
 import { IProfile, IAdventureSummary } from './data/profile';
-import { deleteMap, editMap, registerAdventureAsRecent } from './services/extensions';
+import { deleteMap, editMap, registerAdventureAsRecent, inviteToAdventure } from './services/extensions';
 import { IDataService } from './services/interfaces';
 
+import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 
-import { RouteComponentProps } from 'react-router-dom';
+import { Link, RouteComponentProps } from 'react-router-dom';
 
 import { v4 as uuidv4 } from 'uuid';
-import { MapType } from './data/map';
 
 interface IAdventureProps {
   dataService: IDataService | undefined;
@@ -28,6 +29,7 @@ interface IAdventureProps {
 
 class AdventureState {
   adventure: IAdventure | undefined = undefined;
+  inviteLink: string | undefined = undefined;
 }
 
 class Adventure extends React.Component<IAdventureProps, AdventureState> {
@@ -40,6 +42,7 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
     this.getAdventures = this.getAdventures.bind(this);
     this.setMap = this.setMap.bind(this);
     this.deleteMap = this.deleteMap.bind(this);
+    this.createInviteLink = this.createInviteLink.bind(this);
   }
 
   private getAdventures(): IAdventureSummary[] {
@@ -95,6 +98,16 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
     );
   }
 
+  private createInviteLink() {
+    if (this.state.inviteLink !== undefined || this.state.adventure === undefined) {
+      return;
+    }
+
+    inviteToAdventure(this.props.dataService, summariseAdventure(this.props.adventureId, this.state.adventure))
+      .then(l => this.setState({ inviteLink: this.props.adventureId + "/invite/" + l }))
+      .catch(e => console.error("Failed to create invite link for " + this.props.adventureId, e));
+  }
+
   componentDidMount() {
     this.watchAdventure();
   }
@@ -122,6 +135,12 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
                   <Card.Body>
                     <Card.Text>{this.state.adventure.description}</Card.Text>
                   </Card.Body>
+                  <Card.Footer>
+                    {this.state.inviteLink === undefined ? 
+                      <Button variant="primary" onClick={this.createInviteLink}>Create invite link</Button> :
+                      <Link to={this.state.inviteLink}>Send this link to other players to invite them.</Link>
+                    }
+                  </Card.Footer>
                 </Card>
               </Col>
             </Row>
@@ -129,7 +148,8 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
           }
           <Row className="mt-4">
             <Col>
-              <MapCollection editable={true} showAdventureSelection={false}
+              <MapCollection editable={this.state.adventure?.owner === this.props.dataService?.getUid()}
+                showAdventureSelection={false}
                 getAdventures={this.getAdventures}
                 getMaps={() => this.state.adventure?.maps ?? []}
                 setMap={this.setMap} deleteMap={this.deleteMap} />

@@ -11,6 +11,7 @@ import { LinkContainer } from 'react-router-bootstrap';
 interface IAdventureCardsProps {
   newAdventureCard: JSX.Element;
   adventures: IAdventureSummary[];
+  canEditAdventure: (adventure: IAdventureSummary) => boolean;
   editAdventure: ((id: string) => void) | undefined;
 }
 
@@ -30,7 +31,7 @@ function AdventureCards(props: IAdventureCardsProps) {
               <Card.Link>Open</Card.Link>
             </LinkContainer>
           </Card.Footer>
-          {props.editAdventure === undefined ? <div></div> :
+          {props.editAdventure === undefined || !props.canEditAdventure(v) ? <div></div> :
             <Button variant="primary" onClick={() => props.editAdventure?.(v.id)}>Edit</Button>
           }
         </Card>

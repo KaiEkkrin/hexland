@@ -94,7 +94,8 @@ class All extends React.Component<IAllProps, AllState> {
         <Container fluid>
           <Row>
             <Col>
-              <AdventureCollection getAdventures={this.getAdventures} setAdventure={this.setAdventure} />
+              <AdventureCollection uid={this.props.dataService?.getUid()}
+                getAdventures={this.getAdventures} setAdventure={this.setAdventure} />
             </Col>
           </Row>
         </Container>

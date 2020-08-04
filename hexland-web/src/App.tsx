@@ -8,6 +8,7 @@ import { DataService } from './services/dataService';
 import Adventure from './Adventure';
 import AllPage from './All';
 import HomePage from './Home';
+import InvitePage from './Invite';
 import Login from './Login';
 import MapPage from './Map';
 
@@ -100,6 +101,7 @@ class App extends React.Component<IAppProps, AppState> {
               <Route exact path="/" component={HomePage} />
               <Route exact path="/all" component={AllPage} />
               <Route exact path="/adventure/:adventureId" component={Adventure} />
+              <Route exact path="/adventure/:adventureId/invite/:inviteId" component={InvitePage} />
               <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
               <Route exact path="/login" component={Login} />
             </Switch>

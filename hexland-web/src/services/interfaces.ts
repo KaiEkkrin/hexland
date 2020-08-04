@@ -1,11 +1,13 @@
 import { IAdventure, IPlayer } from '../data/adventure';
 import { IChange, IChanges } from '../data/change';
 import { IIdentified } from '../data/identified';
+import { IInvite } from '../data/invite';
 import { IMap } from '../data/map';
 import { IProfile } from '../data/profile';
 
 // A reference to stored data.
 export interface IDataReference<T> {
+  id: string;
   convert(rawData: any): T;
 }
 
@@ -21,6 +23,10 @@ export interface IDataService extends IDataView {
 
   // Gets an adventure.
   getAdventureRef(id: string): IDataReference<IAdventure>;
+
+  // Gets the current invite refs for an adventure.
+  getInviteRef(adventureId: string, id: string): IDataReference<IInvite>;
+  getLatestInviteRef(adventureId: string): Promise<IDataAndReference<IInvite> | undefined>;
 
   // Gets a map.
   getMap(adventureId: string, id: string): Promise<IMap | undefined>;

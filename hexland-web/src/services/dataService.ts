@@ -4,12 +4,14 @@ import { IDataService, IDataReference, IDataView, IDataAndReference } from './in
 import { IAdventure, IPlayer } from '../data/adventure';
 import { IChange, IChanges } from '../data/change';
 import { IIdentified } from '../data/identified';
+import { IInvite } from '../data/invite';
 import { IMap } from '../data/map';
 import { IProfile } from '../data/profile';
 
 // Well-known collection names.
 const profiles = "profiles";
 const adventures = "adventures";
+const invites = "invites";
 const maps = "maps";
 const changes = "changes";
 const baseChange = "base";
@@ -24,6 +26,10 @@ class DataReference<T> implements IDataReference<T> {
 
   get dref(): firebase.firestore.DocumentReference<firebase.firestore.DocumentData> {
     return this._dref;
+  }
+
+  get id(): string {
+    return this._dref.id;
   }
 
   convert(rawData: any): T {
@@ -92,6 +98,20 @@ export class DataService implements IDataService {
   getAdventureRef(id: string): IDataReference<IAdventure> {
     var d = db.collection(adventures).doc(id);
     return new DataReference<IAdventure>(d);
+  }
+
+  getInviteRef(adventureId: string, id: string): IDataReference<IInvite> {
+    var d = db.collection(adventures).doc(adventureId).collection(invites).doc(id);
+    return new DataReference<IInvite>(d);
+  }
+
+  async getLatestInviteRef(adventureId: string): Promise<IDataAndReference<IInvite> | undefined> {
+    var s = await db.collection(adventures).doc(adventureId).collection(invites)
+      .orderBy("timestamp", "desc")
+      .limit(1)
+      .get();
+    return (s.empty || s.docs.length === 0) ? undefined :
+      new DataAndReference(s.docs[0].ref, s.docs[0].data());
   }
 
   async getMap(adventureId: string, id: string): Promise<IMap | undefined> {

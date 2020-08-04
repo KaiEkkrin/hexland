@@ -150,11 +150,9 @@ function MapControls(props: IMapControlsProps) {
   );
 }
 
-interface IMapProps {
+interface IMapProps extends IMapPageProps {
   dataService: IDataService | undefined;
   profile: IProfile | undefined;
-  adventureId: string;
-  mapId: string;
 }
 
 class MapState {

@@ -29,6 +29,7 @@ export function summariseAdventure(id: string, a: IAdventure) {
     id: id,
     name: a.name,
     description: a.description,
-    owner: a.owner
+    owner: a.owner,
+    ownerName: a.ownerName
   } as IAdventureSummary;
 }

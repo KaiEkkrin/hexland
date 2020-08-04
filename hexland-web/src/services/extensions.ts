@@ -6,6 +6,8 @@ import { IAdventureSummary, IProfile } from '../data/profile';
 import { IDataService, IDataView, IDataReference, IDataAndReference } from './interfaces';
 import { timestampProvider } from '../firebase';
 
+import { v4 as uuidv4 } from 'uuid';
+
 const maxProfileEntries = 7;
 
 function updateProfileAdventures(adventures: IAdventureSummary[] | undefined, changed: IAdventureSummary): IAdventureSummary[] {
@@ -177,6 +179,7 @@ async function editMapTransaction(
       adventureName: adventure.name,
       name: changed.name,
       description: changed.description,
+      owner: uid,
       ty: changed.ty,
     } as IMap);
   } else {
@@ -271,7 +274,7 @@ async function registerAdventureAsRecentTransaction(
     name: a.name,
     description: a.description,
     owner: a.owner,
-    ownerName: profile.name
+    ownerName: a.ownerName
   });
   view.update(profileRef, { adventures: updated });
 }
@@ -387,6 +390,11 @@ export async function consolidateMapChanges(
     return;
   }
 
+  // Don't try to consolidate if we're not the map owner
+  if (dataService.getUid() !== m.owner) {
+    return;
+  }
+
   // Fetch all the current changes for this map, along with their refs
   var baseChangeRef = await dataService.getMapBaseChangeRef(adventureId, mapId);
   var changes = await dataService.getMapChangesRefs(adventureId, mapId);
@@ -403,4 +411,61 @@ export async function consolidateMapChanges(
   await dataService.runTransaction(view =>
     consolidateMapChangesTransaction(view, baseChangeRef, changes ?? [], consolidated, dataService.getUid())
   );
+}
+
+// Either creates an invite record for an adventure and returns it, or returns
+// the existing one if it's still valid.  Returns the invite ID.
+export async function inviteToAdventure(
+  dataService: IDataService | undefined,
+  adventure: IAdventureSummary
+): Promise<string | undefined> {
+  if (dataService === undefined) {
+    return undefined;
+  }
+
+  // Fetch any current invite
+  var latestInvite = await dataService.getLatestInviteRef(adventure.id);
+  if (latestInvite !== undefined) {
+    return latestInvite.id;
+  }
+
+  // If we couldn't, make a new one and return that
+  var id = uuidv4();
+  var inviteRef = dataService.getInviteRef(adventure.id, id);
+  await dataService.set(inviteRef, {
+    adventureName: adventure.name,
+    owner: adventure.owner,
+    ownerName: adventure.ownerName,
+    timestamp: timestampProvider()
+  });
+
+  return id;
+}
+
+async function joinAdventureTransaction(
+  view: IDataView,
+  playerRef: IDataReference<IPlayer>,
+  name: string
+): Promise<void> {
+  var player = await view.get(playerRef);
+  if (player === undefined) {
+    await view.set(playerRef, {
+      name: name
+    });
+  }
+}
+
+export async function joinAdventure(
+  dataService: IDataService | undefined,
+  profile: IProfile | undefined,
+  adventureId: string
+): Promise<void> {
+  // TODO Verify that this is a valid invite before allowing join.
+  // (Really a rules thing for the most part.)
+  if (dataService === undefined || profile === undefined) {
+    return undefined;
+  }
+
+  var playerRef = dataService.getPlayerRef(adventureId, dataService.getUid());
+  await dataService.runTransaction(tr => joinAdventureTransaction(tr, playerRef, profile?.name));
 }
