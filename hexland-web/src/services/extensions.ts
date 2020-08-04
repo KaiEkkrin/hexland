@@ -1,4 +1,4 @@
-import { IAdventure, IMapSummary } from '../data/adventure';
+import { IAdventure, IMapSummary, IPlayer } from '../data/adventure';
 import { IChange, IChanges } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
 import { IMap } from '../data/map';
@@ -14,6 +14,7 @@ function updateProfileAdventures(adventures: IAdventureSummary[] | undefined, ch
     var updated = [...adventures];
     updated[existingIndex].name = changed.name;
     updated[existingIndex].description = changed.description;
+    updated[existingIndex].ownerName = changed.ownerName;
     return updated;
   } else {
     var created = [changed];
@@ -30,12 +31,16 @@ async function editAdventureTransaction(
   uid: string,
   profileRef: IDataReference<IProfile>,
   adventureRef: IDataReference<IAdventure>,
+  ownerPlayerRef: IDataReference<IPlayer>,
   mapRefs: IDataReference<IMap>[],
   isNew: boolean,
   changed: IAdventureSummary
 ): Promise<void> {
   // Fetch the profile, which we'll want to edit (maybe)
   var profile = await view.get(profileRef);
+
+  // ...and the existing player record for the owner (if any)
+  var existingOwnerPlayer = await view.get(ownerPlayerRef);
 
   // Update the profile to include this adventure if it didn't already, or
   // alter any existing entry, and fix any map entries too
@@ -50,10 +55,20 @@ async function editAdventureTransaction(
       name: changed.name,
       description: changed.description,
       owner: uid,
+      ownerName: changed.ownerName,
       maps: []
     });
   } else {
-    await view.update(adventureRef, { name: changed.name, description: changed.description });
+    await view.update(adventureRef, {
+      name: changed.name,
+      description: changed.description,
+      ownerName: changed.ownerName
+    });
+  }
+
+  // Set the owner's player record if it doesn't already exist
+  if (existingOwnerPlayer === undefined) {
+    await view.set(ownerPlayerRef, { name: changed.ownerName });
   }
 
   // Update any maps associated with it
@@ -75,14 +90,24 @@ export async function editAdventure(
   // go with it.
   var profileRef = dataService.getProfileRef();
   var adventureRef = dataService.getAdventureRef(changed.id);
+  var ownerPlayerRef = dataService.getPlayerRef(changed.id, changed.owner);
   var mapRefs: IDataReference<IMap>[] = [];
   if (isNew === false) {
     var adventure = rec ?? (await dataService.get(adventureRef));
-    mapRefs = adventure?.maps.map(m => dataService.getMapRef(m.id)) ?? [];
+    mapRefs = adventure?.maps.map(m => dataService.getMapRef(changed.id, m.id)) ?? [];
   }
 
   await dataService.runTransaction(view =>
-    editAdventureTransaction(view, dataService.getUid(), profileRef, adventureRef, mapRefs, isNew, changed)
+    editAdventureTransaction(
+      view,
+      dataService.getUid(),
+      profileRef,
+      adventureRef,
+      ownerPlayerRef,
+      mapRefs,
+      isNew,
+      changed
+    )
   );
 }
 
@@ -123,7 +148,6 @@ async function editMapTransaction(
   profileRef: IDataReference<IProfile>,
   adventureRef: IDataReference<IAdventure>,
   mapRef: IDataReference<IMap>,
-  adventureId: string,
   isNew: boolean,
   changed: IMapSummary
 ): Promise<void> {
@@ -150,15 +174,10 @@ async function editMapTransaction(
   // Update the map record itself
   if (isNew) {
     await view.set(mapRef, {
-      adventureId: adventureId,
       adventureName: adventure.name,
       name: changed.name,
       description: changed.description,
-      owner: uid,
       ty: changed.ty,
-      areas: [],
-      tokens: [],
-      walls: []
     } as IMap);
   } else {
     await view.update(mapRef, { name: changed.name, description: changed.description });
@@ -177,10 +196,10 @@ export async function editMap(
 
   var profileRef = dataService.getProfileRef();
   var adventureRef = dataService.getAdventureRef(adventureId);
-  var mapRef = dataService.getMapRef(changed.id);
+  var mapRef = dataService.getMapRef(adventureId, changed.id);
 
   await dataService.runTransaction(view =>
-    editMapTransaction(view, dataService.getUid(), profileRef, adventureRef, mapRef, adventureId, isNew, changed)
+    editMapTransaction(view, dataService.getUid(), profileRef, adventureRef, mapRef, isNew, changed)
   );
 }
 
@@ -210,6 +229,10 @@ async function deleteMapTransaction(
   var allMaps = adventure.maps.filter(m => m.id !== mapId);
   await view.update(adventureRef, { maps: allMaps });
 
+  // TODO: We also need to remove the sub-collection of changes.
+  // Maybe, write a Function to do this deletion instead?
+  // https://firebase.google.com/docs/firestore/manage-data/delete-data
+
   // Remove the map record itself
   await view.delete(mapRef);
 }
@@ -225,7 +248,7 @@ export async function deleteMap(
 
   var profileRef = dataService.getProfileRef();
   var adventureRef = dataService.getAdventureRef(adventureId);
-  var mapRef = dataService.getMapRef(mapId);
+  var mapRef = dataService.getMapRef(adventureId, mapId);
 
   await dataService.runTransaction(view =>
     deleteMapTransaction(view, profileRef, adventureRef, mapRef, mapId)
@@ -247,7 +270,8 @@ async function registerAdventureAsRecentTransaction(
     id: id,
     name: a.name,
     description: a.description,
-    owner: a.owner
+    owner: a.owner,
+    ownerName: profile.name
   });
   view.update(profileRef, { adventures: updated });
 }
@@ -275,6 +299,7 @@ export async function registerAdventureAsRecent(
 async function registerMapAsRecentTransaction(
   view: IDataView,
   profileRef: IDataReference<IProfile>,
+  adventureId: string,
   id: string,
   m: IMap
 ) {
@@ -284,6 +309,7 @@ async function registerMapAsRecentTransaction(
   }
 
   var updated = updateProfileMaps(profile.latestMaps, {
+    adventureId: adventureId,
     id: id,
     name: m.name,
     description: m.description,
@@ -295,6 +321,7 @@ async function registerMapAsRecentTransaction(
 export async function registerMapAsRecent(
   dataService: IDataService | undefined,
   profile: IProfile | undefined,
+  adventureId: string,
   id: string,
   m: IMap
 ): Promise<void> {
@@ -307,7 +334,9 @@ export async function registerMapAsRecent(
   }
 
   var profileRef = dataService.getProfileRef();
-  await dataService.runTransaction(view => registerMapAsRecentTransaction(view, profileRef, id, m));
+  await dataService.runTransaction(view =>
+    registerMapAsRecentTransaction(view, profileRef, adventureId, id, m)
+  );
 }
 
 async function consolidateMapChangesTransaction(
@@ -346,18 +375,21 @@ async function consolidateMapChangesTransaction(
 // TODO So that things are consolidated more regularly, pick a suitable
 // count and run this as a Firebase Function when that many changes are
 // added to the map?
+// Doing lots of deletes from a Web client is not recommended:
+// https://firebase.google.com/docs/firestore/manage-data/delete-data
 export async function consolidateMapChanges(
   dataService: IDataService | undefined,
+  adventureId: string,
   mapId: string,
   m: IMap
 ): Promise<void> {
-  if (dataService === undefined || dataService.getUid() !== m.owner) {
+  if (dataService === undefined) {
     return;
   }
 
   // Fetch all the current changes for this map, along with their refs
-  var baseChangeRef = await dataService.getMapBaseChangeRef(mapId);
-  var changes = await dataService.getMapChangesRefs(mapId);
+  var baseChangeRef = await dataService.getMapBaseChangeRef(adventureId, mapId);
+  var changes = await dataService.getMapChangesRefs(adventureId, mapId);
   if (changes === undefined) {
     return;
   }

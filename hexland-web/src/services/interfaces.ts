@@ -1,4 +1,4 @@
-import { IAdventure } from '../data/adventure';
+import { IAdventure, IPlayer } from '../data/adventure';
 import { IChange, IChanges } from '../data/change';
 import { IIdentified } from '../data/identified';
 import { IMap } from '../data/map';
@@ -17,21 +17,22 @@ export interface IDataAndReference<T> extends IDataReference<T> {
 // This service is for datastore-related operations.
 export interface IDataService extends IDataView {
   // Adds incremental changes to a map.
-  addChanges(mapId: string, changes: IChange[]): Promise<void>;
+  addChanges(adventureId: string, mapId: string, changes: IChange[]): Promise<void>;
 
   // Gets an adventure.
-  getAdventure(id: string): Promise<IAdventure | undefined>;
   getAdventureRef(id: string): IDataReference<IAdventure>;
 
   // Gets a map.
-  getMap(id: string): Promise<IMap | undefined>;
-  getMapRef(id: string): IDataReference<IMap>;
+  getMap(adventureId: string, id: string): Promise<IMap | undefined>;
+  getMapRef(adventureId: string, id: string): IDataReference<IMap>;
 
-  getMapBaseChangeRef(id: string): IDataReference<IChanges>;
-  getMapChangesRefs(id: string): Promise<IDataAndReference<IChanges>[] | undefined>;
+  getMapBaseChangeRef(adventureId: string, id: string): IDataReference<IChanges>;
+  getMapChangesRefs(adventureId: string, id: string): Promise<IDataAndReference<IChanges>[] | undefined>;
+
+  // Gets a reference to a player record for an adventure.
+  getPlayerRef(adventureId: string, uid: string): IDataReference<IPlayer>;
 
   // Gets the user's profile.
-  getProfile(): Promise<IProfile | undefined>;
   getProfileRef(): IDataReference<IProfile>;
 
   // Gets the current user id.
@@ -40,12 +41,6 @@ export interface IDataService extends IDataView {
   // Runs a transaction. The `dataView` parameter accepted by the
   // transaction function does things in the transaction's context.
   runTransaction<T>(fn: (dataView: IDataView) => Promise<T>): Promise<T>;
-
-  // Creates or edits an adventure.
-  setAdventure(id: string, adventure: IAdventure): Promise<void>;
-
-  // Creates or edits a map.
-  setMap(id: string, map: IMap): Promise<void>;
 
   // Creates or edits the user's profile.
   setProfile(profile: IProfile): Promise<void>;
@@ -67,6 +62,7 @@ export interface IDataService extends IDataView {
 
   // Watches changes to a map.
   watchChanges(
+    adventureId: string,
     mapId: string,
     onNext: (changes: IChanges) => void,
     onError?: ((error: Error) => void) | undefined,
@@ -75,7 +71,7 @@ export interface IDataService extends IDataView {
 
   // Watches the user's profile.
   watchProfile(
-    onNext: (profile: IProfile) => void,
+    onNext: (profile: IProfile | undefined) => void,
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ): () => void;

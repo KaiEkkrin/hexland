@@ -47,7 +47,8 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
       id: this.props.adventureId,
       name: this.state.adventure.name,
       description: this.state.adventure.description,
-      owner: this.state.adventure.owner
+      owner: this.state.adventure.owner,
+      ownerName: this.props.profile?.name ?? "Unknown user"
     }];
   }
 
@@ -59,6 +60,7 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
 
     var isNew = id === undefined;
     var updated = {
+      adventureId: adventureId,
       id: id ?? uuidv4(),
       name: name,
       description: description,

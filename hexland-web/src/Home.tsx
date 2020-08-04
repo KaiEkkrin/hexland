@@ -35,7 +35,8 @@ function Home(props: IHomeProps) {
       id: id,
       name: name,
       description: description,
-      owner: props.dataService.getUid()
+      owner: props.dataService.getUid(),
+      ownerName: props.profile?.name ?? "Unknown user"
     } as IAdventureSummary;
 
     editAdventure(props.dataService, isNew, changed)
@@ -53,6 +54,7 @@ function Home(props: IHomeProps) {
     }
 
     var newMap = {
+      adventureId: adventureId,
       id: uuidv4(),
       name: name,
       description: description,

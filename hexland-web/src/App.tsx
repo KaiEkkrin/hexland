@@ -33,11 +33,22 @@ class App extends React.Component<IAppProps, AppState> {
     this.state = new AppState();
   }
 
-  private async syncProfile(u: firebase.User, dataService: IDataService) {
-    var profile = await dataService.getProfile();
+  private setProfile(
+    u: firebase.User | null,
+    dataService: IDataService | undefined,
+    profile: IProfile | undefined
+  ) {
+    this.setState({ profile: profile });
     if (profile === undefined) {
-      profile = { name: u.displayName ?? "Unknown User", adventures: [], latestMaps: [] };
-      await dataService.setProfile(profile);
+      // This user doesn't have a profile yet -- create it
+      var displayName = u?.displayName ?? "Unknown User";
+      dataService?.setProfile({
+        name: displayName,
+        adventures: [],
+        latestMaps: []
+      })
+        .then(() => console.log("Created profile for " + displayName))
+        .catch(e => console.error("Failed to create profile for " + displayName, e));
     }
   }
 
@@ -46,14 +57,10 @@ class App extends React.Component<IAppProps, AppState> {
       var dataService = u === null ? undefined : new DataService(u.uid);
       this.setState({ user: u, dataService: dataService });
 
-      // Fetch this user's profile.  Create it if it doesn't exist.
       if (u !== null && dataService !== undefined) {
-        this.syncProfile(u, dataService)
-          .catch(e => console.error("Failed to sync profile: ", e));
-
         // Watch the profile, in case changes get made elsewhere:
         this._stopWatchingProfile = dataService.watchProfile(
-          p => this.setState({ profile: p }),
+          p => this.setProfile(u, dataService, p),
           e => console.error("Failed to watch profile: ", e)
         );
       }
@@ -67,12 +74,9 @@ class App extends React.Component<IAppProps, AppState> {
       // Sync and watch the new user's profile instead
       this._stopWatchingProfile?.();
       if (this.state.user !== null && this.state.dataService !== undefined) {
-        this.syncProfile(this.state.user, this.state.dataService)
-          .catch(e => console.error("Failed to sync profile: ", e));
-
         // Watch the profile, in case changes get made elsewhere:
         this._stopWatchingProfile = this.state.dataService.watchProfile(
-          p => this.setState({ profile: p }),
+          p => this.setProfile(this.state.user, this.state.dataService, p),
           e => console.error("Failed to watch profile: ", e)
         );
       }
@@ -95,9 +99,9 @@ class App extends React.Component<IAppProps, AppState> {
             <Switch>
               <Route exact path="/" component={HomePage} />
               <Route exact path="/all" component={AllPage} />
-              <Route path="/adventure/:adventureId" component={Adventure} />
-              <Route path="/login" component={Login} />
-              <Route path="/map/:mapId" component={MapPage} />
+              <Route exact path="/adventure/:adventureId" component={Adventure} />
+              <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
+              <Route exact path="/login" component={Login} />
             </Switch>
           </BrowserRouter>
         </AppContext.Provider>

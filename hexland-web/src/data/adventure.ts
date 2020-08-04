@@ -5,34 +5,30 @@ export interface IAdventure {
   name: string;
   description: string;
   owner: string; // owning uid
+  ownerName: string;
   maps: IMapSummary[];
 }
 
 export interface IMapSummary {
+  adventureId: string;
   id: string;
   name: string;
   description: string;
   ty: MapType;
 }
 
-export class SummaryOfAdventure implements IAdventureSummary {
-  private _id: string;
-  private _a: IAdventure;
+// TODO: In order to collection-group query this for all adventures shared with me,
+// do I need to include the adventure id in these records?
+// (`d.doc.ref.parent.id` should do it, no?)
+export interface IPlayer {
+  name: string;
+}
 
-  constructor(id: string, a: IAdventure) {
-    this._id = id;
-    this._a = a;
-  }
-
-  get id(): string { return this._id; }
-  set id(value: string) { this._id = value; }
-
-  get name(): string { return this._a.name; }
-  set name(value: string) { this._a.name = value; }
-
-  get description(): string { return this._a.description; }
-  set description(value: string) { this._a.description = value; }
-
-  get owner(): string { return this._a.owner; }
-  set owner(value: string) { this._a.owner = value; }
+export function summariseAdventure(id: string, a: IAdventure) {
+  return {
+    id: id,
+    name: a.name,
+    description: a.description,
+    owner: a.owner
+  } as IAdventureSummary;
 }

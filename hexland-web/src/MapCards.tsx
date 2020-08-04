@@ -30,7 +30,7 @@ function MapCards(props: IMapCardsProps) {
             <Card.Text>{v.description}</Card.Text>
           </Card.Body>
           <Card.Footer>
-            <LinkContainer to={"/map/" + v.id}>
+            <LinkContainer to={"/adventure/" + v.adventureId + "/map/" + v.id}>
               <Card.Link>Open</Card.Link>
             </LinkContainer>
           </Card.Footer>

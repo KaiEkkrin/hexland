@@ -11,4 +11,5 @@ export interface IAdventureSummary {
   name: string;
   description: string;
   owner: string; // owning uid
+  ownerName: string;
 }

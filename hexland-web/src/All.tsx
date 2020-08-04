@@ -5,7 +5,7 @@ import AdventureCollection from './AdventureCollection';
 import { AppContext, AppState } from './App';
 import Navigation from './Navigation';
 
-import { IAdventure, SummaryOfAdventure } from './data/adventure';
+import { IAdventure, summariseAdventure } from './data/adventure';
 import { IIdentified } from './data/identified';
 import { IAdventureSummary, IProfile } from './data/profile';
 import { editAdventure } from './services/extensions';
@@ -40,7 +40,7 @@ class All extends React.Component<IAllProps, AllState> {
   }
 
   private getAdventures(): IAdventureSummary[] {
-    return this.state.adventures.map(a => new SummaryOfAdventure(a.id, a.record));
+    return this.state.adventures.map(a => summariseAdventure(a.id, a.record));
   }
 
   private setAdventure(id: string | undefined, name: string, description: string) {
@@ -55,7 +55,8 @@ class All extends React.Component<IAllProps, AllState> {
       id: id ?? uuidv4(), // TODO learn about uuid versions, pick one least likely to clash :)
       name: name,
       description: description,
-      owner: uid
+      owner: uid,
+      ownerName: this.props.profile?.name ?? "Unknown user"
     } as IAdventureSummary;
 
     editAdventure(this.props.dataService, isNew, updated, existing)

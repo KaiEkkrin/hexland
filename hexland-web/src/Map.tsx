@@ -153,6 +153,7 @@ function MapControls(props: IMapControlsProps) {
 interface IMapProps {
   dataService: IDataService | undefined;
   profile: IProfile | undefined;
+  adventureId: string;
   mapId: string;
 }
 
@@ -208,13 +209,16 @@ class Map extends React.Component<IMapProps, MapState> {
     this._stopWatchingMap?.();
     this._stopWatchingMap = undefined;
 
-    var record = await this.props.dataService?.getMap(this.props.mapId);
+    // I don't think we mind very much if this record changes under our feet
+    var record = await this.props.dataService?.getMap(this.props.adventureId, this.props.mapId);
     if (record === undefined) {
       return;
     }
 
     this.setState({ record: record });
-    await registerMapAsRecent(this.props.dataService, this.props.profile, this.props.mapId, record);
+    await registerMapAsRecent(
+      this.props.dataService, this.props.profile, this.props.adventureId, this.props.mapId, record
+    );
     var drawing = new ThreeDrawing(
       this._colours,
       mount,
@@ -224,11 +228,12 @@ class Map extends React.Component<IMapProps, MapState> {
 
     // If relevant, consolidate any existing changes to this map to reduce the amount
     // of database clutter
-    await consolidateMapChanges(this.props.dataService, this.props.mapId, record);
+    await consolidateMapChanges(
+      this.props.dataService, this.props.adventureId, this.props.mapId, record
+    );
 
-    // TODO Before doing this, do a reconcile transaction to group together existing incremental
-    // changes into a single base change if possible.
     this._stopWatchingMap = this.props.dataService?.watchChanges(
+      this.props.adventureId,
       this.props.mapId,
       (chs: IChanges) => { if (this._drawing !== undefined) { trackChanges(drawing, chs.chs); } },
       (e: Error) => console.error("Error watching map changes:", e)
@@ -246,7 +251,7 @@ class Map extends React.Component<IMapProps, MapState> {
       return;
     }
 
-    this.props.dataService.addChanges(this.props.mapId, changes)
+    this.props.dataService.addChanges(this.props.adventureId, this.props.mapId, changes)
       .then(() => console.log("Added " + changes.length + " changes"))
       .catch(e => console.error("Error adding " + changes.length + " changes", e));
   }
@@ -471,6 +476,7 @@ class Map extends React.Component<IMapProps, MapState> {
 }
 
 interface IMapPageProps {
+  adventureId: string;
   mapId: string;
 }
 
@@ -479,7 +485,7 @@ function MapPage(props: RouteComponentProps<IMapPageProps>) {
     <AppContext.Consumer>
       {(context: AppState) => context.user === null ? <div></div> : (
         <Map dataService={context.dataService} profile={context.profile}
-          mapId={props.match.params.mapId} />
+          adventureId={props.match.params.adventureId} mapId={props.match.params.mapId} />
       )}
     </AppContext.Consumer>
   )
