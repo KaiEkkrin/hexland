@@ -143,6 +143,11 @@ export class DataService implements IDataService {
     return new DataReference<IPlayer>(d);
   }
 
+  async getPlayerRefs(adventureId: string): Promise<IDataAndReference<IPlayer>[]> {
+    var s = await db.collection(adventures).doc(adventureId).collection(players).get();
+    return s.docs.map(d => new DataAndReference(d.ref, d.data() as IPlayer));
+  }
+
   getProfileRef(): IDataReference<IProfile> {
     var d = db.collection(profiles).doc(this._uid);
     return new DataReference<IProfile>(d);
@@ -232,6 +237,16 @@ export class DataService implements IDataService {
       } else {
         onNext(undefined); // providing an opportunity to create this profile
       }
+    }, onError, onCompletion);
+  }
+
+  watchSharedAdventures(
+    onNext: (adventures: IPlayer[]) => void,
+    onError?: ((error: Error) => void) | undefined,
+    onCompletion?: (() => void) | undefined
+  ) {
+    return db.collectionGroup(profiles).where("playerId", "==", this._uid).onSnapshot(s => {
+      onNext(s.docs.map(d => d.data() as IPlayer));
     }, onError, onCompletion);
   }
 }

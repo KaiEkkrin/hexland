@@ -27,7 +27,14 @@ function Navigation(props: INavigationProps) {
           <AppContext.Consumer>
             {(context: AppState) => context.user === null ? <div></div> :
               <LinkContainer to="/all">
-                <Nav.Link>All</Nav.Link>
+                <Nav.Link>My adventures</Nav.Link>
+              </LinkContainer>
+            }
+          </AppContext.Consumer>
+          <AppContext.Consumer>
+            {(context: AppState) => context.user === null ? <div></div> :
+              <LinkContainer to="/shared">
+                <Nav.Link>Shared with me</Nav.Link>
               </LinkContainer>
             }
           </AppContext.Consumer>

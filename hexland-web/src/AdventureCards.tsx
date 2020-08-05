@@ -24,6 +24,7 @@ function AdventureCards(props: IAdventureCardsProps) {
           bg="dark" text="white" key={v.id}>
           <Card.Body>
             <Card.Title>{v.name}</Card.Title>
+            <Card.Subtitle>By {v.ownerName}</Card.Subtitle>
             <Card.Text>{v.description}</Card.Text>
           </Card.Body>
           <Card.Footer>

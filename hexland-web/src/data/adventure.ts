@@ -17,11 +17,13 @@ export interface IMapSummary {
   ty: MapType;
 }
 
-// TODO: In order to collection-group query this for all adventures shared with me,
-// do I need to include the adventure id in these records?
-// (`d.doc.ref.parent.id` should do it, no?)
-export interface IPlayer {
-  name: string;
+// To support a collection group query for all adventures shared with me (and get
+// the summaries right away), each Player record shall contain the summary of the
+// adventure the player has joined.  (Changes will be infrequent, compared to queries
+// for the "Shared with me" page.)
+export interface IPlayer extends IAdventureSummary {
+  playerId: string; // the uid -- also the record id
+  playerName: string;
 }
 
 export function summariseAdventure(id: string, a: IAdventure) {

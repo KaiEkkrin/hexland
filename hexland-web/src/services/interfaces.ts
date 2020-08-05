@@ -38,6 +38,9 @@ export interface IDataService extends IDataView {
   // Gets a reference to a player record for an adventure.
   getPlayerRef(adventureId: string, uid: string): IDataReference<IPlayer>;
 
+  // Gets refs to all players currently in an adventure.
+  getPlayerRefs(adventureId: string): Promise<IDataAndReference<IPlayer>[]>;
+
   // Gets the user's profile.
   getProfileRef(): IDataReference<IProfile>;
 
@@ -78,6 +81,13 @@ export interface IDataService extends IDataView {
   // Watches the user's profile.
   watchProfile(
     onNext: (profile: IProfile | undefined) => void,
+    onError?: ((error: Error) => void) | undefined,
+    onCompletion?: (() => void) | undefined
+  ): () => void;
+
+  // Watches all adventures shared with this user.
+  watchSharedAdventures(
+    onNext: (adventures: IPlayer[]) => void,
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ): () => void;

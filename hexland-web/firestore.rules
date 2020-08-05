@@ -7,12 +7,15 @@ service cloud.firestore {
     }
 
     function isPlayer(adventureId) {
-      return exists(/databases/$(database)/documents/adventures/$(adventureId)/players/$(request.auth.uid)) ||
-        isOwner(adventureId);
+      return exists(/databases/$(database)/documents/adventures/$(adventureId)/players/$(request.auth.uid));
+    }
+
+    function isPlayerOrOwner(adventureId) {
+      return isPlayer(adventureId) || isOwner(adventureId);
     }
 
     match /adventures/{adventureId} {
-      allow read: if request.auth != null && isPlayer(adventureId);
+      allow read: if request.auth != null; // must be able to read adventures to join them
       allow create: if request.auth != null && request.resource.data.owner == request.auth.uid;
       allow update, delete: if request.auth != null && resource.data.owner == request.auth.uid;
     }
@@ -23,7 +26,7 @@ service cloud.firestore {
     }
 
     match /adventures/{adventureId}/maps/{id} {
-      allow read: if request.auth != null && isPlayer(adventureId);
+      allow read: if request.auth != null && isPlayerOrOwner(adventureId);
       allow create: if request.auth != null && request.resource.data.owner == request.auth.uid &&
         isOwner(adventureId);
       allow update, delete: if request.auth != null && resource.data.owner == request.auth.uid;
@@ -31,15 +34,21 @@ service cloud.firestore {
 
     match /adventures/{adventureId}/maps/{id}/changes/{changeId} {
       allow create: if request.auth != null &&
-        request.resource.data.user == request.auth.uid && isPlayer(adventureId);
-      allow read: if request.auth != null && isPlayer(adventureId);
+        request.resource.data.user == request.auth.uid && isPlayerOrOwner(adventureId);
+      allow read: if request.auth != null && isPlayerOrOwner(adventureId);
       allow update, delete: if request.auth != null && isOwner(adventureId);
     }
 
     match /adventures/{adventureId}/players/{uid} {
-      allow read, write: if request.auth != null && (
+      allow create, update: if request.auth != null && request.resource.data.playerId == uid && (
         request.auth.uid == uid || isOwner(adventureId)
       ); // TODO also require invite for someone to create one of these
+      allow read: if request.auth != null &&
+        (request.auth.uid == uid || isPlayerOrOwner(adventureId)
+      );
+      allow delete: if request.auth != null &&
+        (request.auth.uid == uid || isOwner(adventureId)
+      );
     }
 
     // Profiles can be read and written only by a user with the id matching the document

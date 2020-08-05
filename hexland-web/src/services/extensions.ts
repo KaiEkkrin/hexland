@@ -33,26 +33,19 @@ async function editAdventureTransaction(
   uid: string,
   profileRef: IDataReference<IProfile>,
   adventureRef: IDataReference<IAdventure>,
-  ownerPlayerRef: IDataReference<IPlayer>,
   mapRefs: IDataReference<IMap>[],
-  isNew: boolean,
+  playerRefs: IDataAndReference<IPlayer>[],
+  newPlayerRef: IDataReference<IPlayer> | undefined,
   changed: IAdventureSummary
 ): Promise<void> {
   // Fetch the profile, which we'll want to edit (maybe)
   var profile = await view.get(profileRef);
-
-  // ...and the existing player record for the owner (if any)
-  var existingOwnerPlayer = await view.get(ownerPlayerRef);
-
-  // Update the profile to include this adventure if it didn't already, or
-  // alter any existing entry, and fix any map entries too
-  if (profile !== undefined) {
-    var updated = updateProfileAdventures(profile.adventures, changed);
-    await view.update(profileRef, { adventures: updated });
+  if (profile === undefined) {
+    return Promise.reject("No profile available");
   }
 
-  // Update the adventure record itself
-  if (isNew) {
+  // Update the adventure record itself, and the players associated with it
+  if (newPlayerRef !== undefined) { // it's new
     await view.set(adventureRef, {
       name: changed.name,
       description: changed.description,
@@ -60,7 +53,32 @@ async function editAdventureTransaction(
       ownerName: changed.ownerName,
       maps: []
     });
+
+    await view.set(newPlayerRef, {
+      id: changed.id,
+      name: changed.name,
+      description: changed.description,
+      owner: changed.owner,
+      ownerName: changed.ownerName,
+      playerId: uid,
+      playerName: profile.name
+    });
   } else {
+    var players = await Promise.all(playerRefs.map(r => view.get(r)));
+    await Promise.all(players.map(async (p, i) => {
+      if (p === undefined || profile === undefined) {
+        return;
+      }
+
+      if (changed.name !== p.name || changed.description !== p.description || changed.ownerName !== p.ownerName) {
+        await view.update(playerRefs[i], {
+          name: changed.name,
+          description: changed.description,
+          ownerName: changed.ownerName,
+        });
+      }
+    }));
+
     await view.update(adventureRef, {
       name: changed.name,
       description: changed.description,
@@ -68,10 +86,12 @@ async function editAdventureTransaction(
     });
   }
 
-  // Set the owner's player record if it doesn't already exist
-  if (existingOwnerPlayer === undefined) {
-    await view.set(ownerPlayerRef, { name: changed.ownerName });
-  }
+  // Update the profile to include this adventure if it didn't already, or
+  // alter any existing entry, and fix any map entries too
+  // I can't update other players' profiles, but they should get the update
+  // when they next click the adventure, it's best effort :)
+  var updated = updateProfileAdventures(profile.adventures, changed);
+  await view.update(profileRef, { adventures: updated });
 
   // Update any maps associated with it
   await Promise.all(mapRefs.map(m => view.update(m, { adventureName: changed.name })));
@@ -90,24 +110,30 @@ export async function editAdventure(
   // Get the references to all the relevant stuff.
   // There's a chance this could be slightly out of sync, but it's low, so I'll
   // go with it.
+  var uid = dataService.getUid();
   var profileRef = dataService.getProfileRef();
   var adventureRef = dataService.getAdventureRef(changed.id);
-  var ownerPlayerRef = dataService.getPlayerRef(changed.id, changed.owner);
   var mapRefs: IDataReference<IMap>[] = [];
+  var playerRefs: IDataAndReference<IPlayer>[] = [];
+  var newPlayerRef: IDataReference<IPlayer> | undefined = undefined;
   if (isNew === false) {
     var adventure = rec ?? (await dataService.get(adventureRef));
     mapRefs = adventure?.maps.map(m => dataService.getMapRef(changed.id, m.id)) ?? [];
+    playerRefs = await dataService.getPlayerRefs(changed.id);
+    newPlayerRef = undefined;
+  } else {
+    newPlayerRef = dataService.getPlayerRef(changed.id, uid);
   }
 
   await dataService.runTransaction(view =>
     editAdventureTransaction(
       view,
-      dataService.getUid(),
+      uid,
       profileRef,
       adventureRef,
-      ownerPlayerRef,
       mapRefs,
-      isNew,
+      playerRefs,
+      newPlayerRef,
       changed
     )
   );
@@ -444,14 +470,37 @@ export async function inviteToAdventure(
 
 async function joinAdventureTransaction(
   view: IDataView,
+  adventureRef: IDataReference<IAdventure>,
   playerRef: IDataReference<IPlayer>,
   name: string
 ): Promise<void> {
+  var adventure = await view.get(adventureRef);
+  if (adventure === undefined) {
+    return Promise.reject("No such adventure");
+  }
+
   var player = await view.get(playerRef);
   if (player === undefined) {
-    await view.set(playerRef, {
-      name: name
+    await view.set(playerRef, { // remember this is an adventure summary plus player details
+      id: adventureRef.id,
+      name: adventure.name,
+      description: adventure.description,
+      owner: adventure.owner,
+      ownerName: adventure.ownerName,
+      playerId: playerRef.id,
+      playerName: name
     });
+  } else {
+    // Update that record in case there are changes
+    if (player.name !== adventure.name || player.description !== adventure.description ||
+      player.ownerName !== adventure.ownerName || player.playerName !== name) {
+      await view.update(playerRef, {
+        name: adventure.name,
+        description: adventure.description,
+        ownerName: adventure.ownerName,
+        playerName: name
+      });
+    }
   }
 }
 
@@ -466,6 +515,7 @@ export async function joinAdventure(
     return undefined;
   }
 
+  var adventureRef = dataService.getAdventureRef(adventureId);
   var playerRef = dataService.getPlayerRef(adventureId, dataService.getUid());
-  await dataService.runTransaction(tr => joinAdventureTransaction(tr, playerRef, profile?.name));
+  await dataService.runTransaction(tr => joinAdventureTransaction(tr, adventureRef, playerRef, profile.name));
 }
