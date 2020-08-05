@@ -225,6 +225,17 @@ export class DataService implements IDataService {
       }, onError, onCompletion);
   }
 
+  watchPlayers(
+    adventureId: string,
+    onNext: (players: IPlayer[]) => void,
+    onError?: ((error: Error) => void) | undefined,
+    onCompletion?: (() => void) | undefined
+  ) {
+    return db.collection(adventures).doc(adventureId).collection(players).onSnapshot(s => {
+      onNext(s.docs.map(d => d.data() as IPlayer));
+    }, onError, onCompletion);
+  }
+
   watchProfile(
     onNext: (profile: IProfile | undefined) => void,
     onError?: ((error: Error) => void) | undefined,

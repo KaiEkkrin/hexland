@@ -4,6 +4,9 @@ import './Map.css';
 import Navigation from './Navigation';
 
 import { AppContext, AppState } from './App';
+import TokenPlayerSelection from './components/TokenPlayerSelection';
+
+import { IPlayer } from './data/adventure';
 import { IChanges, IChange } from './data/change';
 import { trackChanges } from './data/changeTracking';
 import { MapType, IMap } from './data/map';
@@ -163,6 +166,8 @@ class MapState {
   contextualColour = 0;
   contextualPosition: THREE.Vector2 | undefined;
   contextualText = "";
+  contextualPlayerIds: string[] = [];
+  players: IPlayer[] = [];
 }
 
 class Map extends React.Component<IMapProps, MapState> {
@@ -171,6 +176,7 @@ class Map extends React.Component<IMapProps, MapState> {
   private readonly _textCreator: TextCreator;
   private _drawing: ThreeDrawing | undefined;
   private _stopWatchingMap: (() => void) | undefined;
+  private _stopWatchingPlayers: (() => void) | undefined;
 
   constructor(props: IMapProps) {
     super(props);
@@ -206,6 +212,8 @@ class Map extends React.Component<IMapProps, MapState> {
     // Detach from any existing map
     this._stopWatchingMap?.();
     this._stopWatchingMap = undefined;
+    this._stopWatchingPlayers?.();
+    this._stopWatchingPlayers = undefined;
 
     // I don't think we mind very much if this record changes under our feet
     var record = await this.props.dataService?.getMap(this.props.adventureId, this.props.mapId);
@@ -235,6 +243,12 @@ class Map extends React.Component<IMapProps, MapState> {
       this.props.mapId,
       (chs: IChanges) => { if (this._drawing !== undefined) { trackChanges(drawing, chs.chs); } },
       (e: Error) => console.error("Error watching map changes:", e)
+    );
+
+    this._stopWatchingPlayers = this.props.dataService?.watchPlayers(
+      this.props.adventureId,
+      (players: IPlayer[]) => { this.setState({ players: players }); },
+      (e: Error) => console.error("Error watching players:", e)
     );
 
     this._drawing = drawing; // TODO dispose any old one
@@ -268,7 +282,10 @@ class Map extends React.Component<IMapProps, MapState> {
   }
 
   componentDidUpdate(prevProps: IMapProps, prevState: MapState) {
-    if (this.props.dataService !== prevProps.dataService || this.props.mapId !== prevProps.mapId) {
+    if (this.props.dataService !== prevProps.dataService ||
+      this.props.adventureId !== prevProps.adventureId ||
+      this.props.mapId !== prevProps.mapId
+    ) {
       var mount = this._mount.current;
       if (!mount) {
         return;
@@ -283,6 +300,8 @@ class Map extends React.Component<IMapProps, MapState> {
   componentWillUnmount() {
     this._stopWatchingMap?.();
     this._stopWatchingMap = undefined;
+    this._stopWatchingPlayers?.();
+    this._stopWatchingPlayers = undefined;
     window.removeEventListener('resize', this.handleWindowResize);
   }
 
@@ -349,6 +368,7 @@ class Map extends React.Component<IMapProps, MapState> {
           contextualColour: Math.max(0, token?.colour ?? this.state.selectedColour),
           contextualPosition: cp,
           contextualText: token?.text ?? "",
+          contextualPlayerIds: token?.players ?? []
         });
         break;
 
@@ -372,7 +392,7 @@ class Map extends React.Component<IMapProps, MapState> {
   private handleTokenEditorDelete() {
     if (this.state.contextualPosition !== undefined) {
       this.addChanges(
-        this._drawing?.setToken(this.state.contextualPosition, -1, this.state.contextualText)
+        this._drawing?.setToken(this.state.contextualPosition, -1, this.state.contextualText, [])
       );
     }
 
@@ -385,7 +405,8 @@ class Map extends React.Component<IMapProps, MapState> {
         this._drawing?.setToken(
           this.state.contextualPosition,
           this.state.contextualColour,
-          this.state.contextualText
+          this.state.contextualText,
+          this.state.contextualPlayerIds
         )
       );
     }
@@ -451,6 +472,12 @@ class Map extends React.Component<IMapProps, MapState> {
                     getSelectedColour={() => this.state.contextualColour}
                     setSelectedColour={(v) => { this.setState({ contextualColour: v }); }} />
                 </Form.Row>
+              </Form.Group>
+              <Form.Group>
+                <Form.Label>Assigned to players</Form.Label>
+                <TokenPlayerSelection players={this.state.players}
+                  tokenPlayerIds={this.state.contextualPlayerIds}
+                  setTokenPlayerIds={(ids: string[]) => { this.setState({ contextualPlayerIds: ids }); }} />
               </Form.Group>
             </Form>
           </Modal.Body>

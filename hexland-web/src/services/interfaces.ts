@@ -78,6 +78,14 @@ export interface IDataService extends IDataView {
     onCompletion?: (() => void) | undefined
   ): () => void;
 
+  // Watches the players in a particular adventure.
+  watchPlayers(
+    adventureId: string,
+    onNext: (players: IPlayer[]) => void,
+    onError?: ((error: Error) => void) | undefined,
+    onCompletion?: (() => void) | undefined
+  ): () => void;
+
   // Watches the user's profile.
   watchProfile(
     onNext: (profile: IProfile | undefined) => void,

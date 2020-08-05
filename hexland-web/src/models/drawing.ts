@@ -417,7 +417,7 @@ export class ThreeDrawing implements IChangeTracker {
     }
   }
 
-  setToken(cp: THREE.Vector2, colour: number, text: string): IChange[] {
+  setToken(cp: THREE.Vector2, colour: number, text: string, playerIds: string[]): IChange[] {
     var position = this.getGridCoordAt(cp);
     var chs: IChange[] = [];
     if (position !== undefined) {
@@ -437,7 +437,8 @@ export class ThreeDrawing implements IChangeTracker {
           feature: {
             position: position,
             colour: colour,
-            text: text
+            text: text,
+            players: playerIds
           }
         } as ITokenAdd);
       }
