@@ -24,7 +24,7 @@ function TokenPlayerSelection(props: ITokenPlayerSelectionProps) {
   }
 
   return (
-    <Form.Control as="select" multiple defaultValue={props.tokenPlayerIds}
+    <Form.Control as="select" multiple value={props.tokenPlayerIds}
       onChange={e => handleChange(e as any)}>
       {props.players.map(p =>
         <option key={p.playerId} value={p.playerId}>{p.playerName}</option>

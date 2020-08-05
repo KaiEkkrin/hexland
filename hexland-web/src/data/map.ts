@@ -9,4 +9,5 @@ export interface IMap {
   description: string;
   owner: string; // to check whether we can consolidate
   ty: MapType;
+  ffa: boolean;
 }

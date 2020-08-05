@@ -3,12 +3,15 @@ import './App.css';
 import './Map.css';
 
 import { AppContext, AppState } from './App';
+import MapControls, { EditMode } from './components/MapControls';
+import MapEditorModal from './components/MapEditorModal';
 import Navigation from './components/Navigation';
-import TokenPlayerSelection from './components/TokenPlayerSelection';
+import TokenEditorModal from './components/TokenEditorModal';
 
 import { IPlayer } from './data/adventure';
 import { IChanges, IChange } from './data/change';
 import { trackChanges } from './data/changeTracking';
+import { IToken } from './data/feature';
 import { MapType, IMap } from './data/map';
 import { IProfile } from './data/profile';
 import { registerMapAsRecent, consolidateMapChanges } from './services/extensions';
@@ -18,140 +21,9 @@ import { ThreeDrawing } from './models/drawing';
 import { FeatureColour } from './models/featureColour';
 import { TextCreator } from './models/textCreator';
 
-import Button from 'react-bootstrap/Button';
-import ButtonGroup from 'react-bootstrap/ButtonGroup';
-import Form from 'react-bootstrap/Form';
-import Modal from 'react-bootstrap/Modal';
-import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
-import ToggleButton from 'react-bootstrap/ToggleButton';
-import Tooltip from 'react-bootstrap/Tooltip';
-
 import { RouteComponentProps } from 'react-router-dom';
 
-import { faDotCircle, faDrawPolygon, faHandPaper, faMousePointer, faPlus, faSearch, faSquare, IconDefinition } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-
 import * as THREE from 'three';
-
-enum EditMode {
-  Select = "select",
-  Token = "token",
-  Area = "area",
-  Wall = "wall",
-  Pan = "pan",
-  Zoom = "zoom",
-}
-
-interface IEditModeButtonProps {
-  mode: EditMode;
-  icon: IconDefinition;
-  tooltip: string;
-  getEditMode(): EditMode;
-  setEditMode(value: EditMode): void;
-}
-
-function EditModeButton(props: IEditModeButtonProps) {
-  return (
-    <OverlayTrigger key={props.mode} placement="right" overlay={
-      <Tooltip id={props.mode + "-tooltip"}>{props.tooltip}</Tooltip>
-    }>
-      <ToggleButton type="radio" variant="dark" key={props.mode} value={props.mode}
-        checked={props.getEditMode() === props.mode}
-        onChange={(e) => props.setEditMode(props.mode)}>
-        <FontAwesomeIcon icon={props.icon} color="white" />
-      </ToggleButton>
-    </OverlayTrigger>
-  );
-}
-
-interface INegativeColourProps {
-  includeNegative: boolean;
-  getSelectedColour(): number;
-  setSelectedColour(value: number): void;
-}
-
-function NegativeColour(props: INegativeColourProps) {
-  if (props.includeNegative === false) {
-    return null;
-  }
-
-  return (
-    <ToggleButton type="radio" variant="dark" key={-1} value={-1}
-      checked={props.getSelectedColour() === -1}
-      onChange={(e) => props.setSelectedColour(-1)}>
-      <FontAwesomeIcon icon={faSquare} color="black" />
-    </ToggleButton>
-  );
-}
-
-interface IColourSelectionProps {
-  colours: string[];
-  includeNegative: boolean;
-  isVertical: boolean;
-  getSelectedColour(): number;
-  setSelectedColour(value: number): void;
-}
-
-function ColourSelection(props: IColourSelectionProps) {
-  return (
-    <ButtonGroup toggle vertical={props.isVertical === true}>
-      {props.colours.map((c, i) =>
-        <ToggleButton type="radio" variant="dark" key={i} value={i}
-          checked={props.getSelectedColour() === i}
-          onChange={(e) => props.setSelectedColour(i)}>
-          <FontAwesomeIcon icon={faSquare} color={c} />
-        </ToggleButton>
-      )}
-      <NegativeColour includeNegative={props.includeNegative}
-        getSelectedColour={props.getSelectedColour}
-        setSelectedColour={props.setSelectedColour} />
-    </ButtonGroup>
-  );
-}
-
-interface IMapControlsProps {
-  colours: string[];
-  getEditMode(): EditMode;
-  setEditMode(value: EditMode): void;
-  getSelectedColour(): number;
-  setSelectedColour(value: number): void;
-  resetView(): void;
-}
-
-function MapControls(props: IMapControlsProps) {
-  return (
-    <div className="Map-controls bg-dark">
-      <ButtonGroup className="mb-2" toggle vertical>
-        <EditModeButton mode={EditMode.Select} icon={faMousePointer} tooltip="Select and move tokens"
-          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
-        <EditModeButton mode={EditMode.Token} icon={faPlus} tooltip="Add and edit tokens"
-          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
-        <EditModeButton mode={EditMode.Area} icon={faSquare} tooltip="Paint areas"
-          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
-        <EditModeButton mode={EditMode.Wall} icon={faDrawPolygon} tooltip="Paint walls"
-          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
-        <EditModeButton mode={EditMode.Pan} icon={faHandPaper} tooltip="Pan the map view"
-          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
-        <EditModeButton mode={EditMode.Zoom} icon={faSearch} tooltip="Zoom the map view, or Shift-click to rotate"
-          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
-      </ButtonGroup>
-      <ButtonGroup className="mb-2">
-        <OverlayTrigger placement="right" overlay={
-          <Tooltip id="reset-tooltip">Reset the map view</Tooltip>
-        }>
-          <Button variant="dark" onClick={() => props.resetView()}>
-            <FontAwesomeIcon icon={faDotCircle} color="white" />
-          </Button>
-        </OverlayTrigger>
-      </ButtonGroup>
-      <ColourSelection colours={props.colours}
-        includeNegative={true}
-        isVertical={true}
-        getSelectedColour={props.getSelectedColour}
-        setSelectedColour={props.setSelectedColour} />
-    </div>
-  );
-}
 
 interface IMapProps extends IMapPageProps {
   dataService: IDataService | undefined;
@@ -162,11 +34,10 @@ class MapState {
   record: IMap | undefined;
   editMode = EditMode.Select;
   selectedColour = 0;
+  showMapEditor = false;
   showTokenEditor = false;
-  contextualColour = 0;
-  contextualPosition: THREE.Vector2 | undefined;
-  contextualText = "";
-  contextualPlayerIds: string[] = [];
+  tokenToEdit: IToken | undefined = undefined;
+  tokenToEditPosition: THREE.Vector2 | undefined;
   players: IPlayer[] = [];
 }
 
@@ -198,9 +69,15 @@ class Map extends React.Component<IMapProps, MapState> {
     this.handleTokenEditorDelete = this.handleTokenEditorDelete.bind(this);
     this.handleTokenEditorSave = this.handleTokenEditorSave.bind(this);
     this.handleWindowResize = this.handleWindowResize.bind(this);
-    this.isModalSaveDisabled = this.isModalSaveDisabled.bind(this);
+    this.handleOpenMapEditor = this.handleOpenMapEditor.bind(this);
+    this.handleMapEditorClose = this.handleMapEditorClose.bind(this);
+    this.handleMapEditorSave = this.handleMapEditorSave.bind(this);
     this.resetView = this.resetView.bind(this);
     this.setEditMode = this.setEditMode.bind(this);
+  }
+
+  private get canOpenMapEditor(): boolean {
+    return this.props.dataService?.getUid() === this.state.record?.owner;
   }
 
   // Gets our standard colours.
@@ -360,15 +237,13 @@ class Map extends React.Component<IMapProps, MapState> {
         break;
 
       case EditMode.Token:
-        // Show the token dialog now.  We'll create the token upon close of
+        // Show the token dialog now.  We'll create or alter the token upon close of
         // the dialog.
         var token = this._drawing?.getToken(cp);
         this.setState({
           showTokenEditor: true,
-          contextualColour: Math.max(0, token?.colour ?? this.state.selectedColour),
-          contextualPosition: cp,
-          contextualText: token?.text ?? "",
-          contextualPlayerIds: token?.players ?? []
+          tokenToEdit: token,
+          tokenToEditPosition: cp
         });
         break;
 
@@ -386,27 +261,27 @@ class Map extends React.Component<IMapProps, MapState> {
   }
 
   private handleTokenEditorClose() {
-    this.setState({ showTokenEditor: false, contextualPosition: undefined });
+    this.setState({ showTokenEditor: false, tokenToEdit: undefined, tokenToEditPosition: undefined });
   }
 
   private handleTokenEditorDelete() {
-    if (this.state.contextualPosition !== undefined) {
+    if (this.state.tokenToEditPosition !== undefined) {
       this.addChanges(
-        this._drawing?.setToken(this.state.contextualPosition, -1, this.state.contextualText, [])
+        this._drawing?.setToken(this.state.tokenToEditPosition, -1, "", [])
       );
     }
 
     this.handleTokenEditorClose();
   }
 
-  private handleTokenEditorSave() {
-    if (this.state.contextualPosition !== undefined) {
+  private handleTokenEditorSave(text: string, colour: number, playerIds: string[]) {
+    if (this.state.tokenToEditPosition !== undefined) {
       this.addChanges(
         this._drawing?.setToken(
-          this.state.contextualPosition,
-          this.state.contextualColour,
-          this.state.contextualText,
-          this.state.contextualPlayerIds
+          this.state.tokenToEditPosition,
+          colour,
+          text,
+          playerIds
         )
       );
     }
@@ -414,13 +289,26 @@ class Map extends React.Component<IMapProps, MapState> {
     this.handleTokenEditorClose();
   }
 
-  private handleWindowResize(ev: UIEvent) {
-    this._drawing?.resize();
+  private handleOpenMapEditor() {
+    this.setState({ showMapEditor: true });
   }
 
-  private isModalSaveDisabled(): boolean {
-    return this.state.contextualText === undefined ||
-      this.state.contextualText.length === 0;
+  private handleMapEditorClose() {
+    this.setState({ showMapEditor: false });
+  }
+
+  private handleMapEditorSave(ffa: boolean) {
+    this.handleMapEditorClose();
+    if (this.props.dataService !== undefined) {
+      var mapRef = this.props.dataService.getMapRef(this.props.adventureId, this.props.mapId);
+      this.props.dataService.update(mapRef, { ffa: ffa })
+        .then(() => console.log("Set FFA to " + ffa))
+        .catch(e => console.error("Failed to set FFA:", e));
+    }
+  }
+
+  private handleWindowResize(ev: UIEvent) {
+    this._drawing?.resize();
   }
 
   private resetView() {
@@ -445,56 +333,21 @@ class Map extends React.Component<IMapProps, MapState> {
           setEditMode={this.setEditMode}
           getSelectedColour={() => this.state.selectedColour}
           setSelectedColour={(v) => { this.setState({ selectedColour: v }); }}
-          resetView={this.resetView} />
+          resetView={this.resetView}
+          canOpenMapEditor={this.canOpenMapEditor}
+          openMapEditor={this.handleOpenMapEditor} />
         <div className="Map-content">
           <div id="drawingDiv" ref={this._mount}
             onMouseDown={this.handleMouseDown}
             onMouseMove={this.handleMouseMove}
             onMouseUp={this.handleMouseUp} />
         </div>
-        <Modal show={this.state.showTokenEditor} onHide={this.handleTokenEditorClose}>
-          <Modal.Header closeButton>
-            <Modal.Title>Token</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <Form>
-              <Form.Group>
-                <Form.Label>Text</Form.Label>
-                <Form.Control type="text" maxLength={3} value={this.state.contextualText}
-                  onChange={e => this.setState({ contextualText: e.target.value })} />
-              </Form.Group>
-              <Form.Group>
-                <Form.Label>Colour</Form.Label>
-                <Form.Row>
-                  <ColourSelection colours={this.hexColours}
-                    includeNegative={false}
-                    isVertical={false}
-                    getSelectedColour={() => this.state.contextualColour}
-                    setSelectedColour={(v) => { this.setState({ contextualColour: v }); }} />
-                </Form.Row>
-              </Form.Group>
-              <Form.Group>
-                <Form.Label>Assigned to players</Form.Label>
-                <TokenPlayerSelection players={this.state.players}
-                  tokenPlayerIds={this.state.contextualPlayerIds}
-                  setTokenPlayerIds={(ids: string[]) => { this.setState({ contextualPlayerIds: ids }); }} />
-              </Form.Group>
-            </Form>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="danger" onClick={this.handleTokenEditorDelete}>
-              Delete
-            </Button>
-            <Button variant="secondary" onClick={this.handleTokenEditorClose}>
-              Close
-            </Button>
-            <Button variant="primary"
-              disabled={this.isModalSaveDisabled()}
-              onClick={this.handleTokenEditorSave}>
-              Save
-            </Button>
-          </Modal.Footer>
-        </Modal>
+        <MapEditorModal show={this.state.showMapEditor} map={this.state.record}
+          handleClose={this.handleMapEditorClose} handleSave={this.handleMapEditorSave} />
+        <TokenEditorModal selectedColour={this.state.selectedColour} show={this.state.showTokenEditor}
+          token={this.state.tokenToEdit} hexColours={this.hexColours}
+          players={this.state.players} handleClose={this.handleTokenEditorClose}
+          handleDelete={this.handleTokenEditorDelete} handleSave={this.handleTokenEditorSave} />
       </div>
     );
   }
