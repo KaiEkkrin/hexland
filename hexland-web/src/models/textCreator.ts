@@ -5,7 +5,7 @@ export class TextCreator {
 
   constructor() {
     var loader = new THREE.FontLoader();
-    loader.load('../fonts/helvetiker_bold.typeface.json', (f: THREE.Font) => this._font = f);
+    loader.load('/fonts/helvetiker_bold.typeface.json', (f: THREE.Font) => this._font = f);
   }
 
   private createTargetPosition(position: THREE.Vector3, bb: THREE.Box3 | null): THREE.Vector3 | undefined {
