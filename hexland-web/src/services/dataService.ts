@@ -245,7 +245,7 @@ export class DataService implements IDataService {
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ) {
-    return db.collectionGroup(profiles).where("playerId", "==", this._uid).onSnapshot(s => {
+    return db.collectionGroup(players).where("playerId", "==", this._uid).onSnapshot(s => {
       onNext(s.docs.map(d => d.data() as IPlayer));
     }, onError, onCompletion);
   }

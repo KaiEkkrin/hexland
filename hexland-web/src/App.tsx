@@ -11,6 +11,7 @@ import HomePage from './Home';
 import InvitePage from './Invite';
 import Login from './Login';
 import MapPage from './Map';
+import SharedPage from './Shared';
 
 import { BrowserRouter, Route, Switch } from 'react-router-dom';
 import { IDataService } from './services/interfaces';
@@ -104,6 +105,7 @@ class App extends React.Component<IAppProps, AppState> {
               <Route exact path="/adventure/:adventureId/invite/:inviteId" component={InvitePage} />
               <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
               <Route exact path="/login" component={Login} />
+              <Route exact page="/shared" component={SharedPage} />
             </Switch>
           </BrowserRouter>
         </AppContext.Provider>

@@ -10,9 +10,16 @@ import { v4 as uuidv4 } from 'uuid';
 
 const maxProfileEntries = 7;
 
-function updateProfileAdventures(adventures: IAdventureSummary[] | undefined, changed: IAdventureSummary): IAdventureSummary[] {
+function updateProfileAdventures(adventures: IAdventureSummary[] | undefined, changed: IAdventureSummary): IAdventureSummary[] | undefined {
   var existingIndex = adventures?.findIndex(a => a.id === changed.id) ?? -1;
   if (adventures !== undefined && existingIndex >= 0) {
+    var existing = adventures[existingIndex];
+    if (existing.name === changed.name && existing.description === changed.description &&
+      existing.ownerName === changed.ownerName) {
+      // No change to make
+      return undefined;
+    }
+
     var updated = [...adventures];
     updated[existingIndex].name = changed.name;
     updated[existingIndex].description = changed.description;
@@ -91,7 +98,9 @@ async function editAdventureTransaction(
   // I can't update other players' profiles, but they should get the update
   // when they next click the adventure, it's best effort :)
   var updated = updateProfileAdventures(profile.adventures, changed);
-  await view.update(profileRef, { adventures: updated });
+  if (updated !== undefined) {
+    await view.update(profileRef, { adventures: updated });
+  }
 
   // Update any maps associated with it
   await Promise.all(mapRefs.map(m => view.update(m, { adventureName: changed.name })));
@@ -302,7 +311,9 @@ async function registerAdventureAsRecentTransaction(
     owner: a.owner,
     ownerName: a.ownerName
   });
-  view.update(profileRef, { adventures: updated });
+  if (updated !== undefined) {
+    view.update(profileRef, { adventures: updated });
+  }
 }
 
 export async function registerAdventureAsRecent(
@@ -312,10 +323,6 @@ export async function registerAdventureAsRecent(
   a: IAdventure
 ) {
   if (dataService === undefined || profile === undefined) {
-    return;
-  }
-
-  if (profile.adventures?.find(l => l.id === id) !== undefined) {
     return;
   }
 

@@ -39,14 +39,18 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && isOwner(adventureId);
     }
 
+    // This lets us query for all adventures shared with us
+    // It looks like we can't check for uid matching request.auth.uid here
+    match /{document=**}/players/{uid} {
+      allow read: if request.auth != null;
+    }
+
     match /adventures/{adventureId}/players/{uid} {
-      allow create, update: if request.auth != null && request.resource.data.playerId == uid && (
+      allow create: if request.auth != null && request.resource.data.playerId == uid && (
         request.auth.uid == uid || isOwner(adventureId)
-      ); // TODO also require invite for someone to create one of these
-      allow read: if request.auth != null &&
-        (request.auth.uid == uid || isPlayerOrOwner(adventureId)
-      );
-      allow delete: if request.auth != null &&
+      ); // TODO also require invite for someone to create one of these, right now anyone can
+         // invite themselves to any adventure.
+      allow update, delete: if request.auth != null &&
         (request.auth.uid == uid || isOwner(adventureId)
       );
     }

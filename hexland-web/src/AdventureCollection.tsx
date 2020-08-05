@@ -12,7 +12,7 @@ import Card from 'react-bootstrap/Card';
 interface IAdventureCollectionProps {
   uid: string | undefined;
   getAdventures: () => IAdventureSummary[];
-  setAdventure: (id: string | undefined, name: string, description: string) => void;
+  setAdventure: ((id: string | undefined, name: string, description: string) => void) | undefined;
 }
 
 class AdventureCollectionState {
@@ -34,7 +34,7 @@ class AdventureCollection extends React.Component<IAdventureCollectionProps, Adv
   }
 
   private canEditAdventure(a: IAdventureSummary) {
-    return a.owner === this.props.uid;
+    return this.props.setAdventure !== undefined && a.owner === this.props.uid;
   }
 
   private handleNewAdventureClick() {
@@ -57,7 +57,7 @@ class AdventureCollection extends React.Component<IAdventureCollectionProps, Adv
 
   private handleEditAdventureSave() {
     this.setState({ showEditAdventure: false });
-    this.props.setAdventure(this.state.editId, this.state.editName, this.state.editDescription);
+    this.props.setAdventure?.(this.state.editId, this.state.editName, this.state.editDescription);
   }
 
   render() {
