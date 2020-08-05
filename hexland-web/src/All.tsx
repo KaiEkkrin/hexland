@@ -1,9 +1,9 @@
 import React from 'react';
 import './App.css';
 
-import AdventureCollection from './AdventureCollection';
 import { AppContext, AppState } from './App';
-import Navigation from './Navigation';
+import AdventureCollection from './components/AdventureCollection';
+import Navigation from './components/Navigation';
 
 import { IAdventure, summariseAdventure } from './data/adventure';
 import { IIdentified } from './data/identified';

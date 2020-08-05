@@ -1,9 +1,9 @@
 import React, { RefObject } from 'react';
 import './App.css';
 import './Map.css';
-import Navigation from './Navigation';
 
 import { AppContext, AppState } from './App';
+import Navigation from './components/Navigation';
 import TokenPlayerSelection from './components/TokenPlayerSelection';
 
 import { IPlayer } from './data/adventure';

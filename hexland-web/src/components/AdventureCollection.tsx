@@ -1,10 +1,10 @@
 import React from 'react';
-import './App.css';
+import '../App.css';
 
 import AdventureCards from './AdventureCards';
 import AdventureModal from './AdventureModal';
 
-import { IAdventureSummary } from './data/profile';
+import { IAdventureSummary } from '../data/profile';
 
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';

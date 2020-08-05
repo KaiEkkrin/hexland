@@ -2,8 +2,8 @@ import React from 'react';
 import './App.css';
 
 import { AppContext, AppState } from './App';
-import MapCollection from './MapCollection';
-import Navigation from './Navigation';
+import MapCollection from './components/MapCollection';
+import Navigation from './components/Navigation';
 
 import { IMapSummary, IAdventure, summariseAdventure } from './data/adventure';
 import { MapType } from './data/map';

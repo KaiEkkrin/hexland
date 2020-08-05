@@ -1,7 +1,7 @@
 import React from 'react';
-import './App.css';
+import '../App.css';
 
-import { IMapSummary } from './data/adventure';
+import { IMapSummary } from '../data/adventure';
 
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';

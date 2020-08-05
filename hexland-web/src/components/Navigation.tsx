@@ -1,7 +1,7 @@
 import React from 'react';
-import { auth } from './firebase';
+import { auth } from '../firebase';
 
-import { AppContext, AppState } from './App';
+import { AppContext, AppState } from '../App';
 
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';

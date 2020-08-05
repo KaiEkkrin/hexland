@@ -2,12 +2,11 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 
 import { AppContext, AppState } from './App';
+import Navigation from './components/Navigation';
 import { IInvite } from './data/invite';
 import { IProfile } from './data/profile';
 import { joinAdventure } from './services/extensions';
 import { IDataService } from './services/interfaces';
-
-import Navigation from './Navigation';
 
 import Button from 'react-bootstrap/Button';
 

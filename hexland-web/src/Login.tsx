@@ -3,7 +3,7 @@ import './App.css';
 import { auth, googleAuthProvider } from './firebase';
 
 import { AppContext, AppState } from './App';
-import Navigation from './Navigation';
+import Navigation from './components/Navigation';
 
 import Button from 'react-bootstrap/Button';
 

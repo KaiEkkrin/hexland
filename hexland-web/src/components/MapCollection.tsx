@@ -1,11 +1,11 @@
 import React from 'react';
-import './App.css';
+import '../App.css';
 
 import MapCards from './MapCards';
 
-import { IMapSummary } from './data/adventure';
-import { MapType } from './data/map';
-import { IAdventureSummary } from './data/profile';
+import { IMapSummary } from '../data/adventure';
+import { MapType } from '../data/map';
+import { IAdventureSummary } from '../data/profile';
 
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';

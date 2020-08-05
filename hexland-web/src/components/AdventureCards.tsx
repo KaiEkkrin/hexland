@@ -1,7 +1,7 @@
 import React from 'react';
-import './App.css';
+import '../App.css';
 
-import { IAdventureSummary } from './data/profile';
+import { IAdventureSummary } from '../data/profile';
 
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';

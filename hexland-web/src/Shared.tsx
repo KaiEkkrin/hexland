@@ -1,9 +1,9 @@
 import React from 'react';
 import './App.css';
 
-import AdventureCollection from './AdventureCollection';
 import { AppContext, AppState } from './App';
-import Navigation from './Navigation';
+import AdventureCollection from './components/AdventureCollection';
+import Navigation from './components/Navigation';
 
 import { IPlayer } from './data/adventure';
 import { IDataService } from './services/interfaces';
