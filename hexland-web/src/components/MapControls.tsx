@@ -49,27 +49,42 @@ interface IMapControlsProps {
   getSelectedColour(): number;
   setSelectedColour(value: number): void;
   resetView(): void;
+  canDoAnything: boolean;
   canOpenMapEditor: boolean;
   openMapEditor(): void;
 }
 
 function MapControls(props: IMapControlsProps) {
+  function createModeButtons() {
+    var buttons = [
+      <EditModeButton key={EditMode.Select} mode={EditMode.Select} icon={faMousePointer}
+        tooltip="Select and move tokens" getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
+    ];
+
+    if (props.canDoAnything) {
+      buttons.push(...[
+        <EditModeButton key={EditMode.Token} mode={EditMode.Token} icon={faPlus} tooltip="Add and edit tokens"
+          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />,
+        <EditModeButton key={EditMode.Area} mode={EditMode.Area} icon={faSquare} tooltip="Paint areas"
+          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />,
+        <EditModeButton key={EditMode.Wall} mode={EditMode.Wall} icon={faDrawPolygon} tooltip="Paint walls"
+          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
+      ]);
+    }
+
+    buttons.push(...[
+      <EditModeButton key={EditMode.Pan} mode={EditMode.Pan} icon={faHandPaper} tooltip="Pan the map view"
+        getEditMode={props.getEditMode} setEditMode={props.setEditMode} />,
+      <EditModeButton key={EditMode.Zoom} mode={EditMode.Zoom} icon={faSearch} tooltip="Zoom the map view, or Shift-click to rotate"
+        getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
+    ]);
+
+    return buttons;
+  }
+
   return (
     <div className="Map-controls bg-dark">
-      <ButtonGroup className="mb-2" toggle vertical>
-        <EditModeButton mode={EditMode.Select} icon={faMousePointer} tooltip="Select and move tokens"
-          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
-        <EditModeButton mode={EditMode.Token} icon={faPlus} tooltip="Add and edit tokens"
-          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
-        <EditModeButton mode={EditMode.Area} icon={faSquare} tooltip="Paint areas"
-          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
-        <EditModeButton mode={EditMode.Wall} icon={faDrawPolygon} tooltip="Paint walls"
-          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
-        <EditModeButton mode={EditMode.Pan} icon={faHandPaper} tooltip="Pan the map view"
-          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
-        <EditModeButton mode={EditMode.Zoom} icon={faSearch} tooltip="Zoom the map view, or Shift-click to rotate"
-          getEditMode={props.getEditMode} setEditMode={props.setEditMode} />
-      </ButtonGroup>
+      <ButtonGroup className="mb-2" toggle vertical>{createModeButtons()}</ButtonGroup>
       <ButtonGroup className="mb-2">
         <OverlayTrigger placement="right" overlay={
           <Tooltip id="reset-tooltip">Reset the map view</Tooltip>

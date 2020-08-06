@@ -49,6 +49,7 @@ function Map(props: IMapProps) {
   const [record, setRecord] = useState(undefined as IMap | undefined);
   const [players, setPlayers] = useState([] as IPlayer[]);
   const [drawing, setDrawing] = useState(undefined as ThreeDrawing | undefined);
+  const [canDoAnything, setCanDoAnything] = useState(false);
 
   // We need an event listener for the window resize so that we can update the drawing
   useEffect(() => {
@@ -99,14 +100,16 @@ function Map(props: IMapProps) {
       e => console.error("Error watching map changes", e));
   }, [props, record]);
 
-  // Track the adventure's players
-  // TODO Can I pull this up into a component that remains in the tree while the user
-  // remains in the same adventure?  (would require fun with contexts and the router)
+  // Track the adventure's players, if we might need access to this
   useEffect(() => {
+    if (props.dataService === undefined || canDoAnything === false) {
+      return () => {};
+    }
+
     console.log("Watching players in adventure " + props.adventureId);
-    return props.dataService?.watchPlayers(props.adventureId, setPlayers,
+    return props.dataService.watchPlayers(props.adventureId, setPlayers,
       e => console.error("Error watching players", e));
-  }, [props.dataService, props.adventureId]);
+  }, [props.dataService, props.adventureId, canDoAnything]);
 
   // How to create and share the map changes we make
   function addChanges(changes: IChange[] | undefined) {
@@ -128,6 +131,10 @@ function Map(props: IMapProps) {
   const [showTokenEditor, setShowTokenEditor] = useState(false);
   const [tokenToEdit, setTokenToEdit] = useState(undefined as IToken | undefined);
   const [tokenToEditPosition, setTokenToEditPosition] = useState(undefined as THREE.Vector2 | undefined);
+
+  useEffect(() => {
+    setCanDoAnything(record?.ffa === true || props.dataService?.getUid() === record?.owner);
+  }, [props.dataService, record]);
 
   useEffect(() => {
     setCanOpenMapEditor(props.dataService?.getUid() === record?.owner);
@@ -256,6 +263,7 @@ function Map(props: IMapProps) {
         getSelectedColour={() => selectedColour}
         setSelectedColour={setSelectedColour}
         resetView={() => drawing?.resetView()}
+        canDoAnything={canDoAnything}
         canOpenMapEditor={canOpenMapEditor}
         openMapEditor={() => setShowMapEditor(true)} />
       <div className="Map-content">
