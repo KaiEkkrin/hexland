@@ -1,4 +1,4 @@
-import React, { RefObject } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './App.css';
 import './Map.css';
 
@@ -9,7 +9,7 @@ import Navigation from './components/Navigation';
 import TokenEditorModal from './components/TokenEditorModal';
 
 import { IPlayer } from './data/adventure';
-import { IChanges, IChange } from './data/change';
+import { IChange } from './data/change';
 import { trackChanges } from './data/changeTracking';
 import { IToken } from './data/feature';
 import { MapType, IMap } from './data/map';
@@ -19,172 +19,153 @@ import { IDataService } from './services/interfaces';
 
 import { ThreeDrawing } from './models/drawing';
 import { FeatureColour } from './models/featureColour';
-import { TextCreator } from './models/textCreator';
+import textCreator from './models/textCreator';
 
 import { RouteComponentProps } from 'react-router-dom';
 
 import * as THREE from 'three';
+
+function getStandardColours() {
+  var colours: FeatureColour[] = [];
+  for (var i = 0; i < 6; ++i) {
+    colours.push(new FeatureColour((i + 0.5) / 6.0));
+  }
+
+  return colours;
+}
+
+function getHexColours() {
+  return getStandardColours().map(c => "#" + c.lightHexString);
+}
 
 interface IMapProps extends IMapPageProps {
   dataService: IDataService | undefined;
   profile: IProfile | undefined;
 }
 
-class MapState {
-  record: IMap | undefined;
-  editMode = EditMode.Select;
-  selectedColour = 0;
-  showMapEditor = false;
-  showTokenEditor = false;
-  tokenToEdit: IToken | undefined = undefined;
-  tokenToEditPosition: THREE.Vector2 | undefined;
-  players: IPlayer[] = [];
-}
+function Map(props: IMapProps) {
+  const drawingRef = useRef<HTMLDivElement>(null);
 
-class Map extends React.Component<IMapProps, MapState> {
-  private readonly _colours: FeatureColour[];
-  private readonly _mount: RefObject<HTMLDivElement>;
-  private readonly _textCreator: TextCreator;
-  private _drawing: ThreeDrawing | undefined;
-  private _stopWatchingMap: (() => void) | undefined;
-  private _stopWatchingPlayers: (() => void) | undefined;
+  const [record, setRecord] = useState(undefined as IMap | undefined);
+  const [players, setPlayers] = useState([] as IPlayer[]);
+  const [drawing, setDrawing] = useState(undefined as ThreeDrawing | undefined);
 
-  constructor(props: IMapProps) {
-    super(props);
-    this.state = new MapState();
+  // We need an event listener for the window resize so that we can update the drawing
+  useEffect(() => {
+    const handleWindowResize = (ev: UIEvent) => { drawing?.resize(); };
+    window.addEventListener('resize', handleWindowResize);
+    return () => { window.removeEventListener('resize', handleWindowResize); };
+  }, [drawing]);
 
-    // Generate my standard colours
-    this._colours = [];
-    for (var i = 0; i < 6; ++i) {
-      this._colours.push(new FeatureColour((i + 0.5) / 6.0));
-    }
-
-    this._mount = React.createRef();
-    this._textCreator = new TextCreator();
-
-    this.handleMouseDown = this.handleMouseDown.bind(this);
-    this.handleMouseMove = this.handleMouseMove.bind(this);
-    this.handleMouseUp = this.handleMouseUp.bind(this);
-    this.handleTokenEditorClose = this.handleTokenEditorClose.bind(this);
-    this.handleTokenEditorDelete = this.handleTokenEditorDelete.bind(this);
-    this.handleTokenEditorSave = this.handleTokenEditorSave.bind(this);
-    this.handleWindowResize = this.handleWindowResize.bind(this);
-    this.handleOpenMapEditor = this.handleOpenMapEditor.bind(this);
-    this.handleMapEditorClose = this.handleMapEditorClose.bind(this);
-    this.handleMapEditorSave = this.handleMapEditorSave.bind(this);
-    this.resetView = this.resetView.bind(this);
-    this.setEditMode = this.setEditMode.bind(this);
-  }
-
-  private get canOpenMapEditor(): boolean {
-    return this.props.dataService?.getUid() === this.state.record?.owner;
-  }
-
-  // Gets our standard colours.
-  private get hexColours(): string[] {
-    return this._colours.map(c => "#" + c.lightHexString);
-  }
-
-  private async loadMap(mount: HTMLDivElement): Promise<void> {
-    // Detach from any existing map
-    this._stopWatchingMap?.();
-    this._stopWatchingMap = undefined;
-    this._stopWatchingPlayers?.();
-    this._stopWatchingPlayers = undefined;
-
-    // I don't think we mind very much if this record changes under our feet
-    var record = await this.props.dataService?.getMap(this.props.adventureId, this.props.mapId);
-    if (record === undefined) {
+  // Watch the map when it changes
+  useEffect(() => {
+    if (props.dataService === undefined) {
       return;
     }
 
-    this.setState({ record: record });
-    await registerMapAsRecent(
-      this.props.dataService, this.props.profile, this.props.adventureId, this.props.mapId, record
+    // TODO remove debug after confirming we don't multiple-watch things
+    console.log("Watching adventure " + props.adventureId + ", map " + props.mapId);
+    var mapRef = props.dataService.getMapRef(props.adventureId, props.mapId);
+    return props.dataService.watch<IMap>(
+      mapRef, setRecord,
+      e => console.error("Error watching map " + props.mapId, e)
     );
-    var drawing = new ThreeDrawing(
-      this._colours,
-      mount,
-      this._textCreator,
-      record.ty === MapType.Hex
-    );
+  }, [props.dataService, props.adventureId, props.mapId]);
 
-    // If relevant, consolidate any existing changes to this map to reduce the amount
-    // of database clutter
-    await consolidateMapChanges(
-      this.props.dataService, this.props.adventureId, this.props.mapId, record
-    );
-
-    this._stopWatchingMap = this.props.dataService?.watchChanges(
-      this.props.adventureId,
-      this.props.mapId,
-      (chs: IChanges) => { if (this._drawing !== undefined) { trackChanges(drawing, chs.chs); } },
-      (e: Error) => console.error("Error watching map changes:", e)
-    );
-
-    this._stopWatchingPlayers = this.props.dataService?.watchPlayers(
-      this.props.adventureId,
-      (players: IPlayer[]) => { this.setState({ players: players }); },
-      (e: Error) => console.error("Error watching players:", e)
-    );
-
-    this._drawing = drawing; // TODO dispose any old one
-    this._drawing.animate();
-  }
-
-  private addChanges(changes: IChange[] | undefined) {
-    if (changes === undefined ||
-      changes.length === 0 ||
-      this.props.dataService === undefined
+  // Track changes to the map
+  useEffect(() => {
+    if (props.dataService === undefined || props.profile === undefined || record === undefined ||
+      drawingRef?.current === null
     ) {
+      setDrawing(undefined);
       return;
     }
 
-    this.props.dataService.addChanges(this.props.adventureId, this.props.mapId, changes)
+    registerMapAsRecent(props.dataService, props.profile, props.adventureId, props.mapId, record)
+      .catch(e => console.error("Error registering map as recent", e));
+    consolidateMapChanges(props.dataService, props.adventureId, props.mapId, record)
+      .catch(e => console.error("Error consolidating map changes", e));
+
+    var theDrawing = new ThreeDrawing(
+      getStandardColours(), drawingRef.current, textCreator, record.ty === MapType.Hex
+    );
+    setDrawing(theDrawing);
+    theDrawing.animate();
+
+    // TODO my returned thing should also ensure drawing disposal
+    console.log("Watching changes to map " + props.mapId);
+    return props.dataService.watchChanges(props.adventureId, props.mapId,
+      chs => trackChanges(theDrawing, chs.chs),
+      e => console.error("Error watching map changes", e));
+  }, [props, record]);
+
+  // Track the adventure's players
+  // TODO Can I pull this up into a component that remains in the tree while the user
+  // remains in the same adventure?  (would require fun with contexts and the router)
+  useEffect(() => {
+    console.log("Watching players in adventure " + props.adventureId);
+    return props.dataService?.watchPlayers(props.adventureId, setPlayers,
+      e => console.error("Error watching players", e));
+  }, [props.dataService, props.adventureId]);
+
+  // How to create and share the map changes we make
+  function addChanges(changes: IChange[] | undefined) {
+    if (changes === undefined || changes.length === 0 || props.dataService === undefined) {
+      return;
+    }
+
+    props.dataService.addChanges(props.adventureId, props.mapId, changes)
       .then(() => console.log("Added " + changes.length + " changes"))
       .catch(e => console.error("Error adding " + changes.length + " changes", e));
   }
 
-  componentDidMount() {
-    window.addEventListener('resize', this.handleWindowResize);
+  // == UI STUFF ==
 
-    var mount = this._mount.current;
-    if (!mount) {
-      return;
+  const [canOpenMapEditor, setCanOpenMapEditor] = useState(false);
+  const [editMode, setEditMode] = useState(EditMode.Select);
+  const [selectedColour, setSelectedColour] = useState(0);
+  const [showMapEditor, setShowMapEditor] = useState(false);
+  const [showTokenEditor, setShowTokenEditor] = useState(false);
+  const [tokenToEdit, setTokenToEdit] = useState(undefined as IToken | undefined);
+  const [tokenToEditPosition, setTokenToEditPosition] = useState(undefined as THREE.Vector2 | undefined);
+
+  useEffect(() => {
+    setCanOpenMapEditor(props.dataService?.getUid() === record?.owner);
+  }, [props.dataService, record]);
+
+  // When the edit mode changes away from Select, we should clear any selection
+  useEffect(() => {
+    if (editMode !== EditMode.Select) {
+      drawing?.clearSelection();
     }
+  }, [drawing, editMode]);
 
-    this.loadMap(mount)
-      .then(() => console.log("Map " + this.props.mapId + " successfully loaded"))
-      .catch(e => console.error("Error loading map " + this.props.mapId, e));
-  }
-
-  componentDidUpdate(prevProps: IMapProps, prevState: MapState) {
-    if (this.props.dataService !== prevProps.dataService ||
-      this.props.adventureId !== prevProps.adventureId ||
-      this.props.mapId !== prevProps.mapId
-    ) {
-      var mount = this._mount.current;
-      if (!mount) {
-        return;
-      }
-
-      this.loadMap(mount)
-        .then(() => console.log("Map " + this.props.mapId + " successfully loaded"))
-        .catch(e => console.error("Error loading map " + this.props.mapId, e));
+  function handleMapEditorSave(ffa: boolean) {
+    setShowMapEditor(false);
+    if (props.dataService !== undefined && record !== undefined) {
+      var mapRef = props.dataService.getMapRef(props.adventureId, props.mapId);
+      props.dataService.update(mapRef, { ffa: ffa })
+        .then(() => console.log("Set FFA to " + ffa))
+        .catch(e => console.error("Failed to set FFA:", e));
     }
   }
 
-  componentWillUnmount() {
-    this._stopWatchingMap?.();
-    this._stopWatchingMap = undefined;
-    this._stopWatchingPlayers?.();
-    this._stopWatchingPlayers = undefined;
-    window.removeEventListener('resize', this.handleWindowResize);
+  function handleTokenEditorDelete() {
+    setShowTokenEditor(false);
+    if (tokenToEditPosition !== undefined) {
+      addChanges(drawing?.setToken(tokenToEditPosition, -1, "", []));
+    }
   }
 
-  private getClientPosition(e: React.MouseEvent<HTMLDivElement, MouseEvent>): THREE.Vector2 | undefined {
-    // TODO fix this positioning, which is currently slightly wrong
-    var bounds = this._mount.current?.getBoundingClientRect();
+  function handleTokenEditorSave(text: string, colour: number, playerIds: string[]) {
+    setShowTokenEditor(false);
+    if (tokenToEditPosition !== undefined) {
+      addChanges(drawing?.setToken(tokenToEditPosition, colour, text, playerIds));
+    }
+  }
+
+  function getClientPosition(e: React.MouseEvent<HTMLDivElement, MouseEvent>): THREE.Vector2 | undefined {
+    var bounds = drawingRef.current?.getBoundingClientRect();
     if (bounds === undefined) {
       return undefined;
     }
@@ -194,163 +175,98 @@ class Map extends React.Component<IMapProps, MapState> {
     return new THREE.Vector2(x, bounds.height - y - 1);
   }
 
-  private handleMouseDown(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-    var cp = this.getClientPosition(e);
+  function handleMouseDown(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+    var cp = getClientPosition(e);
     if (cp === undefined) {
       return;
     }
 
-    switch (this.state.editMode) {
-      case EditMode.Select: this._drawing?.selectionDragStart(cp); break;
-      case EditMode.Area: this._drawing?.faceDragStart(cp); break;
-      case EditMode.Wall: this._drawing?.edgeDragStart(cp); break;
-      case EditMode.Pan: this._drawing?.panStart(cp); break;
-      case EditMode.Zoom: this._drawing?.zoomRotateStart(cp, e.shiftKey); break;
+    switch (editMode) {
+      case EditMode.Select: drawing?.selectionDragStart(cp); break;
+      case EditMode.Area: drawing?.faceDragStart(cp); break;
+      case EditMode.Wall: drawing?.edgeDragStart(cp); break;
+      case EditMode.Pan: drawing?.panStart(cp); break;
+      case EditMode.Zoom: drawing?.zoomRotateStart(cp, e.shiftKey); break;
     }
   }
 
-  private handleMouseMove(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-    var cp = this.getClientPosition(e);
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+    var cp = getClientPosition(e);
     if (cp === undefined) {
       return;
     }
 
-    switch (this.state.editMode) {
-      case EditMode.Select: this._drawing?.moveSelectionTo(cp); break;
-      case EditMode.Area: this._drawing?.moveFaceHighlightTo(cp); break;
-      case EditMode.Wall: this._drawing?.moveEdgeHighlightTo(cp); break;
-      case EditMode.Pan: this._drawing?.panTo(cp); break;
-      case EditMode.Zoom: this._drawing?.zoomRotateTo(cp); break;
+    switch (editMode) {
+      case EditMode.Select: drawing?.moveSelectionTo(cp); break;
+      case EditMode.Area: drawing?.moveFaceHighlightTo(cp); break;
+      case EditMode.Wall: drawing?.moveEdgeHighlightTo(cp); break;
+      case EditMode.Pan: drawing?.panTo(cp); break;
+      case EditMode.Zoom: drawing?.zoomRotateTo(cp); break;
     }
+
+    return cp;
   }
 
-  private handleMouseUp(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-    this.handleMouseMove(e);
-    var cp = this.getClientPosition(e);
+  function handleMouseUp(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+    var cp = handleMouseMove(e);
     if (cp === undefined) {
       return;
     }
 
-    switch (this.state.editMode) {
+    switch (editMode) {
       case EditMode.Select:
-        this.addChanges(this._drawing?.selectionDragEnd(cp, e.shiftKey));
+        addChanges(drawing?.selectionDragEnd(cp, e.shiftKey));
         break;
 
       case EditMode.Token:
         // Show the token dialog now.  We'll create or alter the token upon close of
         // the dialog.
-        var token = this._drawing?.getToken(cp);
-        this.setState({
-          showTokenEditor: true,
-          tokenToEdit: token,
-          tokenToEditPosition: cp
-        });
+        var token = drawing?.getToken(cp);
+        setShowTokenEditor(true);
+        setTokenToEdit(token);
+        setTokenToEditPosition(cp);
         break;
 
       case EditMode.Area:
-        this.addChanges(this._drawing?.faceDragEnd(cp, this.state.selectedColour));
+        addChanges(drawing?.faceDragEnd(cp, selectedColour));
         break;
 
       case EditMode.Wall:
-        this.addChanges(this._drawing?.edgeDragEnd(cp, this.state.selectedColour));
+        addChanges(drawing?.edgeDragEnd(cp, selectedColour));
         break;
 
-      case EditMode.Pan: this._drawing?.panEnd(); break;
-      case EditMode.Zoom: this._drawing?.zoomRotateEnd(); break;
+      case EditMode.Pan: drawing?.panEnd(); break;
+      case EditMode.Zoom: drawing?.zoomRotateEnd(); break;
     }
   }
 
-  private handleTokenEditorClose() {
-    this.setState({ showTokenEditor: false, tokenToEdit: undefined, tokenToEditPosition: undefined });
-  }
-
-  private handleTokenEditorDelete() {
-    if (this.state.tokenToEditPosition !== undefined) {
-      this.addChanges(
-        this._drawing?.setToken(this.state.tokenToEditPosition, -1, "", [])
-      );
-    }
-
-    this.handleTokenEditorClose();
-  }
-
-  private handleTokenEditorSave(text: string, colour: number, playerIds: string[]) {
-    if (this.state.tokenToEditPosition !== undefined) {
-      this.addChanges(
-        this._drawing?.setToken(
-          this.state.tokenToEditPosition,
-          colour,
-          text,
-          playerIds
-        )
-      );
-    }
-
-    this.handleTokenEditorClose();
-  }
-
-  private handleOpenMapEditor() {
-    this.setState({ showMapEditor: true });
-  }
-
-  private handleMapEditorClose() {
-    this.setState({ showMapEditor: false });
-  }
-
-  private handleMapEditorSave(ffa: boolean) {
-    this.handleMapEditorClose();
-    if (this.props.dataService !== undefined) {
-      var mapRef = this.props.dataService.getMapRef(this.props.adventureId, this.props.mapId);
-      this.props.dataService.update(mapRef, { ffa: ffa })
-        .then(() => console.log("Set FFA to " + ffa))
-        .catch(e => console.error("Failed to set FFA:", e));
-    }
-  }
-
-  private handleWindowResize(ev: UIEvent) {
-    this._drawing?.resize();
-  }
-
-  private resetView() {
-    this._drawing?.resetView();
-  }
-
-  private setEditMode(value: EditMode) {
-    this.setState({ editMode: value });
-    if (value !== EditMode.Select) {
-      this._drawing?.clearSelection();
-    }
-  }
-
-  render() {
-    return (
-      <div className="Map-container">
-        <div className="Map-nav">
-          <Navigation getTitle={() => this.state.record?.name} />
-        </div>
-        <MapControls colours={this.hexColours}
-          getEditMode={() => this.state.editMode}
-          setEditMode={this.setEditMode}
-          getSelectedColour={() => this.state.selectedColour}
-          setSelectedColour={(v) => { this.setState({ selectedColour: v }); }}
-          resetView={this.resetView}
-          canOpenMapEditor={this.canOpenMapEditor}
-          openMapEditor={this.handleOpenMapEditor} />
-        <div className="Map-content">
-          <div id="drawingDiv" ref={this._mount}
-            onMouseDown={this.handleMouseDown}
-            onMouseMove={this.handleMouseMove}
-            onMouseUp={this.handleMouseUp} />
-        </div>
-        <MapEditorModal show={this.state.showMapEditor} map={this.state.record}
-          handleClose={this.handleMapEditorClose} handleSave={this.handleMapEditorSave} />
-        <TokenEditorModal selectedColour={this.state.selectedColour} show={this.state.showTokenEditor}
-          token={this.state.tokenToEdit} hexColours={this.hexColours}
-          players={this.state.players} handleClose={this.handleTokenEditorClose}
-          handleDelete={this.handleTokenEditorDelete} handleSave={this.handleTokenEditorSave} />
+  return (
+    <div className="Map-container">
+      <div className="Map-nav">
+        <Navigation getTitle={() => record?.name} />
       </div>
-    );
-  }
+      <MapControls colours={getHexColours()}
+        getEditMode={() => editMode}
+        setEditMode={setEditMode}
+        getSelectedColour={() => selectedColour}
+        setSelectedColour={setSelectedColour}
+        resetView={() => drawing?.resetView()}
+        canOpenMapEditor={canOpenMapEditor}
+        openMapEditor={() => setShowMapEditor(true)} />
+      <div className="Map-content">
+        <div id="drawingDiv" ref={drawingRef}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp} />
+      </div>
+      <MapEditorModal show={showMapEditor} map={record}
+        handleClose={() => setShowMapEditor(false)} handleSave={handleMapEditorSave} />
+      <TokenEditorModal selectedColour={selectedColour} show={showTokenEditor}
+        token={tokenToEdit} hexColours={getHexColours()}
+        players={players} handleClose={() => setShowTokenEditor(false)}
+        handleDelete={handleTokenEditorDelete} handleSave={handleTokenEditorSave} />
+    </div>
+  );
 }
 
 interface IMapPageProps {

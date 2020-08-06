@@ -37,3 +37,6 @@ export class TextCreator {
     return mesh;
   }
 }
+
+const textCreator = new TextCreator();
+export default textCreator;

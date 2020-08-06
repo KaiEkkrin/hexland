@@ -59,9 +59,10 @@ class App extends React.Component<IAppProps, AppState> {
       var dataService = u === null ? undefined : new DataService(u.uid);
       this.setState({ user: u, dataService: dataService });
 
-      if (u !== null && dataService !== undefined) {
+      var d = dataService?.getProfileRef();
+      if (u !== null && d !== undefined) {
         // Watch the profile, in case changes get made elsewhere:
-        this._stopWatchingProfile = dataService.watchProfile(
+        this._stopWatchingProfile = dataService?.watch(d,
           p => this.setProfile(u, dataService, p),
           e => console.error("Failed to watch profile: ", e)
         );
@@ -75,9 +76,10 @@ class App extends React.Component<IAppProps, AppState> {
 
       // Sync and watch the new user's profile instead
       this._stopWatchingProfile?.();
-      if (this.state.user !== null && this.state.dataService !== undefined) {
+      var d = this.state.dataService?.getProfileRef();
+      if (this.state.user !== null && d !== undefined) {
         // Watch the profile, in case changes get made elsewhere:
-        this._stopWatchingProfile = this.state.dataService.watchProfile(
+        this._stopWatchingProfile = this.state.dataService?.watch(d,
           p => this.setProfile(this.state.user, this.state.dataService, p),
           e => console.error("Failed to watch profile: ", e)
         );

@@ -82,18 +82,23 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
       .catch(e => console.error("Error deleting map " + id, e));
   }
 
-  private adventureLoaded(id: string, a: IAdventure) {
+  private adventureLoaded(id: string, a: IAdventure | undefined) {
     this.setState({ adventure: a });
-    registerAdventureAsRecent(this.props.dataService, this.props.profile, id, a)
-      .catch(e => console.error("Failed to register adventure " + id + " as recent", e));
+    if (a !== undefined) {
+      registerAdventureAsRecent(this.props.dataService, this.props.profile, id, a)
+        .catch(e => console.error("Failed to register adventure " + id + " as recent", e));
+    }
   }
 
   private watchAdventure() {
     this._stopWatchingAdventure?.();
-    var id = this.props.adventureId;
-    this._stopWatchingAdventure = this.props.dataService?.watchAdventure(
-      id,
-      a => this.adventureLoaded(id, a),
+    var d = this.props.dataService?.getAdventureRef(this.props.adventureId);
+    if (d === undefined) {
+      return;
+    }
+
+    this._stopWatchingAdventure = this.props.dataService?.watch(d,
+      a => this.adventureLoaded(this.props.adventureId, a),
       e => console.error("Error watching adventure " + this.props.adventureId + ":", e)
     );
   }

@@ -167,19 +167,16 @@ export class DataService implements IDataService {
   setProfile(profile: IProfile): Promise<void> {
     return db.collection(profiles).doc(this._uid).set(profile);
   }
-  
-  watchAdventure(
-    id: string,
-    onNext: (adventure: IAdventure) => void,
+
+  watch<T>(
+    d: IDataReference<T>,
+    onNext: (r: T | undefined) => void,
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ) {
-    return db.collection("adventures").doc(id)
-      .onSnapshot(s => {
-        if (s.exists) {
-          onNext(s.data() as IAdventure);
-        }
-      }, onError, onCompletion);
+    return (d as DataReference<T>).dref.onSnapshot(s => {
+      onNext(s.exists ? (s.data() as T) : undefined);
+    }, onError, onCompletion);
   }
 
   watchAdventures(
@@ -233,21 +230,6 @@ export class DataService implements IDataService {
   ) {
     return db.collection(adventures).doc(adventureId).collection(players).onSnapshot(s => {
       onNext(s.docs.map(d => d.data() as IPlayer));
-    }, onError, onCompletion);
-  }
-
-  watchProfile(
-    onNext: (profile: IProfile | undefined) => void,
-    onError?: ((error: Error) => void) | undefined,
-    onCompletion?: (() => void) | undefined
-  ) {
-    return db.collection(profiles).doc(this._uid).onSnapshot(s => {
-      if (s.exists) {
-        var profile = s.data() as IProfile;
-        onNext(profile);
-      } else {
-        onNext(undefined); // providing an opportunity to create this profile
-      }
     }, onError, onCompletion);
   }
 

@@ -54,10 +54,10 @@ export interface IDataService extends IDataView {
   // Creates or edits the user's profile.
   setProfile(profile: IProfile): Promise<void>;
 
-  // Watches a particular adventure.  Call the returned function to stop.
-  watchAdventure(
-    id: string,
-    onNext: (adventure: IAdventure) => void,
+  // Watches a single object.  Call the returned function to stop.
+  watch<T>(
+    d: IDataReference<T>,
+    onNext: (r: T | undefined) => void,
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ): () => void;
@@ -82,13 +82,6 @@ export interface IDataService extends IDataView {
   watchPlayers(
     adventureId: string,
     onNext: (players: IPlayer[]) => void,
-    onError?: ((error: Error) => void) | undefined,
-    onCompletion?: (() => void) | undefined
-  ): () => void;
-
-  // Watches the user's profile.
-  watchProfile(
-    onNext: (profile: IProfile | undefined) => void,
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ): () => void;
