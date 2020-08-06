@@ -437,7 +437,7 @@ export async function consolidateMapChanges(
 
   // Consolidate all of that
   var tracker = new SimpleChangeTracker();
-  changes.forEach(c => trackChanges(tracker, c.data.chs));
+  changes.forEach(c => trackChanges(m, tracker, c.data.chs, c.data.user));
   var consolidated = tracker.getConsolidated();
 
   // Apply it

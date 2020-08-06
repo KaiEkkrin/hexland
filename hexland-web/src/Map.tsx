@@ -95,7 +95,7 @@ function Map(props: IMapProps) {
     // TODO my returned thing should also ensure drawing disposal
     console.log("Watching changes to map " + props.mapId);
     return props.dataService.watchChanges(props.adventureId, props.mapId,
-      chs => trackChanges(theDrawing, chs.chs),
+      chs => trackChanges(record, theDrawing, chs.chs, chs.user),
       e => console.error("Error watching map changes", e));
   }, [props, record]);
 
@@ -143,8 +143,13 @@ function Map(props: IMapProps) {
   function handleMapEditorSave(ffa: boolean) {
     setShowMapEditor(false);
     if (props.dataService !== undefined && record !== undefined) {
-      var mapRef = props.dataService.getMapRef(props.adventureId, props.mapId);
-      props.dataService.update(mapRef, { ffa: ffa })
+      var dataService = props.dataService;
+      var mapRef = dataService.getMapRef(props.adventureId, props.mapId);
+
+      // We should always do a consolidate here to avoid accidentally invalidating
+      // any recent changes when switching from FFA to non-FFA mode, for example.
+      consolidateMapChanges(dataService, props.adventureId, props.mapId, record)
+        .then(() => dataService.update(mapRef, { ffa: ffa }))
         .then(() => console.log("Set FFA to " + ffa))
         .catch(e => console.error("Failed to set FFA:", e));
     }

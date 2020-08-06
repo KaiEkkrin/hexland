@@ -1,6 +1,7 @@
 import { IChange, ChangeCategory, ChangeType, IAreaAdd, IAreaRemove, ITokenAdd, IWallAdd, IWallRemove, ITokenRemove, ITokenMove } from "./change";
 import { IGridCoord, IGridEdge, coordString, edgeString } from "./coord";
 import { IFeature, IToken, FeatureDictionary } from "./feature";
+import { IMap } from "./map";
 
 export interface IChangeTracker {
   areaAdd: (feature: IFeature<IGridCoord>) => boolean;
@@ -75,14 +76,14 @@ export class SimpleChangeTracker implements IChangeTracker {
 }
 
 // Handles a whole collection of (ordered) changes in one go, either applying or rejecting all.
-export function trackChanges(tracker: IChangeTracker, chs: IChange[]): boolean {
+export function trackChanges(map: IMap, tracker: IChangeTracker, chs: IChange[], user: string): boolean {
   // Begin applying each change (in practice, this does all the removes.)
   var applications: (IChangeApplication[]) = [];
   for (var i = 0; i < chs.length; ++i) {
-    var a = trackChange(tracker, chs[i]);
+    var a = trackChange(map, tracker, chs[i], user);
     if (a === undefined) {
       // Changes failed -- revert any previously applied and return with an error
-      revertChanges(tracker, applications);
+      revertChanges(applications);
       return false;
     }
 
@@ -90,23 +91,23 @@ export function trackChanges(tracker: IChangeTracker, chs: IChange[]): boolean {
   }
 
   // Complete applying all the changes
-  if (continueApplications(tracker, applications) === true) {
+  if (continueApplications(applications) === true) {
     return true;
   }
 
   // If we got here, that failed and has been rolled back, but we still need to roll back
   // the first pass:
-  revertChanges(tracker, applications);
+  revertChanges(applications);
   return false;
 }
 
-function continueApplications(tracker: IChangeTracker, applications: IChangeApplication[]): boolean {
+function continueApplications(applications: IChangeApplication[]): boolean {
   var revertFunctions: IRevert[] = [];
   for (var i = 0; i < applications.length; ++i) {
-    var revert = applications[i].continue(tracker);
+    var revert = applications[i].continue();
     if (revert === undefined) {
       // Changes failed -- revert any previously applied
-      revertChanges(tracker, revertFunctions);
+      revertChanges(revertFunctions);
       return false;
     }
 
@@ -116,10 +117,10 @@ function continueApplications(tracker: IChangeTracker, applications: IChangeAppl
   return true;
 }
 
-function revertChanges(tracker: IChangeTracker, revertFunctions: IRevert[]) {
+function revertChanges(revertFunctions: IRevert[]) {
   while (revertFunctions.length > 0) {
     var r = revertFunctions.pop();
-    r?.revert(tracker);
+    r?.revert();
   }
 }
 
@@ -127,28 +128,31 @@ function revertChanges(tracker: IChangeTracker, revertFunctions: IRevert[]) {
 // of the process.  This interface declares a change that has been accepted and that can be completed
 // (returning a revert method) or reverted directly:
 interface IChangeApplication extends IRevert {
-  continue(tracker: IChangeTracker): IRevert | undefined;
+  continue(): IRevert | undefined;
 }
 
 interface IRevert {
-  revert(tracker: IChangeTracker): void;
+  revert(): void;
 }
 
 const doNothing: IRevert = {
-  revert(tracker: IChangeTracker) {}
+  revert() {}
+}
+
+// True for the map owner, or if the map is in free-for-all mode
+function canDoAnything(map: IMap, user: string) {
+  return map.ffa === true || user === map.owner;
 }
 
 // Interprets a change and issues the right command.  Returns a restore function in case
 // we want to roll back to the previous state, or undefined if this change couldn't be applied.
 // (For now, I'm going to be quite pedantic and reject even things like remove-twice, because
 // I want to quickly detect any out-of-sync situations...)
-// TODO this is where we can reject attempts by a non-owner to change areas and walls or move
-// another user's token, test for token overlaps, and all those nice things
-function trackChange(tracker: IChangeTracker, ch: IChange): IChangeApplication | undefined {
+function trackChange(map: IMap, tracker: IChangeTracker, ch: IChange, user: string): IChangeApplication | undefined {
   switch (ch.cat) {
-    case ChangeCategory.Area: return trackAreaChange(tracker, ch);
-    case ChangeCategory.Token: return trackTokenChange(tracker, ch);
-    case ChangeCategory.Wall: return trackWallChange(tracker, ch);
+    case ChangeCategory.Area: return canDoAnything(map, user) ? trackAreaChange(tracker, ch) : undefined;
+    case ChangeCategory.Token: return trackTokenChange(map, tracker, ch, user);
+    case ChangeCategory.Wall: return canDoAnything(map, user) ? trackWallChange(tracker, ch) : undefined;
     default: return undefined;
   }
 }
@@ -158,12 +162,12 @@ function trackAreaChange(tracker: IChangeTracker, ch: IChange): IChangeApplicati
     case ChangeType.Add:
       var chAdd = ch as IAreaAdd;
       return {
-        revert: function (tr: IChangeTracker) { },
-        continue: function (tr: IChangeTracker) {
-          var added = tr.areaAdd(chAdd.feature);
+        revert: function () { },
+        continue: function () {
+          var added = tracker.areaAdd(chAdd.feature);
           return added ? {
-            revert: function (tr2: IChangeTracker) {
-              tr.areaRemove(chAdd.feature.position);
+            revert: function () {
+              tracker.areaRemove(chAdd.feature.position);
             }
           } : undefined;
         }
@@ -173,59 +177,67 @@ function trackAreaChange(tracker: IChangeTracker, ch: IChange): IChangeApplicati
       var chRemove = ch as IAreaRemove;
       var removed = tracker.areaRemove(chRemove.position);
       return removed === undefined ? undefined : {
-        revert: function (tr: IChangeTracker) {
-          if (removed !== undefined) { tr.areaAdd(removed); }
+        revert: function () {
+          if (removed !== undefined) { tracker.areaAdd(removed); }
         },
-        continue: function (tr: IChangeTracker) { return doNothing; }
+        continue: function () { return doNothing; }
       }
 
     default: return undefined;
   }
 }
 
-function trackTokenChange(tracker: IChangeTracker, ch: IChange): IChangeApplication | undefined {
+function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: IChange, user: string): IChangeApplication | undefined {
   switch (ch.ty) {
     case ChangeType.Add:
       var chAdd = ch as ITokenAdd;
-      return {
-        revert: function (tr: IChangeTracker) {},
-        continue: function (tr: IChangeTracker) {
-          var added = tr.tokenAdd(chAdd.feature);
+      return canDoAnything(map, user) ? {
+        revert: function () {},
+        continue: function () {
+          var added = tracker.tokenAdd(chAdd.feature);
           return added ? {
-            revert: function (tr2: IChangeTracker) {
-              tr.tokenRemove(chAdd.feature.position);
+            revert: function () {
+              tracker.tokenRemove(chAdd.feature.position);
             }
           } : undefined;
         }
-      }
+      } : undefined;
 
     case ChangeType.Remove:
+      if (!canDoAnything(map, user)) {
+        return undefined;
+      }
       var chRemove = ch as ITokenRemove;
       var removed = tracker.tokenRemove(chRemove.position);
       return removed === undefined ? undefined : {
-        revert: function (tr: IChangeTracker) {
-          if (removed !== undefined) { tr.tokenAdd(removed); }
+        revert: function () {
+          if (removed !== undefined) { tracker.tokenAdd(removed); }
         },
-        continue: function (tr: IChangeTracker) { return doNothing; }
+        continue: function () { return doNothing; }
       }
 
     case ChangeType.Move:
       var chMove = ch as ITokenMove;
       var moved = tracker.tokenRemove(chMove.oldPosition);
       return moved === undefined ? undefined : {
-        revert: function (tr: IChangeTracker) {
-          if (moved !== undefined) { tr.tokenAdd(moved); }
+        revert: function () {
+          if (moved !== undefined) { tracker.tokenAdd(moved); }
         },
-        continue: function (tr: IChangeTracker) {
+        continue: function () {
+          // Check whether this user is allowed to move this token
+          if (!canDoAnything(map, user) && moved?.players.find(p => p === user) === undefined) {
+            return undefined;
+          }
+
           // The Object.assign() jiggle here should ensure we retain any extra properties
           // of the existing object as we create the moved one
           var toAdd = {};
           Object.assign(toAdd, moved);
           (toAdd as IToken).position = chMove.newPosition;
-          var added = tr.tokenAdd(toAdd as IToken);
+          var added = tracker.tokenAdd(toAdd as IToken);
           return added ? {
-            revert: function revert(tr2: IChangeTracker) {
-              tr2.tokenRemove(chMove.newPosition);
+            revert: function revert() {
+              tracker.tokenRemove(chMove.newPosition);
             }
           } : undefined;
         }
@@ -240,12 +252,12 @@ function trackWallChange(tracker: IChangeTracker, ch: IChange): IChangeApplicati
     case ChangeType.Add:
       var chAdd = ch as IWallAdd;
       return {
-        revert: function (tr: IChangeTracker) {},
-        continue: function (tr: IChangeTracker) {
-          var added = tr.wallAdd(chAdd.feature);
+        revert: function () {},
+        continue: function () {
+          var added = tracker.wallAdd(chAdd.feature);
           return added ? {
-            revert: function (tr2: IChangeTracker) {
-              tr2.wallRemove(chAdd.feature.position);
+            revert: function () {
+              tracker.wallRemove(chAdd.feature.position);
             }
           } : undefined;
         }
@@ -255,10 +267,10 @@ function trackWallChange(tracker: IChangeTracker, ch: IChange): IChangeApplicati
       var chRemove = ch as IWallRemove;
       var removed = tracker.wallRemove(chRemove.position);
       return removed === undefined ? undefined : {
-        revert: function (tr: IChangeTracker) {
-          if (removed !== undefined) { tr.wallAdd(removed); }
+        revert: function () {
+          if (removed !== undefined) { tracker.wallAdd(removed); }
         },
-        continue: function (tr: IChangeTracker) { return doNothing; }
+        continue: function () { return doNothing; }
       }
 
     default: return undefined;
