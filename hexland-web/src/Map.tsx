@@ -93,11 +93,15 @@ function Map(props: IMapProps) {
     setDrawing(theDrawing);
     theDrawing.animate();
 
-    // TODO my returned thing should also ensure drawing disposal
     console.log("Watching changes to map " + props.mapId);
-    return props.dataService.watchChanges(props.adventureId, props.mapId,
+    var stopWatchingChanges = props.dataService.watchChanges(props.adventureId, props.mapId,
       chs => trackChanges(record, theDrawing, chs.chs, chs.user),
       e => console.error("Error watching map changes", e));
+    
+    return () => {
+      stopWatchingChanges();
+      theDrawing.dispose();
+    };
   }, [props, record]);
 
   // Track the adventure's players, if we might need access to this

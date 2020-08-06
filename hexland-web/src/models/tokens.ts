@@ -114,4 +114,9 @@ export class Tokens extends InstancedFeatures<IGridCoord, IInstancedToken> {
 
     return f;
   }
+
+  dispose() {
+    this._bufferGeometry.dispose();
+    this._textMaterial.dispose();
+  }
 }

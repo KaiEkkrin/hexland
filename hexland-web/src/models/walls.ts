@@ -29,4 +29,8 @@ export class Walls extends InstancedFeatures<IGridEdge, IFeature<IGridEdge>> {
   protected transformTo(o: THREE.Object3D, position: IGridEdge) {
     this.geometry.transformToEdge(o, position);
   }
+
+  dispose() {
+    this._bufferGeometry.dispose();
+  }
 }

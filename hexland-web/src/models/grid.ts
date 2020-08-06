@@ -13,6 +13,8 @@ export class Grid extends Drawn {
   private readonly _solidIndices: number[];
   private readonly _solidMaterial: THREE.MeshBasicMaterial;
 
+  private _geometries: THREE.BufferGeometry[] = []; // for disposal only
+
   constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, alpha: number) {
     super(geometry, redrawFlag);
     this._alpha = alpha;
@@ -34,6 +36,7 @@ export class Grid extends Drawn {
         bufferGeometry.setIndex(this._lineIndices);
         var lines = new THREE.Line(bufferGeometry, this._lineMaterial);
         scene.add(lines);
+        this._geometries.push(bufferGeometry);
       }
     }
   }
@@ -51,6 +54,8 @@ export class Grid extends Drawn {
 
         var mesh = new THREE.Mesh(bufferGeometry, this._solidMaterial);
         scene.add(mesh);
+
+        this._geometries.push(bufferGeometry);
       }
     }
   }
@@ -67,7 +72,15 @@ export class Grid extends Drawn {
 
         var mesh = new THREE.Mesh(bufferGeometry, this._solidMaterial);
         scene.add(mesh);
+
+        this._geometries.push(bufferGeometry);
       }
     }
+  }
+
+  dispose() {
+    this._lineMaterial.dispose();
+    this._solidMaterial.dispose();
+    this._geometries.forEach(g => g.dispose());
   }
 }

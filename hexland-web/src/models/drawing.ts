@@ -39,9 +39,10 @@ const zoomMax = 4;
 const rotationStep = 0.004;
 
 // A container for the entirety of the drawing.
-// TODO Disposal of the resources used by this when required
+// Remember to call dispose() when this drawing is no longer in use!
 export class ThreeDrawing implements IChangeTracker {
   private readonly _gridGeometry: IGridGeometry;
+  private readonly _mount: HTMLDivElement;
 
   private readonly _camera: THREE.OrthographicCamera;
   private readonly _faceCoordRenderTarget: THREE.WebGLRenderTarget;
@@ -90,6 +91,8 @@ export class ThreeDrawing implements IChangeTracker {
   private _tokenMoveDragStart: IGridCoord | undefined;
   private _tokenMoveDragSelectionPosition: IGridCoord | undefined;
 
+  private _disposed: boolean = false;
+
   constructor(colours: FeatureColour[], mount: HTMLDivElement, textCreator: TextCreator, drawHexes: boolean) {
     this._zoom = 2;
     this._rotation = 0;
@@ -114,6 +117,7 @@ export class ThreeDrawing implements IChangeTracker {
     this._renderer = new THREE.WebGLRenderer();
     this._renderer.setSize(this._renderWidth, this._renderHeight, false); // TODO measure actual div size instead?
     mount.appendChild(this._renderer.domElement);
+    this._mount = mount;
 
     this._gridGeometry = drawHexes ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
     this._grid = new Grid(this._gridGeometry, this._gridNeedsRedraw, edgeAlpha);
@@ -179,6 +183,10 @@ export class ThreeDrawing implements IChangeTracker {
   }
 
   animate() {
+    if (this._disposed) {
+      return;
+    }
+
     requestAnimationFrame(this.animate);
 
     // Don't re-render the visible scene unless something changed:
@@ -509,5 +517,40 @@ export class ThreeDrawing implements IChangeTracker {
     }
 
     return chs;
+  }
+
+  dispose() {
+    if (this._disposed === true) {
+      return;
+    }
+
+    this._mount.removeChild(this._renderer.domElement);
+
+    this._faceCoordRenderTarget.dispose();
+    this._edgeCoordRenderTarget.dispose();
+    this._renderer.dispose();
+
+    this._scene.dispose();
+    this._faceCoordScene.dispose();
+    this._edgeCoordScene.dispose();
+
+    this._grid.dispose();
+    this._areas.dispose();
+    this._walls.dispose();
+    this._highlightedAreas.dispose();
+    this._highlightedWalls.dispose();
+    this._selection.dispose();
+    this._selectionDrag.dispose();
+    this._selectionDragRed.dispose();
+    this._tokens.dispose();
+    this._walls.dispose();
+
+    this._darkColourMaterials.forEach(m => m.dispose());
+    this._lightColourMaterials.forEach(m => m.dispose());
+    this._selectionMaterials.forEach(m => m.dispose());
+    this._invalidSelectionMaterials.forEach(m => m.dispose());
+    this._textMaterial.dispose();
+
+    this._disposed = true;
   }
 }

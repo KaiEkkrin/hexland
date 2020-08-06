@@ -32,4 +32,8 @@ export class Areas extends InstancedFeatures<IGridCoord, IFeature<IGridCoord>> {
   protected transformTo(o: THREE.Object3D, position: IGridCoord) {
     this.geometry.transformToCoord(o, position);
   }
+
+  dispose() {
+    this._bufferGeometry.dispose();
+  }
 }
