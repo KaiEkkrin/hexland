@@ -1,4 +1,4 @@
-import { IGridEdge, coordAdd } from '../data/coord';
+import { IGridCoord, IGridEdge, coordAdd } from '../data/coord';
 import { lerp } from './extraMath';
 import { BaseGeometry, FaceCentre, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
@@ -154,6 +154,42 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
 
   faceSize(): number {
     return this._squareSize;
+  }
+
+  forEachAdjacentFace(coord: IGridCoord, fn: (face: IGridCoord, edge: IGridEdge) => void) {
+    // Left
+    fn(
+      { x: coord.x - 1, y: coord.y },
+      { x: coord.x, y: coord.y, edge: 0 }
+    );
+
+    // Top
+    fn(
+      { x: coord.x, y: coord.y - 1 },
+      { x: coord.x, y: coord.y, edge: 1 }
+    );
+
+    // Right
+    fn(
+      { x: coord.x + 1, y: coord.y },
+      { x: coord.x + 1, y: coord.y, edge: 0 }
+    );
+
+    // Bottom
+    fn(
+      { x: coord.x, y: coord.y + 1 },
+      { x: coord.x, y: coord.y + 1, edge: 1 }
+    );
+  }
+
+  getEdgeFaceAdjacency(edge: IGridEdge): IGridCoord[] {
+    switch (edge.edge) {
+      case 0: // left
+        return [{ x: edge.x - 1, y: edge.y }, { x: edge.x, y: edge.y }];
+
+      default: // top
+        return [{ x: edge.x, y: edge.y - 1 }, { x: edge.x, y: edge.y }];
+    }
   }
 
   toSingle(): IGridGeometry {

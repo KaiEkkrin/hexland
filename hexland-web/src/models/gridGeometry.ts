@@ -50,6 +50,12 @@ export interface IGridGeometry {
   // A measure of the face size in this geometry.
   faceSize(): number;
 
+  // Evaluates the function for each face adjacent to the given one.
+  forEachAdjacentFace(coord: IGridCoord, fn: (face: IGridCoord, edge: IGridEdge) => void): void;
+
+  // Gets the faces adjacent to the given edge. (TODO adjacent edges too?)
+  getEdgeFaceAdjacency(edge: IGridEdge): IGridCoord[];
+
   // Emits the same grid geometry but with a tileDim of 1; useful for initialising
   // instanced draws.
   toSingle(): IGridGeometry;
