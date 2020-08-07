@@ -13,6 +13,8 @@ export interface IToken extends IFeature<IGridCoord> {
   text: string;
 }
 
+export interface IVisibility extends IFeature<IGridCoord> {}
+
 // The interface of a dictionary of these
 export interface IFeatureDictionary<K extends IGridCoord, F extends IFeature<K>> {
   all: F[];
@@ -20,6 +22,9 @@ export interface IFeatureDictionary<K extends IGridCoord, F extends IFeature<K>>
   // Returns true if the feature wasn't already present (we added it), else false
   // (we didn't replace it.)
   add(f: F): boolean;
+
+  // Returns true if there's anything here, else false.
+  any(): boolean;
 
   // Removes everything
   clear(): void;
@@ -63,6 +68,14 @@ export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> impl
 
     this._values[i] = f;
     return true;
+  }
+
+  any() {
+    for (const i in this._values) {
+      return true;
+    }
+
+    return false;
   }
 
   clear() {

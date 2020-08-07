@@ -267,6 +267,15 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     }
   }
 
+  getEdgeSphere(edge: IGridEdge, z: number, alpha: number) {
+    const centre = this.createCentre(edge.x, edge.y, z);
+    const [edgeA, edgeB] = edge.edge === 0 ? [this.createLeft(centre), this.createTopLeft(centre)] :
+      edge.edge === 1 ? [this.createTopLeft(centre), this.createTopRight(centre)] :
+      [this.createTopRight(centre), this.createRight(centre)];
+    const edgeCentre = lerp(edgeA, edgeB, 0.5);
+    return new THREE.Sphere(edgeCentre, this._xOffLeft * alpha);
+  }
+
   toSingle(): IGridGeometry {
     return new HexGridGeometry(this._hexSize, 1);
   }

@@ -95,7 +95,11 @@ function Map(props: IMapProps) {
 
     console.log("Watching changes to map " + props.mapId);
     var stopWatchingChanges = props.dataService.watchChanges(props.adventureId, props.mapId,
-      chs => trackChanges(record, theDrawing.changeTracker, chs.chs, chs.user),
+      chs => {
+        var ok = trackChanges(record, theDrawing.changeTracker, chs.chs, chs.user);
+        if (ok) { theDrawing.buildLoS(); }
+        return ok;
+      },
       e => console.error("Error watching map changes", e));
     
     return () => {
@@ -149,6 +153,7 @@ function Map(props: IMapProps) {
   useEffect(() => {
     if (editMode !== EditMode.Select) {
       drawing?.clearSelection();
+      drawing?.buildLoS(); // TODO only do this if there was something selected...?
     }
   }, [drawing, editMode]);
 

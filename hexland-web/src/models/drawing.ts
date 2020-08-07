@@ -10,6 +10,7 @@ import { FeatureColour } from './featureColour';
 import { Grid } from './grid';
 import { IGridGeometry} from './gridGeometry';
 import { HexGridGeometry } from './hexGridGeometry';
+import * as LoS from './los';
 import { MapChangeTracker } from './mapChangeTracker';
 import { MapColourVisualisation } from './mapColourVisualisation';
 import { RedrawFlag } from './redrawFlag';
@@ -23,6 +24,7 @@ import * as THREE from 'three';
 const areaZ = 0.5;
 const tokenZ = 0.6;
 const wallZ = 0.6;
+const losZ = 0.8;
 const selectionZ = 1.0;
 const highlightZ = 1.1;
 const textZ = 1.5; // for some reason the text doesn't alpha blend correctly; putting it
@@ -32,6 +34,7 @@ const wallAlpha = 0.15;
 const edgeAlpha = 0.5;
 const tokenAlpha = 0.7;
 const selectionAlpha = 0.9;
+const losAlpha = 1.0;
 const areaAlpha = 1.0;
 
 const spacing = 75.0;
@@ -64,6 +67,7 @@ export class ThreeDrawing {
   private readonly _areas: Areas;
   private readonly _highlightedAreas: Areas;
   private readonly _highlightedWalls: Walls;
+  private readonly _los: LoS.LoS;
   private readonly _selection: Areas;
   private readonly _selectionDrag: Areas; // a copy of the selection shown only while dragging it
   private readonly _selectionDragRed: Areas; // likewise, but shown if the selection couldn't be dropped there
@@ -75,6 +79,7 @@ export class ThreeDrawing {
 
   private readonly _darkColourMaterials: THREE.MeshBasicMaterial[];
   private readonly _lightColourMaterials: THREE.MeshBasicMaterial[];
+  private readonly _losMaterials: THREE.MeshBasicMaterial[];
   private readonly _selectionMaterials: THREE.MeshBasicMaterial[];
   private readonly _invalidSelectionMaterials: THREE.MeshBasicMaterial[];
   private readonly _textMaterial: THREE.MeshBasicMaterial;
@@ -162,6 +167,20 @@ export class ThreeDrawing {
     })];
     this._textMaterial = new THREE.MeshBasicMaterial({ color: 0, side: THREE.DoubleSide });
 
+    // For the LoS, we'll use different blending depending on the map settings -- non-owners in
+    // FFA mode should find things out of LoS literally invisible; owners and FFA players shouldn't.
+    // The LoS materials are (no occlusion, partial occlusion, full occlusion) in order.
+    this._losMaterials = [new THREE.MeshBasicMaterial({
+      blending: THREE.MultiplyBlending,
+      color: 0xffffff, // should do nothing :)
+    }), new THREE.MeshBasicMaterial({
+      blending: THREE.MultiplyBlending,
+      color: this.seeEverything ? 0xaaaaaa : 0x7f7f7f,
+    }), new THREE.MeshBasicMaterial({
+      blending: THREE.MultiplyBlending,
+      color: this.seeEverything ? 0x555555 : 0
+    })];
+
     // The filled areas
     this._areas = new Areas(this._gridGeometry, this._needsRedraw, areaAlpha, areaZ);
     this._areas.setMaterials(this._darkColourMaterials);
@@ -177,6 +196,10 @@ export class ThreeDrawing {
     this._highlightedWalls = new Walls(this._gridGeometry, this._needsRedraw, edgeAlpha, highlightZ, 100);
     this._highlightedWalls.setMaterials(this._selectionMaterials);
     this._highlightedWalls.addToScene(this._scene);
+
+    // The LoS
+    this._los = new LoS.LoS(this._gridGeometry, this._needsRedraw, losAlpha, losZ, 5000); // TODO could run out really fast!
+    this._los.setMaterials(this._losMaterials);
 
     // The selection
     this._selection = new Areas(this._gridGeometry, this._needsRedraw, selectionAlpha, selectionZ, 100);
@@ -227,6 +250,8 @@ export class ThreeDrawing {
     this.animate = this.animate.bind(this);
   }
 
+  private get seeEverything() { return this._uid === this._map.owner || this._map.ffa; }
+
   get changeTracker() { return this._changeTracker; }
 
   animate() {
@@ -255,6 +280,56 @@ export class ThreeDrawing {
       this._renderer.render(this._edgeCoordScene, this._camera);
 
       this._renderer.setRenderTarget(null);
+    }
+  }
+
+  private getLoSPositions() {
+    // These are the positions we should be projecting line-of-sight from.
+    var anySelected = this._selection.any();
+    if (this.seeEverything && !anySelected) {
+      // No LoS
+      return undefined;
+    }
+
+    // Enumerate all the tokens that we control.  If we have a selection,
+    // they must be in the selection too.
+    return this._tokens.all.filter(t => {
+      if (t.players.find(p => this._uid === p) === undefined && !this.seeEverything) {
+        return false;
+      }
+
+      if (!anySelected) {
+        return true;
+      }
+
+      return this._selection.get(t.position) !== undefined;
+    }).map(t => t.position);
+  }
+
+  buildLoS() {
+    // TODO can I do this incrementally, or do I need to rebuild on every change?
+    // Rebuilding on every change makes it much simpler...
+    var positions = this.getLoSPositions();
+    console.log("LoS positions: " + positions?.length ?? -1);
+    if (positions === undefined) {
+      this._los.removeFromScene();
+    } else {
+      this._los.addToScene(this._scene);
+
+      // Fill the LoS with 'None' for each face in the current grid
+      // TODO deal with dynamic grid sizing and all that fun here, create a suitable
+      // abstraction!
+      this._los.clear();
+      for (var y = -tileDim; y < 2 * tileDim; ++y) {
+        for (var x = -tileDim; x < 2 * tileDim; ++x) {
+          this._los.add({ position: { x: x, y: y }, colour: LoS.oNone });
+        }
+      }
+
+      positions.forEach(p => {
+        var losHere = LoS.create(this._gridGeometry, this._mapColouring, p);
+        LoS.combine(this._los, losHere);
+      });
     }
   }
 
@@ -517,6 +592,7 @@ export class ThreeDrawing {
         }
 
         this._selectDragStart = undefined;
+        this.buildLoS();
       }
     }
 
@@ -571,6 +647,7 @@ export class ThreeDrawing {
 
     this._darkColourMaterials.forEach(m => m.dispose());
     this._lightColourMaterials.forEach(m => m.dispose());
+    this._losMaterials.forEach(m => m.dispose());
     this._selectionMaterials.forEach(m => m.dispose());
     this._invalidSelectionMaterials.forEach(m => m.dispose());
     this._textMaterial.dispose();

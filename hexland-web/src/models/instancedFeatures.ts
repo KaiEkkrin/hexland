@@ -99,6 +99,10 @@ export abstract class InstancedFeatures<K extends IGridCoord, F extends IFeature
     return true;
   }
 
+  any() {
+    return this._features.any();
+  }
+
   clear() {
     this._features.clear();
     this._indexes.clear();
