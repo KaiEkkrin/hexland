@@ -3,11 +3,13 @@ import { IChangeTracker } from '../data/changeTracking';
 import { IGridCoord, IGridEdge, coordAdd, coordsEqual, coordSub } from '../data/coord';
 import { IToken, IFeature } from '../data/feature';
 import { Areas } from './areas';
+import { MapColouring } from './colouring';
 import { EdgeHighlighter, FaceHighlighter } from './dragHighlighter';
 import { FeatureColour } from './featureColour';
 import { Grid } from './grid';
 import { IGridGeometry} from './gridGeometry';
 import { HexGridGeometry } from './hexGridGeometry';
+import { MapColourVisualisation } from './mapColourVisualisation';
 import { RedrawFlag } from './redrawFlag';
 import { SquareGridGeometry } from './squareGridGeometry';
 import { TextCreator } from './textCreator';
@@ -63,6 +65,9 @@ export class ThreeDrawing implements IChangeTracker {
   private readonly _tokens: Tokens;
   private readonly _walls: Walls;
 
+  private readonly _mapColouring: MapColouring;
+  private readonly _mapColourVisualisation: MapColourVisualisation;
+
   private readonly _darkColourMaterials: THREE.MeshBasicMaterial[];
   private readonly _lightColourMaterials: THREE.MeshBasicMaterial[];
   private readonly _selectionMaterials: THREE.MeshBasicMaterial[];
@@ -90,6 +95,8 @@ export class ThreeDrawing implements IChangeTracker {
   private _selectDragStart: IGridCoord | undefined;
   private _tokenMoveDragStart: IGridCoord | undefined;
   private _tokenMoveDragSelectionPosition: IGridCoord | undefined;
+
+  private _showMapColourVisualisation = false;
 
   private _disposed: boolean = false;
 
@@ -147,37 +154,51 @@ export class ThreeDrawing implements IChangeTracker {
 
     // The filled areas
     this._areas = new Areas(this._gridGeometry, this._needsRedraw, areaAlpha, areaZ);
-    this._areas.addToScene(this._scene, this._darkColourMaterials);
+    this._areas.setMaterials(this._darkColourMaterials);
+    this._areas.addToScene(this._scene);
 
     // The highlighted areas
     // (TODO does this need to be a different feature set from the selection?)
     this._highlightedAreas = new Areas(this._gridGeometry, this._needsRedraw, areaAlpha, highlightZ, 100);
-    this._highlightedAreas.addToScene(this._scene, this._selectionMaterials);
+    this._highlightedAreas.setMaterials(this._selectionMaterials);
+    this._highlightedAreas.addToScene(this._scene);
 
     // The highlighted walls
     this._highlightedWalls = new Walls(this._gridGeometry, this._needsRedraw, edgeAlpha, highlightZ, 100);
-    this._highlightedWalls.addToScene(this._scene, this._selectionMaterials);
+    this._highlightedWalls.setMaterials(this._selectionMaterials);
+    this._highlightedWalls.addToScene(this._scene);
 
     // The selection
     this._selection = new Areas(this._gridGeometry, this._needsRedraw, selectionAlpha, selectionZ, 100);
-    this._selection.addToScene(this._scene, this._selectionMaterials);
+    this._selection.setMaterials(this._selectionMaterials);
+    this._selection.addToScene(this._scene);
     this._selectionDrag = new Areas(this._gridGeometry, this._needsRedraw, selectionAlpha, selectionZ, 100);
-    this._selectionDrag.addToScene(this._scene, this._selectionMaterials);
+    this._selectionDrag.setMaterials(this._selectionMaterials);
+    this._selectionDrag.addToScene(this._scene);
     this._selectionDragRed = new Areas(this._gridGeometry, this._needsRedraw, selectionAlpha, selectionZ, 100);
-    this._selectionDragRed.addToScene(this._scene, this._invalidSelectionMaterials);
+    this._selectionDragRed.setMaterials(this._invalidSelectionMaterials);
+    this._selectionDragRed.addToScene(this._scene);
 
     // The tokens
     this._tokens = new Tokens(this._gridGeometry, this._needsRedraw, textCreator, this._textMaterial,
       tokenAlpha, tokenZ, textZ);
-    this._tokens.addToScene(this._scene, this._lightColourMaterials);
+    this._tokens.setMaterials(this._lightColourMaterials);
+    this._tokens.addToScene(this._scene);
 
     // The walls
     this._walls = new Walls(this._gridGeometry, this._needsRedraw, wallAlpha, wallZ);
-    this._walls.addToScene(this._scene, this._lightColourMaterials);
+    this._walls.setMaterials(this._lightColourMaterials);
+    this._walls.addToScene(this._scene);
 
     // The highlighters
     this._edgeHighlighter = new EdgeHighlighter(this._walls, this._highlightedWalls);
     this._faceHighlighter = new FaceHighlighter(this._areas, this._highlightedAreas);
+
+    // The map colouring
+    this._mapColouring = new MapColouring(this._gridGeometry);
+
+    // The map colour visualisation (added on request instead of the areas)
+    this._mapColourVisualisation = new MapColourVisualisation(this._gridGeometry, this._needsRedraw, areaAlpha, areaZ);
 
     this.animate = this.animate.bind(this);
   }
@@ -230,28 +251,45 @@ export class ThreeDrawing implements IChangeTracker {
   }
 
   wallAdd(feature: IFeature<IGridEdge>) {
-    return this._walls.add(feature);
+    var added = this._walls.add(feature);
+    if (added) {
+      this._mapColouring.setWall(feature.position, true);
+    }
+
+    return added;
   }
 
   wallRemove(position: IGridEdge) {
-    return this._walls.remove(position);
+    var removed = this._walls.remove(position);
+    if (removed !== undefined) {
+      this._mapColouring.setWall(position, false);
+    }
+
+    return removed;
+  }
+
+  changesApplied() {
+    if (this._showMapColourVisualisation === true) {
+      this._mapColourVisualisation.clear(); // TODO try to do it incrementally? (requires checking for colour count changes...)
+      this._mapColourVisualisation.visualise(this._scene, this._mapColouring);
+    }
   }
 
   getConsolidated(): IChange[] {
     var all: IChange[] = [];
-    this._areas.all.forEach(v => all.push({
+    this._areas.forEach(v => all.push({
       ty: ChangeType.Add,
       cat: ChangeCategory.Area,
       feature: v
     } as IAreaAdd));
     
-    this._tokens.all.forEach(v => all.push({
+    this._tokens.forEach(v => all.push({
       ty: ChangeType.Add,
       cat: ChangeCategory.Token,
       feature: v
     } as ITokenAdd));
 
-    this._walls.all.forEach(v => all.push({
+    this._walls.forEach(v => all.push({
       ty: ChangeType.Add,
       cat: ChangeCategory.Wall,
       feature: v
@@ -354,7 +392,7 @@ export class ThreeDrawing implements IChangeTracker {
       return undefined;
     }
 
-    return this._tokens.at(position);
+    return this._tokens.get(position);
   }
 
   private canDropSelectionAt(position: IGridCoord) {
@@ -367,8 +405,8 @@ export class ThreeDrawing implements IChangeTracker {
     var delta = coordSub(position, this._tokenMoveDragStart);
     return this._selection.all.reduce((ok, f) => {
       var moved = coordAdd(f.position, delta);
-      var alreadyThere = this._tokens.at(moved);
-      return (ok && (alreadyThere === undefined || this._selection.at(moved) !== undefined));
+      var alreadyThere = this._tokens.get(moved);
+      return (ok && (alreadyThere === undefined || this._selection.get(moved) !== undefined));
     }, true);
   }
 
@@ -415,7 +453,7 @@ export class ThreeDrawing implements IChangeTracker {
       this._selectionDrag.clear();
       this._selectionDragRed.clear();
       console.log("Moving " + this._selection.all.length + " selected positions");
-      this._selection.all.forEach(f => {
+      this._selection.forEach(f => {
         var dragged = { position: coordAdd(f.position, delta), colour: f.colour };
         console.log(f.position.toString() + " -> " + dragged.position.toString());
         selectionDrag.add(dragged);
@@ -429,7 +467,7 @@ export class ThreeDrawing implements IChangeTracker {
     var position = this.getGridCoordAt(cp);
     var chs: IChange[] = [];
     if (position !== undefined) {
-      if (this._tokens.at(position) !== undefined) {
+      if (this._tokens.get(position) !== undefined) {
         // Replace the existing token
         chs.push({
           ty: ChangeType.Remove,
@@ -458,12 +496,12 @@ export class ThreeDrawing implements IChangeTracker {
   selectionDragStart(cp: THREE.Vector2) {
     var position = this.getGridCoordAt(cp);
     if (position) {
-      if (this._selection.at(position) !== undefined) {
+      if (this._selection.get(position) !== undefined) {
         this._tokenMoveDragStart = position;
         this._tokenMoveDragSelectionPosition = position;
         this._selectionDrag.clear();
         this._selectionDragRed.clear();
-        this._selection.all.forEach(f => this._selectionDrag.add(f));
+        this._selection.forEach(f => this._selectionDrag.add(f));
       } else {
         this._selectDragStart = position;
       }
@@ -508,7 +546,7 @@ export class ThreeDrawing implements IChangeTracker {
           this._selection.clear();
         }
 
-        if (this._tokens.at(position) !== undefined) {
+        if (this._tokens.get(position) !== undefined) {
           this._selection.add({ position: position, colour: 0 });
         }
 
@@ -517,6 +555,25 @@ export class ThreeDrawing implements IChangeTracker {
     }
 
     return chs;
+  }
+
+  setShowMapColourVisualisation(show: boolean) {
+    if (show === this._showMapColourVisualisation) {
+      return;
+    }
+
+    this._showMapColourVisualisation = show;
+    if (show === true) {
+      // Remove the area visualisation:
+      this._areas.removeFromScene();
+
+      // Add the map colour visualisation based on the current map colours:
+      this._mapColourVisualisation.visualise(this._scene, this._mapColouring);
+    } else {
+      // Remove any map colour visualisation and put the area visualisation back
+      this._mapColourVisualisation.removeFromScene();
+      this._areas.addToScene(this._scene);
+    }
   }
 
   dispose() {
@@ -544,6 +601,7 @@ export class ThreeDrawing implements IChangeTracker {
     this._selectionDragRed.dispose();
     this._tokens.dispose();
     this._walls.dispose();
+    this._mapColourVisualisation.dispose();
 
     this._darkColourMaterials.forEach(m => m.dispose());
     this._lightColourMaterials.forEach(m => m.dispose());

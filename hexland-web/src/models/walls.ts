@@ -31,6 +31,7 @@ export class Walls extends InstancedFeatures<IGridEdge, IFeature<IGridEdge>> {
   }
 
   dispose() {
+    super.dispose();
     this._bufferGeometry.dispose();
   }
 }

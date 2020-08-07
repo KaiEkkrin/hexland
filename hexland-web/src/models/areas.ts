@@ -34,6 +34,7 @@ export class Areas extends InstancedFeatures<IGridCoord, IFeature<IGridCoord>> {
   }
 
   dispose() {
+    super.dispose();
     this._bufferGeometry.dispose();
   }
 }

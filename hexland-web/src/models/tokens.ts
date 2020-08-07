@@ -57,18 +57,29 @@ export class Tokens extends InstancedFeatures<IGridCoord, IInstancedToken> {
     this.geometry.transformToCoord(o, position);
   }
 
-  addToScene(scene: THREE.Scene, materials: THREE.Material[]): boolean {
-    if (!super.addToScene(scene, materials)) {
+  addToScene(scene: THREE.Scene): boolean {
+    if (!super.addToScene(scene)) {
       return false;
     }
 
     // Hopefully there's nothing here yet, but just in case addToScene is called late:
-    this.all.forEach(f => {
+    this.forEach(f => {
       if (f.textMesh !== undefined) {
         this.scene?.add(f.textMesh);
       }
     });
     return true;
+  }
+
+  removeFromScene() {
+    if (this.scene !== undefined) {
+      this.forEach(f => {
+        if (f.textMesh !== undefined) {
+          this.scene?.remove(f.textMesh);
+        }
+      });
+    }
+    super.removeFromScene();
   }
 
   add(f: IInstancedToken): boolean {
@@ -116,6 +127,7 @@ export class Tokens extends InstancedFeatures<IGridCoord, IInstancedToken> {
   }
 
   dispose() {
+    super.dispose();
     this._bufferGeometry.dispose();
     this._textMaterial.dispose();
   }

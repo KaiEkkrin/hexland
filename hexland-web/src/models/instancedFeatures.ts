@@ -1,5 +1,5 @@
-import { CoordDictionary } from '../data/coord';
-import { IFeature } from '../data/feature';
+import { IGridCoord } from '../data/coord';
+import { FeatureDictionary, IFeature, IFeatureDictionary } from '../data/feature';
 import { Drawn } from './drawn';
 import { IGridGeometry } from "./gridGeometry";
 import { RedrawFlag } from './redrawFlag';
@@ -12,10 +12,10 @@ import * as THREE from 'three';
 // it seems to fit the problem at hand...)
 // TODO Handle spawning extra meshes and adding them to the scene if I exceed
 // `maxInstances` instances in one mesh
-export abstract class InstancedFeatures<K, F extends IFeature<K>> extends Drawn {
+export abstract class InstancedFeatures<K extends IGridCoord, F extends IFeature<K>> extends Drawn implements IFeatureDictionary<K, F> {
   private readonly _maxInstances: number;
-  private readonly _features: CoordDictionary<K, F>;
-  private readonly _indexes: CoordDictionary<K, number>;
+  private readonly _features: FeatureDictionary<K, F>;
+  private readonly _indexes: FeatureDictionary<K, IFeature<K>>; // colour as index number
   private _meshes: THREE.InstancedMesh[]; // one per material.
 
   // This is a queue of re-usable matrix indices for each material in order --
@@ -28,8 +28,8 @@ export abstract class InstancedFeatures<K, F extends IFeature<K>> extends Drawn 
   constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, toIndex: (k: K) => string, maxInstances?: number | undefined) {
     super(geometry, redrawFlag);
     this._maxInstances = maxInstances ?? 1000;
-    this._features = new CoordDictionary<K, F>(toIndex);
-    this._indexes = new CoordDictionary<K, number>(toIndex);
+    this._features = new FeatureDictionary<K, F>(toIndex);
+    this._indexes = new FeatureDictionary<K, IFeature<K>>(toIndex);
     this._meshes = [];
     this._clearIndices = [];
   }
@@ -39,36 +39,41 @@ export abstract class InstancedFeatures<K, F extends IFeature<K>> extends Drawn 
   protected abstract createMesh(m: THREE.Material, maxInstances: number): THREE.InstancedMesh;
   protected abstract transformTo(o: THREE.Object3D, position: K): void;
 
+  // setMaterials implies a clear(), because it invalidates our current index tracking.
   // The materials parameter here should be the known colour materials in order.
-  addToScene(scene: THREE.Scene, materials: THREE.Material[]): boolean {
+  setMaterials(materials: THREE.Material[]) {
+    this.clear();
+    this._meshes = materials.map(m => this.createMesh(m, this._maxInstances));
+    this._clearIndices = materials.map(_ => []);
+  }
+
+  // Call addToScene() only after setMaterials().
+  addToScene(scene: THREE.Scene): boolean {
     if (this._scene !== undefined) {
       return false;
     }
 
-    this._meshes = materials.map(m => this.createMesh(m, this._maxInstances));
-    this._clearIndices = materials.map(_ => []);
     this._meshes.forEach(m => { scene.add(m); });
     this._scene = scene;
+    this.setNeedsRedraw();
     return true;
   }
 
-  get all(): F[] {
-    // I can't use `map` and `filter` here, because Typescript's type checking doesn't
-    // realise I've excluded undefined
-    var all: F[] = [];
-    this._features.keys.forEach(k => {
-      var here = this._features.get(k);
-      if (here !== undefined) {
-        all.push(here);
-      }
-    });
+  removeFromScene() {
+    if (this._scene !== undefined) {
+      this._meshes.forEach(m => { this.scene?.remove(m); });
+      this._scene = undefined;
+      this.setNeedsRedraw();
+    }
+  }
 
-    return all;
+  get all(): F[] {
+    return this._features.all;
   }
 
   add(f: F): boolean {
-    var oldFeature = this._features.get(f.position);
-    if (oldFeature !== undefined) {
+    var done = this._features.add(f);
+    if (done === false) {
       // This position is already occupied.
       return false;
     }
@@ -89,14 +94,9 @@ export abstract class InstancedFeatures<K, F extends IFeature<K>> extends Drawn 
     mesh.setMatrixAt(matrixIndex, o.matrix);
     mesh.instanceMatrix.needsUpdate = true;
 
-    this._features.set(f.position, f);
-    this._indexes.set(f.position, matrixIndex);
+    this._indexes.add({ position: f.position, colour: matrixIndex });
     this.setNeedsRedraw();
     return true;
-  }
-
-  at(position: K): F | undefined {
-    return this._features.get(position);
   }
 
   clear() {
@@ -111,14 +111,18 @@ export abstract class InstancedFeatures<K, F extends IFeature<K>> extends Drawn 
     this.setNeedsRedraw();
   }
 
-  remove(oldPosition: K): F | undefined {
-    var feature = this._features.get(oldPosition);
-    if (feature === undefined) {
-      return undefined;
-    }
+  forEach(fn: (f: F) => void) {
+    this._features.forEach(fn);
+  }
 
-    var matrixIndex = this._indexes.get(oldPosition);
-    if (matrixIndex === undefined) {
+  get(position: K): F | undefined {
+    return this._features.get(position);
+  }
+
+  remove(oldPosition: K): F | undefined {
+    var feature = this._features.remove(oldPosition);
+    var matrixIndex = this._indexes.remove(oldPosition);
+    if (feature === undefined || matrixIndex === undefined) {
       return undefined;
     }
 
@@ -130,14 +134,18 @@ export abstract class InstancedFeatures<K, F extends IFeature<K>> extends Drawn 
     var o = new THREE.Object3D();
     o.translateZ(-1000);
     o.updateMatrix();
-    mesh.setMatrixAt(matrixIndex, o.matrix);
+    mesh.setMatrixAt(matrixIndex.colour, o.matrix);
     mesh.instanceMatrix.needsUpdate = true;
 
-    this._features.remove(oldPosition);
-    this._indexes.remove(oldPosition);
-    this._clearIndices[feature.colour].push(matrixIndex);
+    this._clearIndices[feature.colour].push(matrixIndex.colour);
     this.setNeedsRedraw();
 
     return feature;
+  }
+
+  dispose() {
+    // Not strictly necessary, but would stop us from accidentally trying to
+    // render with disposed resources.
+    this.removeFromScene();
   }
 }

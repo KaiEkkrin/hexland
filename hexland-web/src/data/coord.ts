@@ -58,6 +58,9 @@ export function createGridEdge(tile: THREE.Vector2, face: THREE.Vector2, tileDim
 }
 
 // A dictionary of objects keyed by a string index.
+// TODO If I further specialised this to require T be an IFeature<K> could I avoid
+// needing the underlying `_coords` object?  Would that be viable?  It might save
+// quite a lot of lookups.
 export class CoordDictionary<K, T> {
   private readonly _toIndex: (coord: K) => string;
   private _coords: { [index: string]: K } = {};

@@ -1,4 +1,4 @@
-import { IGridCoord, CoordDictionary } from './coord';
+import { IGridCoord } from './coord';
 
 // Describes an instanced feature:
 // (Must be possible to copy this with Object.assign)
@@ -13,13 +13,77 @@ export interface IToken extends IFeature<IGridCoord> {
   text: string;
 }
 
-// This should be helpful
-export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> extends CoordDictionary<K, F> {
-  addFeature(f: F): boolean {
-    return this.add(f.position, f);
+// The interface of a dictionary of these
+export interface IFeatureDictionary<K extends IGridCoord, F extends IFeature<K>> {
+  all: F[];
+
+  // Returns true if the feature wasn't already present (we added it), else false
+  // (we didn't replace it.)
+  add(f: F): boolean;
+
+  // Removes everything
+  clear(): void;
+
+  // Iterates over everything
+  forEach(fn: (f: F) => void): void;
+
+  // Gets an entry by coord or undefined if it wasn't there
+  get(k: K): F | undefined;
+
+  // Removes an entry, returning what it was or undefined if there wasn't one
+  remove(k: K): F | undefined;
+}
+
+// A basic feature dictionary that can be re-used or extended
+export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> implements IFeatureDictionary<K, F> {
+  private readonly _toIndex: (coord: K) => string;
+  private _values: { [index: string]: F } = {};
+
+  constructor(toIndex: (coord: K) => string) {
+    this._toIndex = toIndex;
   }
 
-  removeFeature(k: K): F | undefined {
-    return this.remove(k);
+  get all(): F[] {
+    const features: F[] = [];
+    for (var i in this._values) {
+      features.push(this._values[i]);
+    }
+    return features;
+  }
+
+  add(f: F) {
+    const i = this._toIndex(f.position);
+    if (i in this._values) {
+      return false;
+    }
+
+    this._values[i] = f;
+    return true;
+  }
+
+  clear() {
+    this._values = {};
+  }
+
+  forEach(fn: (f: F) => void) {
+    for (const i in this._values) {
+      fn(this._values[i]);
+    }
+  }
+
+  get(k: K): F | undefined {
+    const i = this._toIndex(k);
+    return (i in this._values) ? this._values[i] : undefined;
+  }
+
+  remove(k: K): F | undefined {
+    const i = this._toIndex(k);
+    if (i in this._values) {
+      const f = this._values[i];
+      delete this._values[i];
+      return f;
+    }
+
+    return undefined;
   }
 }

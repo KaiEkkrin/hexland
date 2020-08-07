@@ -3,7 +3,7 @@ import './App.css';
 import './Map.css';
 
 import { AppContext, AppState } from './App';
-import MapControls, { EditMode } from './components/MapControls';
+import MapControls, { EditMode, MapColourVisualisationMode } from './components/MapControls';
 import MapEditorModal from './components/MapEditorModal';
 import Navigation from './components/Navigation';
 import TokenEditorModal from './components/TokenEditorModal';
@@ -130,6 +130,7 @@ function Map(props: IMapProps) {
 
   const [canOpenMapEditor, setCanOpenMapEditor] = useState(false);
   const [editMode, setEditMode] = useState(EditMode.Select);
+  const [mapColourMode, setMapColourMode] = useState(MapColourVisualisationMode.Areas);
   const [selectedColour, setSelectedColour] = useState(0);
   const [showMapEditor, setShowMapEditor] = useState(false);
   const [showTokenEditor, setShowTokenEditor] = useState(false);
@@ -150,6 +151,11 @@ function Map(props: IMapProps) {
       drawing?.clearSelection();
     }
   }, [drawing, editMode]);
+
+  // Sync the drawing with the map colour mode
+  useEffect(() => {
+    drawing?.setShowMapColourVisualisation(mapColourMode === MapColourVisualisationMode.Connectivity);
+  }, [drawing, mapColourMode]);
 
   function handleMapEditorSave(ffa: boolean) {
     setShowMapEditor(false);
@@ -267,6 +273,8 @@ function Map(props: IMapProps) {
         getSelectedColour={() => selectedColour}
         setSelectedColour={setSelectedColour}
         resetView={() => drawing?.resetView()}
+        getMapColourVisualisationMode={() => mapColourMode}
+        setMapColourVisualisationMode={setMapColourMode}
         canDoAnything={canDoAnything}
         canOpenMapEditor={canOpenMapEditor}
         openMapEditor={() => setShowMapEditor(true)} />

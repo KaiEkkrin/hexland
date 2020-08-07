@@ -11,6 +11,9 @@ export interface IChangeTracker {
   wallAdd: (feature: IFeature<IGridEdge>) => boolean;
   wallRemove: (position: IGridEdge) => IFeature<IGridEdge> | undefined;
 
+  // Called after a batch of changes has been completed, before any redraw
+  changesApplied(): void;
+
   // Gets a minimal collection of changes to add everything in this tracker.
   getConsolidated: () => IChange[];
 }
@@ -28,47 +31,50 @@ export class SimpleChangeTracker implements IChangeTracker {
   }
 
   areaAdd(feature: IFeature<IGridCoord>) {
-    return this._areas.addFeature(feature);
+    return this._areas.add(feature);
   }
 
   areaRemove(position: IGridCoord) {
-    return this._areas.removeFeature(position);
+    return this._areas.remove(position);
   }
 
   tokenAdd(feature: IToken) {
-    return this._tokens.addFeature(feature);
+    return this._tokens.add(feature);
   }
 
   tokenRemove(position: IGridCoord) {
-    return this._tokens.removeFeature(position);
+    return this._tokens.remove(position);
   }
 
   wallAdd(feature: IFeature<IGridEdge>) {
-    return this._walls.addFeature(feature);
+    return this._walls.add(feature);
   }
 
   wallRemove(position: IGridEdge) {
-    return this._walls.removeFeature(position);
+    return this._walls.remove(position);
+  }
+
+  changesApplied() {
   }
 
   getConsolidated(): IChange[] {
     var all: IChange[] = [];
-    this._areas.foreach((k, v) => all.push({
+    this._areas.forEach(f => all.push({
       ty: ChangeType.Add,
       cat: ChangeCategory.Area,
-      feature: v
+      feature: f
     } as IAreaAdd));
     
-    this._tokens.foreach((k, v) => all.push({
+    this._tokens.forEach(f => all.push({
       ty: ChangeType.Add,
       cat: ChangeCategory.Token,
-      feature: v
+      feature: f
     } as ITokenAdd));
 
-    this._walls.foreach((k, v) => all.push({
+    this._walls.forEach(f => all.push({
       ty: ChangeType.Add,
       cat: ChangeCategory.Wall,
-      feature: v
+      feature: f
     } as IWallAdd));
 
     return all;
@@ -92,6 +98,7 @@ export function trackChanges(map: IMap, tracker: IChangeTracker, chs: IChange[],
 
   // Complete applying all the changes
   if (continueApplications(applications) === true) {
+    tracker.changesApplied();
     return true;
   }
 

@@ -5,7 +5,7 @@ import { InstancedFeatures } from "./instancedFeatures";
 
 // Helps handling a hover highlight with drag to select many and release to commit
 // them into new features.
-abstract class DragHighlighter<K, F extends IFeature<K>> {
+abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
   private readonly _features: InstancedFeatures<K, F>; // inspect, but do not edit directly!
   private readonly _highlights: InstancedFeatures<K, F>;
 
@@ -36,8 +36,8 @@ abstract class DragHighlighter<K, F extends IFeature<K>> {
     }
 
     var changes: IChange[] = [];
-    this._highlights.all.forEach(f => {
-      if (this._features.at(f.position) !== undefined) {
+    this._highlights.forEach(f => {
+      if (this._features.get(f.position) !== undefined) {
         changes.push(this.createFeatureRemove(f.position));
       }
 
