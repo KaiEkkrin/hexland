@@ -12,7 +12,7 @@ import { IPlayer } from './data/adventure';
 import { IChange } from './data/change';
 import { trackChanges } from './data/changeTracking';
 import { IToken } from './data/feature';
-import { MapType, IMap } from './data/map';
+import { IMap } from './data/map';
 import { IProfile } from './data/profile';
 import { registerMapAsRecent, consolidateMapChanges } from './services/extensions';
 import { IDataService } from './services/interfaces';
@@ -88,7 +88,7 @@ function Map(props: IMapProps) {
       .catch(e => console.error("Error consolidating map changes", e));
 
     var theDrawing = new ThreeDrawing(
-      getStandardColours(), drawingRef.current, textCreator, record.ty === MapType.Hex
+      getStandardColours(), drawingRef.current, textCreator, record, props.dataService.getUid()
     );
     setDrawing(theDrawing);
     theDrawing.animate();

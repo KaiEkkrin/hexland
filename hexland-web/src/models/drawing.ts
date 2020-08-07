@@ -1,6 +1,8 @@
 import { IChange, ITokenRemove, ChangeType, ChangeCategory, ITokenAdd, ITokenMove } from '../data/change';
+import { trackChanges } from '../data/changeTracking';
 import { IGridCoord, IGridEdge, coordAdd, coordsEqual, coordSub } from '../data/coord';
 import { IToken } from '../data/feature';
+import { IMap, MapType } from '../data/map';
 import { Areas } from './areas';
 import { MapColouring } from './colouring';
 import { EdgeHighlighter, FaceHighlighter } from './dragHighlighter';
@@ -43,6 +45,9 @@ const rotationStep = 0.004;
 // A container for the entirety of the drawing.
 // Remember to call dispose() when this drawing is no longer in use!
 export class ThreeDrawing {
+  private readonly _map: IMap;
+  private readonly _uid: string;
+
   private readonly _gridGeometry: IGridGeometry;
   private readonly _mount: HTMLDivElement;
 
@@ -102,7 +107,10 @@ export class ThreeDrawing {
 
   private _disposed: boolean = false;
 
-  constructor(colours: FeatureColour[], mount: HTMLDivElement, textCreator: TextCreator, drawHexes: boolean) {
+  constructor(colours: FeatureColour[], mount: HTMLDivElement, textCreator: TextCreator, map: IMap, uid: string) {
+    this._map = map;
+    this._uid = uid;
+
     this._zoom = 2;
     this._rotation = 0;
     this._panX = 0;
@@ -128,7 +136,7 @@ export class ThreeDrawing {
     mount.appendChild(this._renderer.domElement);
     this._mount = mount;
 
-    this._gridGeometry = drawHexes ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
+    this._gridGeometry = map.ty === MapType.Hex ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
     this._grid = new Grid(this._gridGeometry, this._gridNeedsRedraw, edgeAlpha);
     this._grid.addGridToScene(this._scene, 0, 0, 1);
 
@@ -350,14 +358,22 @@ export class ThreeDrawing {
       return false;
     }
 
-    // We can't drop a selection at this position if it would overwrite any un-selected
-    // tokens:
+    // We want to answer true to this query iff actually moving the tokens here would
+    // be accepted by the change tracker, and so we create our own change tracker to do this.
+    // It's safe for us to use our current areas, walls and map colouring because those won't
+    // change, but we need to clone our tokens into a scratch dictionary.
     var delta = coordSub(position, this._tokenMoveDragStart);
-    return this._selection.all.reduce((ok, f) => {
-      var moved = coordAdd(f.position, delta);
-      var alreadyThere = this._tokens.get(moved);
-      return (ok && (alreadyThere === undefined || this._selection.get(moved) !== undefined));
-    }, true);
+    var changes = this._selection.all.map(f => {
+      return {
+        ty: ChangeType.Move,
+        cat: ChangeCategory.Token,
+        newPosition: coordAdd(f.position, delta),
+        oldPosition: f.position
+      };
+    });
+
+    var changeTracker = new MapChangeTracker(this._areas, this._tokens.clone(), this._walls, this._mapColouring);
+    return trackChanges(this._map, changeTracker, changes, this._uid);
   }
 
   clearSelection() {

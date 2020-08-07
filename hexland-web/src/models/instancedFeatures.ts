@@ -111,6 +111,11 @@ export abstract class InstancedFeatures<K extends IGridCoord, F extends IFeature
     this.setNeedsRedraw();
   }
 
+  clone() {
+    // Cloning an InstancedFeatures gets you just a clone of the feature dictionary, no more
+    return this._features.clone();
+  }
+
   forEach(fn: (f: F) => void) {
     this._features.forEach(fn);
   }

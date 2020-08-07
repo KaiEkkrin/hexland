@@ -24,6 +24,9 @@ export interface IFeatureDictionary<K extends IGridCoord, F extends IFeature<K>>
   // Removes everything
   clear(): void;
 
+  // Returns a shallow copy of this dictionary
+  clone(): IFeatureDictionary<K, F>;
+
   // Iterates over everything
   forEach(fn: (f: F) => void): void;
 
@@ -37,10 +40,11 @@ export interface IFeatureDictionary<K extends IGridCoord, F extends IFeature<K>>
 // A basic feature dictionary that can be re-used or extended
 export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> implements IFeatureDictionary<K, F> {
   private readonly _toIndex: (coord: K) => string;
-  private _values: { [index: string]: F } = {};
+  private _values: { [index: string]: F };
 
-  constructor(toIndex: (coord: K) => string) {
+  constructor(toIndex: (coord: K) => string, values?: { [index: string]: F } | undefined) {
     this._toIndex = toIndex;
+    this._values = values ?? {};
   }
 
   get all(): F[] {
@@ -63,6 +67,12 @@ export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> impl
 
   clear() {
     this._values = {};
+  }
+
+  clone() {
+    var clonedValues: { [index: string]: F } = {};
+    Object.assign(clonedValues, this._values);
+    return new FeatureDictionary<K, F>(this._toIndex, clonedValues);
   }
 
   forEach(fn: (f: F) => void) {
