@@ -1,6 +1,16 @@
-import { trackChanges, SimpleChangeTracker } from './changeTracking';
 import { ChangeType, ChangeCategory, ITokenMove, ITokenRemove } from './change';
+import { trackChanges, SimpleChangeTracker } from './changeTracking';
+import { IGridCoord, coordString, edgeString, IGridEdge } from './coord';
+import { FeatureDictionary, IFeature, IToken } from './feature';
 import { IMap, MapType } from './map';
+
+function createChangeTracker() {
+  return new SimpleChangeTracker(
+    new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
+    new FeatureDictionary<IGridCoord, IToken>(coordString),
+    new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString)
+  );
+}
 
 const ownerUid = "ownerUid";
 function createTestMap(ffa: boolean): IMap {
@@ -18,7 +28,7 @@ function createTestMap(ffa: boolean): IMap {
 
 test('One area can be added and removed', () => {
   var map = createTestMap(false);
-  var tracker = new SimpleChangeTracker();
+  var tracker = createChangeTracker();
   var chs = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
@@ -47,7 +57,7 @@ test('One area can be added and removed', () => {
 
 test('Multiple areas can be added and removed', () => {
   var map = createTestMap(false);
-  var tracker = new SimpleChangeTracker();
+  var tracker = createChangeTracker();
   var chs = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
@@ -90,7 +100,7 @@ test('Multiple areas can be added and removed', () => {
 
 test('Areas cannot be added on top of each other', () => {
   var map = createTestMap(false);
-  var tracker = new SimpleChangeTracker();
+  var tracker = createChangeTracker();
   var chs = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
@@ -146,7 +156,7 @@ test('Areas cannot be added on top of each other', () => {
 
 test('A double-remove area operation is also cancelled', () => {
   var map = createTestMap(false);
-  var tracker = new SimpleChangeTracker();
+  var tracker = createChangeTracker();
   var chs = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
@@ -211,7 +221,7 @@ test('A double-remove area operation is also cancelled', () => {
 
 test('Walls cannot be added on top of each other', () => {
   var map = createTestMap(false);
-  var tracker = new SimpleChangeTracker();
+  var tracker = createChangeTracker();
   var chs = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Wall,
@@ -267,7 +277,7 @@ test('Walls cannot be added on top of each other', () => {
 
 test('A double-remove wall operation is also cancelled', () => {
   var map = createTestMap(false);
-  var tracker = new SimpleChangeTracker();
+  var tracker = createChangeTracker();
   var chs = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Wall,
@@ -332,7 +342,7 @@ test('A double-remove wall operation is also cancelled', () => {
 // Repeat the superposition test
 test('Tokens cannot be added on top of each other', () => {
   var map = createTestMap(false);
-  var tracker = new SimpleChangeTracker();
+  var tracker = createChangeTracker();
   var chs = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
@@ -391,7 +401,7 @@ test('Tokens cannot be added on top of each other', () => {
 
 test('A token can be moved around', () => {
   var map = createTestMap(false);
-  var tracker = new SimpleChangeTracker();
+  var tracker = createChangeTracker();
   var chs = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
@@ -451,7 +461,7 @@ test('A token can be moved around', () => {
 
 test('Multiple tokens can be moved together', () => {
   var map = createTestMap(false);
-  var tracker = new SimpleChangeTracker();
+  var tracker = createChangeTracker();
   var chs = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
@@ -518,7 +528,7 @@ test('Multiple tokens can be moved together', () => {
 
 test('Multiple tokens can be moved together (in the other order)', () => {
   var map = createTestMap(false);
-  var tracker = new SimpleChangeTracker();
+  var tracker = createChangeTracker();
   var chs = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
@@ -585,7 +595,7 @@ test('Multiple tokens can be moved together (in the other order)', () => {
 
 test('I can move a token and add another one in its place', () => {
   var map = createTestMap(false);
-  var tracker = new SimpleChangeTracker();
+  var tracker = createChangeTracker();
   var chs = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
@@ -671,7 +681,7 @@ const uid2 = "uid2";
 
 test('A non-owner cannot add and remove areas', () => {
   var map = createTestMap(false);
-  var tracker = new SimpleChangeTracker();
+  var tracker = createChangeTracker();
   var chs = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
@@ -706,7 +716,7 @@ test('A non-owner cannot add and remove areas', () => {
 
 test('A non-owner cannot add and remove walls', () => {
   var map = createTestMap(false);
-  var tracker = new SimpleChangeTracker();
+  var tracker = createChangeTracker();
   var chs = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Wall,
@@ -741,7 +751,7 @@ test('A non-owner cannot add and remove walls', () => {
 
 test('A non-owner cannot alter tokens', () => {
   var map = createTestMap(false);
-  var tracker = new SimpleChangeTracker();
+  var tracker = createChangeTracker();
   var chs = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
@@ -776,7 +786,7 @@ test('A non-owner cannot alter tokens', () => {
 
 test('Users can move only their own tokens', () => {
   var map = createTestMap(false);
-  var tracker = new SimpleChangeTracker();
+  var tracker = createChangeTracker();
   var chs = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
@@ -854,7 +864,7 @@ test('Users can move only their own tokens', () => {
 
 test('In FFA mode, a non-owner can create areas', () => {
   var map = createTestMap(true);
-  var tracker = new SimpleChangeTracker();
+  var tracker = createChangeTracker();
   var chs = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
@@ -883,7 +893,7 @@ test('In FFA mode, a non-owner can create areas', () => {
 
 test('In FFA mode, a non-owner can create walls', () => {
   var map = createTestMap(true);
-  var tracker = new SimpleChangeTracker();
+  var tracker = createChangeTracker();
   var chs = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Wall,
@@ -912,7 +922,7 @@ test('In FFA mode, a non-owner can create walls', () => {
 
 test('In FFA mode, a non-owner can do all token operations', () => {
   var map = createTestMap(true);
-  var tracker = new SimpleChangeTracker();
+  var tracker = createChangeTracker();
   var chs = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,

@@ -1,7 +1,6 @@
-import { IAreaAdd, IWallAdd, IChange, ITokenRemove, ChangeType, ChangeCategory, ITokenAdd, ITokenMove } from '../data/change';
-import { IChangeTracker } from '../data/changeTracking';
+import { IChange, ITokenRemove, ChangeType, ChangeCategory, ITokenAdd, ITokenMove } from '../data/change';
 import { IGridCoord, IGridEdge, coordAdd, coordsEqual, coordSub } from '../data/coord';
-import { IToken, IFeature } from '../data/feature';
+import { IToken } from '../data/feature';
 import { Areas } from './areas';
 import { MapColouring } from './colouring';
 import { EdgeHighlighter, FaceHighlighter } from './dragHighlighter';
@@ -9,11 +8,12 @@ import { FeatureColour } from './featureColour';
 import { Grid } from './grid';
 import { IGridGeometry} from './gridGeometry';
 import { HexGridGeometry } from './hexGridGeometry';
+import { MapChangeTracker } from './mapChangeTracker';
 import { MapColourVisualisation } from './mapColourVisualisation';
 import { RedrawFlag } from './redrawFlag';
 import { SquareGridGeometry } from './squareGridGeometry';
 import { TextCreator } from './textCreator';
-import { IInstancedToken, Tokens } from './tokens';
+import { Tokens } from './tokens';
 import { Walls } from './walls';
 
 import * as THREE from 'three';
@@ -42,7 +42,7 @@ const rotationStep = 0.004;
 
 // A container for the entirety of the drawing.
 // Remember to call dispose() when this drawing is no longer in use!
-export class ThreeDrawing implements IChangeTracker {
+export class ThreeDrawing {
   private readonly _gridGeometry: IGridGeometry;
   private readonly _mount: HTMLDivElement;
 
@@ -76,6 +76,8 @@ export class ThreeDrawing implements IChangeTracker {
 
   private readonly _gridNeedsRedraw: RedrawFlag;
   private readonly _needsRedraw: RedrawFlag;
+
+  private readonly _changeTracker: MapChangeTracker;
 
   private _zoom: number;
   private _rotation: number;
@@ -200,8 +202,24 @@ export class ThreeDrawing implements IChangeTracker {
     // The map colour visualisation (added on request instead of the areas)
     this._mapColourVisualisation = new MapColourVisualisation(this._gridGeometry, this._needsRedraw, areaAlpha, areaZ);
 
+    // The change tracker
+    this._changeTracker = new MapChangeTracker(
+      this._areas,
+      this._tokens,
+      this._walls,
+      this._mapColouring,
+      () => {
+        if (this._showMapColourVisualisation === true) {
+          this._mapColourVisualisation.clear(); // TODO try to do it incrementally? (requires checking for colour count changes...)
+          this._mapColourVisualisation.visualise(this._scene, this._mapColouring);
+        }
+      }
+    );
+
     this.animate = this.animate.bind(this);
   }
+
+  get changeTracker() { return this._changeTracker; }
 
   animate() {
     if (this._disposed) {
@@ -231,74 +249,6 @@ export class ThreeDrawing implements IChangeTracker {
       this._renderer.setRenderTarget(null);
     }
   }
-
-  // == IChangeTracker implementation ==
-
-  areaAdd(feature: IFeature<IGridCoord>) {
-    return this._areas.add(feature);
-  }
-
-  areaRemove(position: IGridCoord) {
-    return this._areas.remove(position);
-  }
-
-  tokenAdd(feature: IToken) {
-    return this._tokens.add(feature as IInstancedToken);
-  }
-
-  tokenRemove(position: IGridCoord) {
-    return this._tokens.remove(position);
-  }
-
-  wallAdd(feature: IFeature<IGridEdge>) {
-    var added = this._walls.add(feature);
-    if (added) {
-      this._mapColouring.setWall(feature.position, true);
-    }
-
-    return added;
-  }
-
-  wallRemove(position: IGridEdge) {
-    var removed = this._walls.remove(position);
-    if (removed !== undefined) {
-      this._mapColouring.setWall(position, false);
-    }
-
-    return removed;
-  }
-
-  changesApplied() {
-    if (this._showMapColourVisualisation === true) {
-      this._mapColourVisualisation.clear(); // TODO try to do it incrementally? (requires checking for colour count changes...)
-      this._mapColourVisualisation.visualise(this._scene, this._mapColouring);
-    }
-  }
-
-  getConsolidated(): IChange[] {
-    var all: IChange[] = [];
-    this._areas.forEach(v => all.push({
-      ty: ChangeType.Add,
-      cat: ChangeCategory.Area,
-      feature: v
-    } as IAreaAdd));
-    
-    this._tokens.forEach(v => all.push({
-      ty: ChangeType.Add,
-      cat: ChangeCategory.Token,
-      feature: v
-    } as ITokenAdd));
-
-    this._walls.forEach(v => all.push({
-      ty: ChangeType.Add,
-      cat: ChangeCategory.Wall,
-      feature: v
-    } as IWallAdd));
-
-    return all;
-  }
-
-  // == Other things ==
 
   resize() {
     var width = Math.max(1, Math.floor(window.innerWidth));

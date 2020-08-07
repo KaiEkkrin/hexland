@@ -1,13 +1,13 @@
 import { IChange, ChangeCategory, ChangeType, IAreaAdd, IAreaRemove, ITokenAdd, IWallAdd, IWallRemove, ITokenRemove, ITokenMove } from "./change";
-import { IGridCoord, IGridEdge, coordString, edgeString } from "./coord";
-import { IFeature, IToken, FeatureDictionary } from "./feature";
+import { IGridCoord, IGridEdge } from "./coord";
+import { IFeature, IToken, IFeatureDictionary } from "./feature";
 import { IMap } from "./map";
 
 export interface IChangeTracker {
   areaAdd: (feature: IFeature<IGridCoord>) => boolean;
   areaRemove: (position: IGridCoord) => IFeature<IGridCoord> | undefined;
-  tokenAdd: (feature: IToken) => boolean;
-  tokenRemove: (position: IGridCoord) => IToken | undefined;
+  tokenAdd: (map: IMap, user: string, feature: IToken, oldPosition: IGridCoord | undefined) => boolean;
+  tokenRemove: (map: IMap, user: string, position: IGridCoord) => IToken | undefined;
   wallAdd: (feature: IFeature<IGridEdge>) => boolean;
   wallRemove: (position: IGridEdge) => IFeature<IGridEdge> | undefined;
 
@@ -20,14 +20,18 @@ export interface IChangeTracker {
 
 // A simple implementation for testing, etc.
 export class SimpleChangeTracker implements IChangeTracker {
-  private readonly _areas: FeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
-  private readonly _tokens: FeatureDictionary<IGridCoord, IToken>;
-  private readonly _walls: FeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
+  private readonly _areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
+  private readonly _tokens: IFeatureDictionary<IGridCoord, IToken>;
+  private readonly _walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
 
-  constructor() {
-    this._areas = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
-    this._tokens = new FeatureDictionary<IGridCoord, IToken>(coordString);
-    this._walls = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
+  constructor(
+    areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
+    tokens: IFeatureDictionary<IGridCoord, IToken>,
+    walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>
+  ) {
+    this._areas = areas;
+    this._tokens = tokens;
+    this._walls = walls;
   }
 
   areaAdd(feature: IFeature<IGridCoord>) {
@@ -38,11 +42,11 @@ export class SimpleChangeTracker implements IChangeTracker {
     return this._areas.remove(position);
   }
 
-  tokenAdd(feature: IToken) {
+  tokenAdd(map: IMap, user: string, feature: IToken, oldPosition: IGridCoord | undefined) {
     return this._tokens.add(feature);
   }
 
-  tokenRemove(position: IGridCoord) {
+  tokenRemove(map: IMap, user: string, position: IGridCoord) {
     return this._tokens.remove(position);
   }
 
@@ -201,10 +205,10 @@ function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: IChange, user:
       return canDoAnything(map, user) ? {
         revert: function () {},
         continue: function () {
-          var added = tracker.tokenAdd(chAdd.feature);
+          var added = tracker.tokenAdd(map, user, chAdd.feature, undefined);
           return added ? {
             revert: function () {
-              tracker.tokenRemove(chAdd.feature.position);
+              tracker.tokenRemove(map, user, chAdd.feature.position);
             }
           } : undefined;
         }
@@ -215,20 +219,20 @@ function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: IChange, user:
         return undefined;
       }
       var chRemove = ch as ITokenRemove;
-      var removed = tracker.tokenRemove(chRemove.position);
+      var removed = tracker.tokenRemove(map, user, chRemove.position);
       return removed === undefined ? undefined : {
         revert: function () {
-          if (removed !== undefined) { tracker.tokenAdd(removed); }
+          if (removed !== undefined) { tracker.tokenAdd(map, user, removed, undefined); }
         },
         continue: function () { return doNothing; }
       }
 
     case ChangeType.Move:
       var chMove = ch as ITokenMove;
-      var moved = tracker.tokenRemove(chMove.oldPosition);
+      var moved = tracker.tokenRemove(map, user, chMove.oldPosition);
       return moved === undefined ? undefined : {
         revert: function () {
-          if (moved !== undefined) { tracker.tokenAdd(moved); }
+          if (moved !== undefined) { tracker.tokenAdd(map, user, moved, undefined); }
         },
         continue: function () {
           // Check whether this user is allowed to move this token
@@ -241,10 +245,10 @@ function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: IChange, user:
           var toAdd = {};
           Object.assign(toAdd, moved);
           (toAdd as IToken).position = chMove.newPosition;
-          var added = tracker.tokenAdd(toAdd as IToken);
+          var added = tracker.tokenAdd(map, user, toAdd as IToken, chMove.oldPosition);
           return added ? {
             revert: function revert() {
-              tracker.tokenRemove(chMove.newPosition);
+              tracker.tokenRemove(map, user, chMove.newPosition);
             }
           } : undefined;
         }

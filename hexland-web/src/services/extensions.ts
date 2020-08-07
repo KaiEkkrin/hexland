@@ -1,10 +1,17 @@
 import { IAdventure, IMapSummary, IPlayer } from '../data/adventure';
 import { IChange, IChanges } from '../data/change';
-import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
-import { IMap } from '../data/map';
+import { trackChanges } from '../data/changeTracking';
+import { FeatureDictionary, IToken, IFeature } from '../data/feature';
+import { IMap, MapType } from '../data/map';
 import { IAdventureSummary, IProfile } from '../data/profile';
 import { IDataService, IDataView, IDataReference, IDataAndReference } from './interfaces';
 import { timestampProvider } from '../firebase';
+
+import { MapChangeTracker } from '../models/mapChangeTracker';
+import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
+import { MapColouring } from '../models/colouring';
+import { HexGridGeometry } from '../models/hexGridGeometry';
+import { SquareGridGeometry } from '../models/squareGridGeometry';
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -436,7 +443,14 @@ export async function consolidateMapChanges(
   }
 
   // Consolidate all of that
-  var tracker = new SimpleChangeTracker();
+  var tracker = new MapChangeTracker(
+    new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
+    new FeatureDictionary<IGridCoord, IToken>(coordString),
+    new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
+    // TODO I know the geometry parameters don't matter in this specific case right now
+    // but really, they should be stored in the Map record
+    new MapColouring(m.ty === MapType.Hex ? new HexGridGeometry(1, 1) : new SquareGridGeometry(1, 1))
+  );
   changes.forEach(c => trackChanges(m, tracker, c.data.chs, c.data.user));
   var consolidated = tracker.getConsolidated();
 
