@@ -26,13 +26,19 @@ function testVisibility(geometry: IGridGeometry, coordCentre: THREE.Vector3, wal
   // Try enclosing the wall with inner and outer spheres and using them and the Three.js "Ray"
   // to test for full and partial occlusion respectively.
   const targetCentre = geometry.createCoordCentre(vis.position, z);
-  const toTarget = new THREE.Ray(coordCentre, targetCentre.sub(coordCentre).normalize());
+  const toTarget = new THREE.Ray(coordCentre, targetCentre.clone().sub(coordCentre).normalize());
   const distanceToTargetSquared = coordCentre.distanceToSquared(targetCentre);
 
   // If the ray intersects the inner sphere before it reaches the target face,
   // that face is fully occluded
   const innerSphere = geometry.getEdgeSphere(wall, z, innerAlpha);
+
+  // TODO remove debug
+  console.log("targetCentre: " + targetCentre.toArray());
+  console.log("toTarget: " + toTarget.origin.toArray() + " => " + toTarget.direction.toArray());
+
   var intersection = toTarget.intersectSphere(innerSphere, targetCentre);
+  console.log("intersection: " + intersection?.toArray() ?? "(none)");
   if (intersection !== null) {
     var distanceToIntersectionSquared = coordCentre.distanceToSquared(intersection);
     if (distanceToIntersectionSquared < distanceToTargetSquared) {
