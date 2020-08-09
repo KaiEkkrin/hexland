@@ -123,12 +123,8 @@ export class MapColouring {
     return f?.colour ?? -1;
   }
 
-  forEachFaceMatching(colour: number, fn: (c: IGridCoord) => void) {
-    this._faces.forEach(f => {
-      if (f.colour === colour) {
-        fn(f.position);
-      }
-    });
+  forEachFace(fn: (f: IFeature<IGridCoord>) => void) {
+    this._faces.forEach(fn);
   }
 
   // Gets a dictionary of all the walls adjacent to a particular map colour.

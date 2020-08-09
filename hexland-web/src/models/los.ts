@@ -7,7 +7,7 @@ import { RedrawFlag } from './redrawFlag';
 
 import * as THREE from 'three';
 
-// Occlusion colours.
+// Visibility colours.
 export const oNone = 0;
 export const oPartial = 1;
 export const oFull = 2;
@@ -20,30 +20,12 @@ const z = 0; // no 3D in map right now
 const innerAlpha = 0.9;
 const outerAlpha = 1.1;
 
-function testVisibility(geometry: IGridGeometry, coordCentre: THREE.Vector3, wall: IGridEdge, vis: IVisibility) {
-  // TODO :)
-  // This does one visibility test and updates the feature to match.
-  // Try enclosing the wall with inner and outer spheres and using them and the Three.js "Ray"
-  // to test for full and partial occlusion respectively.
+function testVisibility(geometry: IGridGeometry, innerFrustum: THREE.Frustum, outerFrustum: THREE.Frustum, vis: IVisibility) {
+  // If the visibility coord falls within the inner frustum, it's fully hidden (no visibility.)
+  // If it falls within the outer frustum but not the inner, it has partial visibility.
   const targetCentre = geometry.createCoordCentre(vis.position, z);
-  const toTarget = new THREE.Ray(coordCentre, targetCentre.clone().sub(coordCentre).normalize());
-  const distanceToTargetSquared = coordCentre.distanceToSquared(targetCentre);
-
-  // If the ray intersects the inner sphere before it reaches the target face,
-  // that face is fully occluded
-  const innerSphere = geometry.getEdgeSphere(wall, z, innerAlpha);
-
-  // TODO remove debug
-  console.log("targetCentre: " + targetCentre.toArray());
-  console.log("toTarget: " + toTarget.origin.toArray() + " => " + toTarget.direction.toArray());
-
-  var intersection = toTarget.intersectSphere(innerSphere, targetCentre);
-  console.log("intersection: " + intersection?.toArray() ?? "(none)");
-  if (intersection !== null) {
-    var distanceToIntersectionSquared = coordCentre.distanceToSquared(intersection);
-    if (distanceToIntersectionSquared < distanceToTargetSquared) {
-      vis.colour = oNone;
-    }
+  if (innerFrustum.containsPoint(targetCentre)) {
+    vis.colour = oNone;
   }
 
   // If the face is fully occluded we stop here (partial occlusion can't override it)
@@ -51,26 +33,21 @@ function testVisibility(geometry: IGridGeometry, coordCentre: THREE.Vector3, wal
     return;
   }
 
-  // If the ray intersects the outer sphere before it reaches the target face,
-  // that face is partially occluded
-  const outerSphere = geometry.getEdgeSphere(wall, z, outerAlpha);
-  intersection = toTarget.intersectSphere(outerSphere, targetCentre);
-  if (intersection !== null) {
-    distanceToIntersectionSquared = coordCentre.distanceToSquared(intersection);
-    if (distanceToIntersectionSquared < distanceToTargetSquared) {
-      // Partial visibility by different edges results in no visibility.
-      // TODO This is slightly too brutal right now (includes one edge entirely
-      // hidden by another) and I should finesse it.  Perhaps track a list of
-      // vertices and edges that contributed to occlusion?
-      vis.colour = vis.colour === oFull ? oPartial : oNone;
-    }
+  if (outerFrustum.containsPoint(targetCentre)) {
+    // Partial visibility by different edges results in no visibility.
+    // TODO This is slightly too brutal right now (includes one edge entirely
+    // hidden by another) and I should finesse it.  Perhaps track a list of
+    // vertices and edges that contributed to occlusion?
+    vis.colour = vis.colour === oFull ? oPartial : oNone;
   }
 }
 
 // For unit testing.
 export function testVisibilityOf(geometry: IGridGeometry, coord: IGridCoord, target: IGridCoord, wall: IGridEdge) {
+  var innerFrustum = geometry.getShadowFrustum(coord, wall, z, innerAlpha);
+  var outerFrustum = geometry.getShadowFrustum(coord, wall, z, outerAlpha);
   var vis = { position: target, colour: oFull };
-  testVisibility(geometry, geometry.createCoordCentre(coord, z), wall, vis);
+  testVisibility(geometry, innerFrustum, outerFrustum, vis);
   return vis.colour;
 }
 
@@ -82,25 +59,24 @@ export function create(geometry: IGridGeometry, colouring: MapColouring, coord: 
   const los = new FeatureDictionary<IGridCoord, IVisibility>(coordString);
 
   // Add everything within bounds (we know we can't see outside bounds) with
-  // visible status
+  // visible status and everything outside with invisible status
+  // TODO can I optimise this somehow...?
   var colour = colouring.colourOf(coord);
-  colouring.forEachFaceMatching(colour, c => {
-    los.add({ position: c, colour: oFull });
-  });
+  colouring.forEachFace(f => {
+    los.add({ position: f.position, colour: f.colour === colour ? oFull : oNone });
+  })
 
   // Get all the relevant walls that we need to check against
   const walls = colouring.getWallsOfColour(colour);
 
-  var coordCentre = geometry.createCoordCentre(coord, z);
-
   // Check each coord (that isn't the source) for occlusion by each wall.
-  los.forEach(f => {
-    if (coordsEqual(f.position, coord)) {
-      return;
-    }
-
-    walls.forEach(w => {
-      testVisibility(geometry, coordCentre, w.position, f);
+  walls.forEach(w => {
+    var innerFrustum = geometry.getShadowFrustum(coord, w.position, z, innerAlpha);
+    var outerFrustum = geometry.getShadowFrustum(coord, w.position, z, outerAlpha);
+    los.forEach(f => {
+      if (!coordsEqual(f.position, coord)) {
+        testVisibility(geometry, innerFrustum, outerFrustum, f);
+      }
     });
   });
 

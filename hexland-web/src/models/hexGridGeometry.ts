@@ -267,13 +267,13 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     }
   }
 
-  getEdgeSphere(edge: IGridEdge, z: number, alpha: number) {
-    const centre = this.createCentre(edge.x, edge.y, z);
-    const [edgeA, edgeB] = edge.edge === 0 ? [this.createLeft(centre), this.createTopLeft(centre)] :
-      edge.edge === 1 ? [this.createTopLeft(centre), this.createTopRight(centre)] :
-      [this.createTopRight(centre), this.createRight(centre)];
-    const edgeCentre = lerp(edgeA, edgeB, 0.5);
-    return new THREE.Sphere(edgeCentre, this._xOffLeft * alpha);
+  getShadowFrustum(coord: IGridCoord, edge: IGridEdge, z: number, alpha: number): THREE.Frustum {
+    const coordCentre = this.createCoordCentre(coord, z);
+    const edgeCentre = this.createCentre(edge.x, edge.y, z);
+    const [edgeA, edgeB] = edge.edge === 0 ? [this.createLeft(edgeCentre), this.createTopLeft(edgeCentre)] :
+      edge.edge === 1 ? [this.createTopLeft(edgeCentre), this.createTopRight(edgeCentre)] :
+      [this.createTopRight(edgeCentre), this.createRight(edgeCentre)];
+    return this.getShadowFrustumOf(coordCentre, edgeA, edgeB, z, alpha);
   }
 
   toSingle(): IGridGeometry {

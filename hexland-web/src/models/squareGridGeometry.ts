@@ -192,12 +192,12 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     }
   }
 
-  getEdgeSphere(edge: IGridEdge, z: number, alpha: number) {
-    const centre = this.createCentre(edge.x, edge.y, z);
-    const [edgeA, edgeB] = edge.edge === 0 ? [this.createBottomLeft(centre), this.createTopLeft(centre)] :
-      [this.createTopLeft(centre), this.createTopRight(centre)];
-    const edgeCentre = lerp(edgeA, edgeB, 0.5);
-    return new THREE.Sphere(edgeCentre, this._off * alpha);
+  getShadowFrustum(coord: IGridCoord, edge: IGridEdge, z: number, alpha: number): THREE.Frustum {
+    const coordCentre = this.createCoordCentre(coord, z);
+    const edgeCentre = this.createCentre(edge.x, edge.y, z);
+    const [edgeA, edgeB] = edge.edge === 0 ? [this.createBottomLeft(edgeCentre), this.createTopLeft(edgeCentre)] :
+      [this.createTopLeft(edgeCentre), this.createTopRight(edgeCentre)];
+    return this.getShadowFrustumOf(coordCentre, edgeA, edgeB, z, alpha);
   }
 
   toSingle(): IGridGeometry {

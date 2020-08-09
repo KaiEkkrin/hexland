@@ -169,16 +169,16 @@ export class ThreeDrawing {
 
     // For the LoS, we'll use different blending depending on the map settings -- non-owners in
     // FFA mode should find things out of LoS literally invisible; owners and FFA players shouldn't.
-    // The LoS materials are (no occlusion, partial occlusion, full occlusion) in order.
+    // The LoS materials are (no visibility, partial visibility, full visibility) in order.
     this._losMaterials = [new THREE.MeshBasicMaterial({
       blending: THREE.MultiplyBlending,
-      color: 0xffffff, // should do nothing :)
+      color: this.seeEverything ? 0x555555 : 0
     }), new THREE.MeshBasicMaterial({
       blending: THREE.MultiplyBlending,
       color: this.seeEverything ? 0xaaaaaa : 0x7f7f7f,
     }), new THREE.MeshBasicMaterial({
       blending: THREE.MultiplyBlending,
-      color: this.seeEverything ? 0x555555 : 0
+      color: 0xffffff, // should do nothing :)
     })];
 
     // The filled areas
@@ -311,21 +311,15 @@ export class ThreeDrawing {
     // Rebuilding on every change makes it much simpler...
     var positions = this.getLoSPositions();
     console.log("LoS positions: " + positions?.length ?? -1);
-    if (positions === undefined) {
+    if (positions === undefined || positions.length === 0) { // TODO deal with hiding everything for a non-owner with no tokens
       this._los.removeFromScene();
     } else {
       this._los.addToScene(this._scene);
 
-      // Fill the LoS with 'None' for each face in the current grid
+      // Fill the LoS with 'Full' for each face in the current grid
       // TODO deal with dynamic grid sizing and all that fun here, create a suitable
       // abstraction!
       this._los.clear();
-      for (var y = -tileDim; y < 2 * tileDim; ++y) {
-        for (var x = -tileDim; x < 2 * tileDim; ++x) {
-          this._los.add({ position: { x: x, y: y }, colour: LoS.oNone });
-        }
-      }
-
       positions.forEach(p => {
         var losHere = LoS.create(this._gridGeometry, this._mapColouring, p);
         LoS.combine(this._los, losHere);

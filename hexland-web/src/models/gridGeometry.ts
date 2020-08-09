@@ -7,7 +7,7 @@ export class FaceCentre extends THREE.Vector3 {} // to help me not get muddled w
 // A grid geometry describes a grid's layout (currently either squares
 // or hexagons.)
 export interface IGridGeometry {
-  // Creates the co-ordinate of the centre of this face.
+  // Creates the co-orinates of the centre of this face.
   createCoordCentre(coord: IGridCoord, z: number): FaceCentre;
 
   // Creates the vertices involved in drawing a full grid tile.
@@ -58,13 +58,13 @@ export interface IGridGeometry {
   // Evaluates the function for each face adjacent to the given one.
   forEachAdjacentFace(coord: IGridCoord, fn: (face: IGridCoord, edge: IGridEdge) => void): void;
 
-
   // Gets the faces adjacent to the given edge. (TODO adjacent edges too?)
   getEdgeFaceAdjacency(edge: IGridEdge): IGridCoord[];
 
-  // Gets a sphere covering `alpha` proportion of the edge -- use for
-  // occlusion testing.
-  getEdgeSphere(edge: IGridEdge, z: number, alpha: number): THREE.Sphere;
+  // Creates the frustum of the area obscured by this edge when viewed from the
+  // given coord.  An alpha of 1 will take into account the entire edge size;
+  // less than 1, smaller, more than 1, bigger (to check for partial occlusion.)
+  getShadowFrustum(coord: IGridCoord, edge: IGridEdge, z: number, alpha: number): THREE.Frustum;
 
   // Emits the same grid geometry but with a tileDim of 1; useful for initialising
   // instanced draws.
@@ -124,6 +124,44 @@ export abstract class BaseGeometry {
   }
 
   protected abstract createEdgeGeometry(coord: IGridEdge, alpha: number, z: number): EdgeGeometry;
+
+  protected getShadowFrustumOf(coordCentre: FaceCentre, edgeA: THREE.Vector3, edgeB: THREE.Vector3, z: number, alpha: number) {
+    const up = new THREE.Vector3(0, 0, 1);
+    const down = new THREE.Vector3(0, 0, -2);
+    var edgeAAbove = lerp(edgeB, edgeA, alpha).add(up);
+    var edgeBAbove = lerp(edgeA, edgeB, alpha).add(up);
+    var edgeABelow = edgeAAbove.clone().add(down);
+    var edgeBBelow = edgeBAbove.clone().add(down);
+
+    // Inner bound
+    var plane0 = new THREE.Plane();
+    plane0.setFromCoplanarPoints(edgeAAbove, edgeABelow, edgeBBelow);
+
+    // Sides
+    var plane1 = new THREE.Plane();
+    plane1.setFromCoplanarPoints(coordCentre, edgeAAbove, edgeABelow);
+
+    var plane2 = new THREE.Plane();
+    plane2.setFromCoplanarPoints(coordCentre, edgeABelow, edgeBBelow);
+
+    var plane3 = new THREE.Plane();
+    plane3.setFromCoplanarPoints(coordCentre, edgeBBelow, edgeBAbove);
+
+    var plane4 = new THREE.Plane();
+    plane4.setFromCoplanarPoints(coordCentre, edgeBAbove, edgeAAbove);
+
+    // Outer bound (always far enough away)
+    var plane5 = new THREE.Plane();
+    plane5.setFromCoplanarPoints(
+      lerp(coordCentre, edgeABelow, 1000),
+      lerp(coordCentre, edgeAAbove, 1000),
+      lerp(coordCentre, edgeBBelow, 1000)
+    );
+
+    var frustum = new THREE.Frustum();
+    frustum.set(plane0, plane1, plane2, plane3, plane4, plane5);
+    return frustum;
+  }
 
   private pushEdgeVertices(vertices: THREE.Vector3[], tile: THREE.Vector2, alpha: number, x: number, y: number, z: number, e: number) {
     var edge = createGridEdge(tile, new THREE.Vector2(x, y), this.tileDim, e);

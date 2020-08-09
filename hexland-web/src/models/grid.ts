@@ -4,7 +4,7 @@ import { RedrawFlag } from './redrawFlag';
 
 import * as THREE from 'three';
 
-const gridZ = 1;
+const gridZ = 0.7;
 
 export class Grid extends Drawn {
   private readonly _alpha: number;
