@@ -23,6 +23,13 @@ const outerAlpha = 1.1;
 function testVisibility(geometry: IGridGeometry, innerFrustum: THREE.Frustum, outerFrustum: THREE.Frustum, vis: IVisibility) {
   // If the visibility coord falls within the inner frustum, it's fully hidden (no visibility.)
   // If it falls within the outer frustum but not the inner, it has partial visibility.
+  // TODO Better idea for this -- use a single precise frustum, but test against multiple points
+  // (the centre plus an alpha'd version of every corner of the face.)  If all are hidden, we
+  // have no visibility; if all are seen, we have full visibility; in the middle, partial.
+  // Merge that per-point data in the combine and only create a final colour after combining.
+  // If this all seems slow, I can move it into a web worker (message it a snapshot of the
+  // colouring and the coords to test, get back a dictionary of final colours to copy into
+  // the LoS instanced features.)
   const targetCentre = geometry.createCoordCentre(vis.position, z);
   if (innerFrustum.containsPoint(targetCentre)) {
     vis.colour = oNone;

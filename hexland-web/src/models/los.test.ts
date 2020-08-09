@@ -26,7 +26,7 @@ test('Head on (hex)', () => {
   });
 });
 
-test('Head on (square)', () => {
+test('Head on (square, left)', () => {
   var coord = { x: 0, y: 0 };
   var edge = { x: 0, y: 0, edge: 0 };
 
@@ -51,6 +51,99 @@ test('Head on (square)', () => {
   [
     { x: -1, y: 1 },
     { x: -1, y: -1 }
+  ].forEach(target => {
+    var vis = LoS.testVisibilityOf(squareGridGeometry, coord, target, edge);
+    expect(vis).toBe(LoS.oPartial);
+  });
+});
+
+test('Head on (square, right)', () => {
+  var coord = { x: 0, y: 0 };
+  var edge = { x: 1, y: 0, edge: 0 };
+
+  // The visibility of the face directly behind that edge should be None
+  var vis = LoS.testVisibilityOf(squareGridGeometry, coord, { x: 1, y: 0 }, edge);
+  expect(vis).toBe(LoS.oNone);
+
+  // The visibility of the other faces around us and the diagonals behind
+  // us should be Full
+  [
+    { x: 0, y: -1 },
+    { x: -1, y: 0 },
+    { x: 0, y: 1 },
+    { x: -1, y: 1 },
+    { x: -1, y: -1 }
+  ].forEach(target => {
+    var vis = LoS.testVisibilityOf(squareGridGeometry, coord, target, edge);
+    expect(vis).toBe(LoS.oFull);
+  });
+
+  // The visibility of the diagonals in front of us should be Partial
+  [
+    { x: 1, y: 1 },
+    { x: 1, y: -1 }
+  ].forEach(target => {
+    var vis = LoS.testVisibilityOf(squareGridGeometry, coord, target, edge);
+    expect(vis).toBe(LoS.oPartial);
+  });
+});
+
+test('Head on (square, top)', () => {
+  var coord = { x: 0, y: 0 };
+  var edge = { x: 0, y: 0, edge: 1 };
+
+  // The visibility of the face directly behind that edge should be None
+  var vis = LoS.testVisibilityOf(squareGridGeometry, coord, { x: 0, y: -1 }, edge);
+  expect(vis).toBe(LoS.oNone);
+
+  // The visibility of the other faces around us and the diagonals behind
+  // us should be Full
+  [
+    { x: 0, y: 1 },
+    { x: -1, y: 0 },
+    { x: 1, y: 0 },
+    { x: -1, y: 1 },
+    { x: 1, y: 1 }
+  ].forEach(target => {
+    var vis = LoS.testVisibilityOf(squareGridGeometry, coord, target, edge);
+    expect(vis).toBe(LoS.oFull);
+  });
+
+  // The visibility of the diagonals in front of us should be Partial
+  [
+    { x: -1, y: -1 },
+    { x: 1, y: -1 }
+  ].forEach(target => {
+    var vis = LoS.testVisibilityOf(squareGridGeometry, coord, target, edge);
+    expect(vis).toBe(LoS.oPartial);
+  });
+});
+
+test('Head on (square, bottom)', () => {
+  var coord = { x: 0, y: 0 };
+  var edge = { x: 0, y: 1, edge: 1 };
+
+  // The visibility of the face directly behind that edge should be None
+  var vis = LoS.testVisibilityOf(squareGridGeometry, coord, { x: 0, y: 1 }, edge);
+  expect(vis).toBe(LoS.oNone);
+
+  // The visibility of the other faces around us and the diagonals behind
+  // us should be Full
+  [
+    { x: 0, y: 1 },
+    { x: -1, y: 0 },
+    { x: 1, y: 0 },
+    { x: -1, y: -1 },
+    { x: 1, y: -1 }
+  ].forEach(target => {
+    var vis = LoS.testVisibilityOf(squareGridGeometry, coord, target, edge);
+    expect(vis).toBe(LoS.oFull);
+  });
+
+  // The visibility of the diagonals in front of us should be Partial
+  [
+    { x: -1, y: 1 },
+    { x: 1, y: 1 }
   ].forEach(target => {
     var vis = LoS.testVisibilityOf(squareGridGeometry, coord, target, edge);
     expect(vis).toBe(LoS.oPartial);
