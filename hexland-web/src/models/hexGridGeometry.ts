@@ -1,7 +1,6 @@
 import { IGridCoord, IGridEdge, coordAdd } from '../data/coord';
 import { EdgeOcclusion } from './edgeOcclusion';
-import { lerp } from './extraMath';
-import { BaseGeometry, FaceCentre, IGridGeometry, EdgeGeometry } from './gridGeometry';
+import { BaseGeometry, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
 
 // A tile of hexes.
@@ -25,84 +24,98 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     this._yOffTop = this._hexSize * 0.5;
   }
 
-  protected createCentre(x: number, y: number, z: number): FaceCentre {
-    return new FaceCentre(x * this._xStep, x * this._yStep + y * this._hexSize, z);
+  protected createCentre(target: THREE.Vector3, x: number, y: number, z: number): THREE.Vector3 {
+    return target.set(x * this._xStep, x * this._yStep + y * this._hexSize, z);
   }
 
-  private createLeft(c: FaceCentre): THREE.Vector3 {
-    return new THREE.Vector3(c.x - this._xOffLeft, c.y, c.z);
+  private createLeft(target: THREE.Vector3, c: THREE.Vector3) {
+    return target.set(c.x - this._xOffLeft, c.y, c.z);
   }
 
-  private createTopLeft(c: FaceCentre): THREE.Vector3 {
-    return new THREE.Vector3(c.x - this._xOffTop, c.y - this._yOffTop, c.z);
+  private createTopLeft(target: THREE.Vector3, c: THREE.Vector3) {
+    return target.set(c.x - this._xOffTop, c.y - this._yOffTop, c.z);
   }
 
-  private createTopRight(c: FaceCentre): THREE.Vector3 {
-    return new THREE.Vector3(c.x + this._xOffTop, c.y - this._yOffTop, c.z);
+  private createTopRight(target: THREE.Vector3, c: THREE.Vector3) {
+    return target.set(c.x + this._xOffTop, c.y - this._yOffTop, c.z);
   }
 
-  private createRight(c: FaceCentre): THREE.Vector3 {
-    return new THREE.Vector3(c.x + this._xOffLeft, c.y, c.z);
+  private createRight(target: THREE.Vector3, c: THREE.Vector3) {
+    return target.set(c.x + this._xOffLeft, c.y, c.z);
   }
 
-  private createBottomLeft(c: FaceCentre): THREE.Vector3 {
-    return new THREE.Vector3(c.x - this._xOffTop, c.y + this._yOffTop, c.z);
+  private createBottomLeft(target: THREE.Vector3, c: THREE.Vector3) {
+    return target.set(c.x - this._xOffTop, c.y + this._yOffTop, c.z);
   }
 
-  private createBottomRight(c: FaceCentre): THREE.Vector3 {
-    return new THREE.Vector3(c.x + this._xOffTop, c.y + this._yOffTop, c.z);
+  private createBottomRight(target: THREE.Vector3, c: THREE.Vector3) {
+    return target.set(c.x + this._xOffTop, c.y + this._yOffTop, c.z);
+  }
+
+  protected createEdgeVertices(target1: THREE.Vector3, target2: THREE.Vector3, centre: THREE.Vector3, edge: number) {
+    switch (edge) {
+      case 0:
+        this.createLeft(target1, centre);
+        this.createTopLeft(target2, centre);
+        break;
+
+      case 1:
+        this.createTopLeft(target1, centre);
+        this.createTopRight(target2, centre);
+        break;
+
+      default:
+        this.createTopRight(target1, centre);
+        this.createRight(target2, centre);
+        break;
+    }
   }
 
   protected createEdgeGeometry(coord: IGridEdge, alpha: number, z: number): EdgeGeometry {
-    var centre = this.createCoordCentre(coord, z);
+    var centre = this.createCoordCentre(new THREE.Vector3(), coord, z);
     var otherCentre = this.createCoordCentre(
+      new THREE.Vector3(),
       coord.edge === 0 ? coordAdd(coord, { x: -1, y: 0 }) :
       coord.edge === 1 ? coordAdd(coord, { x: 0, y: -1 }) :
       coordAdd(coord, { x: 1, y: -1 }),
       z
     );
 
-    var tip1 = coord.edge === 0 ? this.createLeft(centre) :
-      coord.edge === 1 ? this.createTopLeft(centre) :
-      this.createTopRight(centre);
-
-    var tip2 = coord.edge === 0 ? this.createTopLeft(centre) :
-      coord.edge === 1 ? this.createTopRight(centre) :
-      this.createRight(centre);
-
+    var [tip1, tip2] = [new THREE.Vector3(), new THREE.Vector3()];
+    this.createEdgeVertices(tip1, tip2, centre, coord.edge);
     return new EdgeGeometry(tip1, tip2, centre, otherCentre, alpha);
   }
 
-  private pushHexIndices(indices: number[], offset: number) {
-    indices.push(offset);
-    indices.push(offset + 2);
-    indices.push(offset + 1);
-    indices.push(-1);
+  private *getHexIndices(offset: number) {
+    yield offset;
+    yield offset + 2;
+    yield offset + 1;
+    yield -1;
 
-    indices.push(offset);
-    indices.push(offset + 3);
-    indices.push(offset + 2);
-    indices.push(-1);
+    yield offset;
+    yield offset + 3;
+    yield offset + 2;
+    yield -1;
 
-    indices.push(offset);
-    indices.push(offset + 4);
-    indices.push(offset + 3);
-    indices.push(-1);
+    yield offset;
+    yield offset + 4;
+    yield offset + 3;
+    yield -1;
 
-    indices.push(offset);
-    indices.push(offset + 5);
-    indices.push(offset + 4);
-    indices.push(-1);
+    yield offset;
+    yield offset + 5;
+    yield offset + 4;
+    yield -1;
 
-    indices.push(offset);
-    indices.push(offset + 6);
-    indices.push(offset + 5);
-    indices.push(-1);
+    yield offset;
+    yield offset + 6;
+    yield offset + 5;
+    yield -1;
 
-    indices.push(offset);
-    indices.push(offset + 1);
-    indices.push(offset + 6);
-    indices.push(-1);
+    yield offset;
+    yield offset + 1;
+    yield offset + 6;
+    yield -1;
   }
 
   private vertexIndexOf(x: number, y: number, v: number) {
@@ -110,98 +123,87 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   createEdgeOcclusion(coord: IGridCoord, edge: IGridEdge, z: number): EdgeOcclusion {
-    const coordCentre = this.createCoordCentre(coord, z);
-    const edgeCentre = this.createCentre(edge.x, edge.y, z);
-    const [edgeA, edgeB] = edge.edge === 0 ? [this.createLeft(edgeCentre), this.createTopLeft(edgeCentre)] :
-      edge.edge === 1 ? [this.createTopLeft(edgeCentre), this.createTopRight(edgeCentre)] :
-      [this.createTopRight(edgeCentre), this.createRight(edgeCentre)];
-    return new EdgeOcclusion(coordCentre, edgeA, edgeB, this._hexSize * 0.01);
+    var [edgeA, edgeB] = [new THREE.Vector3(), new THREE.Vector3()];
+
+    var centre = this.createCentre(new THREE.Vector3(), edge.x, edge.y, z);
+    this.createEdgeVertices(edgeA, edgeB, centre, edge.edge);
+
+    this.createCoordCentre(centre, coord, z);
+    return new EdgeOcclusion(centre, edgeA, edgeB, this._hexSize * 0.01);
   }
 
-  createGridVertices(tile: THREE.Vector2, z: number): THREE.Vector3[] {
-    var vertices = [];
-
+  *createGridVertices(tile: THREE.Vector2, z: number): Iterable<THREE.Vector3> {
     // For each hex, we need to add only two unique vertices out of six; we'll use
     // the left and top-left vertices.  We need to fill in enough points for createLineIndices()
     // below to have access to all it needs 
+    var centre = new THREE.Vector3();
     for (var y = -1; y <= this.tileDim; ++y) {
       for (var x = 0; x <= this.tileDim; ++x) {
-        var centre = this.createCentre(tile.x * this.tileDim + x, tile.y * this.tileDim + y, z);
-        vertices.push(this.createLeft(centre));
-        vertices.push(this.createTopLeft(centre));
+        this.createCentre(centre, tile.x * this.tileDim + x, tile.y * this.tileDim + y, z);
+        yield this.createLeft(new THREE.Vector3(), centre);
+        yield this.createTopLeft(new THREE.Vector3(), centre);
       }
     }
-
-    return vertices;
   }
 
-  createGridLineIndices(): number[] {
-    var indices = [];
-
+  *createGridLineIndices(): Iterable<number> {
     // We only need to draw the top part of each hex -- the bottom part will be taken care of.
     for (var y = 0; y < this.tileDim; ++y) {
       for (var x = 0; x < this.tileDim; ++x) {
         // Left -- 1st vertex of the hex at (x, y)
-        indices.push(this.vertexIndexOf(x, y, 0));
+        yield this.vertexIndexOf(x, y, 0);
 
         // Top left -- 2nd vertex of the hex at (x, y)
-        indices.push(this.vertexIndexOf(x, y, 1));
+        yield this.vertexIndexOf(x, y, 1);
 
         // Top right -- 1st vertex of the hex at (x + 1, y - 1)
-        indices.push(this.vertexIndexOf(x + 1, y - 1, 0));
+        yield this.vertexIndexOf(x + 1, y - 1, 0);
 
         // Right -- 2nd vertex of the hex at (x + 1, y)
-        indices.push(this.vertexIndexOf(x + 1, y, 1));
+        yield this.vertexIndexOf(x + 1, y, 1);
 
         // Push a primitive restart
-        indices.push(-1);
+        yield -1;
       }
     }
-
-    return indices;
   }
 
-  createOcclusionTestVertices(coord: IGridCoord, z: number, alpha: number): THREE.Vector3[] {
-    var vertices = [];
-    var centre = this.createCoordCentre(coord, z);
-    vertices.push(centre);
-    vertices.push(centre.clone().lerp(this.createLeft(centre), alpha * 0.5));
-    vertices.push(centre.clone().lerp(this.createTopLeft(centre), alpha * 0.5));
-    vertices.push(centre.clone().lerp(this.createTopRight(centre), alpha * 0.5));
-    vertices.push(centre.clone().lerp(this.createRight(centre), alpha * 0.5));
-    vertices.push(centre.clone().lerp(this.createBottomRight(centre), alpha * 0.5));
-    vertices.push(centre.clone().lerp(this.createBottomLeft(centre), alpha * 0.5));
-    return vertices;
+  *createOcclusionTestVertices(coord: IGridCoord, z: number, alpha: number): Iterable<THREE.Vector3> {
+    var centre = new THREE.Vector3();
+    yield this.createCoordCentre(centre, coord, z);
+
+    const invAlpha = 1 - alpha * 0.5;
+    yield this.createLeft(new THREE.Vector3(), centre).lerp(centre, invAlpha);
+    yield this.createTopLeft(new THREE.Vector3(), centre).lerp(centre, invAlpha);
+    yield this.createTopRight(new THREE.Vector3(), centre).lerp(centre, invAlpha);
+    yield this.createRight(new THREE.Vector3(), centre).lerp(centre, invAlpha);
+    yield this.createBottomRight(new THREE.Vector3(), centre).lerp(centre, invAlpha);
+    yield this.createBottomLeft(new THREE.Vector3(), centre).lerp(centre, invAlpha);
   }
 
-  createSolidVertices(tile: THREE.Vector2, alpha: number, z: number): THREE.Vector3[] {
-    var vertices = [];
+  *createSolidVertices(tile: THREE.Vector2, alpha: number, z: number): Iterable<THREE.Vector3> {
+    const invAlpha = 1 - alpha;
     for (var y = 0; y < this.tileDim; ++y) {
       for (var x = 0; x < this.tileDim; ++x) {
-        var centre = this.createCentre(tile.x * this.tileDim + x, tile.y * this.tileDim + y, z);
-        vertices.push(centre);
-        vertices.push(lerp(centre, this.createLeft(centre), alpha));
-        vertices.push(lerp(centre, this.createTopLeft(centre), alpha));
-        vertices.push(lerp(centre, this.createTopRight(centre), alpha));
-        vertices.push(lerp(centre, this.createRight(centre), alpha));
-        vertices.push(lerp(centre, this.createBottomRight(centre), alpha));
-        vertices.push(lerp(centre, this.createBottomLeft(centre), alpha));
+        var centre = new THREE.Vector3();
+        yield this.createCentre(centre, tile.x * this.tileDim + x, tile.y * this.tileDim + y, z);
+        yield this.createLeft(new THREE.Vector3(), centre).lerp(centre, invAlpha);
+        yield this.createTopLeft(new THREE.Vector3(), centre).lerp(centre, invAlpha);
+        yield this.createTopRight(new THREE.Vector3(), centre).lerp(centre, invAlpha);
+        yield this.createRight(new THREE.Vector3(), centre).lerp(centre, invAlpha);
+        yield this.createBottomRight(new THREE.Vector3(), centre).lerp(centre, invAlpha);
+        yield this.createBottomLeft(new THREE.Vector3(), centre).lerp(centre, invAlpha);
       }
     }
-
-    return vertices;
   }
 
-  createSolidMeshIndices(): number[] {
-    var indices: number[] = [];
+  *createSolidMeshIndices() {
     for (var y = 0; y < this.tileDim; ++y) {
       for (var x = 0; x < this.tileDim; ++x) {
         var baseIndex = y * this.tileDim * 7 + x * 7;
-        this.pushHexIndices(indices, baseIndex);
+        yield* this.getHexIndices(baseIndex);
       }
     }
-
-    return indices;
   }
 
   createSolidTestColours(): Float32Array {
@@ -295,7 +297,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   transformToEdge(o: THREE.Object3D, coord: IGridEdge): void {
-    var centre = this.createCoordCentre(coord, 0);
+    var centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
     o.translateX(centre.x);
     o.translateY(centre.y);
     if (coord.edge === 1) {

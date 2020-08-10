@@ -73,7 +73,7 @@ function testVisibility(occ: EdgeOcclusion, testVertices: THREE.Vector3[], vis: 
 // For unit testing.
 export function testVisibilityOf(geometry: IGridGeometry, coord: IGridCoord, target: IGridCoord, wall: IGridEdge) {
   var occ = geometry.createEdgeOcclusion(coord, wall, z);
-  var testVertices = geometry.createOcclusionTestVertices(target, z, alpha);
+  var testVertices = [...geometry.createOcclusionTestVertices(target, z, alpha)];
   var vis = createVisibility(target, testVertices.length, false, 0);
   testVisibility(occ, testVertices, vis);
   return vis.colour;
@@ -87,9 +87,10 @@ export function create(geometry: IGridGeometry, colouring: MapColouring, coord: 
   // The number of test vertices will be a function of only the geometry.
   // We create them right away and re-use them for each test, because creating
   // them all for each test is very expensive (too many allocations)
-  var testVertices = geometry.createOcclusionTestVertices({ x: 0, y: 0 }, z, alpha);
-  var testVertexOrigin = testVertices[0].clone(); // cheating only slightly
-  const testVertexCount = testVertices.length;
+  const testVerticesAtZero = [...geometry.createOcclusionTestVertices({ x: 0, y: 0 }, z, alpha)];
+  var testVertices = [...testVerticesAtZero];
+  const testVertexOrigin = testVerticesAtZero[0]; // cheating -- assume this is right in the middle
+  const testVertexCount = testVerticesAtZero.length;
 
   // Add everything within bounds (we know we can't see outside bounds) with
   // visible status and everything outside with invisible status
@@ -103,8 +104,9 @@ export function create(geometry: IGridGeometry, colouring: MapColouring, coord: 
   const walls = colouring.getWallsOfColour(colour);
 
   // Check each coord (that isn't the source) for occlusion by each wall.
+  var testVertexOffset = new THREE.Vector3();
   walls.forEach(w => {
-    var occ = geometry.createEdgeOcclusion(coord, w.position, z);
+    var occ = geometry.createEdgeOcclusion(coord, w.position, z); // TODO re-use this memory too?
     los.forEach(f => {
       if (f.mapColour !== colour) {
         // This is definitely not visible from here
@@ -118,10 +120,13 @@ export function create(geometry: IGridGeometry, colouring: MapColouring, coord: 
 
       // We transform the occlusion test vertices to this position, and then back
       // again afterwards
-      var testVertexOffset = geometry.createCoordCentre(f.position, z).sub(testVertexOrigin);
-      testVertices.forEach(v => v.add(testVertexOffset));
-      testVisibility(occ, geometry.createOcclusionTestVertices(f.position, z, alpha), f);
-      testVertices.forEach(v => v.sub(testVertexOffset));
+      geometry.createCoordCentre(testVertexOffset, f.position, z).sub(testVertexOrigin);
+      for (var i = 0; i < testVertexCount; ++i) {
+        testVertices[i].copy(testVerticesAtZero[i]);
+        testVertices[i].add(testVertexOffset);
+      }
+
+      testVisibility(occ, testVertices, f);
     });
   });
 
@@ -156,8 +161,8 @@ export class LoS extends InstancedFeatures<IGridCoord, IVisibility> {
     var vertices = single.createSolidVertices(new THREE.Vector2(0, 0), alpha, areaZ);
     var indices = single.createSolidMeshIndices();
 
-    this._bufferGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
-    this._bufferGeometry.setIndex(indices);
+    this._bufferGeometry = new THREE.BufferGeometry().setFromPoints([...vertices]);
+    this._bufferGeometry.setIndex([...indices]);
   }
 
   protected createMesh(m: THREE.Material, maxInstances: number): THREE.InstancedMesh {

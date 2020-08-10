@@ -15,8 +15,8 @@ export class Areas extends InstancedFeatures<IGridCoord, IFeature<IGridCoord>> {
     super(geometry, redrawFlag, coordString, maxInstances);
 
     var single = this.geometry.toSingle();
-    var vertices = single.createSolidVertices(new THREE.Vector2(0, 0), alpha, areaZ);
-    var indices = single.createSolidMeshIndices();
+    var vertices = [...single.createSolidVertices(new THREE.Vector2(0, 0), alpha, areaZ)];
+    var indices = [...single.createSolidMeshIndices()];
 
     this._bufferGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
     this._bufferGeometry.setIndex(indices);

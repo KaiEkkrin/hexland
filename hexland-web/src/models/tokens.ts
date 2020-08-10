@@ -38,8 +38,8 @@ export class Tokens extends InstancedFeatures<IGridCoord, IInstancedToken> {
     var vertices = single.createSolidVertices(new THREE.Vector2(0, 0), alpha, tokenZ);
     var indices = single.createSolidMeshIndices();
 
-    this._bufferGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
-    this._bufferGeometry.setIndex(indices);
+    this._bufferGeometry = new THREE.BufferGeometry().setFromPoints([...vertices]);
+    this._bufferGeometry.setIndex([...indices]);
 
     this._textCreator = textCreator;
     this._textMaterial = textMaterial;

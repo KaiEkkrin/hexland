@@ -1,7 +1,6 @@
 import { IGridCoord, IGridEdge, coordAdd } from '../data/coord';
 import { EdgeOcclusion } from './edgeOcclusion';
-import { lerp } from './extraMath';
-import { BaseGeometry, FaceCentre, IGridGeometry, EdgeGeometry } from './gridGeometry';
+import { BaseGeometry, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
 
 export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
@@ -14,130 +13,137 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     this._off = squareSize * 0.5;
   }
 
-  protected createCentre(x: number, y: number, z: number): FaceCentre {
-    return new FaceCentre(x * this._squareSize, y * this._squareSize, z);
+  protected createCentre(target: THREE.Vector3, x: number, y: number, z: number): THREE.Vector3 {
+    return target.set(x * this._squareSize, y * this._squareSize, z);
   }
 
-  private createTopLeft(c: FaceCentre): THREE.Vector3 {
-    return new THREE.Vector3(c.x - this._off, c.y - this._off, c.z);
+  private createTopLeft(target: THREE.Vector3, c: THREE.Vector3): THREE.Vector3 {
+    return target.set(c.x - this._off, c.y - this._off, c.z);
   }
 
-  private createTopRight(c: FaceCentre): THREE.Vector3 {
-    return new THREE.Vector3(c.x + this._off, c.y - this._off, c.z);
+  private createTopRight(target: THREE.Vector3, c: THREE.Vector3): THREE.Vector3 {
+    return target.set(c.x + this._off, c.y - this._off, c.z);
   }
 
-  private createBottomLeft(c: FaceCentre): THREE.Vector3 {
-    return new THREE.Vector3(c.x - this._off, c.y + this._off, c.z);
+  private createBottomLeft(target: THREE.Vector3, c: THREE.Vector3): THREE.Vector3 {
+    return target.set(c.x - this._off, c.y + this._off, c.z);
   }
 
-  private createBottomRight(c: FaceCentre): THREE.Vector3 {
-    return new THREE.Vector3(c.x + this._off, c.y + this._off, c.z);
+  private createBottomRight(target: THREE.Vector3, c: THREE.Vector3): THREE.Vector3 {
+    return target.set(c.x + this._off, c.y + this._off, c.z);
+  }
+
+  protected createEdgeVertices(target1: THREE.Vector3, target2: THREE.Vector3, centre: THREE.Vector3, edge: number) {
+    switch (edge) {
+      case 0:
+        this.createBottomLeft(target1, centre);
+        this.createTopLeft(target2, centre);
+        break;
+
+      case 1:
+        this.createTopLeft(target1, centre);
+        this.createTopRight(target2, centre);
+        break;
+    }
   }
 
   protected createEdgeGeometry(coord: IGridEdge, alpha: number, z: number): EdgeGeometry {
-    var centre = this.createCoordCentre(coord, z);
+    var centre = this.createCoordCentre(new THREE.Vector3(), coord, z);
     var otherCentre = this.createCoordCentre(
+      new THREE.Vector3(),
       coord.edge === 0 ? coordAdd(coord, { x: -1, y: 0 }) :
       coordAdd(coord, { x: 0, y: -1 }),
       z
     );
 
-    var tip1 = coord.edge === 0 ? this.createBottomLeft(centre) : this.createTopLeft(centre);
-    var tip2 = coord.edge === 0 ? this.createTopLeft(centre) : this.createTopRight(centre);
+    var [tip1, tip2] = [new THREE.Vector3(), new THREE.Vector3()];
+    this.createEdgeVertices(tip1, tip2, centre, coord.edge);
     return new EdgeGeometry(tip1, tip2, centre, otherCentre, alpha);
   }
 
-  private pushSquareIndices(indices: number[], baseIndex: number) {
-    indices.push(baseIndex);
-    indices.push(baseIndex + 1);
-    indices.push(baseIndex + 2);
-    indices.push(-1);
+  private *getSquareIndices(baseIndex: number) {
+    yield baseIndex;
+    yield baseIndex + 1;
+    yield baseIndex + 2;
+    yield -1;
 
-    indices.push(baseIndex + 1);
-    indices.push(baseIndex + 3);
-    indices.push(baseIndex + 2);
-    indices.push(-1);
+    yield baseIndex + 1;
+    yield baseIndex + 3;
+    yield baseIndex + 2;
+    yield -1;
   }
 
   createEdgeOcclusion(coord: IGridCoord, edge: IGridEdge, z: number): EdgeOcclusion {
-    const coordCentre = this.createCoordCentre(coord, z);
-    const edgeCentre = this.createCentre(edge.x, edge.y, z);
-    const [edgeA, edgeB] = edge.edge === 0 ? [this.createBottomLeft(edgeCentre), this.createTopLeft(edgeCentre)] :
-      [this.createTopLeft(edgeCentre), this.createTopRight(edgeCentre)];
-    return new EdgeOcclusion(coordCentre, edgeA, edgeB, this._squareSize * 0.01);
+    var [edgeA, edgeB] = [new THREE.Vector3(), new THREE.Vector3()];
+
+    var centre = this.createCentre(new THREE.Vector3(), edge.x, edge.y, z);
+    this.createEdgeVertices(edgeA, edgeB, centre, edge.edge);
+
+    this.createCoordCentre(centre, coord, z);
+    return new EdgeOcclusion(centre, edgeA, edgeB, this._squareSize * 0.01);
   }
 
-  createGridVertices(tile: THREE.Vector2, z: number): THREE.Vector3[] {
-    var vertices = [];
+  *createGridVertices(tile: THREE.Vector2, z: number): Iterable<THREE.Vector3> {
+    var centre = new THREE.Vector3();
     for (var y = 0; y <= this.tileDim; ++y) {
       for (var x = 0; x <= this.tileDim; ++x) {
-        var centre = this.createCentre(tile.x * this.tileDim + x, tile.y * this.tileDim + y, z);
-        vertices.push(this.createTopLeft(centre));
+        this.createCentre(centre, tile.x * this.tileDim + x, tile.y * this.tileDim + y, z);
+        yield this.createTopLeft(new THREE.Vector3(), centre);
       }
     }
-
-    return vertices;
   }
 
-  createGridLineIndices(): number[] {
-    var indices = [];
-
+  *createGridLineIndices(): Iterable<number> {
     // All the horizontal lines:
     for (var i = 0; i <= this.tileDim; ++i) {
-      indices.push(i * (this.tileDim + 1));
-      indices.push(i * (this.tileDim + 1) + this.tileDim);
-      indices.push(-1);
+      yield i * (this.tileDim + 1);
+      yield i * (this.tileDim + 1) + this.tileDim;
+      yield -1;
     }
 
     // All the vertical lines:
     for (i = 0; i <= this.tileDim; ++i) {
-      indices.push(i);
-      indices.push(i + this.tileDim * (this.tileDim + 1));
-      indices.push(-1);
+      yield i;
+      yield i + this.tileDim * (this.tileDim + 1);
+      yield -1;
     }
-
-    return indices;
   }
 
-  createOcclusionTestVertices(coord: IGridCoord, z: number, alpha: number): THREE.Vector3[] {
-    var vertices = [];
-    var centre = this.createCoordCentre(coord, z);
-    vertices.push(centre);
-    vertices.push(centre.clone().lerp(this.createBottomLeft(centre), alpha));
-    vertices.push(centre.clone().lerp(this.createTopLeft(centre), alpha));
-    vertices.push(centre.clone().lerp(this.createTopRight(centre), alpha));
-    vertices.push(centre.clone().lerp(this.createBottomRight(centre), alpha));
-    return vertices;
+  *createOcclusionTestVertices(coord: IGridCoord, z: number, alpha: number): Iterable<THREE.Vector3> {
+    var centre = new THREE.Vector3();
+    yield this.createCoordCentre(centre, coord, z);
+
+    const invAlpha = 1 - alpha;
+    yield this.createTopLeft(new THREE.Vector3(), centre).lerp(centre, invAlpha);
+    yield this.createBottomLeft(new THREE.Vector3(), centre).lerp(centre, invAlpha);
+    yield this.createTopRight(new THREE.Vector3(), centre).lerp(centre, invAlpha);
+    yield this.createBottomRight(new THREE.Vector3(), centre).lerp(centre, invAlpha);
   }
 
-  createSolidVertices(tile: THREE.Vector2, alpha: number, z: number): THREE.Vector3[] {
-    var vertices = [];
+  *createSolidVertices(tile: THREE.Vector2, alpha: number, z: number): Iterable<THREE.Vector3> {
+    var centre = new THREE.Vector3();
+    const invAlpha = 1 - alpha;
     for (var y = 0; y < this.tileDim; ++y) {
       for (var x = 0; x < this.tileDim; ++x) {
-        var centre = this.createCentre(tile.x * this.tileDim + x, tile.y * this.tileDim + y, z);
-        vertices.push(lerp(centre, this.createTopLeft(centre), alpha));
-        vertices.push(lerp(centre, this.createBottomLeft(centre), alpha));
-        vertices.push(lerp(centre, this.createTopRight(centre), alpha));
-        vertices.push(lerp(centre, this.createBottomRight(centre), alpha));
+        this.createCentre(centre, tile.x * this.tileDim + x, tile.y * this.tileDim + y, z);
+        yield this.createTopLeft(new THREE.Vector3(), centre).lerp(centre, invAlpha);
+        yield this.createBottomLeft(new THREE.Vector3(), centre).lerp(centre, invAlpha);
+        yield this.createTopRight(new THREE.Vector3(), centre).lerp(centre, invAlpha);
+        yield this.createBottomRight(new THREE.Vector3(), centre).lerp(centre, invAlpha);
       }
     }
-
-    return vertices;
   }
 
   // Creates a buffer of indices into the output of `createSolidVertices`
   // suitable for drawing a solid mesh of the grid.
-  createSolidMeshIndices(): number[] {
-    var indices: number[] = [];
+  *createSolidMeshIndices() {
     for (var y = 0; y < this.tileDim; ++y) {
       for (var x = 0; x < this.tileDim; ++x) {
         // For some reason Three.js uses triangles rather than triangle strips, grr
         var baseIndex = y * this.tileDim * 4 + x * 4;
-        this.pushSquareIndices(indices, baseIndex);
+        yield* this.getSquareIndices(baseIndex);
       }
     }
-
-    return indices;
   }
 
   // Creates some colours for testing the solid vertices, above.
@@ -217,7 +223,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   transformToEdge(o: THREE.Object3D, coord: IGridEdge): void {
-    var centre = this.createCoordCentre(coord, 0);
+    var centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
     o.translateX(centre.x);
     o.translateY(centre.y);
     if (coord.edge === 1) {

@@ -1,36 +1,33 @@
 import { IGridCoord, IGridEdge, createGridCoord, createGridEdge, coordMultiplyScalar } from '../data/coord';
 import { EdgeOcclusion } from './edgeOcclusion';
-import { lerp } from './extraMath';
 import * as THREE from 'three';
-
-export class FaceCentre extends THREE.Vector3 {} // to help me not get muddled when handling centres
 
 // A grid geometry describes a grid's layout (currently either squares
 // or hexagons.)
 export interface IGridGeometry {
   // Creates the co-orinates of the centre of this face.
-  createCoordCentre(coord: IGridCoord, z: number): FaceCentre;
+  createCoordCentre(target: THREE.Vector3, coord: IGridCoord, z: number): THREE.Vector3;
 
   // Creates the edge occlusion tester for the edge when seen from the coord.
   createEdgeOcclusion(coord: IGridCoord, edge: IGridEdge, z: number): EdgeOcclusion;
 
   // Creates the vertices involved in drawing a full grid tile.
-  createGridVertices(tile: THREE.Vector2, z: number): THREE.Vector3[];
+  createGridVertices(tile: THREE.Vector2, z: number): Iterable<THREE.Vector3>;
 
   // Creates a buffer of indices into the output of `createGridVertices`
   // suitable for drawing a full grid of lines.
-  createGridLineIndices(): number[];
+  createGridLineIndices(): Iterable<number>;
 
   // Creates the vertices to use for an occlusion test.
-  createOcclusionTestVertices(coord: IGridCoord, z: number, alpha: number): THREE.Vector3[];
+  createOcclusionTestVertices(coord: IGridCoord, z: number, alpha: number): Iterable<THREE.Vector3>;
 
   // Creates the vertices involved in drawing the grid tile in solid.
   // The alpha number specifies how much of a face is covered.
-  createSolidVertices(tile: THREE.Vector2, alpha: number, z: number): THREE.Vector3[];
+  createSolidVertices(tile: THREE.Vector2, alpha: number, z: number): Iterable<THREE.Vector3>;
 
   // Creates a buffer of indices into the output of `createSolidVertices`
   // suitable for drawing a solid mesh of the grid.
-  createSolidMeshIndices(): number[];
+  createSolidMeshIndices(): Iterable<number>;
 
   // Creates some colours for testing the solid vertices, above.
   createSolidTestColours(): Float32Array;
@@ -96,10 +93,10 @@ export class EdgeGeometry { // to help me share the edge code
   constructor(tip1: THREE.Vector3, tip2: THREE.Vector3, centre: THREE.Vector3, otherCentre: THREE.Vector3, alpha: number) {
     this.tip1 = tip1;
     this.tip2 = tip2;
-    this.bevel1a = lerp(tip1, centre, alpha);
-    this.bevel2a = lerp(tip2, centre, alpha);
-    this.bevel1b = lerp(tip1, otherCentre, alpha);
-    this.bevel2b = lerp(tip2, otherCentre, alpha);
+    this.bevel1a = tip1.clone().lerp(centre, alpha);
+    this.bevel2a = tip2.clone().lerp(centre, alpha);
+    this.bevel1b = tip1.clone().lerp(otherCentre, alpha);
+    this.bevel2b = tip2.clone().lerp(otherCentre, alpha);
   }
 }
 
@@ -119,13 +116,14 @@ export abstract class BaseGeometry {
   protected get tileDim() { return this._tileDim; }
   protected get maxEdge() { return this._maxEdge; }
 
-  protected abstract createCentre(x: number, y: number, z: number): FaceCentre;
+  protected abstract createCentre(target: THREE.Vector3, x: number, y: number, z: number): THREE.Vector3;
 
-  createCoordCentre(coord: IGridCoord, z: number): FaceCentre {
-    return this.createCentre(coord.x, coord.y, z);
+  createCoordCentre(target: THREE.Vector3, coord: IGridCoord, z: number): THREE.Vector3 {
+    return this.createCentre(target, coord.x, coord.y, z);
   }
 
   protected abstract createEdgeGeometry(coord: IGridEdge, alpha: number, z: number): EdgeGeometry;
+  protected abstract createEdgeVertices(target1: THREE.Vector3, target2: THREE.Vector3, centre: THREE.Vector3, edge: number): void;
 
   private pushEdgeVertices(vertices: THREE.Vector3[], tile: THREE.Vector2, alpha: number, x: number, y: number, z: number, e: number) {
     var edge = createGridEdge(tile, new THREE.Vector2(x, y), this.tileDim, e);
@@ -237,7 +235,7 @@ export abstract class BaseGeometry {
   }
 
   transformToCoord(o: THREE.Object3D, coord: IGridCoord): void {
-    var centre = this.createCoordCentre(coord, 0);
+    var centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
     o.translateX(centre.x);
     o.translateY(centre.y);
   }
