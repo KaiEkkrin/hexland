@@ -13,8 +13,6 @@ export interface IToken extends IFeature<IGridCoord> {
   text: string;
 }
 
-export interface IVisibility extends IFeature<IGridCoord> {}
-
 // The interface of a dictionary of these
 export interface IFeatureDictionary<K extends IGridCoord, F extends IFeature<K>> {
   all: F[];

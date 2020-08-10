@@ -1,6 +1,7 @@
 import { IGridCoord, coordString, IGridEdge, coordsEqual } from '../data/coord';
-import { FeatureDictionary, IFeatureDictionary, IVisibility } from '../data/feature';
+import { FeatureDictionary, IFeature, IFeatureDictionary } from '../data/feature';
 import { MapColouring } from './colouring';
+import { EdgeOcclusion } from './edgeOcclusion';
 import { IGridGeometry } from './gridGeometry';
 import { InstancedFeatures } from './instancedFeatures';
 import { RedrawFlag } from './redrawFlag';
@@ -13,64 +14,86 @@ export const oPartial = 1;
 export const oFull = 2;
 
 const z = 0; // no 3D in map right now
+const alpha = 0.9; // how close to the edge of the face our exterior visibility checking
+                   // points are
 
-// TODO These are a bit specious right now.  See how convincing they look?
-// I could tune them, or I could try going for the more solid but slower
-// approach (testing corner-to-corner)
-const innerAlpha = 0.9;
-const outerAlpha = 1.1;
+// With this special feature class, we can accumulate visibility information and then
+// emit a single colour with the known values above.
+export interface IVisibility extends IFeature<IGridCoord> {
+  count: number; // the number of visibility checking points
+  hidden: number; // a bitfield of how many of those points are hidden
+}
 
-function testVisibility(geometry: IGridGeometry, innerFrustum: THREE.Frustum, outerFrustum: THREE.Frustum, vis: IVisibility) {
-  // If the visibility coord falls within the inner frustum, it's fully hidden (no visibility.)
-  // If it falls within the outer frustum but not the inner, it has partial visibility.
-  // TODO Better idea for this -- use a single precise frustum, but test against multiple points
-  // (the centre plus an alpha'd version of every corner of the face.)  If all are hidden, we
-  // have no visibility; if all are seen, we have full visibility; in the middle, partial.
-  // Merge that per-point data in the combine and only create a final colour after combining.
-  // If this all seems slow, I can move it into a web worker (message it a snapshot of the
-  // colouring and the coords to test, get back a dictionary of final colours to copy into
-  // the LoS instanced features.)
-  const targetCentre = geometry.createCoordCentre(vis.position, z);
-  if (innerFrustum.containsPoint(targetCentre)) {
-    vis.colour = oNone;
+// Gets the hidden value corresponding to no visibility at all.
+function getNoVisibilityValue(count: number) {
+  return (1 << count) - 1;
+}
+
+function getVisibilityColour(count: number, hidden: number) {
+  return hidden === 0 ? oFull :
+    hidden === getNoVisibilityValue(count) ? oNone :
+    oPartial;
+}
+
+function createVisibility(position: IGridCoord, count: number, isHidden?: boolean | undefined): IVisibility {
+  return {
+    position: position,
+    count: count,
+    hidden: isHidden === true ? getNoVisibilityValue(count) : 0,
+    colour: isHidden === true ? oNone : oFull
+  };
+}
+
+function combineVisibility(a: IVisibility, b: IVisibility): IVisibility {
+  // When combining, a point is visible if it's visible from any of the sources
+  var hidden = a.hidden & b.hidden;
+  return {
+    position: a.position,
+    count: a.count,
+    hidden: hidden,
+    colour: getVisibilityColour(a.count, hidden)
+  };
+}
+
+function getTestVertexCount(geometry: IGridGeometry) {
+  return geometry.createOcclusionTestVertices({ x: 0, y: 0 }, z, alpha).length;
+}
+
+function testVisibility(geometry: IGridGeometry, occ: EdgeOcclusion, vis: IVisibility) {
+  // Tests this visibility position for occlusion against the edge and viewer described by `occ`
+  // and mutates it as required.
+  var testVertices = geometry.createOcclusionTestVertices(vis.position, z, alpha);
+  for (var i = 0; i < testVertices.length; ++i) {
+    if (occ.test(testVertices[i])) {
+      vis.hidden |= (1 << i);
+    }
   }
 
-  // If the face is fully occluded we stop here (partial occlusion can't override it)
-  if (vis.colour === oNone) {
-    return;
-  }
-
-  if (outerFrustum.containsPoint(targetCentre)) {
-    // Partial visibility by different edges results in no visibility.
-    // TODO This is slightly too brutal right now (includes one edge entirely
-    // hidden by another) and I should finesse it.  Perhaps track a list of
-    // vertices and edges that contributed to occlusion?
-    vis.colour = vis.colour === oFull ? oPartial : oNone;
-  }
+  vis.colour = getVisibilityColour(vis.count, vis.hidden);
 }
 
 // For unit testing.
 export function testVisibilityOf(geometry: IGridGeometry, coord: IGridCoord, target: IGridCoord, wall: IGridEdge) {
-  var innerFrustum = geometry.getShadowFrustum(coord, wall, z, innerAlpha);
-  var outerFrustum = geometry.getShadowFrustum(coord, wall, z, outerAlpha);
-  var vis = { position: target, colour: oFull };
-  testVisibility(geometry, innerFrustum, outerFrustum, vis);
+  var vis = createVisibility(target, getTestVertexCount(geometry));
+  var occ = geometry.createEdgeOcclusion(coord, wall, z);
+  testVisibility(geometry, occ, vis);
   return vis.colour;
 }
 
 // Using the map colouring, creates a line-of-sight dictionary for the given coord.
 // A LoS dictionary maps each coord to its visibility.
-// TODO Write some unit tests for this before continuing rigging it in -- I suspect
-// my visibility test isn't quite right right now.
 export function create(geometry: IGridGeometry, colouring: MapColouring, coord: IGridCoord) {
   const los = new FeatureDictionary<IGridCoord, IVisibility>(coordString);
+
+  // The number of test vertices will be a function of only the geometry
+  const testVertexCount = getTestVertexCount(geometry);
 
   // Add everything within bounds (we know we can't see outside bounds) with
   // visible status and everything outside with invisible status
   // TODO can I optimise this somehow...?
-  var colour = colouring.colourOf(coord);
+  const colour = colouring.colourOf(coord);
   colouring.forEachFace(f => {
-    los.add({ position: f.position, colour: f.colour === colour ? oFull : oNone });
+    los.add(createVisibility(f.position, testVertexCount, f.colour !== colour));
   })
 
   // Get all the relevant walls that we need to check against
@@ -78,11 +101,10 @@ export function create(geometry: IGridGeometry, colouring: MapColouring, coord: 
 
   // Check each coord (that isn't the source) for occlusion by each wall.
   walls.forEach(w => {
-    var innerFrustum = geometry.getShadowFrustum(coord, w.position, z, innerAlpha);
-    var outerFrustum = geometry.getShadowFrustum(coord, w.position, z, outerAlpha);
+    var occ = geometry.createEdgeOcclusion(coord, w.position, z);
     los.forEach(f => {
       if (!coordsEqual(f.position, coord)) {
-        testVisibility(geometry, innerFrustum, outerFrustum, f);
+        testVisibility(geometry, occ, f);
       }
     });
   });
@@ -91,32 +113,19 @@ export function create(geometry: IGridGeometry, colouring: MapColouring, coord: 
 }
 
 // Combines the second LoS into the first one, resulting in a single LoS showing the
-// union of visible faces as visible.
+// union of visible faces as visible.  Edits `a`, but leaves `b` untouched.
 export function combine(
   a: IFeatureDictionary<IGridCoord, IVisibility>,
   b: IFeatureDictionary<IGridCoord, IVisibility>
 ) {
-  b.forEach(v => {
-    if (v.colour === oFull) {
-      // No effect on visibility
-      return;
-    }
-
-    var already = a.remove(v.position);
-    if (already !== undefined) {
-      switch (already.colour) {
-        case oFull:
-          already.colour = v.colour;
-          break;
-
-        case oPartial:
-          already.colour = v.colour === oNone ? oNone : oPartial;
-          break;
-      }
-
-      a.add(already);
+  b.forEach(inB => {
+    // The remove and re-add is to make sure that `a` updates with any change in colour.
+    // TODO I'm sure it should be possible to optimise this ...?
+    var inA = a.remove(inB.position);
+    if (inA !== undefined) {
+      a.add(combineVisibility(inA, inB));
     } else {
-      a.add(v);
+      a.add(inB);
     }
   });
 }

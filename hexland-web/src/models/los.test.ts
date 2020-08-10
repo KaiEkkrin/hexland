@@ -130,7 +130,7 @@ test('Head on (square, bottom)', () => {
   // The visibility of the other faces around us and the diagonals behind
   // us should be Full
   [
-    { x: 0, y: 1 },
+    { x: 0, y: -1 },
     { x: -1, y: 0 },
     { x: 1, y: 0 },
     { x: -1, y: -1 },

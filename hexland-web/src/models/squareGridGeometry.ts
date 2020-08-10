@@ -1,4 +1,5 @@
 import { IGridCoord, IGridEdge, coordAdd } from '../data/coord';
+import { EdgeOcclusion } from './edgeOcclusion';
 import { lerp } from './extraMath';
 import { BaseGeometry, FaceCentre, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
@@ -58,6 +59,14 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     indices.push(-1);
   }
 
+  createEdgeOcclusion(coord: IGridCoord, edge: IGridEdge, z: number): EdgeOcclusion {
+    const coordCentre = this.createCoordCentre(coord, z);
+    const edgeCentre = this.createCentre(edge.x, edge.y, z);
+    const [edgeA, edgeB] = edge.edge === 0 ? [this.createBottomLeft(edgeCentre), this.createTopLeft(edgeCentre)] :
+      [this.createTopLeft(edgeCentre), this.createTopRight(edgeCentre)];
+    return new EdgeOcclusion(coordCentre, edgeA, edgeB, this._squareSize * 0.01);
+  }
+
   createGridVertices(tile: THREE.Vector2, z: number): THREE.Vector3[] {
     var vertices = [];
     for (var y = 0; y <= this.tileDim; ++y) {
@@ -88,6 +97,17 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     }
 
     return indices;
+  }
+
+  createOcclusionTestVertices(coord: IGridCoord, z: number, alpha: number): THREE.Vector3[] {
+    var vertices = [];
+    var centre = this.createCoordCentre(coord, z);
+    vertices.push(centre);
+    vertices.push(centre.clone().lerp(this.createBottomLeft(centre), alpha));
+    vertices.push(centre.clone().lerp(this.createTopLeft(centre), alpha));
+    vertices.push(centre.clone().lerp(this.createTopRight(centre), alpha));
+    vertices.push(centre.clone().lerp(this.createBottomRight(centre), alpha));
+    return vertices;
   }
 
   createSolidVertices(tile: THREE.Vector2, alpha: number, z: number): THREE.Vector3[] {
@@ -190,14 +210,6 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
       default: // top
         return [{ x: edge.x, y: edge.y - 1 }, { x: edge.x, y: edge.y }];
     }
-  }
-
-  getShadowFrustum(coord: IGridCoord, edge: IGridEdge, z: number, alpha: number): THREE.Frustum {
-    const coordCentre = this.createCoordCentre(coord, z);
-    const edgeCentre = this.createCentre(edge.x, edge.y, z);
-    const [edgeA, edgeB] = edge.edge === 0 ? [this.createBottomLeft(edgeCentre), this.createTopLeft(edgeCentre)] :
-      [this.createTopLeft(edgeCentre), this.createTopRight(edgeCentre)];
-    return this.getShadowFrustumOf(coordCentre, edgeA, edgeB, z, alpha);
   }
 
   toSingle(): IGridGeometry {

@@ -1,4 +1,5 @@
 import { IGridCoord, IGridEdge, coordAdd } from '../data/coord';
+import { EdgeOcclusion } from './edgeOcclusion';
 import { lerp } from './extraMath';
 import { BaseGeometry, FaceCentre, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
@@ -108,6 +109,15 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     return (y + 1) * (this.tileDim + 1) * 2 + x * 2 + v;
   }
 
+  createEdgeOcclusion(coord: IGridCoord, edge: IGridEdge, z: number): EdgeOcclusion {
+    const coordCentre = this.createCoordCentre(coord, z);
+    const edgeCentre = this.createCentre(edge.x, edge.y, z);
+    const [edgeA, edgeB] = edge.edge === 0 ? [this.createLeft(edgeCentre), this.createTopLeft(edgeCentre)] :
+      edge.edge === 1 ? [this.createTopLeft(edgeCentre), this.createTopRight(edgeCentre)] :
+      [this.createTopRight(edgeCentre), this.createRight(edgeCentre)];
+    return new EdgeOcclusion(coordCentre, edgeA, edgeB, this._hexSize * 0.01);
+  }
+
   createGridVertices(tile: THREE.Vector2, z: number): THREE.Vector3[] {
     var vertices = [];
 
@@ -149,6 +159,19 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     }
 
     return indices;
+  }
+
+  createOcclusionTestVertices(coord: IGridCoord, z: number, alpha: number): THREE.Vector3[] {
+    var vertices = [];
+    var centre = this.createCoordCentre(coord, z);
+    vertices.push(centre);
+    vertices.push(centre.clone().lerp(this.createLeft(centre), alpha));
+    vertices.push(centre.clone().lerp(this.createTopLeft(centre), alpha));
+    vertices.push(centre.clone().lerp(this.createTopRight(centre), alpha));
+    vertices.push(centre.clone().lerp(this.createRight(centre), alpha));
+    vertices.push(centre.clone().lerp(this.createBottomRight(centre), alpha));
+    vertices.push(centre.clone().lerp(this.createBottomLeft(centre), alpha));
+    return vertices;
   }
 
   createSolidVertices(tile: THREE.Vector2, alpha: number, z: number): THREE.Vector3[] {
@@ -265,15 +288,6 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
       default: // top right
         return [{ x: edge.x + 1, y: edge.y - 1 }, { x: edge.x, y: edge.y }];
     }
-  }
-
-  getShadowFrustum(coord: IGridCoord, edge: IGridEdge, z: number, alpha: number): THREE.Frustum {
-    const coordCentre = this.createCoordCentre(coord, z);
-    const edgeCentre = this.createCentre(edge.x, edge.y, z);
-    const [edgeA, edgeB] = edge.edge === 0 ? [this.createLeft(edgeCentre), this.createTopLeft(edgeCentre)] :
-      edge.edge === 1 ? [this.createTopLeft(edgeCentre), this.createTopRight(edgeCentre)] :
-      [this.createTopRight(edgeCentre), this.createRight(edgeCentre)];
-    return this.getShadowFrustumOf(coordCentre, edgeA, edgeB, z, alpha);
   }
 
   toSingle(): IGridGeometry {
