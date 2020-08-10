@@ -7,6 +7,8 @@ export class EdgeOcclusion {
   private readonly _sideA: PlanarOcclusion;
   private readonly _sideB: PlanarOcclusion;
 
+  private readonly _seenInlineWithEdge: boolean;
+
   constructor(seenFrom: THREE.Vector3, edgeA: THREE.Vector3, edgeB: THREE.Vector3, epsilon: number) {
     // Find out which way round this thing is
     const chirality = Math.sign(edgeA.clone().sub(seenFrom).cross(edgeB.clone().sub(seenFrom)).z);
@@ -27,6 +29,10 @@ export class EdgeOcclusion {
       .applyAxisAngle(new THREE.Vector3(0, 0, chirality), Math.PI * 1.5).normalize();
     this._sideB = new PlanarOcclusion(edgeBNorm, edgeB, epsilon);
 
+    // If we're seeing this edge in-line, don't apply it at all -- it'll only cause
+    // visual artifacts
+    this._seenInlineWithEdge = edgeNorm.dot(edgeANorm) > 0.999 || edgeNorm.dot(edgeBNorm) > 0.999;
+
     // TODO remove all debug
     // console.log("***");
     // console.log("seenFrom = " + seenFrom.toArray());
@@ -41,6 +47,10 @@ export class EdgeOcclusion {
   }
 
   test(point: THREE.Vector3) {
+    if (this._seenInlineWithEdge) {
+      return false;
+    }
+
     return this._front.test(point) && this._sideA.test(point) && this._sideB.test(point);
   }
 }

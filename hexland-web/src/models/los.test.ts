@@ -26,6 +26,32 @@ test('Head on (hex)', () => {
   });
 });
 
+test('Edge on (hex, left)', () => {
+  var coord = { x: 0, y: 0 };
+  var edge = { x: -1, y: 1, edge: 1 };
+
+  // The visibility of all faces around us should be Full
+  for (var y = -2; y <= 2; ++y) {
+    for (var x = -2; x <= 2; ++x) {
+      var vis = LoS.testVisibilityOf(hexGridGeometry, coord, { x: x, y: y }, edge);
+      expect(vis).toBe(LoS.oFull);
+    }
+  }
+});
+
+test('Edge on (hex, right)', () => {
+  var coord = { x: 0, y: 0 };
+  var edge = { x: 1, y: 0, edge: 1 };
+
+  // The visibility of all faces around us should be Full
+  for (var y = -1; y <= 3; ++y) {
+    for (var x = -1; x <= 3; ++x) {
+      var vis = LoS.testVisibilityOf(hexGridGeometry, coord, { x: x, y: y }, edge);
+      expect(vis).toBe(LoS.oFull);
+    }
+  }
+});
+
 test('Head on (square, left)', () => {
   var coord = { x: 0, y: 0 };
   var edge = { x: 0, y: 0, edge: 0 };

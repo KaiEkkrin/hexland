@@ -165,12 +165,12 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     var vertices = [];
     var centre = this.createCoordCentre(coord, z);
     vertices.push(centre);
-    vertices.push(centre.clone().lerp(this.createLeft(centre), alpha));
-    vertices.push(centre.clone().lerp(this.createTopLeft(centre), alpha));
-    vertices.push(centre.clone().lerp(this.createTopRight(centre), alpha));
-    vertices.push(centre.clone().lerp(this.createRight(centre), alpha));
-    vertices.push(centre.clone().lerp(this.createBottomRight(centre), alpha));
-    vertices.push(centre.clone().lerp(this.createBottomLeft(centre), alpha));
+    vertices.push(centre.clone().lerp(this.createLeft(centre), alpha * 0.5));
+    vertices.push(centre.clone().lerp(this.createTopLeft(centre), alpha * 0.5));
+    vertices.push(centre.clone().lerp(this.createTopRight(centre), alpha * 0.5));
+    vertices.push(centre.clone().lerp(this.createRight(centre), alpha * 0.5));
+    vertices.push(centre.clone().lerp(this.createBottomRight(centre), alpha * 0.5));
+    vertices.push(centre.clone().lerp(this.createBottomLeft(centre), alpha * 0.5));
     return vertices;
   }
 
