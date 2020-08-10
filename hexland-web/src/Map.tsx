@@ -95,11 +95,7 @@ function Map(props: IMapProps) {
 
     console.log("Watching changes to map " + props.mapId);
     var stopWatchingChanges = props.dataService.watchChanges(props.adventureId, props.mapId,
-      chs => {
-        var ok = trackChanges(record, theDrawing.changeTracker, chs.chs, chs.user);
-        if (ok) { theDrawing.buildLoS(); }
-        return ok;
-      },
+      chs => trackChanges(record, theDrawing.changeTracker, chs.chs, chs.user),
       e => console.error("Error watching map changes", e));
     
     return () => {

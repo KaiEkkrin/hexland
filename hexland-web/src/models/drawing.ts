@@ -24,6 +24,7 @@ import * as THREE from 'three';
 const areaZ = 0.5;
 const tokenZ = 0.6;
 const wallZ = 0.6;
+const gridZ = 0.7;
 const losZ = 0.8;
 const selectionZ = 1.0;
 const highlightZ = 1.1;
@@ -137,12 +138,13 @@ export class ThreeDrawing {
 
     this._scene = new THREE.Scene();
     this._renderer = new THREE.WebGLRenderer();
+    this._renderer.setClearColor(new THREE.Color(0.1, 0.1, 0.1)); // a dark grey background will show up LoS
     this._renderer.setSize(this._renderWidth, this._renderHeight, false); // TODO measure actual div size instead?
     mount.appendChild(this._renderer.domElement);
     this._mount = mount;
 
     this._gridGeometry = map.ty === MapType.Hex ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
-    this._grid = new Grid(this._gridGeometry, this._gridNeedsRedraw, edgeAlpha);
+    this._grid = new Grid(this._gridGeometry, this._gridNeedsRedraw, gridZ, edgeAlpha);
     this._grid.addGridToScene(this._scene, 0, 0, 1);
 
     // Texture of face co-ordinates within the tile.
@@ -200,6 +202,7 @@ export class ThreeDrawing {
     // The LoS
     this._los = new LoS.LoS(this._gridGeometry, this._needsRedraw, losAlpha, losZ, 5000); // TODO could run out really fast!
     this._los.setMaterials(this._losMaterials);
+    this._los.addToScene(this._scene);
 
     // The selection
     this._selection = new Areas(this._gridGeometry, this._needsRedraw, selectionAlpha, selectionZ, 100);
@@ -228,7 +231,12 @@ export class ThreeDrawing {
     this._faceHighlighter = new FaceHighlighter(this._areas, this._highlightedAreas);
 
     // The map colouring
+    // TODO Expand its bounds dynamically as the grid expands
     this._mapColouring = new MapColouring(this._gridGeometry);
+    this._mapColouring.expandBounds(
+      new THREE.Vector2(-tileDim, -tileDim),
+      new THREE.Vector2(2 * tileDim - 1, 2 * tileDim - 1)
+    );
 
     // The map colour visualisation (added on request instead of the areas)
     this._mapColourVisualisation = new MapColourVisualisation(this._gridGeometry, this._needsRedraw, areaAlpha, areaZ);
@@ -240,6 +248,7 @@ export class ThreeDrawing {
       this._walls,
       this._mapColouring,
       () => {
+        this.buildLoS(); // TODO avoid this when only walls have changed
         if (this._showMapColourVisualisation === true) {
           this._mapColourVisualisation.clear(); // TODO try to do it incrementally? (requires checking for colour count changes...)
           this._mapColourVisualisation.visualise(this._scene, this._mapColouring);
@@ -285,25 +294,21 @@ export class ThreeDrawing {
 
   private getLoSPositions() {
     // These are the positions we should be projecting line-of-sight from.
-    var anySelected = this._selection.any();
-    if (this.seeEverything && !anySelected) {
-      // No LoS
-      return undefined;
+    var myTokens = this._tokens.all.filter(t =>
+      t.players.find(p => this._uid === p) !== undefined || this.seeEverything);
+    var selectedTokens = myTokens.filter(t => this._selection.get(t.position) !== undefined);
+    if (selectedTokens.length === 0) {
+      if (this.seeEverything) {
+        // Render no LoS at all
+        return undefined;
+      } else {
+        // Show the LoS of all my tokens
+        return myTokens.map(t => t.position);
+      }
+    } else {
+      // Show the LoS of only the selected tokens
+      return selectedTokens.map(t => t.position);
     }
-
-    // Enumerate all the tokens that we control.  If we have a selection,
-    // they must be in the selection too.
-    return this._tokens.all.filter(t => {
-      if (t.players.find(p => this._uid === p) === undefined && !this.seeEverything) {
-        return false;
-      }
-
-      if (!anySelected) {
-        return true;
-      }
-
-      return this._selection.get(t.position) !== undefined;
-    }).map(t => t.position);
   }
 
   buildLoS() {
@@ -311,15 +316,10 @@ export class ThreeDrawing {
     // Rebuilding on every change makes it much simpler...
     var positions = this.getLoSPositions();
     console.log("LoS positions: " + positions?.length ?? -1);
-    if (positions === undefined || positions.length === 0) { // TODO deal with hiding everything for a non-owner with no tokens
-      this._los.removeFromScene();
-    } else {
-      this._los.addToScene(this._scene);
-
-      // Fill the LoS with 'Full' for each face in the current grid
+    this._los.clear();
+    if (positions !== undefined && positions.length > 0) {
       // TODO deal with dynamic grid sizing and all that fun here, create a suitable
       // abstraction!
-      this._los.clear();
       positions.forEach(p => {
         var losHere = LoS.create(this._gridGeometry, this._mapColouring, p);
         LoS.combine(this._los, losHere);

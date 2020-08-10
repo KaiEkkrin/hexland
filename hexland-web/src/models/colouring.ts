@@ -185,6 +185,17 @@ export class MapColouring {
     }
   }
 
+  expandBounds(lowerBounds: THREE.Vector2, upperBounds: THREE.Vector2) {
+    var newLowerBounds = lowerBounds.clone().min(this._faces.lowerBounds);
+    var newUpperBounds = upperBounds.clone().max(this._faces.upperBounds);
+    if (!newLowerBounds.equals(this._faces.lowerBounds) || !newUpperBounds.equals(this._faces.upperBounds)) {
+      // It should be sufficient to fill to the new bounds with the current
+      // bounds colour:
+      var start = { x: this._faces.lowerBounds.x, y: this._faces.lowerBounds.y };
+      this.fill(start, newLowerBounds, newUpperBounds);
+    }
+  }
+
   // TODO This is going to recalculate upon every wall change, where usually
   // they come in batches.  Is that too inefficient?  Should I support batching
   // in the interface -- set all the new walls, and then do a single recalculate

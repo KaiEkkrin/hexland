@@ -4,9 +4,8 @@ import { RedrawFlag } from './redrawFlag';
 
 import * as THREE from 'three';
 
-const gridZ = 0.7;
-
 export class Grid extends Drawn {
+  private readonly _z: number;
   private readonly _alpha: number;
   private readonly _lineIndices: number[];
   private readonly _lineMaterial: THREE.LineBasicMaterial;
@@ -15,8 +14,9 @@ export class Grid extends Drawn {
 
   private _geometries: THREE.BufferGeometry[] = []; // for disposal only
 
-  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, alpha: number) {
+  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, z: number, alpha: number) {
     super(geometry, redrawFlag);
+    this._z = z;
     this._alpha = alpha;
     this._lineIndices = geometry.createGridLineIndices();
     this._lineMaterial = new THREE.LineBasicMaterial({ color: 0xb0b0b0 });
@@ -31,7 +31,7 @@ export class Grid extends Drawn {
     // TODO Keep these tiles?  Juggle them about?  Etc.
     for (var y = originY - radius; y < originY + radius; ++y) {
       for (var x = originX - radius; x < originX + radius; ++x) {
-        var vertices = this.geometry.createGridVertices(new THREE.Vector2(x, y), gridZ);
+        var vertices = this.geometry.createGridVertices(new THREE.Vector2(x, y), this._z);
         var bufferGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
         bufferGeometry.setIndex(this._lineIndices);
         var lines = new THREE.Line(bufferGeometry, this._lineMaterial);
@@ -45,7 +45,7 @@ export class Grid extends Drawn {
     for (var y = originY - radius; y < originY + radius; ++y) {
       for (var x = originX - radius; x < originX + radius; ++x) {
         var tile = new THREE.Vector2(x, y);
-        var vertices = this.geometry.createSolidVertices(tile, 1.0, gridZ);
+        var vertices = this.geometry.createSolidVertices(tile, 1.0, this._z);
         var bufferGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
         bufferGeometry.setIndex(this._solidIndices);
 
@@ -64,7 +64,7 @@ export class Grid extends Drawn {
     for (var y = originY - radius; y < originY + radius; ++y) {
       for (var x = originX - radius; x < originX + radius; ++x) {
         var tile = new THREE.Vector2(x, y);
-        var vertices = this.geometry.createSolidEdgeVertices(tile, this._alpha, gridZ);
+        var vertices = this.geometry.createSolidEdgeVertices(tile, this._alpha, this._z);
         var bufferGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
 
         var colours = this.geometry.createSolidEdgeColours(tile);
