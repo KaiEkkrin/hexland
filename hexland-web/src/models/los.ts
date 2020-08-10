@@ -22,6 +22,7 @@ const alpha = 0.9; // how close to the edge of the face our exterior visibility 
 export interface IVisibility extends IFeature<IGridCoord> {
   count: number; // the number of visibility checking points
   hidden: number; // a bitfield of how many of those points are hidden
+  mapColour: number; // the map colour here
 }
 
 // Gets the hidden value corresponding to no visibility at all.
@@ -35,12 +36,13 @@ function getVisibilityColour(count: number, hidden: number) {
     oPartial;
 }
 
-function createVisibility(position: IGridCoord, count: number, isHidden?: boolean | undefined): IVisibility {
+function createVisibility(position: IGridCoord, count: number, isHidden: boolean, mapColour: number): IVisibility {
   return {
     position: position,
     count: count,
     hidden: isHidden === true ? getNoVisibilityValue(count) : 0,
-    colour: isHidden === true ? oNone : oFull
+    colour: isHidden === true ? oNone : oFull,
+    mapColour: mapColour
   };
 }
 
@@ -51,18 +53,14 @@ function combineVisibility(a: IVisibility, b: IVisibility): IVisibility {
     position: a.position,
     count: a.count,
     hidden: hidden,
-    colour: getVisibilityColour(a.count, hidden)
+    colour: getVisibilityColour(a.count, hidden),
+    mapColour: a.mapColour
   };
 }
 
-function getTestVertexCount(geometry: IGridGeometry) {
-  return geometry.createOcclusionTestVertices({ x: 0, y: 0 }, z, alpha).length;
-}
-
-function testVisibility(geometry: IGridGeometry, occ: EdgeOcclusion, vis: IVisibility) {
+function testVisibility(occ: EdgeOcclusion, testVertices: THREE.Vector3[], vis: IVisibility) {
   // Tests this visibility position for occlusion against the edge and viewer described by `occ`
   // and mutates it as required.
-  var testVertices = geometry.createOcclusionTestVertices(vis.position, z, alpha);
   for (var i = 0; i < testVertices.length; ++i) {
     if (occ.test(testVertices[i])) {
       vis.hidden |= (1 << i);
@@ -74,9 +72,10 @@ function testVisibility(geometry: IGridGeometry, occ: EdgeOcclusion, vis: IVisib
 
 // For unit testing.
 export function testVisibilityOf(geometry: IGridGeometry, coord: IGridCoord, target: IGridCoord, wall: IGridEdge) {
-  var vis = createVisibility(target, getTestVertexCount(geometry));
   var occ = geometry.createEdgeOcclusion(coord, wall, z);
-  testVisibility(geometry, occ, vis);
+  var testVertices = geometry.createOcclusionTestVertices(target, z, alpha);
+  var vis = createVisibility(target, testVertices.length, false, 0);
+  testVisibility(occ, testVertices, vis);
   return vis.colour;
 }
 
@@ -85,15 +84,19 @@ export function testVisibilityOf(geometry: IGridGeometry, coord: IGridCoord, tar
 export function create(geometry: IGridGeometry, colouring: MapColouring, coord: IGridCoord) {
   const los = new FeatureDictionary<IGridCoord, IVisibility>(coordString);
 
-  // The number of test vertices will be a function of only the geometry
-  const testVertexCount = getTestVertexCount(geometry);
+  // The number of test vertices will be a function of only the geometry.
+  // We create them right away and re-use them for each test, because creating
+  // them all for each test is very expensive (too many allocations)
+  var testVertices = geometry.createOcclusionTestVertices({ x: 0, y: 0 }, z, alpha);
+  var testVertexOrigin = testVertices[0].clone(); // cheating only slightly
+  const testVertexCount = testVertices.length;
 
   // Add everything within bounds (we know we can't see outside bounds) with
   // visible status and everything outside with invisible status
   // TODO can I optimise this somehow...?
   const colour = colouring.colourOf(coord);
   colouring.forEachFace(f => {
-    los.add(createVisibility(f.position, testVertexCount, f.colour !== colour));
+    los.add(createVisibility(f.position, testVertexCount, f.colour !== colour, f.colour));
   })
 
   // Get all the relevant walls that we need to check against
@@ -103,9 +106,22 @@ export function create(geometry: IGridGeometry, colouring: MapColouring, coord: 
   walls.forEach(w => {
     var occ = geometry.createEdgeOcclusion(coord, w.position, z);
     los.forEach(f => {
-      if (!coordsEqual(f.position, coord)) {
-        testVisibility(geometry, occ, f);
+      if (f.mapColour !== colour) {
+        // This is definitely not visible from here
+        return;
       }
+
+      if (coordsEqual(f.position, coord)) {
+        // We definitely *can* see ourselves and don't need to check
+        return;
+      }
+
+      // We transform the occlusion test vertices to this position, and then back
+      // again afterwards
+      var testVertexOffset = geometry.createCoordCentre(f.position, z).sub(testVertexOrigin);
+      testVertices.forEach(v => v.add(testVertexOffset));
+      testVisibility(occ, geometry.createOcclusionTestVertices(f.position, z, alpha), f);
+      testVertices.forEach(v => v.sub(testVertexOffset));
     });
   });
 
