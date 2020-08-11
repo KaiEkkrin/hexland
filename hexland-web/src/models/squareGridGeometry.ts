@@ -1,4 +1,4 @@
-import { IGridCoord, IGridEdge, coordAdd } from '../data/coord';
+import { IGridCoord, IGridEdge, coordAdd, IGridVertex } from '../data/coord';
 import { EdgeOcclusion } from './edgeOcclusion';
 import { BaseGeometry, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
@@ -8,7 +8,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   private readonly _off: number;
 
   constructor(squareSize: number, tileDim: number) {
-    super(tileDim, 2);
+    super(tileDim, 2, 1);
     this._squareSize = squareSize;
     this._off = squareSize * 0.5;
   }
@@ -59,6 +59,17 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     var [tip1, tip2] = [new THREE.Vector3(), new THREE.Vector3()];
     this.createEdgeVertices(tip1, tip2, centre, coord.edge);
     return new EdgeGeometry(tip1, tip2, centre, otherCentre, alpha);
+  }
+
+  createVertexCentre(target: THREE.Vector3, vertex: IGridVertex, z: number) {
+    // In the square grid, each face owns only one vertex (the top left) and we can
+    // actually ignore the vertex number.
+    this.createCoordCentre(target, vertex, z);
+    return this.createTopLeft(target, target);
+  }
+
+  protected getVertexRadius(alpha: number) {
+    return this._squareSize * alpha;
   }
 
   private *getSquareIndices(baseIndex: number) {
@@ -218,6 +229,25 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     }
   }
 
+  getEdgeVertexAdjacency(edge: IGridEdge): IGridVertex[] {
+    switch (edge.edge) {
+      case 0:
+        return [{ x: edge.x, y: edge.y + 1, vertex: 0 }, { x: edge.x, y: edge.y, vertex: 0 }];
+
+      default: // 1
+        return [{ x: edge.x, y: edge.y, vertex: 0 }, { x: edge.x + 1, y: edge.y, vertex: 0 }];
+    }
+  }
+
+  getVertexEdgeAdjacency(vertex: IGridVertex): IGridEdge[] {
+    return [
+      { x: vertex.x, y: vertex.y, edge: 0 },
+      { x: vertex.x, y: vertex.y, edge: 1 },
+      { x: vertex.x, y: vertex.y - 1, edge: 0 },
+      { x: vertex.x - 1, y: vertex.y, edge: 1 }
+    ];
+  }
+
   toSingle(): IGridGeometry {
     return new SquareGridGeometry(this._squareSize, 1);
   }
@@ -229,5 +259,11 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     if (coord.edge === 1) {
       o.rotateZ(Math.PI * 0.5);
     }
+  }
+
+  transformToVertex(o: THREE.Object3D, coord: IGridVertex): void {
+    var centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
+    o.translateX(centre.x);
+    o.translateY(centre.y);
   }
 }

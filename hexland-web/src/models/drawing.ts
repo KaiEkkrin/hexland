@@ -1,11 +1,11 @@
 import { IChange, ITokenRemove, ChangeType, ChangeCategory, ITokenAdd, ITokenMove } from '../data/change';
 import { trackChanges } from '../data/changeTracking';
-import { IGridCoord, IGridEdge, coordAdd, coordsEqual, coordSub } from '../data/coord';
+import { IGridCoord, IGridEdge, coordAdd, coordsEqual, coordSub, IGridVertex } from '../data/coord';
 import { IToken } from '../data/feature';
 import { IMap, MapType } from '../data/map';
 import { Areas } from './areas';
 import { MapColouring } from './colouring';
-import { EdgeHighlighter, FaceHighlighter } from './dragHighlighter';
+import { FaceHighlighter } from './dragHighlighter';
 import { FeatureColour } from './featureColour';
 import { Grid } from './grid';
 import { IGridGeometry} from './gridGeometry';
@@ -17,6 +17,8 @@ import { RedrawFlag } from './redrawFlag';
 import { SquareGridGeometry } from './squareGridGeometry';
 import { TextCreator } from './textCreator';
 import { Tokens } from './tokens';
+import { Vertices } from './vertices';
+import { WallHighlighter } from './wallHighlighter';
 import { Walls } from './walls';
 
 import * as THREE from 'three';
@@ -28,15 +30,18 @@ const gridZ = 0.7;
 const losZ = 0.8;
 const selectionZ = 1.0;
 const highlightZ = 1.1;
+const vertexHighlightZ = 1.2;
 const textZ = 1.5; // for some reason the text doesn't alpha blend correctly; putting it
                    // on top seems to look fine
 
 const wallAlpha = 0.15;
 const edgeAlpha = 0.5;
+const vertexAlpha = 0.5;
 const tokenAlpha = 0.7;
 const selectionAlpha = 0.9;
 const losAlpha = 1.0;
 const areaAlpha = 1.0;
+const vertexHighlightAlpha = 0.35;
 
 const spacing = 75.0;
 const tileDim = 12;
@@ -58,15 +63,21 @@ export class ThreeDrawing {
   private readonly _camera: THREE.OrthographicCamera;
   private readonly _faceCoordRenderTarget: THREE.WebGLRenderTarget;
   private readonly _edgeCoordRenderTarget: THREE.WebGLRenderTarget;
+  private readonly _vertexCoordRenderTarget: THREE.WebGLRenderTarget;
   private readonly _renderer: THREE.WebGLRenderer;
+  private readonly _canvasClearColour: THREE.Color;
+  private readonly _textureClearColour: THREE.Color;
 
   private readonly _scene: THREE.Scene;
   private readonly _faceCoordScene: THREE.Scene;
-  private readonly _edgeCoordScene: THREE.Scene;
+  private readonly _edgeCoordScene: THREE.Scene; // TODO after the vertex scene do I still need this?
+  private readonly _vertexCoordScene: THREE.Scene;
+  private readonly _texelReadBuf = new Uint8Array(4);
 
   private readonly _grid: Grid;
   private readonly _areas: Areas;
   private readonly _highlightedAreas: Areas;
+  private readonly _highlightedVertices: Vertices;
   private readonly _highlightedWalls: Walls;
   private readonly _los: LoS.LoS;
   private readonly _selection: Areas;
@@ -102,8 +113,8 @@ export class ThreeDrawing {
   private _isRotating: boolean = false;
   private _panLast: THREE.Vector2 | undefined;
 
-  private _edgeHighlighter: EdgeHighlighter;
   private _faceHighlighter: FaceHighlighter;
+  private _wallHighlighter: WallHighlighter;
 
   private _selectDragStart: IGridCoord | undefined;
   private _tokenMoveDragStart: IGridCoord | undefined;
@@ -138,14 +149,18 @@ export class ThreeDrawing {
 
     this._scene = new THREE.Scene();
     this._renderer = new THREE.WebGLRenderer();
-    this._renderer.setClearColor(new THREE.Color(0.1, 0.1, 0.1)); // a dark grey background will show up LoS
+    this._canvasClearColour = new THREE.Color(0.1, 0.1, 0.1);
+    this._textureClearColour = new THREE.Color(0, 0, 0); // we'll flip to this when required
+    this._renderer.setClearColor(this._canvasClearColour); // a dark grey background will show up LoS
     this._renderer.setSize(this._renderWidth, this._renderHeight, false); // TODO measure actual div size instead?
     mount.appendChild(this._renderer.domElement);
     this._mount = mount;
 
     this._gridGeometry = map.ty === MapType.Hex ? new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
-    this._grid = new Grid(this._gridGeometry, this._gridNeedsRedraw, gridZ, edgeAlpha);
+    this._grid = new Grid(this._gridGeometry, this._gridNeedsRedraw, gridZ, edgeAlpha, vertexAlpha);
     this._grid.addGridToScene(this._scene, 0, 0, 1);
+
+    // this._grid.addVertexTestColoursToScene(this._scene, 0, 0, 1);
 
     // Texture of face co-ordinates within the tile.
     this._faceCoordScene = new THREE.Scene();
@@ -156,6 +171,11 @@ export class ThreeDrawing {
     this._edgeCoordScene = new THREE.Scene();
     this._edgeCoordRenderTarget = new THREE.WebGLRenderTarget(this._renderWidth, this._renderHeight);
     this._grid.addEdgeColoursToScene(this._edgeCoordScene, 0, 0, 1);
+
+    // Texture of vertex co-ordinates within the tile.
+    this._vertexCoordScene = new THREE.Scene();
+    this._vertexCoordRenderTarget = new THREE.WebGLRenderTarget(this._renderWidth, this._renderHeight);
+    this._grid.addVertexColoursToScene(this._vertexCoordScene, 0, 0, 1);
 
     this._darkColourMaterials = colours.map(c => new THREE.MeshBasicMaterial({ color: c.dark.getHex() }));
     this._lightColourMaterials = colours.map(c => new THREE.MeshBasicMaterial({ color: c.light.getHex() }));
@@ -194,6 +214,11 @@ export class ThreeDrawing {
     this._highlightedAreas.setMaterials(this._selectionMaterials);
     this._highlightedAreas.addToScene(this._scene);
 
+    // The highlighted vertices
+    this._highlightedVertices = new Vertices(this._gridGeometry, this._needsRedraw, vertexHighlightAlpha, vertexHighlightZ, 100);
+    this._highlightedVertices.setMaterials(this._selectionMaterials);
+    this._highlightedVertices.addToScene(this._scene);
+
     // The highlighted walls
     this._highlightedWalls = new Walls(this._gridGeometry, this._needsRedraw, edgeAlpha, highlightZ, 100);
     this._highlightedWalls.setMaterials(this._selectionMaterials);
@@ -227,7 +252,7 @@ export class ThreeDrawing {
     this._walls.addToScene(this._scene);
 
     // The highlighters
-    this._edgeHighlighter = new EdgeHighlighter(this._walls, this._highlightedWalls);
+    this._wallHighlighter = new WallHighlighter(this._gridGeometry, this._walls, this._highlightedWalls, this._highlightedVertices);
     this._faceHighlighter = new FaceHighlighter(this._areas, this._highlightedAreas);
 
     // The map colouring
@@ -283,12 +308,17 @@ export class ThreeDrawing {
 
     if (gridNeedsRedraw) {
       this._renderer.setRenderTarget(this._faceCoordRenderTarget);
+      this._renderer.setClearColor(this._textureClearColour);
       this._renderer.render(this._faceCoordScene, this._camera);
 
       this._renderer.setRenderTarget(this._edgeCoordRenderTarget);
       this._renderer.render(this._edgeCoordScene, this._camera);
 
+      this._renderer.setRenderTarget(this._vertexCoordRenderTarget);
+      this._renderer.render(this._vertexCoordScene, this._camera);
+
       this._renderer.setRenderTarget(null);
+      this._renderer.setClearColor(this._canvasClearColour);
     }
   }
 
@@ -334,6 +364,7 @@ export class ThreeDrawing {
     this._renderer.setSize(width, height, false);
     this._edgeCoordRenderTarget.setSize(width, height);
     this._faceCoordRenderTarget.setSize(width, height);
+    this._vertexCoordRenderTarget.setSize(width, height);
 
     this._camera.left = this._panX + width / -this._zoom;
     this._camera.right = this._panX + width / this._zoom;
@@ -402,15 +433,18 @@ export class ThreeDrawing {
   }
 
   getGridCoordAt(cp: THREE.Vector2): IGridCoord | undefined {
-    var buf = new Uint8Array(4);
-    this._renderer.readRenderTargetPixels(this._faceCoordRenderTarget, cp.x, cp.y, 1, 1, buf);
-    return this._gridGeometry?.decodeCoordSample(buf, 0);
+    this._renderer.readRenderTargetPixels(this._faceCoordRenderTarget, cp.x, cp.y, 1, 1, this._texelReadBuf);
+    return this._gridGeometry?.decodeCoordSample(this._texelReadBuf, 0);
   }
 
   getGridEdgeAt(cp: THREE.Vector2): IGridEdge | undefined {
-    var buf = new Uint8Array(4);
-    this._renderer.readRenderTargetPixels(this._edgeCoordRenderTarget, cp.x, cp.y, 1, 1, buf);
-    return this._gridGeometry?.decodeEdgeSample(buf, 0);
+    this._renderer.readRenderTargetPixels(this._edgeCoordRenderTarget, cp.x, cp.y, 1, 1, this._texelReadBuf);
+    return this._gridGeometry?.decodeEdgeSample(this._texelReadBuf, 0);
+  }
+
+  getGridVertexAt(cp: THREE.Vector2): IGridVertex | undefined {
+    this._renderer.readRenderTargetPixels(this._vertexCoordRenderTarget, cp.x, cp.y, 1, 1, this._texelReadBuf);
+    return this._gridGeometry?.decodeVertexSample(this._texelReadBuf, 0);
   }
 
   getToken(cp: THREE.Vector2): IToken | undefined {
@@ -449,14 +483,6 @@ export class ThreeDrawing {
     this._selection.clear();
   }
 
-  edgeDragStart(cp: THREE.Vector2) {
-    this._edgeHighlighter.dragStart(this.getGridEdgeAt(cp));
-  }
-
-  edgeDragEnd(cp: THREE.Vector2, colour: number): IChange[] {
-    return this._edgeHighlighter.dragEnd(this.getGridEdgeAt(cp), colour);
-  }
-
   faceDragStart(cp: THREE.Vector2) {
     this._faceHighlighter.dragStart(this.getGridCoordAt(cp));
   }
@@ -465,12 +491,20 @@ export class ThreeDrawing {
     return this._faceHighlighter.dragEnd(this.getGridCoordAt(cp), colour);
   }
 
-  moveEdgeHighlightTo(cp: THREE.Vector2) {
-    this._edgeHighlighter.moveHighlight(this.getGridEdgeAt(cp));
+  wallDragStart(cp: THREE.Vector2) {
+    this._wallHighlighter.dragStart(this.getGridVertexAt(cp));
+  }
+
+  wallDragEnd(cp: THREE.Vector2, colour: number): IChange[] {
+    return this._wallHighlighter.dragEnd(this.getGridVertexAt(cp), colour);
   }
 
   moveFaceHighlightTo(cp: THREE.Vector2) {
     this._faceHighlighter.moveHighlight(this.getGridCoordAt(cp));
+  }
+
+  moveWallHighlightTo(cp: THREE.Vector2) {
+    this._wallHighlighter.moveHighlight(this.getGridVertexAt(cp));
   }
 
   moveSelectionTo(cp: THREE.Vector2) {
@@ -626,6 +660,7 @@ export class ThreeDrawing {
     this._scene.dispose();
     this._faceCoordScene.dispose();
     this._edgeCoordScene.dispose();
+    this._vertexCoordScene.dispose();
 
     this._grid.dispose();
     this._areas.dispose();

@@ -57,6 +57,23 @@ export function createGridEdge(tile: THREE.Vector2, face: THREE.Vector2, tileDim
   return { x: tile.x * tileDim + face.x, y: tile.y * tileDim + face.y, edge: edge };
 }
 
+// This is the co-ordinate of a vertex, which works a bit like an edge.
+export interface IGridVertex extends IGridCoord {
+  vertex: number;
+}
+
+export function verticesEqual(a: IGridVertex, b: IGridVertex | undefined): boolean {
+  return (b === undefined) ? false : (coordsEqual(a, b) && a.vertex === b.vertex);
+}
+
+export function vertexString(vertex: IGridVertex) {
+  return coordString(vertex) + " v=" + vertex.vertex;
+}
+
+export function createGridVertex(tile: THREE.Vector2, face: THREE.Vector2, tileDim: number, vertex: number): IGridVertex {
+  return { x: tile.x * tileDim + face.x, y: tile.y * tileDim + face.y, vertex: vertex };
+}
+
 // A dictionary of objects keyed by a string index.
 // TODO If I further specialised this to require T be an IFeature<K> could I avoid
 // needing the underlying `_coords` object?  Would that be viable?  It might save

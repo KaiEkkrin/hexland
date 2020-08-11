@@ -207,7 +207,7 @@ function Map(props: IMapProps) {
     switch (editMode) {
       case EditMode.Select: drawing?.selectionDragStart(cp); break;
       case EditMode.Area: drawing?.faceDragStart(cp); break;
-      case EditMode.Wall: drawing?.edgeDragStart(cp); break;
+      case EditMode.Wall: drawing?.wallDragStart(cp); break;
       case EditMode.Pan: drawing?.panStart(cp); break;
       case EditMode.Zoom: drawing?.zoomRotateStart(cp, e.shiftKey); break;
     }
@@ -222,7 +222,7 @@ function Map(props: IMapProps) {
     switch (editMode) {
       case EditMode.Select: drawing?.moveSelectionTo(cp); break;
       case EditMode.Area: drawing?.moveFaceHighlightTo(cp); break;
-      case EditMode.Wall: drawing?.moveEdgeHighlightTo(cp); break;
+      case EditMode.Wall: drawing?.moveWallHighlightTo(cp); break;
       case EditMode.Pan: drawing?.panTo(cp); break;
       case EditMode.Zoom: drawing?.zoomRotateTo(cp); break;
     }
@@ -255,7 +255,7 @@ function Map(props: IMapProps) {
         break;
 
       case EditMode.Wall:
-        addChanges(drawing?.edgeDragEnd(cp, selectedColour));
+        addChanges(drawing?.wallDragEnd(cp, selectedColour));
         break;
 
       case EditMode.Pan: drawing?.panEnd(); break;

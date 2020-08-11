@@ -1,4 +1,4 @@
-import { IGridCoord, IGridEdge, coordAdd } from '../data/coord';
+import { IGridCoord, IGridEdge, IGridVertex, coordAdd } from '../data/coord';
 import { EdgeOcclusion } from './edgeOcclusion';
 import { BaseGeometry, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
@@ -14,7 +14,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
   private readonly _yOffTop: number;
 
   constructor(hexSize: number, tileDim: number) {
-    super(tileDim, 3);
+    super(tileDim, 3, 2);
     this._hexSize = hexSize;
 
     this._xStep = this._hexSize * Math.sin(Math.PI / 3.0);
@@ -52,7 +52,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     return target.set(c.x + this._xOffTop, c.y + this._yOffTop, c.z);
   }
 
-  protected createEdgeVertices(target1: THREE.Vector3, target2: THREE.Vector3, centre: THREE.Vector3, edge: number) {
+  createEdgeVertices(target1: THREE.Vector3, target2: THREE.Vector3, centre: THREE.Vector3, edge: number) {
     switch (edge) {
       case 0:
         this.createLeft(target1, centre);
@@ -84,6 +84,16 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     var [tip1, tip2] = [new THREE.Vector3(), new THREE.Vector3()];
     this.createEdgeVertices(tip1, tip2, centre, coord.edge);
     return new EdgeGeometry(tip1, tip2, centre, otherCentre, alpha);
+  }
+
+  createVertexCentre(target: THREE.Vector3, vertex: IGridVertex, z: number): THREE.Vector3 {
+    // Vertex 0 is the left, vertex 1 the top left
+    this.createCoordCentre(target, vertex, z);
+    return vertex.vertex === 0 ? this.createLeft(target, target) : this.createTopLeft(target, target);
+  }
+
+  protected getVertexRadius(alpha: number) {
+    return this._xOffLeft * alpha;
   }
 
   private *getHexIndices(offset: number) {
@@ -292,6 +302,37 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     }
   }
 
+  getEdgeVertexAdjacency(edge: IGridEdge): IGridVertex[] {
+    switch (edge.edge) {
+      case 0:
+        return [{ x: edge.x, y: edge.y, vertex: 0 }, { x: edge.x, y: edge.y, vertex: 1 }];
+
+      case 1:
+        return [{ x: edge.x, y: edge.y, vertex: 1 }, { x: edge.x + 1, y: edge.y - 1, vertex: 0 }];
+
+      default: // 2
+        return [{ x: edge.x + 1, y: edge.y - 1, vertex: 0 }, { x: edge.x + 1, y: edge.y, vertex: 1 }];
+    }
+  }
+
+  getVertexEdgeAdjacency(vertex: IGridVertex): IGridEdge[] {
+    switch (vertex.vertex) {
+      case 0:
+        return [
+          { x: vertex.x, y: vertex.y, edge: 0 },
+          { x: vertex.x - 1, y: vertex.y + 1, edge: 2 },
+          { x: vertex.x - 1, y: vertex.y + 1, edge: 1 }
+        ];
+
+      default: // 1
+        return [
+          { x: vertex.x, y: vertex.y, edge: 0 },
+          { x: vertex.x, y: vertex.y, edge: 1 },
+          { x: vertex.x - 1, y: vertex.y, edge: 2 }
+        ];
+    }
+  }
+
   toSingle(): IGridGeometry {
     return new HexGridGeometry(this._hexSize, 1);
   }
@@ -304,6 +345,15 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
       o.rotateZ(Math.PI / 3.0);
     } else if (coord.edge === 2) {
       o.rotateZ(Math.PI * 2.0 / 3.0);
+    }
+  }
+
+  transformToVertex(o: THREE.Object3D, coord: IGridVertex): void {
+    var centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
+    o.translateX(centre.x);
+    o.translateY(centre.y);
+    if (coord.vertex === 1) {
+      o.rotateZ(Math.PI / 3.0);
     }
   }
 }

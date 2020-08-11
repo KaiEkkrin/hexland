@@ -1,12 +1,18 @@
-import { IGridCoord, IGridEdge, createGridCoord, createGridEdge, coordMultiplyScalar } from '../data/coord';
+import { IGridCoord, IGridEdge, createGridCoord, createGridEdge, coordMultiplyScalar, createGridVertex, IGridVertex } from '../data/coord';
 import { EdgeOcclusion } from './edgeOcclusion';
 import * as THREE from 'three';
 
 // A grid geometry describes a grid's layout (currently either squares
 // or hexagons.)
 export interface IGridGeometry {
-  // Creates the co-orinates of the centre of this face.
+  // Creates the co-ordinates of the centre of this face.
   createCoordCentre(target: THREE.Vector3, coord: IGridCoord, z: number): THREE.Vector3;
+
+  // Creates the co-ordinates of the centre of this edge.  Invalidates the scratch vectors.
+  createEdgeCentre(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, edge: IGridEdge, z: number): THREE.Vector3;
+
+  // Creates the co-ordinates of the centre of this vertex.
+  createVertexCentre(target: THREE.Vector3, vertex: IGridVertex, z: number): THREE.Vector3;
 
   // Creates the edge occlusion tester for the edge when seen from the coord.
   createEdgeOcclusion(coord: IGridCoord, edge: IGridEdge, z: number): EdgeOcclusion;
@@ -43,6 +49,20 @@ export interface IGridGeometry {
   // Creates the colours for an edge texture using the solid edge vertices.
   createSolidEdgeColours(tile: THREE.Vector2): Float32Array;
 
+  // Creates the vertices involved in drawing grid vertices in solid.
+  // The alpha number specifies how thick the edge is drawn.
+  createSolidVertexVertices(tile: THREE.Vector2, alpha: number, z: number, maxVertex?: number | undefined): THREE.Vector3[];
+
+  // Creates a buffer of indices into the output of `createSolidVertexVertices`
+  // suitable for drawing the vertex blobs onto the grid.
+  createSolidVertexIndices(maxVertex?: number | undefined): Iterable<number>;
+
+  // Creates the colours for a vertex texture using the solid vertex vertices.
+  createSolidVertexColours(tile: THREE.Vector2): Float32Array;
+
+  // Creates some colours for testing the solid vertex vertices, above.
+  createSolidVertexTestColours(): Float32Array;
+
   // Creates the vertices for the wall instanced mesh.  This will have only
   // edge 0 (we use the instance matrix to generate the others.)
   // TODO Prettier walls would have intersection pieces :)
@@ -56,6 +76,10 @@ export interface IGridGeometry {
   // starting from the offset) into a grid coord.
   decodeEdgeSample(sample: Uint8Array, offset: number): IGridEdge | undefined;
 
+  // Decodes the given sample from a vertex texture (these must be 4 values
+  // starting from the offset) into a grid coord.
+  decodeVertexSample(sample: Uint8Array, offset: number): IGridVertex | undefined;
+
   // A measure of the face size in this geometry.
   faceSize(): number;
 
@@ -64,6 +88,12 @@ export interface IGridGeometry {
 
   // Gets the faces adjacent to the given edge. (TODO adjacent edges too?)
   getEdgeFaceAdjacency(edge: IGridEdge): IGridCoord[];
+
+  // Gets the vertices adjacent to the given edge.
+  getEdgeVertexAdjacency(edge: IGridEdge): IGridVertex[];
+
+  // Gets the edges adjacent to the given vertex.
+  getVertexEdgeAdjacency(vertex: IGridVertex): IGridEdge[];
 
   // Emits the same grid geometry but with a tileDim of 1; useful for initialising
   // instanced draws.
@@ -80,6 +110,10 @@ export interface IGridGeometry {
   // Transforms the object, assumed to be at the zero edge, to be at the
   // given one instead.
   transformToEdge(o: THREE.Object3D, coord: IGridEdge): void;
+
+  // Transforms the object, assumed to be at the zero vertex, to be at the
+  // given one instead.
+  transformToVertex(o: THREE.Object3D, coord: IGridVertex): void;
 }
 
 export class EdgeGeometry { // to help me share the edge code
@@ -100,14 +134,23 @@ export class EdgeGeometry { // to help me share the edge code
   }
 }
 
+const vertexRimCount = 12; // the number of vertices we draw around the rim of a vertex blob
+                           // Higher number = more circular
+
 export abstract class BaseGeometry {
   private readonly _tileDim: number;
   private readonly _maxEdge: number;
+  private readonly _maxVertex: number;
   private readonly _epsilon: number;
 
-  constructor(tileDim: number, maxEdge: number) {
+  constructor(tileDim: number, maxEdge: number, maxVertex: number) {
+    if (maxVertex > maxEdge) {
+      throw new RangeError("maxVertex must not be greater than maxEdge");
+    }
+
     this._tileDim = tileDim;
     this._maxEdge = maxEdge;
+    this._maxVertex = maxVertex;
     this._epsilon = 1.0 / 255.0; // to avoid floor errors when decoding
                                  // TODO use an integer texture instead to avoid this yuck and handle bigger maps
                                  // (requires figuring out how to specify one, however!)
@@ -115,6 +158,7 @@ export abstract class BaseGeometry {
 
   protected get tileDim() { return this._tileDim; }
   protected get maxEdge() { return this._maxEdge; }
+  protected get maxVertex() { return this._maxVertex; }
 
   protected abstract createCentre(target: THREE.Vector3, x: number, y: number, z: number): THREE.Vector3;
 
@@ -124,6 +168,16 @@ export abstract class BaseGeometry {
 
   protected abstract createEdgeGeometry(coord: IGridEdge, alpha: number, z: number): EdgeGeometry;
   protected abstract createEdgeVertices(target1: THREE.Vector3, target2: THREE.Vector3, centre: THREE.Vector3, edge: number): void;
+
+  createEdgeCentre(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, edge: IGridEdge, z: number): THREE.Vector3 {
+    this.createCoordCentre(scratch2, edge, z);
+    this.createEdgeVertices(target, scratch1, scratch2, edge.edge);
+    return target.lerp(scratch1, 0.5);
+  }
+
+  abstract createVertexCentre(target: THREE.Vector3, vertex: IGridVertex, z: number): THREE.Vector3;
+
+  protected abstract getVertexRadius(alpha: number): number;
 
   private pushEdgeVertices(vertices: THREE.Vector3[], tile: THREE.Vector2, alpha: number, x: number, y: number, z: number, e: number) {
     var edge = createGridEdge(tile, new THREE.Vector2(x, y), this.tileDim, e);
@@ -144,6 +198,30 @@ export abstract class BaseGeometry {
     vertices.push(eg.tip2);
     vertices.push(eg.bevel1a);
     vertices.push(eg.bevel2a);
+  }
+
+  private pushVertexVertices(vertices: THREE.Vector3[], tile: THREE.Vector2, radius: number, x: number, y: number, z: number, v: number) {
+    const iStart = vertices.length;
+
+    // We push the centre, followed by the rim start point rotated `vertexRimCount`
+    // times around the rim, doing everything at the origin to make the rotation
+    // easier:
+    var origin = new THREE.Vector3(0, 0, 0);
+    vertices.push(origin);
+
+    const rimStart = new THREE.Vector3(-radius, 0, 0);
+    const axis = new THREE.Vector3(0, 0, 1);
+    for (var r = 0; r < vertexRimCount; ++r) {
+      vertices.push(rimStart.clone().applyAxisAngle(axis, r * 2.0 * Math.PI / vertexRimCount));
+    }
+
+    // Now we translate everything
+    var vertex = createGridVertex(tile, new THREE.Vector2(x, y), this.tileDim, v);
+    const centre = this.createVertexCentre(new THREE.Vector3(), vertex, z);
+    console.log("vertex centre of tile.x=" + tile.toArray() + ", x=" + x + ", y=" + y + " is " + centre.toArray());
+    for (var i = iStart; i < vertices.length; ++i) {
+      vertices[i].add(centre);
+    }
   }
 
   private fromPackedXYAbs(sample: Uint8Array, offset: number): THREE.Vector2 {
@@ -215,6 +293,79 @@ export abstract class BaseGeometry {
     return colours;
   }
 
+  createSolidVertexVertices(tile: THREE.Vector2, alpha: number, z: number, maxVertex?: number | undefined): THREE.Vector3[] {
+    var radius = this.getVertexRadius(alpha);
+    var vertices: THREE.Vector3[] = [];
+    maxVertex = Math.min(maxVertex ?? this.maxVertex, this.maxVertex);
+    for (var y = 0; y < this.tileDim; ++y) {
+      for (var x = 0; x < this.tileDim; ++x) {
+        for (var v = 0; v < maxVertex; ++v) {
+          this.pushVertexVertices(vertices, tile, radius, x, y, z, v);
+        }
+      }
+    }
+
+    return vertices;
+  }
+
+  *createSolidVertexIndices(maxVertex?: number | undefined) {
+    var baseIndex = 0;
+    maxVertex = Math.min(maxVertex ?? this.maxVertex, this.maxVertex);
+    for (var y = 0; y < this.tileDim; ++y) {
+      for (var x = 0; x < this.tileDim; ++x) {
+        for (var v = 0; v < maxVertex; ++v) {
+          // We create one triangle for each vertex around the rim:
+          for (var t = 0; t < vertexRimCount; ++t) {
+            yield baseIndex;
+            yield baseIndex + 1 + (t + 1) % vertexRimCount;
+            yield baseIndex + 1 + t;
+            yield -1;
+          }
+
+          // There are (vertexRimCount + 1) vertices for each object --
+          // one in the middle and the others around the rim
+          baseIndex += vertexRimCount + 1;
+        }
+      }
+    }
+  }
+
+  createSolidVertexColours(tile: THREE.Vector2) {
+    var colours = new Float32Array(this.tileDim * this.tileDim * this.maxVertex * (vertexRimCount + 1) * 3);
+    var offset = 0;
+    for (var y = 0; y < this.tileDim; ++y) {
+      for (var x = 0; x < this.tileDim; ++x) {
+        for (var v = 0; v < this.maxVertex; ++v) {
+          for (var w = 0; w < (vertexRimCount + 1); ++w) {
+            this.toPackedXYEdge(colours, offset, tile.x, tile.y, v);
+            this.toPackedXYAbs(colours, offset + 2, x, y); // never negative
+            offset += 3;
+          }
+        }
+      }
+    }
+
+    return colours;
+  }
+
+  createSolidVertexTestColours() {
+    var colours = new Float32Array(this.tileDim * this.tileDim * this.maxVertex * (vertexRimCount + 1) * 3);
+    var colour = new THREE.Color();
+    var offset = 0;
+    for (var i = 0; i < this.tileDim * this.tileDim; ++i) {
+      for (var v = 0; v < this.maxVertex; ++v) {
+        colour.setHSL(i / (this.tileDim * this.tileDim), v === 0 ? 0.5 : 1, 0.5);
+        for (var w = 0; w < (vertexRimCount + 1); ++w) {
+          colours[offset++] = colour.r;
+          colours[offset++] = colour.g;
+          colours[offset++] = colour.b;
+        }
+      }
+    }
+
+    return colours;
+  }
+
   createWallVertices(alpha: number, z: number): THREE.Vector3[] {
     var vertices: THREE.Vector3[] = [];
     this.pushEdgeVertices(vertices, new THREE.Vector2(0, 0), alpha, 0, 0, z, 0);
@@ -231,6 +382,13 @@ export abstract class BaseGeometry {
     var [tile, edge] = this.fromPackedXYEdge(sample, offset);
     var face = this.fromPackedXYAbs(sample, offset + 2);
     return tile instanceof THREE.Vector2 ? createGridEdge(tile, face, this.tileDim, edge as number)
+      : undefined;
+  }
+
+  decodeVertexSample(sample: Uint8Array, offset: number): IGridVertex | undefined {
+    var [tile, vertex] = this.fromPackedXYEdge(sample, offset);
+    var face = this.fromPackedXYAbs(sample, offset + 2);
+    return tile instanceof THREE.Vector2 ? createGridVertex(tile, face, this.tileDim, vertex as number)
       : undefined;
   }
 

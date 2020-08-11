@@ -5,8 +5,6 @@ import { InstancedFeatures } from "./instancedFeatures";
 
 // Helps handling a hover highlight with drag to select many and release to commit
 // them into new features.
-// TODO #26 This is going away and being replaced with a new wall creation system,
-// so perhaps I'd like to consolidate it back into one class.
 abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
   private readonly _features: InstancedFeatures<K, F>; // inspect, but do not edit directly!
   private readonly _highlights: InstancedFeatures<K, F>;
@@ -23,6 +21,13 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
   protected abstract createFeatureAdd(position: K, colour: number): IChange;
   protected abstract createFeatureRemove(position: K): IChange;
   protected abstract createHighlight(position: K): F;
+
+  get inDrag(): boolean { return this._inDrag; }
+
+  dragCancel(position?: K | undefined) {
+    this._inDrag = false;
+    this.moveHighlight(position);
+  }
 
   dragStart(position?: K | undefined) {
     this.moveHighlight(position);
@@ -47,7 +52,7 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
         changes.push(this.createFeatureAdd(f.position, colour));
       }
 
-      if (f.position !== position) {
+      if (!this.keysEqual(f.position, position)) {
         this._highlights.remove(f.position);
       }
     });
