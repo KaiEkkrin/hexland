@@ -30,6 +30,7 @@ test('Surround one square on a square grid', () => {
   colouring.setWall({ x: 0, y: 0, edge: 0 }, true);
   colouring.setWall({ x: 0, y: 0, edge: 1 }, true);
   colouring.setWall({ x: 1, y: 0, edge: 0 }, true);
+  colouring.recalculate();
 
   var colour = colouring.colourOf(surrounded);
   notSurrounded.forEach(c => expect(colouring.colourOf(c)).toBe(colour));
@@ -37,6 +38,7 @@ test('Surround one square on a square grid', () => {
   // Add the final one and (0, 0) should be entirely surrounded, and
   // a different colour to the others
   colouring.setWall({ x: 0, y: 1, edge: 1 }, true);
+  colouring.recalculate();
 
   var colourInside = colouring.colourOf(surrounded);
   var colourOutside = colouring.colourOf(notSurrounded[0]);
@@ -46,6 +48,7 @@ test('Surround one square on a square grid', () => {
   // Remove one of those walls again and once more everything should be
   // the same colour
   colouring.setWall({ x: 0, y: 0, edge: 0 }, false);
+  colouring.recalculate();
 
   colour = colouring.colourOf(surrounded);
   notSurrounded.forEach(c => expect(colouring.colourOf(c)).toBe(colour));
@@ -98,6 +101,7 @@ test('Surround three hexes on a hex grid', () => {
     { x: 1, y: 1, edge: 0 },
     { x: 1, y: 1, edge: 1 }
   ].forEach(w => colouring.setWall(w, true));
+  colouring.recalculate();
 
   // Everything should still be the same colour after that
   var colour = colouring.colourOf(zero);
@@ -111,6 +115,7 @@ test('Surround three hexes on a hex grid', () => {
     { x: 2, y: 0, edge: 0 },
     { x: 1, y: 0, edge: 2 }
   ].forEach(w => colouring.setWall(w, true));
+  colouring.recalculate();
 
   var innerColour = colouring.colourOf(zero);
   var outerColour = colouring.colourOf(outer[0]);
@@ -125,6 +130,7 @@ test('Surround three hexes on a hex grid', () => {
     { x: 0, y: 1, edge: 1 },
     { x: 1, y: 0, edge: 0 }
   ].forEach(w => colouring.setWall(w, true));
+  colouring.recalculate();
 
   var zeroColour = colouring.colourOf(zero);
   innerColour = colouring.colourOf(inner[0]);
@@ -162,6 +168,7 @@ test('Surround three hexes on a hex grid', () => {
   // Bust the inner area open and the outer colour should flood into it, but the
   // zero hex should stay its own
   colouring.setWall({ x: 1, y: 0, edge: 1 }, false);
+  colouring.recalculate();
 
   var zeroColour = colouring.colourOf(zero);
   outerColour = colouring.colourOf(outer[0]);

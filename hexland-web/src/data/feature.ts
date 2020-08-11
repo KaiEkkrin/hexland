@@ -107,4 +107,12 @@ export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> impl
 
     return undefined;
   }
+
+  // This is deliberately not in the interface, because implementations that do other
+  // things e.g. track drawn objects would need to do an add/remove operation to
+  // update themselves
+  set(f: F) {
+    const i = this._toIndex(f.position);
+    this._values[i] = f;
+  }
 }

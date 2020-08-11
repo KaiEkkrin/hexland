@@ -19,16 +19,18 @@ class FaceDictionary extends FeatureDictionary<IGridCoord, IFeature<IGridCoord>>
   // These are the bounds of the areas we've observed (both inclusive).
   private _lowerBounds: THREE.Vector2;
   private _upperBounds: THREE.Vector2;
+  private _clampedCoord: THREE.Vector2; // scratch space
 
   constructor() {
     super(coordString);
     this._lowerBounds = new THREE.Vector2(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
     this._upperBounds = new THREE.Vector2(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER);
+    this._clampedCoord = new THREE.Vector2();
   }
 
   private clearBounds() {
-    this._lowerBounds = new THREE.Vector2(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
-    this._upperBounds = new THREE.Vector2(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER);
+    this._lowerBounds.set(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
+    this._upperBounds.set(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER);
   }
 
   private updateBounds(coord: IGridCoord) {
@@ -56,12 +58,12 @@ class FaceDictionary extends FeatureDictionary<IGridCoord, IFeature<IGridCoord>>
   }
 
   get(coord: IGridCoord): IFeature<IGridCoord> | undefined {
-    var clampedCoord = new THREE.Vector2(
+    this._clampedCoord.set(
       Math.max(this._lowerBounds.x, Math.min(this._upperBounds.x, coord.x)),
       Math.max(this._lowerBounds.y, Math.min(this._upperBounds.y, coord.y))
     );
 
-    return super.get(clampedCoord);
+    return super.get(this._clampedCoord);
   }
 
   remove(coord: IGridCoord): IFeature<IGridCoord> | undefined {
@@ -96,9 +98,21 @@ class FaceDictionary extends FeatureDictionary<IGridCoord, IFeature<IGridCoord>>
   }
 }
 
+// We track pending wall changes (add or remove) like this; the colour is ignored
+interface IPendingWall extends IFeature<IGridEdge> {
+  present: boolean; // true to add this, false to remove it
+}
+
 export class MapColouring {
   private readonly _geometry: IGridGeometry;
   private readonly _walls: FeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
+
+  // The pending wall changes -- commit them all and recolour with `recalculate`.
+  private readonly _pending: FeatureDictionary<IGridEdge, IPendingWall>;
+
+  // The faces that need to be filled during a recalculate, along with the
+  // suggested fill colours.
+  private readonly _toFill: FeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
 
   // This maps each face within our bounds to its map colour.
   private readonly _faces: FaceDictionary;
@@ -110,11 +124,13 @@ export class MapColouring {
   constructor(geometry: IGridGeometry) {
     this._geometry = geometry;
     this._walls = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
+    this._pending = new FeatureDictionary<IGridEdge, IPendingWall>(edgeString);
+    this._toFill = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
     this._faces = new FaceDictionary();
 
     // We always start ourselves off with colour 0 at the zero co-ordinate -- if we
     // didn't do this we couldn't handle any `colourOf` calls.
-    this.assignNewColour({ x: 0, y: 0 });
+    this._faces.replace({ position: { x: 0, y: 0 }, colour: this._nextColour++ });
   }
 
   colourOf(coord: IGridCoord): number {
@@ -139,12 +155,6 @@ export class MapColouring {
     });
 
     return walls;
-  }
-
-  private assignNewColour(coord: IGridCoord): number {
-    var colour = this._nextColour++;
-    this._faces.replace({ position: coord, colour: colour });
-    return colour;
   }
 
   // Fills the colour from a given coord across all faces within bounds that
@@ -196,58 +206,79 @@ export class MapColouring {
     }
   }
 
-  // TODO This is going to recalculate upon every wall change, where usually
-  // they come in batches.  Is that too inefficient?  Should I support batching
-  // in the interface -- set all the new walls, and then do a single recalculate
-  // pass?  (Test that it works well like this first, I think.)
   setWall(edge: IGridEdge, present: boolean) {
-    var alreadyPresent = this._walls.get(edge) !== undefined;
-    if (present === alreadyPresent) {
-      // Nothing to do
-      return;
-    }
+    this._pending.set({ position: edge, colour: 0, present: present });
+  }
 
-    var adjacentFaces = this._geometry.getEdgeFaceAdjacency(edge);
-    //assert(adjacentFaces.length > 1);
-    if (present === false) {
-      this._walls.remove(edge);
+  recalculate() {
+    this._toFill.clear();
+    var newColours: { [colour: number]: boolean } = {};
 
-      // Here we recalculate by sampling the colour on one side of the removed
-      // wall and assigning the same colour to the other(s):
-      // TODO shrink the bounds if we can?
-      var colour = this.colourOf(adjacentFaces[0]);
-      adjacentFaces.slice(1).forEach(a => {
-        var oldFeature = this._faces.replace({ position: a, colour: colour });
-        if (oldFeature?.colour !== colour) {
-          this.fill(a, this._faces.lowerBounds, this._faces.upperBounds);
+    // Make all the wall edits, and populate our dictionary of things to fill
+    // (with what) and our new bounds
+    var newLowerBounds = this._faces.lowerBounds.clone();
+    var newUpperBounds = this._faces.upperBounds.clone();
+    var [lowerBounds, upperBounds] = [new THREE.Vector2(), new THREE.Vector2()];
+    this._pending.forEach(pw => {
+      var adjacentFaces = this._geometry.getEdgeFaceAdjacency(pw.position);
+      if (pw.present === false) {
+        if (this._walls.remove(pw.position) === undefined) {
+          return;
         }
-      });
-    } else {
-      this._walls.add({ position: edge, colour: 0 });
 
-      // Inflating the bounds by 2 on both sides should guarantee that the outside
-      // is always all the same colour (TODO this is probably excessive and I should
-      // reduce it a bit...)
-      const lowerBounds = adjacentFaces.map(c => new THREE.Vector2(c.x, c.y))
-        .reduce((a, b) => a.min(b)).addScalar(-2)
-        .min(this._faces.lowerBounds);
-      const upperBounds = adjacentFaces.map(c => new THREE.Vector2(c.x, c.y))
-        .reduce((a, b) => a.max(b)).addScalar(2)
-        .max(this._faces.upperBounds);
+        // We recalculate by sampling the colour on one side of the removed wall
+        // and assigning the same colour to the other(s):
+        const colour = this.colourOf(adjacentFaces[0]);
+        adjacentFaces.slice(1).forEach(a => {
+          this._toFill.set({ position: a, colour: colour });
+        })
+      } else {
+        if (this._walls.add({ position: pw.position, colour: 0 }) === false) {
+          return;
+        }
 
-      // We fill with fresh colours:
-      // - all sides of the wall (TODO I could optimise this to check for a fresh colour already)
-      // - a point on the new bounds, which should all be connected naturally
-      adjacentFaces.forEach(a => {
-        this.assignNewColour(a);
-        this.fill(a, lowerBounds, upperBounds);
-      });
+        // Inflating the bounds by 2 on both sides should guarantee that the outside
+        // is always all the same colour (TODO this is probably excessive and I should
+        // reduce it a bit...)
+        lowerBounds.set(pw.position.x, pw.position.y).addScalar(-2);
+        upperBounds.set(pw.position.x, pw.position.y).addScalar(2);
+        newLowerBounds.min(lowerBounds);
+        newUpperBounds.max(upperBounds);
 
-      if (!lowerBounds.equals(this._faces.lowerBounds) || !upperBounds.equals(this._faces.upperBounds)) {
-        var onBounds = { x: lowerBounds.x, y: lowerBounds.y };
-        this.assignNewColour(onBounds);
-        this.fill(onBounds, lowerBounds, upperBounds);
+        // We assign a fresh colour to each side of the wall
+        adjacentFaces.forEach(a => {
+          var newColour = this._nextColour++;
+          this._toFill.set({ position: a, colour: newColour });
+          newColours[newColour] = true;
+        })
       }
+    });
+
+    this._pending.clear();
+    const originalBoundsChanged = !this._faces.lowerBounds.equals(newLowerBounds) ||
+      !this._faces.upperBounds.equals(newUpperBounds);
+
+    // Fill everything -- but skip squares that have been filled over from another
+    // square already (which will hopefully be many of them in the case of a large
+    // edit)
+    this._toFill.forEach(f => {
+      // If this square is already filled in its target colour or in another new colour,
+      // I have nothing more to do with it
+      const currentColour = this.colourOf(f.position);
+      if (currentColour === f.colour || currentColour in newColours) {
+        return;
+      }
+
+      this._faces.replace(f);
+      this.fill(f.position, newLowerBounds, newUpperBounds);
+    });
+
+    if (originalBoundsChanged) {
+      // If the bounds have changed, fill them in
+      // (This may or may not be redundant but it's a bit hard to determine)
+      var boundsPosition = { x: newLowerBounds.x, y: newLowerBounds.y };
+      this._faces.replace({ position: boundsPosition, colour: this._nextColour++ });
+      this.fill(boundsPosition, newLowerBounds, newUpperBounds);
     }
   }
 

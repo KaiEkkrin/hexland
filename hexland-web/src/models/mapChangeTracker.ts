@@ -54,6 +54,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
 
   changesApplied() {
     super.changesApplied();
+    this._colouring.recalculate();
     this._handleChangesApplied?.();
   }
 }
