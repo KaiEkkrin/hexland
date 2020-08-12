@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import './App.css';
 
-import { AppContext, AppState } from './App';
+import { UserContext, ProfileContext } from './App';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
 
@@ -171,14 +171,11 @@ interface IAdventurePageProps {
 }
 
 function AdventurePage(props: RouteComponentProps<IAdventurePageProps>) {
-  return (
-    <AppContext.Consumer>
-      {(context: AppState) => context.user === null ? <div></div> : (
-        <Adventure dataService={context.dataService} profile={context.profile}
-          adventureId={props.match.params.adventureId} />
-      )}
-    </AppContext.Consumer>
-  )
+  var userContext = useContext(UserContext);
+  var profile = useContext(ProfileContext);
+  return userContext.user === null ? <div></div> : (
+    <Adventure dataService={userContext.dataService} profile={profile}
+      adventureId={props.match.params.adventureId} />);
 }
 
 export default AdventurePage;

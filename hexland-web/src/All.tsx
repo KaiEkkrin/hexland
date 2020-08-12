@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import './App.css';
 
-import { AppContext, AppState } from './App';
+import { UserContext, ProfileContext } from './App';
 import AdventureCollection from './components/AdventureCollection';
 import Navigation from './components/Navigation';
 
@@ -107,13 +107,10 @@ class All extends React.Component<IAllProps, AllState> {
 interface IAllPageProps {}
 
 function AllPage(props: RouteComponentProps<IAllPageProps>) {
-  return (
-    <AppContext.Consumer>
-      {(context: AppState) => context.user === null ? <div></div> : (
-        <All dataService={context.dataService} profile={context.profile} />
-      )}
-    </AppContext.Consumer>
-  );
+  var userContext = useContext(UserContext);
+  var profile = useContext(ProfileContext);
+  return userContext.user === null ? <div></div> : (
+    <All dataService={userContext.dataService} profile={profile} />);
 }
 
 export default AllPage;

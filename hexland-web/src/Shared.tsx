@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import './App.css';
 
-import { AppContext, AppState } from './App';
+import { UserContext } from './App';
 import AdventureCollection from './components/AdventureCollection';
 import Navigation from './components/Navigation';
 
@@ -76,13 +76,9 @@ class Shared extends React.Component<ISharedProps, SharedState> {
 interface ISharedPageProps {}
 
 function SharedPage(props: RouteComponentProps<ISharedPageProps>) {
-  return (
-    <AppContext.Consumer>
-      {(context: AppState) => context.user === null ? <div></div> : (
-        <Shared dataService={context.dataService} />
-      )}
-    </AppContext.Consumer>
-  );
+  var userContext = useContext(UserContext);
+  return userContext.user === null ? <div></div> : (
+    <Shared dataService={userContext.dataService} />);
 }
 
 export default SharedPage;

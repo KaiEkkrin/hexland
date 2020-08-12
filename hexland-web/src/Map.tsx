@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useContext } from 'react';
 import './App.css';
 import './Map.css';
 
-import { AppContext, AppState } from './App';
+import { UserContext, ProfileContext } from './App';
 import MapControls, { EditMode, MapColourVisualisationMode } from './components/MapControls';
 import MapEditorModal from './components/MapEditorModal';
 import Navigation from './components/Navigation';
@@ -13,9 +13,7 @@ import { IChange } from './data/change';
 import { trackChanges } from './data/changeTracking';
 import { IToken } from './data/feature';
 import { IMap } from './data/map';
-import { IProfile } from './data/profile';
 import { registerMapAsRecent, consolidateMapChanges } from './services/extensions';
-import { IDataService } from './services/interfaces';
 
 import { ThreeDrawing } from './models/drawing';
 import { FeatureColour } from './models/featureColour';
@@ -38,12 +36,10 @@ function getHexColours() {
   return getStandardColours().map(c => "#" + c.lightHexString);
 }
 
-interface IMapProps extends IMapPageProps {
-  dataService: IDataService | undefined;
-  profile: IProfile | undefined;
-}
+function Map(props: IMapPageProps) {
+  var userContext = useContext(UserContext);
+  var profile = useContext(ProfileContext);
 
-function Map(props: IMapProps) {
   const drawingRef = useRef<HTMLDivElement>(null);
 
   const [record, setRecord] = useState(undefined as IMap | undefined);
@@ -60,41 +56,41 @@ function Map(props: IMapProps) {
 
   // Watch the map when it changes
   useEffect(() => {
-    if (props.dataService === undefined) {
+    if (userContext.dataService === undefined) {
       return;
     }
 
     // TODO remove debug after confirming we don't multiple-watch things
     console.log("Watching adventure " + props.adventureId + ", map " + props.mapId);
-    var mapRef = props.dataService.getMapRef(props.adventureId, props.mapId);
-    return props.dataService.watch<IMap>(
+    var mapRef = userContext.dataService.getMapRef(props.adventureId, props.mapId);
+    return userContext.dataService.watch<IMap>(
       mapRef, setRecord,
       e => console.error("Error watching map " + props.mapId, e)
     );
-  }, [props.dataService, props.adventureId, props.mapId]);
+  }, [userContext.dataService, props.adventureId, props.mapId]);
 
   // Track changes to the map
   useEffect(() => {
-    if (props.dataService === undefined || props.profile === undefined || record === undefined ||
+    if (userContext.dataService === undefined || profile === undefined || record === undefined ||
       drawingRef?.current === null
     ) {
       setDrawing(undefined);
       return;
     }
 
-    registerMapAsRecent(props.dataService, props.profile, props.adventureId, props.mapId, record)
+    registerMapAsRecent(userContext.dataService, profile, props.adventureId, props.mapId, record)
       .catch(e => console.error("Error registering map as recent", e));
-    consolidateMapChanges(props.dataService, props.adventureId, props.mapId, record)
+    consolidateMapChanges(userContext.dataService, props.adventureId, props.mapId, record)
       .catch(e => console.error("Error consolidating map changes", e));
 
     var theDrawing = new ThreeDrawing(
-      getStandardColours(), drawingRef.current, textCreator, record, props.dataService.getUid()
+      getStandardColours(), drawingRef.current, textCreator, record, userContext.dataService.getUid()
     );
     setDrawing(theDrawing);
     theDrawing.animate();
 
     console.log("Watching changes to map " + props.mapId);
-    var stopWatchingChanges = props.dataService.watchChanges(props.adventureId, props.mapId,
+    var stopWatchingChanges = userContext.dataService.watchChanges(props.adventureId, props.mapId,
       chs => trackChanges(record, theDrawing.changeTracker, chs.chs, chs.user),
       e => console.error("Error watching map changes", e));
     
@@ -102,26 +98,26 @@ function Map(props: IMapProps) {
       stopWatchingChanges();
       theDrawing.dispose();
     };
-  }, [props, record]);
+  }, [userContext.dataService, profile, props.adventureId, props.mapId, record]);
 
   // Track the adventure's players, if we might need access to this
   useEffect(() => {
-    if (props.dataService === undefined || canDoAnything === false) {
+    if (userContext.dataService === undefined || canDoAnything === false) {
       return () => {};
     }
 
     console.log("Watching players in adventure " + props.adventureId);
-    return props.dataService.watchPlayers(props.adventureId, setPlayers,
+    return userContext.dataService.watchPlayers(props.adventureId, setPlayers,
       e => console.error("Error watching players", e));
-  }, [props.dataService, props.adventureId, canDoAnything]);
+  }, [userContext.dataService, props.adventureId, canDoAnything]);
 
   // How to create and share the map changes we make
   function addChanges(changes: IChange[] | undefined) {
-    if (changes === undefined || changes.length === 0 || props.dataService === undefined) {
+    if (changes === undefined || changes.length === 0 || userContext.dataService === undefined) {
       return;
     }
 
-    props.dataService.addChanges(props.adventureId, props.mapId, changes)
+    userContext.dataService.addChanges(props.adventureId, props.mapId, changes)
       .then(() => console.log("Added " + changes.length + " changes"))
       .catch(e => console.error("Error adding " + changes.length + " changes", e));
   }
@@ -138,12 +134,12 @@ function Map(props: IMapProps) {
   const [tokenToEditPosition, setTokenToEditPosition] = useState(undefined as THREE.Vector2 | undefined);
 
   useEffect(() => {
-    setCanDoAnything(record?.ffa === true || props.dataService?.getUid() === record?.owner);
-  }, [props.dataService, record]);
+    setCanDoAnything(record?.ffa === true || userContext.dataService?.getUid() === record?.owner);
+  }, [userContext.dataService, record]);
 
   useEffect(() => {
-    setCanOpenMapEditor(props.dataService?.getUid() === record?.owner);
-  }, [props.dataService, record]);
+    setCanOpenMapEditor(userContext.dataService?.getUid() === record?.owner);
+  }, [userContext.dataService, record]);
 
   // When the edit mode changes away from Select, we should clear any selection
   useEffect(() => {
@@ -160,8 +156,8 @@ function Map(props: IMapProps) {
 
   function handleMapEditorSave(ffa: boolean) {
     setShowMapEditor(false);
-    if (props.dataService !== undefined && record !== undefined) {
-      var dataService = props.dataService;
+    if (userContext.dataService !== undefined && record !== undefined) {
+      var dataService = userContext.dataService;
       var mapRef = dataService.getMapRef(props.adventureId, props.mapId);
 
       // We should always do a consolidate here to avoid accidentally invalidating
@@ -301,14 +297,9 @@ interface IMapPageProps {
 }
 
 function MapPage(props: RouteComponentProps<IMapPageProps>) {
-  return (
-    <AppContext.Consumer>
-      {(context: AppState) => context.user === null ? <div></div> : (
-        <Map dataService={context.dataService} profile={context.profile}
-          adventureId={props.match.params.adventureId} mapId={props.match.params.mapId} />
-      )}
-    </AppContext.Consumer>
-  )
+  var userContext = useContext(UserContext);
+  return userContext.user === null ? <div></div> : (
+    <Map adventureId={props.match.params.adventureId} mapId={props.match.params.mapId} />);
 }
 
 export default MapPage;

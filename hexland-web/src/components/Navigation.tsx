@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { auth } from '../firebase';
 
-import { AppContext, AppState } from '../App';
+import { UserContext } from '../App';
 
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
@@ -14,6 +14,7 @@ interface INavigationProps {
 }
 
 function Navigation(props: INavigationProps) {
+  var userContext = useContext(UserContext);
   return (
     <Navbar bg="dark" variant="dark" sticky="top">
       <LinkContainer to="/">
@@ -24,45 +25,39 @@ function Navigation(props: INavigationProps) {
           <LinkContainer to="/">
             <Nav.Link>Home</Nav.Link>
           </LinkContainer>
-          <AppContext.Consumer>
-            {(context: AppState) => context.user === null ? <div></div> :
-              <LinkContainer to="/all">
-                <Nav.Link>My adventures</Nav.Link>
-              </LinkContainer>
-            }
-          </AppContext.Consumer>
-          <AppContext.Consumer>
-            {(context: AppState) => context.user === null ? <div></div> :
-              <LinkContainer to="/shared">
-                <Nav.Link>Shared with me</Nav.Link>
-              </LinkContainer>
-            }
-          </AppContext.Consumer>
+          {userContext.user === null ? <div></div> :
+            <LinkContainer to="/all">
+              <Nav.Link>My adventures</Nav.Link>
+            </LinkContainer>
+          }
+          {userContext.user === null ? <div></div> :
+            <LinkContainer to="/shared">
+              <Nav.Link>Shared with me</Nav.Link>
+            </LinkContainer>
+          }
         </Nav>
       </Navbar.Collapse>
       <Navbar.Collapse className="justify-content-center">
         <Navbar.Text className="mr-2">{props.getTitle() ?? ""}</Navbar.Text>
       </Navbar.Collapse>
-      <AppContext.Consumer>
-        {(context: AppState) => context.user !== null ? (
+      {userContext.user !== null ? (
+        <Navbar.Collapse className="justify-content-end">
+          <Navbar.Text className="mr-2">
+            {userContext.user.displayName}
+          </Navbar.Text>
+          <Form inline>
+            <Button variant="outline-primary" onClick={() => auth.signOut()}>Log out</Button>
+          </Form>
+        </Navbar.Collapse>
+      ) : (
           <Navbar.Collapse className="justify-content-end">
-            <Navbar.Text className="mr-2">
-              {context.user.displayName}
-            </Navbar.Text>
-            <Form inline>
-              <Button variant="outline-primary" onClick={() => auth.signOut()}>Log out</Button>
-            </Form>
-          </Navbar.Collapse>
-        ) : (
-            <Navbar.Collapse className="justify-content-end">
-              <Nav>
-                <LinkContainer to="/login">
-                  <Nav.Link>Login</Nav.Link>
-                </LinkContainer>
-              </Nav>
-            </Navbar.Collapse >
-          )}
-      </AppContext.Consumer>
+            <Nav>
+              <LinkContainer to="/login">
+                <Nav.Link>Login</Nav.Link>
+              </LinkContainer>
+            </Nav>
+          </Navbar.Collapse >
+        )}
     </Navbar>
   );
 }

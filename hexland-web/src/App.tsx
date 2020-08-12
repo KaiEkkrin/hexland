@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import './App.css';
 import { auth } from './firebase';
 
@@ -12,94 +12,54 @@ import InvitePage from './Invite';
 import Login from './Login';
 import MapPage from './Map';
 import SharedPage from './Shared';
+import Status from './components/Status';
 
 import { BrowserRouter, Route, Switch } from 'react-router-dom';
 import { IDataService } from './services/interfaces';
-import Status from './components/Status';
 
-interface IAppProps {}
-
-export class AppState {
-  user: firebase.User | null = null;
-  dataService: IDataService | undefined = undefined;
-  profile: IProfile | undefined = undefined;
+export interface IUserContext {
+  user: firebase.User | null;
+  dataService: IDataService | undefined;
 }
 
-export const AppContext = React.createContext(new AppState());
+export const UserContext = React.createContext<IUserContext>({
+  user: null,
+  dataService: undefined
+});
 
-class App extends React.Component<IAppProps, AppState> {
-  private _authStateChanged: firebase.Unsubscribe | undefined;
-  private _stopWatchingProfile: (() => void) | undefined;
+export const ProfileContext = React.createContext<IProfile | undefined>(undefined);
 
-  constructor(props: IAppProps) {
-    super(props);
-    this.state = new AppState();
-  }
+function App() {
+  const [userContext, setUserContext] = useState<IUserContext>({ user: null, dataService: undefined });
+  const [profile, setProfile] = useState<IProfile | undefined>(undefined);
 
-  private setProfile(
-    u: firebase.User | null,
-    dataService: IDataService | undefined,
-    profile: IProfile | undefined
-  ) {
-    this.setState({ profile: profile });
-    if (profile === undefined) {
-      // This user doesn't have a profile yet -- create it
-      var displayName = u?.displayName ?? "Unknown User";
-      dataService?.setProfile({
-        name: displayName,
-        adventures: [],
-        latestMaps: []
-      })
-        .then(() => console.log("Created profile for " + displayName))
-        .catch(e => console.error("Failed to create profile for " + displayName, e));
-    }
-  }
-
-  componentDidMount() {
-    this._authStateChanged = auth.onAuthStateChanged(u => {
-      var dataService = u === null ? undefined : new DataService(u.uid);
-      this.setState({ user: u, dataService: dataService });
-
-      var d = dataService?.getProfileRef();
-      if (u !== null && d !== undefined) {
-        // Watch the profile, in case changes get made elsewhere:
-        this._stopWatchingProfile = dataService?.watch(d,
-          p => this.setProfile(u, dataService, p),
-          e => console.error("Failed to watch profile: ", e)
-        );
-      }
+  // On mount, subscribe to the auth state change event and create a suitable user context
+  useEffect(() => {
+    return auth.onAuthStateChanged(u => {
+      setUserContext({
+        user: u,
+        dataService: u === null ? undefined : new DataService(u.uid)
+      });
     });
-  }
+  }, []);
 
-  componentDidUpdate(prevProps: IAppProps, prevState: AppState) {
-    if (this.state.user?.uid !== prevState.user?.uid) {
-      console.log("User changed to " + this.state.user?.displayName ?? "(none)");
-
-      // Sync and watch the new user's profile instead
-      this._stopWatchingProfile?.();
-      var d = this.state.dataService?.getProfileRef();
-      if (this.state.user !== null && d !== undefined) {
-        // Watch the profile, in case changes get made elsewhere:
-        this._stopWatchingProfile = this.state.dataService?.watch(d,
-          p => this.setProfile(this.state.user, this.state.dataService, p),
-          e => console.error("Failed to watch profile: ", e)
-        );
-      }
+  // Watch the user's profile:
+  useEffect(() => {
+    var d = userContext.dataService?.getProfileRef();
+    if (d !== undefined) {
+      return userContext.dataService?.watch(d,
+        p => setProfile(p),
+        e => console.error("Failed to watch profile:", e)
+      );
+    } else {
+      setProfile(undefined);
     }
-  }
+  }, [userContext]);
 
-  componentWillUnmount() {
-    this._stopWatchingProfile?.();
-    this._stopWatchingProfile = undefined;
-
-    this._authStateChanged?.();
-    this._authStateChanged = undefined;
-  }
-
-  render() {
-    return (
-      <div className="App">
-        <AppContext.Provider value={this.state}>
+  return (
+    <div className="App">
+      <UserContext.Provider value={userContext}>
+        <ProfileContext.Provider value={profile}>
           <BrowserRouter>
             <Switch>
               <Route exact path="/" component={HomePage} />
@@ -111,11 +71,11 @@ class App extends React.Component<IAppProps, AppState> {
               <Route exact page="/shared" component={SharedPage} />
             </Switch>
           </BrowserRouter>
-        </AppContext.Provider>
-        <Status />
-      </div>
-    );
-  }
+        </ProfileContext.Provider>
+      </UserContext.Provider>
+      <Status />
+    </div>
+  );
 }
 
 export default App;

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import './App.css';
 
-import { AppContext, AppState } from './App';
+import { UserContext, ProfileContext } from './App';
 import Navigation from './components/Navigation';
 import { IInvite } from './data/invite';
 import { IProfile } from './data/profile';
@@ -64,14 +64,11 @@ interface IInvitePageProps {
 }
 
 function InvitePage(props: RouteComponentProps<IInvitePageProps>) {
-  return (
-    <AppContext.Consumer>
-      {(context: AppState) => context.user === null ? <div></div> : (
-        <Invite dataService={context.dataService} profile={context.profile}
-          adventureId={props.match.params.adventureId} inviteId={props.match.params.inviteId} />
-      )}
-    </AppContext.Consumer>
-  );
+  var userContext = useContext(UserContext);
+  var profile = useContext(ProfileContext);
+  return userContext.user === null ? <div></div> : (
+    <Invite dataService={userContext.dataService} profile={profile}
+      adventureId={props.match.params.adventureId} inviteId={props.match.params.inviteId} />);
 }
 
 export default InvitePage;
