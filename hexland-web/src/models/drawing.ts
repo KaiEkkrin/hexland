@@ -282,7 +282,7 @@ export class ThreeDrawing {
     this.animate = this.animate.bind(this);
   }
 
-  private get seeEverything() { return this._uid === this._map.owner || this._map.ffa; }
+  private get seeEverything() { return this._uid === this._map.owner || this._map.ffa === true; }
 
   get changeTracker() { return this._changeTracker; }
 
@@ -348,14 +348,24 @@ export class ThreeDrawing {
     var positions = this.getLoSPositions();
     console.log("LoS positions: " + positions?.length ?? -1);
     this._los.clear();
-    if (positions !== undefined && positions.length > 0) {
-      // TODO deal with dynamic grid sizing and all that fun here, create a suitable
-      // abstraction!
-      positions.forEach(p => {
-        var losHere = LoS.create(this._gridGeometry, this._mapColouring, p);
-        LoS.combine(this._los, losHere);
-      });
+    if (positions === undefined) {
+      // Show everything
+      return;
     }
+
+    if (positions.length === 0) {
+      // Show nothing
+      var losHere = LoS.create(this._gridGeometry, this._mapColouring, undefined);
+      LoS.combine(this._los, losHere);
+      return;
+    }
+
+    // TODO deal with dynamic grid sizing and all that fun here, create a suitable
+    // abstraction!
+    positions.forEach(p => {
+      var losHere = LoS.create(this._gridGeometry, this._mapColouring, p);
+      LoS.combine(this._los, losHere);
+    });
   }
 
   resize() {

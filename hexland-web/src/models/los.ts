@@ -81,7 +81,7 @@ export function testVisibilityOf(geometry: IGridGeometry, coord: IGridCoord, tar
 
 // Using the map colouring, creates a line-of-sight dictionary for the given coord.
 // A LoS dictionary maps each coord to its visibility.
-export function create(geometry: IGridGeometry, colouring: MapColouring, coord: IGridCoord) {
+export function create(geometry: IGridGeometry, colouring: MapColouring, coord: IGridCoord | undefined) {
   const los = new FeatureDictionary<IGridCoord, IVisibility>(coordString);
 
   // The number of test vertices will be a function of only the geometry.
@@ -91,6 +91,15 @@ export function create(geometry: IGridGeometry, colouring: MapColouring, coord: 
   var testVertices = [...testVerticesAtZero];
   const testVertexOrigin = testVerticesAtZero[0]; // cheating -- assume this is right in the middle
   const testVertexCount = testVerticesAtZero.length;
+
+  // With the undefined coord, return an LoS that hides everything
+  if (coord === undefined) {
+    colouring.forEachFace(f => {
+      los.add(createVisibility(f.position, testVertexCount, true, 0));
+    });
+
+    return los;
+  }
 
   // Add everything within bounds (we know we can't see outside bounds) with
   // visible status and everything outside with invisible status

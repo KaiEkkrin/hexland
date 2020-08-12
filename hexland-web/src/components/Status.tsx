@@ -12,7 +12,7 @@ import packageJson from '../../package.json';
 function Status() {
   return (
     <div className="App-status">
-      <Badge className="mr-2 mb-2" variant="info">Hexland v{packageJson.version}</Badge>
+      <Badge className="mr-2 mb-2" variant="info">v{packageJson.version}</Badge>
     </div>
   );
 }
