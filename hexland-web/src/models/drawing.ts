@@ -33,6 +33,7 @@ const highlightZ = 1.1;
 const vertexHighlightZ = 1.2;
 const textZ = 1.5; // for some reason the text doesn't alpha blend correctly; putting it
                    // on top seems to look fine
+const invalidSelectionZ = 1.6; // must hide the text
 
 const wallAlpha = 0.15;
 const edgeAlpha = 0.5;
@@ -183,10 +184,7 @@ export class ThreeDrawing {
       blending: THREE.AdditiveBlending,
       color: 0x606060,
     })];
-    this._invalidSelectionMaterials = [new THREE.MeshBasicMaterial({
-      blending: THREE.AdditiveBlending,
-      color: 0x600000,
-    })];
+    this._invalidSelectionMaterials = [new THREE.MeshBasicMaterial({ color: 0xa00000 })];
     this._textMaterial = new THREE.MeshBasicMaterial({ color: 0, side: THREE.DoubleSide });
 
     // For the LoS, we'll use different blending depending on the map settings -- non-owners in
@@ -236,7 +234,7 @@ export class ThreeDrawing {
     this._selectionDrag = new Areas(this._gridGeometry, this._needsRedraw, selectionAlpha, selectionZ, 100);
     this._selectionDrag.setMaterials(this._selectionMaterials);
     this._selectionDrag.addToScene(this._scene);
-    this._selectionDragRed = new Areas(this._gridGeometry, this._needsRedraw, selectionAlpha, selectionZ, 100);
+    this._selectionDragRed = new Areas(this._gridGeometry, this._needsRedraw, selectionAlpha, invalidSelectionZ, 100);
     this._selectionDragRed.setMaterials(this._invalidSelectionMaterials);
     this._selectionDragRed.addToScene(this._scene);
 
