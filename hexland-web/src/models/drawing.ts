@@ -1,6 +1,6 @@
 import { IChange, ITokenRemove, ChangeType, ChangeCategory, ITokenAdd, ITokenMove } from '../data/change';
 import { trackChanges } from '../data/changeTracking';
-import { IGridCoord, IGridEdge, coordAdd, coordsEqual, coordSub, IGridVertex } from '../data/coord';
+import { IGridCoord, IGridEdge, coordAdd, coordsEqual, coordSub, IGridVertex, coordString } from '../data/coord';
 import { IToken } from '../data/feature';
 import { IMap, MapType } from '../data/map';
 import { Areas } from './areas';
@@ -320,10 +320,13 @@ export class ThreeDrawing {
     }
   }
 
+  private canSelectToken(t: IToken) {
+    return this.seeEverything || t.players.find(p => this._uid === p) !== undefined;
+  }
+
   private getLoSPositions() {
     // These are the positions we should be projecting line-of-sight from.
-    var myTokens = this._tokens.all.filter(t =>
-      t.players.find(p => this._uid === p) !== undefined || this.seeEverything);
+    var myTokens = this._tokens.all.filter(t => this.canSelectToken(t));
     var selectedTokens = myTokens.filter(t => this._selection.get(t.position) !== undefined);
     if (selectedTokens.length === 0) {
       if (this.seeEverything) {
@@ -522,7 +525,7 @@ export class ThreeDrawing {
       console.log("Moving " + this._selection.all.length + " selected positions");
       this._selection.forEach(f => {
         var dragged = { position: coordAdd(f.position, delta), colour: f.colour };
-        console.log(f.position.toString() + " -> " + dragged.position.toString());
+        console.log(coordString(f.position) + " -> " + coordString(dragged.position));
         selectionDrag.add(dragged);
       });
 
@@ -613,7 +616,8 @@ export class ThreeDrawing {
           this._selection.clear();
         }
 
-        if (this._tokens.get(position) !== undefined) {
+        var token = this._tokens.get(position);
+        if (token !== undefined && this.canSelectToken(token)) {
           this._selection.add({ position: position, colour: 0 });
         }
 

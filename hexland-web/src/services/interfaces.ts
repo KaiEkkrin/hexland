@@ -98,6 +98,7 @@ export interface IDataService extends IDataView {
 export interface IDataView {
   delete<T>(r: IDataReference<T>): Promise<void>;
   get<T>(r: IDataReference<T>): Promise<T | undefined>;
-  set<T>(r: IDataReference<T>, value: T): Promise<void>;
+  set<T>(r: IDataReference<T>, value: T): Promise<void>; // call this with an explicit type so TypeScript
+                                                         // can check you included all the right fields
   update<T>(r: IDataReference<T>, changes: any): Promise<void>;
 }

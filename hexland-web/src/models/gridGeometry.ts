@@ -218,7 +218,6 @@ export abstract class BaseGeometry {
     // Now we translate everything
     var vertex = createGridVertex(tile, new THREE.Vector2(x, y), this.tileDim, v);
     const centre = this.createVertexCentre(new THREE.Vector3(), vertex, z);
-    console.log("vertex centre of tile.x=" + tile.toArray() + ", x=" + x + ", y=" + y + " is " + centre.toArray());
     for (var i = iStart; i < vertices.length; ++i) {
       vertices[i].add(centre);
     }

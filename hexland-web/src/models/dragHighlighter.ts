@@ -86,7 +86,7 @@ export class EdgeHighlighter extends DragHighlighter<IGridEdge, IFeature<IGridEd
     return edgesEqual(a, b);
   }
 
-  protected createFeatureAdd(position: IGridEdge, colour: number): IChange {
+  protected createFeatureAdd(position: IGridEdge, colour: number): IWallAdd {
     return {
       ty: ChangeType.Add,
       cat: ChangeCategory.Wall,
@@ -94,15 +94,15 @@ export class EdgeHighlighter extends DragHighlighter<IGridEdge, IFeature<IGridEd
         position: position,
         colour: colour
       }
-    } as IWallAdd;
+    };
   }
 
-  protected createFeatureRemove(position: IGridEdge): IChange {
+  protected createFeatureRemove(position: IGridEdge): IWallRemove {
     return {
       ty: ChangeType.Remove,
       cat: ChangeCategory.Wall,
       position: position
-    } as IWallRemove;
+    };
   }
 
   protected createHighlight(position: IGridEdge): IFeature<IGridEdge> {
@@ -115,7 +115,7 @@ export class FaceHighlighter extends DragHighlighter<IGridCoord, IFeature<IGridC
     return coordsEqual(a, b);
   }
 
-  protected createFeatureAdd(position: IGridCoord, colour: number): IChange {
+  protected createFeatureAdd(position: IGridCoord, colour: number): IAreaAdd {
     return {
       ty: ChangeType.Add,
       cat: ChangeCategory.Area,
@@ -123,15 +123,15 @@ export class FaceHighlighter extends DragHighlighter<IGridCoord, IFeature<IGridC
         position: position,
         colour: colour
       }
-    } as IAreaAdd;
+    };
   }
 
-  protected createFeatureRemove(position: IGridCoord): IChange {
+  protected createFeatureRemove(position: IGridCoord): IAreaRemove {
     return {
       ty: ChangeType.Remove,
       cat: ChangeCategory.Area,
       position: position
-    } as IAreaRemove;
+    };
   }
 
   protected createHighlight(position: IGridCoord): IFeature<IGridCoord> {

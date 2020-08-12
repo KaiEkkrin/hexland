@@ -26,12 +26,12 @@ export interface IPlayer extends IAdventureSummary {
   playerName: string;
 }
 
-export function summariseAdventure(id: string, a: IAdventure) {
+export function summariseAdventure(id: string, a: IAdventure): IAdventureSummary {
   return {
     id: id,
     name: a.name,
     description: a.description,
     owner: a.owner,
     ownerName: a.ownerName
-  } as IAdventureSummary;
+  };
 }

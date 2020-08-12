@@ -59,7 +59,7 @@ async function editAdventureTransaction(
 
   // Update the adventure record itself, and the players associated with it
   if (newPlayerRef !== undefined) { // it's new
-    await view.set(adventureRef, {
+    await view.set<IAdventure>(adventureRef, {
       name: changed.name,
       description: changed.description,
       owner: uid,
@@ -67,7 +67,7 @@ async function editAdventureTransaction(
       maps: []
     });
 
-    await view.set(newPlayerRef, {
+    await view.set<IPlayer>(newPlayerRef, {
       id: changed.id,
       name: changed.name,
       description: changed.description,
@@ -216,13 +216,14 @@ async function editMapTransaction(
 
   // Update the map record itself
   if (isNew) {
-    await view.set(mapRef, {
+    await view.set<IMap>(mapRef, {
       adventureName: adventure.name,
       name: changed.name,
       description: changed.description,
       owner: uid,
       ty: changed.ty,
-    } as IMap);
+      ffa: false
+    });
   } else {
     await view.update(mapRef, { name: changed.name, description: changed.description });
   }
@@ -402,7 +403,7 @@ async function consolidateMapChangesTransaction(
   }
 
   // Update the base change
-  await view.set(baseChangeRef, {
+  await view.set<IChanges>(baseChangeRef, {
     chs: consolidated,
     timestamp: timestampProvider(),
     incremental: false,
@@ -504,7 +505,7 @@ async function joinAdventureTransaction(
 
   var player = await view.get(playerRef);
   if (player === undefined) {
-    await view.set(playerRef, { // remember this is an adventure summary plus player details
+    await view.set<IPlayer>(playerRef, { // remember this is an adventure summary plus player details
       id: adventureRef.id,
       name: adventure.name,
       description: adventure.description,
