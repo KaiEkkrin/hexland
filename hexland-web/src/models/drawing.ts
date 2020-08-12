@@ -462,11 +462,24 @@ export class ThreeDrawing {
       return false;
     }
 
-    // We want to answer true to this query iff actually moving the tokens here would
-    // be accepted by the change tracker, and so we create our own change tracker to do this.
+    // #27: As a non-enforced improvement (just like LoS as a whole), we stop non-owners from
+    // dropping tokens outside of the current LoS.
+    var delta = coordSub(position, this._tokenMoveDragStart);
+    if (this.seeEverything === false) {
+      var withinLoS = this._selection.all.map(f => {
+        var los = this._los.get(coordAdd(f.position, delta));
+        return los !== undefined && los.colour !== LoS.oNone;
+      }).reduce((a, b) => a && b, true);
+
+      if (withinLoS === false) {
+        return false;
+      }
+    }
+
+    // We want to answer false to this query if actually moving the tokens here would
+    // be rejected by the change tracker, and so we create our own change tracker to do this.
     // It's safe for us to use our current areas, walls and map colouring because those won't
     // change, but we need to clone our tokens into a scratch dictionary.
-    var delta = coordSub(position, this._tokenMoveDragStart);
     var changes = this._selection.all.map(f => {
       return {
         ty: ChangeType.Move,
