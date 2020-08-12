@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useContext } from 'react';
 import './App.css';
 import './Map.css';
 
-import { UserContext, ProfileContext } from './App';
+import { UserContext, ProfileContext, FirebaseContext } from './App';
 import MapControls, { EditMode, MapColourVisualisationMode } from './components/MapControls';
 import MapEditorModal from './components/MapEditorModal';
 import Navigation from './components/Navigation';
@@ -37,6 +37,7 @@ function getHexColours() {
 }
 
 function Map(props: IMapPageProps) {
+  var firebaseContext = useContext(FirebaseContext);
   var userContext = useContext(UserContext);
   var profile = useContext(ProfileContext);
 
@@ -80,7 +81,7 @@ function Map(props: IMapPageProps) {
 
     registerMapAsRecent(userContext.dataService, profile, props.adventureId, props.mapId, record)
       .catch(e => console.error("Error registering map as recent", e));
-    consolidateMapChanges(userContext.dataService, props.adventureId, props.mapId, record)
+    consolidateMapChanges(userContext.dataService, firebaseContext.timestampProvider, props.adventureId, props.mapId, record)
       .catch(e => console.error("Error consolidating map changes", e));
 
     var theDrawing = new ThreeDrawing(
@@ -98,7 +99,7 @@ function Map(props: IMapPageProps) {
       stopWatchingChanges();
       theDrawing.dispose();
     };
-  }, [userContext.dataService, profile, props.adventureId, props.mapId, record]);
+  }, [userContext.dataService, firebaseContext.timestampProvider, profile, props.adventureId, props.mapId, record]);
 
   // Track the adventure's players, if we might need access to this
   useEffect(() => {
@@ -162,7 +163,7 @@ function Map(props: IMapPageProps) {
 
       // We should always do a consolidate here to avoid accidentally invalidating
       // any recent changes when switching from FFA to non-FFA mode, for example.
-      consolidateMapChanges(dataService, props.adventureId, props.mapId, record)
+      consolidateMapChanges(dataService, firebaseContext.timestampProvider, props.adventureId, props.mapId, record)
         .then(() => dataService.update(mapRef, { ffa: ffa }))
         .then(() => console.log("Set FFA to " + ffa))
         .catch(e => console.error("Failed to set FFA:", e));

@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import './App.css';
 
-import { UserContext, ProfileContext } from './App';
+import { UserContext, ProfileContext, FirebaseContext } from './App';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
 
@@ -23,6 +23,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 interface IAdventureProps {
   dataService: IDataService | undefined;
+  timestampProvider: (() => firebase.firestore.FieldValue) | undefined;
   profile: IProfile | undefined;
   adventureId: string;
 }
@@ -108,7 +109,11 @@ class Adventure extends React.Component<IAdventureProps, AdventureState> {
       return;
     }
 
-    inviteToAdventure(this.props.dataService, summariseAdventure(this.props.adventureId, this.state.adventure))
+    inviteToAdventure(
+      this.props.dataService,
+      this.props.timestampProvider,
+      summariseAdventure(this.props.adventureId, this.state.adventure)
+    )
       .then(l => this.setState({ inviteLink: this.props.adventureId + "/invite/" + l }))
       .catch(e => console.error("Failed to create invite link for " + this.props.adventureId, e));
   }
@@ -171,10 +176,13 @@ interface IAdventurePageProps {
 }
 
 function AdventurePage(props: RouteComponentProps<IAdventurePageProps>) {
+  var firebaseContext = useContext(FirebaseContext);
   var userContext = useContext(UserContext);
   var profile = useContext(ProfileContext);
   return userContext.user === null ? <div></div> : (
-    <Adventure dataService={userContext.dataService} profile={profile}
+    <Adventure dataService={userContext.dataService}
+      timestampProvider={firebaseContext.timestampProvider}
+      profile={profile}
       adventureId={props.match.params.adventureId} />);
 }
 

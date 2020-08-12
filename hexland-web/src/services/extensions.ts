@@ -5,7 +5,6 @@ import { FeatureDictionary, IToken, IFeature } from '../data/feature';
 import { IMap, MapType } from '../data/map';
 import { IAdventureSummary, IProfile } from '../data/profile';
 import { IDataService, IDataView, IDataReference, IDataAndReference } from './interfaces';
-import { timestampProvider } from '../firebase';
 
 import { MapChangeTracker } from '../models/mapChangeTracker';
 import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
@@ -384,6 +383,7 @@ export async function registerMapAsRecent(
 
 async function consolidateMapChangesTransaction(
   view: IDataView,
+  timestampProvider: () => firebase.firestore.FieldValue,
   baseChangeRef: IDataReference<IChanges>,
   changes: IDataAndReference<IChanges>[],
   consolidated: IChange[],
@@ -422,11 +422,12 @@ async function consolidateMapChangesTransaction(
 // https://firebase.google.com/docs/firestore/manage-data/delete-data
 export async function consolidateMapChanges(
   dataService: IDataService | undefined,
+  timestampProvider: (() => firebase.firestore.FieldValue) | undefined,
   adventureId: string,
   mapId: string,
   m: IMap
 ): Promise<void> {
-  if (dataService === undefined) {
+  if (dataService === undefined || timestampProvider === undefined) {
     return;
   }
 
@@ -456,7 +457,7 @@ export async function consolidateMapChanges(
 
   // Apply it
   await dataService.runTransaction(view =>
-    consolidateMapChangesTransaction(view, baseChangeRef, changes ?? [], consolidated, dataService.getUid())
+    consolidateMapChangesTransaction(view, timestampProvider, baseChangeRef, changes ?? [], consolidated, dataService.getUid())
   );
 }
 
@@ -464,9 +465,10 @@ export async function consolidateMapChanges(
 // the existing one if it's still valid.  Returns the invite ID.
 export async function inviteToAdventure(
   dataService: IDataService | undefined,
+  timestampProvider: (() => firebase.firestore.FieldValue) | undefined,
   adventure: IAdventureSummary
 ): Promise<string | undefined> {
-  if (dataService === undefined) {
+  if (dataService === undefined || timestampProvider === undefined) {
     return undefined;
   }
 

@@ -1,4 +1,4 @@
-import { db, timestampProvider } from '../firebase';
+import * as firebase from 'firebase/app';
 
 import { IDataService, IDataReference, IDataView, IDataAndReference } from './interfaces';
 import { IAdventure, IPlayer } from '../data/adventure';
@@ -55,9 +55,17 @@ class DataAndReference<T> extends DataReference<T> implements IDataAndReference<
 
 // This service is for datastore-related operations for the current user.
 export class DataService implements IDataService {
+  private readonly _db: firebase.firestore.Firestore;
+  private readonly _timestampProvider: () => firebase.firestore.FieldValue;
   private readonly _uid: string;
 
-  constructor(uid: string) {
+  constructor(
+    db: firebase.firestore.Firestore,
+    timestampProvider: () => firebase.firestore.FieldValue,
+    uid: string
+  ) {
+    this._db = db;
+    this._timestampProvider = timestampProvider;
     this._uid = uid;
   }
 
@@ -87,26 +95,26 @@ export class DataService implements IDataService {
   // IDataService implementation
 
   async addChanges(adventureId: string, mapId: string, chs: IChange[]): Promise<void> {
-    await db.collection(adventures).doc(adventureId).collection(maps).doc(mapId).collection(changes).add({
+    await this._db.collection(adventures).doc(adventureId).collection(maps).doc(mapId).collection(changes).add({
       chs: chs,
-      timestamp: timestampProvider(),
+      timestamp: this._timestampProvider(),
       incremental: true,
       user: this._uid
     });
   }
 
   getAdventureRef(id: string): IDataReference<IAdventure> {
-    var d = db.collection(adventures).doc(id);
+    var d = this._db.collection(adventures).doc(id);
     return new DataReference<IAdventure>(d);
   }
 
   getInviteRef(adventureId: string, id: string): IDataReference<IInvite> {
-    var d = db.collection(adventures).doc(adventureId).collection(invites).doc(id);
+    var d = this._db.collection(adventures).doc(adventureId).collection(invites).doc(id);
     return new DataReference<IInvite>(d);
   }
 
   async getLatestInviteRef(adventureId: string): Promise<IDataAndReference<IInvite> | undefined> {
-    var s = await db.collection(adventures).doc(adventureId).collection(invites)
+    var s = await this._db.collection(adventures).doc(adventureId).collection(invites)
       .orderBy("timestamp", "desc")
       .limit(1)
       .get();
@@ -115,23 +123,23 @@ export class DataService implements IDataService {
   }
 
   async getMap(adventureId: string, id: string): Promise<IMap | undefined> {
-    var d = await db.collection(adventures).doc(adventureId).collection(maps).doc(id).get();
+    var d = await this._db.collection(adventures).doc(adventureId).collection(maps).doc(id).get();
     return d.exists ? (d.data() as IMap) : undefined;
   }
 
   getMapRef(adventureId: string, id: string): IDataReference<IMap> {
-    var d = db.collection(adventures).doc(adventureId).collection(maps).doc(id);
+    var d = this._db.collection(adventures).doc(adventureId).collection(maps).doc(id);
     return new DataReference<IMap>(d);
   }
 
   getMapBaseChangeRef(adventureId: string, id: string): IDataReference<IChanges> {
-    var d = db.collection(adventures).doc(adventureId)
+    var d = this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(id).collection(changes).doc(baseChange);
     return new DataReference<IChanges>(d);
   }
 
   async getMapChangesRefs(adventureId: string, id: string): Promise<IDataAndReference<IChanges>[] | undefined> {
-    var s = await db.collection(adventures).doc(adventureId)
+    var s = await this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(id).collection(changes)
       .orderBy("timestamp")
       .get();
@@ -139,17 +147,17 @@ export class DataService implements IDataService {
   }
 
   getPlayerRef(adventureId: string, uid: string): IDataReference<IPlayer> {
-    var d = db.collection(adventures).doc(adventureId).collection(players).doc(uid);
+    var d = this._db.collection(adventures).doc(adventureId).collection(players).doc(uid);
     return new DataReference<IPlayer>(d);
   }
 
   async getPlayerRefs(adventureId: string): Promise<IDataAndReference<IPlayer>[]> {
-    var s = await db.collection(adventures).doc(adventureId).collection(players).get();
+    var s = await this._db.collection(adventures).doc(adventureId).collection(players).get();
     return s.docs.map(d => new DataAndReference(d.ref, d.data() as IPlayer));
   }
 
   getProfileRef(): IDataReference<IProfile> {
-    var d = db.collection(profiles).doc(this._uid);
+    var d = this._db.collection(profiles).doc(this._uid);
     return new DataReference<IProfile>(d);
   }
 
@@ -158,14 +166,14 @@ export class DataService implements IDataService {
   }
 
   runTransaction<T>(fn: (dataView: IDataView) => Promise<T>): Promise<T> {
-    return db.runTransaction(tr => {
+    return this._db.runTransaction(tr => {
       var tdv = new TransactionalDataView(tr);
       return fn(tdv);
     });
   }
 
   setProfile(profile: IProfile): Promise<void> {
-    return db.collection(profiles).doc(this._uid).set(profile);
+    return this._db.collection(profiles).doc(this._uid).set(profile);
   }
 
   watch<T>(
@@ -184,7 +192,7 @@ export class DataService implements IDataService {
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ) {
-    return db.collection(adventures).where("owner", "==", this._uid)
+    return this._db.collection(adventures).where("owner", "==", this._uid)
       .orderBy("name")
       .onSnapshot(s => {
         var adventures: IIdentified<IAdventure>[] = [];
@@ -206,7 +214,7 @@ export class DataService implements IDataService {
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ) {
-    return db.collection(adventures).doc(adventureId)
+    return this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(mapId).collection(changes)
       .orderBy("incremental") // base change must always be first even if it has a later timestamp
       .orderBy("timestamp")
@@ -228,7 +236,7 @@ export class DataService implements IDataService {
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ) {
-    return db.collection(adventures).doc(adventureId).collection(players).onSnapshot(s => {
+    return this._db.collection(adventures).doc(adventureId).collection(players).onSnapshot(s => {
       onNext(s.docs.map(d => d.data() as IPlayer));
     }, onError, onCompletion);
   }
@@ -238,7 +246,7 @@ export class DataService implements IDataService {
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ) {
-    return db.collectionGroup(players).where("playerId", "==", this._uid).onSnapshot(s => {
+    return this._db.collectionGroup(players).where("playerId", "==", this._uid).onSnapshot(s => {
       onNext(s.docs.map(d => d.data() as IPlayer));
     }, onError, onCompletion);
   }

@@ -1,7 +1,6 @@
 import React, { useContext } from 'react';
-import { auth } from '../firebase';
 
-import { UserContext } from '../App';
+import { UserContext, FirebaseContext } from '../App';
 
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
@@ -14,6 +13,7 @@ interface INavigationProps {
 }
 
 function Navigation(props: INavigationProps) {
+  var firebaseContext = useContext(FirebaseContext);
   var userContext = useContext(UserContext);
   return (
     <Navbar bg="dark" variant="dark" sticky="top">
@@ -46,7 +46,7 @@ function Navigation(props: INavigationProps) {
             {userContext.user.displayName}
           </Navbar.Text>
           <Form inline>
-            <Button variant="outline-primary" onClick={() => auth.signOut()}>Log out</Button>
+            <Button variant="outline-primary" onClick={() => firebaseContext.auth?.signOut()}>Log out</Button>
           </Form>
         </Navbar.Collapse>
       ) : (
