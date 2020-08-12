@@ -15,6 +15,7 @@ import SharedPage from './Shared';
 
 import { BrowserRouter, Route, Switch } from 'react-router-dom';
 import { IDataService } from './services/interfaces';
+import Status from './components/Status';
 
 interface IAppProps {}
 
@@ -111,6 +112,7 @@ class App extends React.Component<IAppProps, AppState> {
             </Switch>
           </BrowserRouter>
         </AppContext.Provider>
+        <Status />
       </div>
     );
   }
