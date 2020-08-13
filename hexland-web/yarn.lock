@@ -5178,6 +5178,11 @@ flatten@^1.0.2:
   resolved "https://registry.yarnpkg.com/flatten/-/flatten-1.0.3.tgz#c1283ac9f27b368abc1e36d1ff7b04501a30356b"
   integrity sha512-dVsPA/UwQ8+2uoFe5GHtiBMu48dWLTdsuEd7CKGlZlD78r1TTWBvDuFaFGKCo/ZfEr95Uk56vZoX86OsHkUeIg==
 
+fluent-iterable@^0.1.6:
+  version "0.1.6"
+  resolved "https://registry.yarnpkg.com/fluent-iterable/-/fluent-iterable-0.1.6.tgz#d8ac795d9c91cb58644de4361afea728a697f7a4"
+  integrity sha512-M7okFjqX3E+6c6lKODTu3vnmb7ymhq3mzCDYdqnV9j7RyqbV95M+F4JxTrNEZZQ6WUjjwagwwb+wXr/K539DOg==
+
 flush-write-stream@^1.0.0:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/flush-write-stream/-/flush-write-stream-1.1.1.tgz#8dd7d873a1babc207d94ead0c2e0e44276ebf2e8"

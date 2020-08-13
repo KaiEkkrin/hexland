@@ -8,15 +8,18 @@ export interface IFeature<K> {
 }
 
 // A token has some extra properties:
-export interface IToken extends IFeature<IGridCoord> {
+export interface ITokenProperties {
+  colour: number;
   players: string[]; // the uids of the players that can move this token
   text: string; // maximum of three characters
+  note: string; // shown in the annotations UI
+  noteVisibleToPlayers: boolean; // as you'd expect
 }
 
-// The interface of a dictionary of these
-export interface IFeatureDictionary<K extends IGridCoord, F extends IFeature<K>> {
-  all: F[];
+export interface IToken extends IFeature<IGridCoord>, ITokenProperties {}
 
+// The interface of a dictionary of these
+export interface IFeatureDictionary<K extends IGridCoord, F extends IFeature<K>> extends Iterable<F> {
   // Returns true if the feature wasn't already present (we added it), else false
   // (we didn't replace it.)
   add(f: F): boolean;
@@ -36,6 +39,9 @@ export interface IFeatureDictionary<K extends IGridCoord, F extends IFeature<K>>
   // Gets an entry by coord or undefined if it wasn't there
   get(k: K): F | undefined;
 
+  // Iterates over the contents.
+  iterate(): Iterable<F>;
+
   // Removes an entry, returning what it was or undefined if there wasn't one
   remove(k: K): F | undefined;
 }
@@ -50,12 +56,8 @@ export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> impl
     this._values = values ?? {};
   }
 
-  get all(): F[] {
-    const features: F[] = [];
-    for (var i in this._values) {
-      features.push(this._values[i]);
-    }
-    return features;
+  [Symbol.iterator](): Iterator<F> {
+    return this.iterate();
   }
 
   add(f: F) {
@@ -87,7 +89,7 @@ export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> impl
   }
 
   forEach(fn: (f: F) => void) {
-    for (const i in this._values) {
+    for (var i in this._values) {
       fn(this._values[i]);
     }
   }
@@ -95,6 +97,12 @@ export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> impl
   get(k: K): F | undefined {
     const i = this._toIndex(k);
     return (i in this._values) ? this._values[i] : undefined;
+  }
+
+  *iterate() {
+    for (var i in this._values) {
+      yield this._values[i];
+    }
   }
 
   remove(k: K): F | undefined {

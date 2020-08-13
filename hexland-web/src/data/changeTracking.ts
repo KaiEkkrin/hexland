@@ -106,11 +106,11 @@ export class SimpleChangeTracker implements IChangeTracker {
 }
 
 // Handles a whole collection of (ordered) changes in one go, either applying or rejecting all.
-export function trackChanges(map: IMap, tracker: IChangeTracker, chs: IChange[], user: string): boolean {
+export function trackChanges(map: IMap, tracker: IChangeTracker, chs: Iterable<IChange>, user: string): boolean {
   // Begin applying each change (in practice, this does all the removes.)
   var applications: (IChangeApplication[]) = [];
-  for (var i = 0; i < chs.length; ++i) {
-    var a = trackChange(map, tracker, chs[i], user);
+  for (var c of chs) {
+    var a = trackChange(map, tracker, c, user);
     if (a === undefined) {
       // Changes failed -- revert any previously applied and return with an error
       revertChanges(applications);

@@ -55,8 +55,12 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
   createAnnotationPosition(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, coord: IGridCoord, z: number, alpha: number): THREE.Vector3 {
     this.createCoordCentre(target, coord, z);
     this.createLeft(scratch1, target);
-    this.createTopLeft(scratch2, target);
-    scratch1.lerp(scratch2, 0.5);
+    return target.lerp(scratch1, alpha);
+  }
+
+  createTokenAnnotationPosition(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, coord: IGridCoord, z: number, alpha: number): THREE.Vector3 {
+    this.createCoordCentre(target, coord, z);
+    this.createBottomLeft(scratch1, target);
     return target.lerp(scratch1, alpha);
   }
 

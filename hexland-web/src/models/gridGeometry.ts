@@ -12,6 +12,10 @@ export interface IGridGeometry {
   // Invalidates the scratch vectors.
   createAnnotationPosition(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, coord: IGridCoord, z: number, alpha: number): THREE.Vector3;
 
+  // The same, but for a token's annotation.
+  // Invalidates the scratch vectors.
+  createTokenAnnotationPosition(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, coord: IGridCoord, z: number, alpha: number): THREE.Vector3;
+
   // Creates the co-ordinates of the centre of this edge.  Invalidates the scratch vectors.
   createEdgeCentre(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, edge: IGridEdge, z: number): THREE.Vector3;
 

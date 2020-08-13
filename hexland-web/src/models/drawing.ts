@@ -2,7 +2,7 @@ import { IPositionedAnnotation, IAnnotation } from '../data/annotation';
 import { IChange, ITokenRemove, ChangeType, ChangeCategory, ITokenAdd, ITokenMove, INoteAdd, INoteRemove } from '../data/change';
 import { trackChanges } from '../data/changeTracking';
 import { IGridCoord, IGridEdge, coordAdd, coordsEqual, coordSub, IGridVertex, coordString } from '../data/coord';
-import { IToken, IFeatureDictionary, FeatureDictionary } from '../data/feature';
+import { IToken, IFeatureDictionary, FeatureDictionary, ITokenProperties } from '../data/feature';
 import { IMap, MapType } from '../data/map';
 import { Areas } from './areas';
 import { MapColouring } from './colouring';
@@ -22,6 +22,7 @@ import { Vertices } from './vertices';
 import { WallHighlighter } from './wallHighlighter';
 import { Walls } from './walls';
 
+import fluent from 'fluent-iterable';
 import * as THREE from 'three';
 
 const areaZ = 0.5;
@@ -45,6 +46,7 @@ const losAlpha = 1.0;
 const areaAlpha = 1.0;
 const vertexHighlightAlpha = 0.35;
 const noteAlpha = 0.9;
+const tokenNoteAlpha = 0.6;
 
 const spacing = 75.0;
 const tileDim = 12;
@@ -340,25 +342,49 @@ export class ThreeDrawing {
     return this.seeEverything || t.players.find(p => this._uid === p) !== undefined;
   }
 
+  private *enumerateAnnotations(): Iterable<IAnnotation> {
+    // Here we enumerate all the relevant annotations that could be displayed --
+    // which means both the map notes, and the token-attached notes.
+    for (var n of this._notes) {
+      yield n;
+    }
+
+    for (var t of this._tokens) {
+      if (t.note?.length > 0) {
+        yield {
+          id: "Token " + t.text + " " + coordString(t.position),
+          position: t.position,
+          colour: 1, // TODO I'm being weird with note colouring, maybe do something about it
+          text: t.note,
+          visibleToPlayers: t.noteVisibleToPlayers === true
+        };
+      }
+    }
+  }
+
   private updateAnnotations() {
     var positioned: IPositionedAnnotation[] = [];
     var [target, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
-    this._notes.forEach(n => {
+    for (var n of this.enumerateAnnotations()) {
       // Skip notes not marked as player-visible
       if (!this.seeEverything && n.visibleToPlayers === false) {
-        return;
+        continue;
       }
 
       // Skip notes outside of the current LoS
       var visibility = this._los.get(n.position);
       if (!this.seeEverything && (visibility === undefined || visibility.colour === LoS.oNone)) {
-        return;
+        continue;
       }
 
-      this._gridGeometry.createAnnotationPosition(target, scratch1, scratch2, n.position, 0, noteAlpha);
+      if (n.id.startsWith("Token")) {
+        this._gridGeometry.createTokenAnnotationPosition(target, scratch1, scratch2, n.position, 0, tokenNoteAlpha);
+      } else {
+        this._gridGeometry.createAnnotationPosition(target, scratch1, scratch2, n.position, 0, noteAlpha);
+      }
       this.worldToViewport(target);
       positioned.push({ clientX: target.x, clientY: target.y, ...n });
-    })
+    }
 
     this._setAnnotations(positioned);
   }
@@ -370,7 +396,7 @@ export class ThreeDrawing {
 
   private getLoSPositions() {
     // These are the positions we should be projecting line-of-sight from.
-    var myTokens = this._tokens.all.filter(t => this.canSelectToken(t));
+    var myTokens = Array.from(this._tokens).filter(t => this.canSelectToken(t));
     var selectedTokens = myTokens.filter(t => this._selection.get(t.position) !== undefined);
     if (selectedTokens.length === 0) {
       if (this.seeEverything) {
@@ -530,7 +556,7 @@ export class ThreeDrawing {
     // dropping tokens outside of the current LoS.
     var delta = coordSub(position, this._tokenMoveDragStart);
     if (this.seeEverything === false) {
-      var withinLoS = this._selection.all.map(f => {
+      var withinLoS = fluent(this._selection).map(f => {
         var los = this._los.get(coordAdd(f.position, delta));
         return los !== undefined && los.colour !== LoS.oNone;
       }).reduce((a, b) => a && b, true);
@@ -544,7 +570,7 @@ export class ThreeDrawing {
     // be rejected by the change tracker, and so we create our own change tracker to do this.
     // It's safe for us to use our current areas, walls and map colouring because those won't
     // change, but we need to clone our tokens into a scratch dictionary.
-    var changes = this._selection.all.map(f => {
+    var changes = fluent(this._selection).map(f => {
       return {
         ty: ChangeType.Move,
         cat: ChangeCategory.Token,
@@ -599,7 +625,7 @@ export class ThreeDrawing {
       var delta = coordSub(position, this._tokenMoveDragStart);
       this._selectionDrag.clear();
       this._selectionDragRed.clear();
-      console.log("Moving " + this._selection.all.length + " selected positions");
+      console.log("Moving " + fluent(this._selection).count() + " selected positions");
       this._selection.forEach(f => {
         var dragged = { position: coordAdd(f.position, delta), colour: f.colour };
         console.log(coordString(f.position) + " -> " + coordString(dragged.position));
@@ -610,7 +636,7 @@ export class ThreeDrawing {
     }
   }
 
-  setToken(cp: THREE.Vector2, colour: number, text: string, playerIds: string[]): IChange[] {
+  setToken(cp: THREE.Vector2, properties: ITokenProperties | undefined): IChange[] {
     var position = this.getGridCoordAt(cp);
     var chs: IChange[] = [];
     if (position !== undefined) {
@@ -623,15 +649,13 @@ export class ThreeDrawing {
         } as ITokenRemove);
       }
 
-      if (colour >= 0) {
+      if (properties !== undefined && properties.colour >= 0) {
         chs.push({
           ty: ChangeType.Add,
           cat: ChangeCategory.Token,
           feature: {
             position: position,
-            colour: colour,
-            text: text,
-            players: playerIds
+            ...properties
           }
         } as ITokenAdd);
       }
@@ -697,7 +721,7 @@ export class ThreeDrawing {
 
         if (this.canDropSelectionAt(position)) {
           // Create commands that move all the tokens
-          chs.push(...this._selection.all.map(t => {
+          chs.push(...fluent(this._selection).map(t => {
             return {
               ty: ChangeType.Move,
               cat: ChangeCategory.Token,
@@ -707,7 +731,7 @@ export class ThreeDrawing {
           }));
 
           // Move the selection to the target positions
-          this._selection.all.map(t => this._selection.remove(t.position))
+          fluent(this._selection).map(t => this._selection.remove(t.position))
             .forEach(f => {
               if (f !== undefined) {
                 this._selection.add({ position: coordAdd(f.position, delta), colour: f.colour });

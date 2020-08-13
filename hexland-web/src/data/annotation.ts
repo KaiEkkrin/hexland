@@ -5,7 +5,7 @@ import { IFeature } from "./feature";
 // This is expected to be rendered using React and so needs to have a unique id
 // to use as a key in the list of annotation elements.
 export interface IAnnotation extends IFeature<IGridCoord> {
-  id: string;
+  id: string; // starts with "Token" for annotations created from token notes
   text: string;
   visibleToPlayers: boolean; // if false, only the owner will see it rendered
 }

@@ -14,7 +14,7 @@ import { IPlayer } from './data/adventure';
 import { IPositionedAnnotation, IAnnotation } from './data/annotation';
 import { IChange } from './data/change';
 import { trackChanges } from './data/changeTracking';
-import { IToken } from './data/feature';
+import { IToken, ITokenProperties } from './data/feature';
 import { IMap } from './data/map';
 import { registerMapAsRecent, consolidateMapChanges } from './services/extensions';
 
@@ -180,14 +180,14 @@ function Map(props: IMapPageProps) {
 
   function handleTokenEditorDelete() {
     if (tokenToEditPosition !== undefined) {
-      addChanges(drawing?.setToken(tokenToEditPosition, -1, "", []));
+      addChanges(drawing?.setToken(tokenToEditPosition, undefined));
     }
     setShowTokenEditor(false);
   }
 
-  function handleTokenEditorSave(text: string, colour: number, playerIds: string[]) {
+  function handleTokenEditorSave(properties: ITokenProperties) {
     if (tokenToEditPosition !== undefined) {
-      addChanges(drawing?.setToken(tokenToEditPosition, colour, text, playerIds));
+      addChanges(drawing?.setToken(tokenToEditPosition, properties));
     }
     setShowTokenEditor(false);
   }

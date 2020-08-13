@@ -47,15 +47,26 @@ function MapAnnotation(props: IMapAnnotationProps) {
   const [left, setLeft] = useState("0vw");
   const [bottom, setBottom] = useState("0vh");
   const [pinColour, setPinColour] = useState(defaultPinColour);
+  const [placement, setPlacement] = useState<"top" | "bottom">("top");
+  const [zIndex, setZIndex] = useState(1);
 
   useEffect(() => {
     setLeft(viewToPercent(props.annotation.clientX) + "vw");
     setBottom(viewToPercent(props.annotation.clientY) + "vh");
-    setPinColour(props.annotation.visibleToPlayers === true ? defaultPinColour : "orange");
+    if (props.annotation.id.startsWith("Token")) {
+      // I think this was generated from a token and I should make it look different
+      setPinColour(props.annotation.visibleToPlayers === true ? "green" : "red");
+      setPlacement("bottom");
+      setZIndex(2);
+    } else {
+      setPinColour(props.annotation.visibleToPlayers === true ? defaultPinColour : "orange");
+      setPlacement("top");
+      setZIndex(1);
+    }
   }, [props.annotation]);
 
   return (
-    <OverlayTrigger placement="top" show={showTooltip} overlay={
+    <OverlayTrigger placement={placement} show={showTooltip} overlay={
       <UpdatingPopover id={props.annotation.id + "-tooltip"} left={left} bottom={bottom}>
         {props.annotation.text}
       </UpdatingPopover>
@@ -66,7 +77,7 @@ function MapAnnotation(props: IMapAnnotationProps) {
           position: 'fixed',
           left: left,
           bottom: bottom,
-          zIndex: 1
+          zIndex: zIndex,
         }}
       />
     </OverlayTrigger>

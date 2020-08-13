@@ -180,8 +180,8 @@ export abstract class InstancedFeatures<K extends IGridCoord, F extends IFeature
     }
   }
 
-  get all(): F[] {
-    return this._features.all;
+  [Symbol.iterator](): Iterator<F> {
+    return this.iterate();
   }
 
   add(f: F): boolean {
@@ -230,6 +230,10 @@ export abstract class InstancedFeatures<K extends IGridCoord, F extends IFeature
 
   get(position: K): F | undefined {
     return this._features.get(position);
+  }
+
+  iterate() {
+    return this._features.iterate();
   }
 
   remove(oldPosition: K): F | undefined {
