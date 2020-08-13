@@ -1,7 +1,8 @@
-import { IChange, ITokenRemove, ChangeType, ChangeCategory, ITokenAdd, ITokenMove } from '../data/change';
+import { IPositionedAnnotation, IAnnotation } from '../data/annotation';
+import { IChange, ITokenRemove, ChangeType, ChangeCategory, ITokenAdd, ITokenMove, INoteAdd, INoteRemove } from '../data/change';
 import { trackChanges } from '../data/changeTracking';
 import { IGridCoord, IGridEdge, coordAdd, coordsEqual, coordSub, IGridVertex, coordString } from '../data/coord';
-import { IToken } from '../data/feature';
+import { IToken, IFeatureDictionary, FeatureDictionary } from '../data/feature';
 import { IMap, MapType } from '../data/map';
 import { Areas } from './areas';
 import { MapColouring } from './colouring';
@@ -43,6 +44,7 @@ const selectionAlpha = 0.9;
 const losAlpha = 1.0;
 const areaAlpha = 1.0;
 const vertexHighlightAlpha = 0.35;
+const noteAlpha = 0.9;
 
 const spacing = 75.0;
 const tileDim = 12;
@@ -52,6 +54,8 @@ const zoomMin = 1;
 const zoomMax = 4;
 const rotationStep = 0.004;
 
+const zAxis = new THREE.Vector3(0, 0, 1);
+
 // A container for the entirety of the drawing.
 // Remember to call dispose() when this drawing is no longer in use!
 export class ThreeDrawing {
@@ -60,6 +64,7 @@ export class ThreeDrawing {
 
   private readonly _gridGeometry: IGridGeometry;
   private readonly _mount: HTMLDivElement;
+  private readonly _setAnnotations: (a: IPositionedAnnotation[]) => void;
 
   private readonly _camera: THREE.OrthographicCamera;
   private readonly _faceCoordRenderTarget: THREE.WebGLRenderTarget;
@@ -86,6 +91,7 @@ export class ThreeDrawing {
   private readonly _selectionDragRed: Areas; // likewise, but shown if the selection couldn't be dropped there
   private readonly _tokens: Tokens;
   private readonly _walls: Walls;
+  private readonly _notes: IFeatureDictionary<IGridCoord, IAnnotation>;
 
   private readonly _mapColouring: MapColouring;
   private readonly _mapColourVisualisation: MapColourVisualisation;
@@ -107,9 +113,6 @@ export class ThreeDrawing {
   private _panX: number;
   private _panY: number;
 
-  private _renderWidth: number;
-  private _renderHeight: number;
-
   private _zoomRotateLast: THREE.Vector2 | undefined;
   private _isRotating: boolean = false;
   private _panLast: THREE.Vector2 | undefined;
@@ -125,25 +128,33 @@ export class ThreeDrawing {
 
   private _disposed: boolean = false;
 
-  constructor(colours: FeatureColour[], mount: HTMLDivElement, textCreator: TextCreator, map: IMap, uid: string) {
+  constructor(
+    colours: FeatureColour[],
+    mount: HTMLDivElement,
+    textCreator: TextCreator,
+    map: IMap,
+    uid: string,
+    setAnnotations: (a: IPositionedAnnotation[]) => void
+  ) {
     this._map = map;
     this._uid = uid;
+    this._setAnnotations = setAnnotations;
 
     this._zoom = 2;
     this._rotation = 0;
     this._panX = 0;
     this._panY = 0;
 
-    this._renderWidth = Math.max(1, Math.floor(window.innerWidth));
-    this._renderHeight = Math.max(1, Math.floor(window.innerHeight));
+    // We need these to initialise things, but they'll be updated dynamically
+    const renderWidth = Math.max(1, Math.floor(window.innerWidth));
+    const renderHeight = Math.max(1, Math.floor(window.innerHeight));
 
-    const left = this._panX + this._renderWidth / -this._zoom;
-    const right = this._panX + this._renderWidth / this._zoom;
-    const top = this._panY + this._renderHeight / -this._zoom;
-    const bottom = this._panY + this._renderHeight / this._zoom;
+    const left = this._panX + renderWidth / -this._zoom;
+    const right = this._panX + renderWidth / this._zoom;
+    const top = this._panY + renderHeight / -this._zoom;
+    const bottom = this._panY + renderHeight / this._zoom;
     this._camera = new THREE.OrthographicCamera(left, right, top, bottom, 0.1, 1000);
     this._camera.position.z = 5;
-    this._camera.setRotationFromAxisAngle(new THREE.Vector3(0, 0, 1), this._rotation);
 
     this._gridNeedsRedraw = new RedrawFlag();
     this._needsRedraw = new RedrawFlag();
@@ -153,7 +164,6 @@ export class ThreeDrawing {
     this._canvasClearColour = new THREE.Color(0.1, 0.1, 0.1);
     this._textureClearColour = new THREE.Color(0, 0, 0); // we'll flip to this when required
     this._renderer.setClearColor(this._canvasClearColour); // a dark grey background will show up LoS
-    this._renderer.setSize(this._renderWidth, this._renderHeight, false); // TODO measure actual div size instead?
     mount.appendChild(this._renderer.domElement);
     this._mount = mount;
 
@@ -165,17 +175,17 @@ export class ThreeDrawing {
 
     // Texture of face co-ordinates within the tile.
     this._faceCoordScene = new THREE.Scene();
-    this._faceCoordRenderTarget = new THREE.WebGLRenderTarget(this._renderWidth, this._renderHeight);
+    this._faceCoordRenderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight);
     this._grid.addCoordColoursToScene(this._faceCoordScene, 0, 0, 1);
 
     // Texture of edge co-ordinates within the tile.
     this._edgeCoordScene = new THREE.Scene();
-    this._edgeCoordRenderTarget = new THREE.WebGLRenderTarget(this._renderWidth, this._renderHeight);
+    this._edgeCoordRenderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight);
     this._grid.addEdgeColoursToScene(this._edgeCoordScene, 0, 0, 1);
 
     // Texture of vertex co-ordinates within the tile.
     this._vertexCoordScene = new THREE.Scene();
-    this._vertexCoordRenderTarget = new THREE.WebGLRenderTarget(this._renderWidth, this._renderHeight);
+    this._vertexCoordRenderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight);
     this._grid.addVertexColoursToScene(this._vertexCoordScene, 0, 0, 1);
 
     this._darkColourMaterials = colours.map(c => new THREE.MeshBasicMaterial({ color: c.dark.getHex() }));
@@ -249,6 +259,9 @@ export class ThreeDrawing {
     this._walls.setMaterials(this._lightColourMaterials);
     this._walls.addToScene(this._scene);
 
+    // The notes are rendered with React, not with Three.js
+    this._notes = new FeatureDictionary<IGridCoord, IAnnotation>(coordString);
+
     // The highlighters
     this._wallHighlighter = new WallHighlighter(this._gridGeometry, this._walls, this._highlightedWalls, this._highlightedVertices);
     this._faceHighlighter = new FaceHighlighter(this._areas, this._highlightedAreas);
@@ -269,9 +282,11 @@ export class ThreeDrawing {
       this._areas,
       this._tokens,
       this._walls,
+      this._notes,
       this._mapColouring,
       () => {
-        this.buildLoS(); // TODO avoid this when only walls have changed
+        this.buildLoS(); // TODO avoid this when no walls or tokens have changed?
+        this.updateAnnotations(); // TODO avoid this when no annotations have changed?
         if (this._showMapColourVisualisation === true) {
           this._mapColourVisualisation.clear(); // TODO try to do it incrementally? (requires checking for colour count changes...)
           this._mapColourVisualisation.visualise(this._scene, this._mapColouring);
@@ -279,6 +294,8 @@ export class ThreeDrawing {
       }
     );
 
+    // Make sure everything is sized correctly before we start
+    this.resize();
     this.animate = this.animate.bind(this);
   }
 
@@ -322,6 +339,23 @@ export class ThreeDrawing {
 
   private canSelectToken(t: IToken) {
     return this.seeEverything || t.players.find(p => this._uid === p) !== undefined;
+  }
+
+  private updateAnnotations() {
+    var positioned: IPositionedAnnotation[] = [];
+    var [target, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+    this._notes.forEach(n => {
+      this._gridGeometry.createAnnotationPosition(target, scratch1, scratch2, n.position, 0, noteAlpha);
+      this.worldToViewport(target);
+      positioned.push({ clientX: target.x, clientY: target.y, ...n });
+    })
+
+    this._setAnnotations(positioned);
+  }
+
+  private worldToViewport(target: THREE.Vector3) {
+    return target.applyAxisAngle(zAxis, -this._rotation) // for some reason this isn't in the projection matrix!
+      .applyMatrix4(this._camera.projectionMatrix);
   }
 
   private getLoSPositions() {
@@ -381,15 +415,17 @@ export class ThreeDrawing {
     this._camera.right = this._panX + width / this._zoom;
     this._camera.top = this._panY + height / -this._zoom;
     this._camera.bottom = this._panY + height / this._zoom;
-    this._camera.setRotationFromAxisAngle(new THREE.Vector3(0, 0, 1), this._rotation);
+    this._camera.setRotationFromAxisAngle(zAxis, this._rotation);
     this._camera.updateProjectionMatrix();
 
     // TODO Also add or remove grid tiles as required
 
-    this._renderWidth = width;
-    this._renderHeight = height;
     this._needsRedraw.setNeedsRedraw();
     this._gridNeedsRedraw.setNeedsRedraw();
+
+    // Upon resize, the positions of annotations may have changed and
+    // we should update the UI
+    this.updateAnnotations();
   }
 
   resetView() {
@@ -467,6 +503,15 @@ export class ThreeDrawing {
     return this._tokens.get(position);
   }
 
+  getNote(cp: THREE.Vector2): IAnnotation | undefined {
+    var position = this.getGridCoordAt(cp);
+    if (position === undefined) {
+      return undefined;
+    }
+
+    return this._notes.get(position);
+  }
+
   private canDropSelectionAt(position: IGridCoord) {
     if (this._tokenMoveDragStart === undefined) {
       return false;
@@ -499,7 +544,7 @@ export class ThreeDrawing {
       };
     });
 
-    var changeTracker = new MapChangeTracker(this._areas, this._tokens.clone(), this._walls, this._mapColouring);
+    var changeTracker = new MapChangeTracker(this._areas, this._tokens.clone(), this._walls, this._notes, this._mapColouring);
     return trackChanges(this._map, changeTracker, changes, this._uid);
   }
 
@@ -580,6 +625,36 @@ export class ThreeDrawing {
             players: playerIds
           }
         } as ITokenAdd);
+      }
+    }
+
+    return chs;
+  }
+
+  setNote(cp: THREE.Vector2, id: string, colour: number, text: string): IChange[] {
+    var position = this.getGridCoordAt(cp);
+    var chs: IChange[] = [];
+    if (position !== undefined) {
+      if (this._notes.get(position) !== undefined) {
+        // Replace the existing note
+        chs.push({
+          ty: ChangeType.Remove,
+          cat: ChangeCategory.Note,
+          position: position
+        } as INoteRemove);
+      }
+
+      if (id.length > 0 && colour >= 0 && text.length > 0) {
+        chs.push({
+          ty: ChangeType.Add,
+          cat: ChangeCategory.Note,
+          feature: {
+            position: position,
+            colour: colour,
+            id: id,
+            text: text
+          }
+        } as INoteAdd);
       }
     }
 

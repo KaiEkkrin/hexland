@@ -1,4 +1,5 @@
 import { IAdventure, IMapSummary, IPlayer } from '../data/adventure';
+import { IAnnotation } from '../data/annotation';
 import { IChange, IChanges } from '../data/change';
 import { trackChanges } from '../data/changeTracking';
 import { FeatureDictionary, IToken, IFeature } from '../data/feature';
@@ -449,6 +450,7 @@ export async function consolidateMapChanges(
     new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
     new FeatureDictionary<IGridCoord, IToken>(coordString),
     new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
+    new FeatureDictionary<IGridCoord, IAnnotation>(coordString),
     // TODO I know the geometry parameters don't matter in this specific case right now
     // but really, they should be stored in the Map record
     new MapColouring(m.ty === MapType.Hex ? new HexGridGeometry(1, 1) : new SquareGridGeometry(1, 1))

@@ -1,4 +1,5 @@
-import { IChange, ChangeCategory, ChangeType, IAreaAdd, IAreaRemove, ITokenAdd, IWallAdd, IWallRemove, ITokenRemove, ITokenMove } from "./change";
+import { IAnnotation } from "./annotation";
+import { IChange, ChangeCategory, ChangeType, IAreaAdd, IAreaRemove, ITokenAdd, IWallAdd, IWallRemove, ITokenRemove, ITokenMove, INoteAdd, INoteRemove } from "./change";
 import { IGridCoord, IGridEdge } from "./coord";
 import { IFeature, IToken, IFeatureDictionary } from "./feature";
 import { IMap } from "./map";
@@ -10,6 +11,8 @@ export interface IChangeTracker {
   tokenRemove: (map: IMap, user: string, position: IGridCoord) => IToken | undefined;
   wallAdd: (feature: IFeature<IGridEdge>) => boolean;
   wallRemove: (position: IGridEdge) => IFeature<IGridEdge> | undefined;
+  noteAdd: (feature: IAnnotation) => boolean;
+  noteRemove: (position: IGridCoord) => IAnnotation | undefined;
 
   // Called after a batch of changes has been completed, before any redraw
   changesApplied(): void;
@@ -23,15 +26,18 @@ export class SimpleChangeTracker implements IChangeTracker {
   private readonly _areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
   private readonly _tokens: IFeatureDictionary<IGridCoord, IToken>;
   private readonly _walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
+  private readonly _notes: IFeatureDictionary<IGridCoord, IAnnotation>;
 
   constructor(
     areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
     tokens: IFeatureDictionary<IGridCoord, IToken>,
-    walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>
+    walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
+    notes: IFeatureDictionary<IGridCoord, IAnnotation>
   ) {
     this._areas = areas;
     this._tokens = tokens;
     this._walls = walls;
+    this._notes = notes;
   }
 
   areaAdd(feature: IFeature<IGridCoord>) {
@@ -58,6 +64,14 @@ export class SimpleChangeTracker implements IChangeTracker {
     return this._walls.remove(position);
   }
 
+  noteAdd(feature: IAnnotation) {
+    return this._notes.add(feature);
+  }
+
+  noteRemove(position: IGridCoord) {
+    return this._notes.remove(position);
+  }
+
   changesApplied() {
   }
 
@@ -80,6 +94,12 @@ export class SimpleChangeTracker implements IChangeTracker {
       cat: ChangeCategory.Wall,
       feature: f
     } as IWallAdd));
+
+    this._notes.forEach(f => all.push({
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Note,
+      feature: f
+    } as INoteAdd));
 
     return all;
   }
@@ -164,6 +184,7 @@ function trackChange(map: IMap, tracker: IChangeTracker, ch: IChange, user: stri
     case ChangeCategory.Area: return canDoAnything(map, user) ? trackAreaChange(tracker, ch) : undefined;
     case ChangeCategory.Token: return trackTokenChange(map, tracker, ch, user);
     case ChangeCategory.Wall: return canDoAnything(map, user) ? trackWallChange(tracker, ch) : undefined;
+    case ChangeCategory.Note: return canDoAnything(map, user) ? trackNoteChange(tracker, ch) : undefined;
     default: return undefined;
   }
 }
@@ -280,6 +301,36 @@ function trackWallChange(tracker: IChangeTracker, ch: IChange): IChangeApplicati
       return removed === undefined ? undefined : {
         revert: function () {
           if (removed !== undefined) { tracker.wallAdd(removed); }
+        },
+        continue: function () { return doNothing; }
+      }
+
+    default: return undefined;
+  }
+}
+
+function trackNoteChange(tracker: IChangeTracker, ch: IChange): IChangeApplication | undefined {
+  switch (ch.ty) {
+    case ChangeType.Add:
+      var chAdd = ch as INoteAdd;
+      return {
+        revert: function () {},
+        continue: function () {
+          var added = tracker.noteAdd(chAdd.feature);
+          return added ? {
+            revert: function () {
+              tracker.noteRemove(chAdd.feature.position);
+            }
+          } : undefined;
+        }
+      }
+
+    case ChangeType.Remove:
+      var chRemove = ch as INoteRemove;
+      var removed = tracker.noteRemove(chRemove.position);
+      return removed === undefined ? undefined : {
+        revert: function () {
+          if (removed !== undefined) { tracker.noteAdd(removed); }
         },
         continue: function () { return doNothing; }
       }

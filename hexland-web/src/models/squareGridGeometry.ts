@@ -33,6 +33,14 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     return target.set(c.x + this._off, c.y + this._off, c.z);
   }
 
+  createAnnotationPosition(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, coord: IGridCoord, z: number, alpha: number): THREE.Vector3 {
+    this.createCoordCentre(target, coord, z);
+    this.createBottomLeft(scratch1, target);
+    this.createTopLeft(scratch2, target);
+    scratch1.lerp(scratch2, 0.5);
+    return target.lerp(scratch1, alpha);
+  }
+
   protected createEdgeVertices(target1: THREE.Vector3, target2: THREE.Vector3, centre: THREE.Vector3, edge: number) {
     switch (edge) {
       case 0:

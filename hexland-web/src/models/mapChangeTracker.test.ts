@@ -6,6 +6,7 @@ import { trackChanges, IChangeTracker } from '../data/changeTracking';
 import { IGridEdge, IGridCoord, coordString, edgeString } from '../data/coord';
 import { FeatureDictionary, IFeature, IToken } from '../data/feature';
 import { MapType } from '../data/map';
+import { IAnnotation } from '../data/annotation';
 
 const ownerUid = "owner";
 const uid1 = "uid1";
@@ -51,8 +52,9 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
   const areas = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
   const tokens = new FeatureDictionary<IGridCoord, IToken>(coordString);
   const walls = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
+  const notes = new FeatureDictionary<IGridCoord, IAnnotation>(coordString);
   const colouring = new MapColouring(new HexGridGeometry(100, 8));
-  var changeTracker = new MapChangeTracker(areas, tokens, walls, colouring);
+  var changeTracker = new MapChangeTracker(areas, tokens, walls, notes, colouring);
 
   var ok = buildWallsOfThreeHexes(changeTracker);
   expect(ok).toBeTruthy();

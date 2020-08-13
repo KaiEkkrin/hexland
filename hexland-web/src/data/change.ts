@@ -1,3 +1,4 @@
+import { IAnnotation } from "./annotation";
 import { IGridCoord, IGridEdge } from "./coord";
 import { IFeature, IToken } from "./feature";
 
@@ -25,6 +26,7 @@ export enum ChangeCategory {
   Area = 1,
   Token = 2,
   Wall = 3,
+  Note = 4,
 }
 
 // We'll cast to one of these depending on the values of `ty` and `cat`
@@ -55,4 +57,12 @@ export interface IWallAdd extends IChange {
 
 export interface IWallRemove extends IChange {
   position: IGridEdge;
+}
+
+export interface INoteAdd extends IChange {
+  feature: IAnnotation;
+}
+
+export interface INoteRemove extends IChange {
+  position: IGridCoord;
 }

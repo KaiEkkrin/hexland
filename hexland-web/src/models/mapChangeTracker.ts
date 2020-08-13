@@ -1,4 +1,5 @@
 import { MapColouring } from "./colouring";
+import { IAnnotation } from "../data/annotation";
 import { SimpleChangeTracker } from "../data/changeTracking";
 import { IGridCoord, IGridEdge } from "../data/coord";
 import { IFeatureDictionary, IFeature, IToken } from "../data/feature";
@@ -13,10 +14,11 @@ export class MapChangeTracker extends SimpleChangeTracker {
     areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
     tokens: IFeatureDictionary<IGridCoord, IToken>,
     walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
+    notes: IFeatureDictionary<IGridCoord, IAnnotation>,
     colouring: MapColouring,
     handleChangesApplied?: (() => void) | undefined
   ) {
-    super(areas, tokens, walls);
+    super(areas, tokens, walls, notes);
     this._colouring = colouring;
     this._handleChangesApplied = handleChangesApplied;
   }

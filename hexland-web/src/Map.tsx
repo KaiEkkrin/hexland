@@ -4,11 +4,14 @@ import './Map.css';
 
 import { UserContext, ProfileContext, FirebaseContext } from './App';
 import MapControls, { EditMode, MapColourVisualisationMode } from './components/MapControls';
+import MapAnnotations from './components/MapAnnotations';
 import MapEditorModal from './components/MapEditorModal';
 import Navigation from './components/Navigation';
+import NoteEditorModal from './components/NoteEditorModal';
 import TokenEditorModal from './components/TokenEditorModal';
 
 import { IPlayer } from './data/adventure';
+import { IPositionedAnnotation, IAnnotation } from './data/annotation';
 import { IChange } from './data/change';
 import { trackChanges } from './data/changeTracking';
 import { IToken } from './data/feature';
@@ -47,6 +50,7 @@ function Map(props: IMapPageProps) {
   const [players, setPlayers] = useState([] as IPlayer[]);
   const [drawing, setDrawing] = useState(undefined as ThreeDrawing | undefined);
   const [canDoAnything, setCanDoAnything] = useState(false);
+  const [annotations, setAnnotations] = useState([] as IPositionedAnnotation[]);
 
   // We need an event listener for the window resize so that we can update the drawing
   useEffect(() => {
@@ -85,7 +89,8 @@ function Map(props: IMapPageProps) {
       .catch(e => console.error("Error consolidating map changes", e));
 
     var theDrawing = new ThreeDrawing(
-      getStandardColours(), drawingRef.current, textCreator, record, userContext.dataService.getUid()
+      getStandardColours(), drawingRef.current, textCreator, record, userContext.dataService.getUid(),
+      setAnnotations
     );
     setDrawing(theDrawing);
     theDrawing.animate();
@@ -131,8 +136,11 @@ function Map(props: IMapPageProps) {
   const [selectedColour, setSelectedColour] = useState(0);
   const [showMapEditor, setShowMapEditor] = useState(false);
   const [showTokenEditor, setShowTokenEditor] = useState(false);
+  const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [tokenToEdit, setTokenToEdit] = useState(undefined as IToken | undefined);
   const [tokenToEditPosition, setTokenToEditPosition] = useState(undefined as THREE.Vector2 | undefined);
+  const [noteToEdit, setNoteToEdit] = useState(undefined as IAnnotation | undefined);
+  const [noteToEditPosition, setNoteToEditPosition] = useState(undefined as THREE.Vector2 | undefined);
 
   useEffect(() => {
     setCanDoAnything(record?.ffa === true || userContext.dataService?.getUid() === record?.owner);
@@ -171,17 +179,31 @@ function Map(props: IMapPageProps) {
   }
 
   function handleTokenEditorDelete() {
-    setShowTokenEditor(false);
     if (tokenToEditPosition !== undefined) {
       addChanges(drawing?.setToken(tokenToEditPosition, -1, "", []));
     }
+    setShowTokenEditor(false);
   }
 
   function handleTokenEditorSave(text: string, colour: number, playerIds: string[]) {
-    setShowTokenEditor(false);
     if (tokenToEditPosition !== undefined) {
       addChanges(drawing?.setToken(tokenToEditPosition, colour, text, playerIds));
     }
+    setShowTokenEditor(false);
+  }
+
+  function handleNoteEditorDelete() {
+    if (noteToEditPosition !== undefined) {
+      addChanges(drawing?.setNote(noteToEditPosition, "", -1, ""));
+    }
+    setShowNoteEditor(false);
+  }
+
+  function handleNoteEditorSave(id: string, colour: number, text: string) {
+    if (noteToEditPosition !== undefined) {
+      addChanges(drawing?.setNote(noteToEditPosition, id, colour, text));
+    }
+    setShowNoteEditor(false);
   }
 
   function getClientPosition(e: React.MouseEvent<HTMLDivElement, MouseEvent>): THREE.Vector2 | undefined {
@@ -247,6 +269,15 @@ function Map(props: IMapPageProps) {
         setTokenToEditPosition(cp);
         break;
 
+      case EditMode.Notes:
+        // Show the notes dialog now.  Again, we'll create or alter the note upon
+        // close of the dialog.
+        var note = drawing?.getNote(cp);
+        setShowNoteEditor(true);
+        setNoteToEdit(note);
+        setNoteToEditPosition(cp);
+        break;
+
       case EditMode.Area:
         addChanges(drawing?.faceDragEnd(cp, selectedColour));
         break;
@@ -288,6 +319,9 @@ function Map(props: IMapPageProps) {
         token={tokenToEdit} hexColours={getHexColours()}
         players={players} handleClose={() => setShowTokenEditor(false)}
         handleDelete={handleTokenEditorDelete} handleSave={handleTokenEditorSave} />
+      <NoteEditorModal show={showNoteEditor} note={noteToEdit} handleClose={() => setShowNoteEditor(false)}
+        handleDelete={handleNoteEditorDelete} handleSave={handleNoteEditorSave} />
+      <MapAnnotations annotations={annotations} />
     </div>
   );
 }

@@ -10,7 +10,7 @@ export interface IFeature<K> {
 // A token has some extra properties:
 export interface IToken extends IFeature<IGridCoord> {
   players: string[]; // the uids of the players that can move this token
-  text: string;
+  text: string; // maximum of three characters
 }
 
 // The interface of a dictionary of these
