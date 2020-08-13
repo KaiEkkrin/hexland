@@ -286,7 +286,6 @@ export class ThreeDrawing {
       this._mapColouring,
       () => {
         this.buildLoS(); // TODO avoid this when no walls or tokens have changed?
-        this.updateAnnotations(); // TODO avoid this when no annotations have changed?
         if (this._showMapColourVisualisation === true) {
           this._mapColourVisualisation.clear(); // TODO try to do it incrementally? (requires checking for colour count changes...)
           this._mapColourVisualisation.visualise(this._scene, this._mapColouring);
@@ -345,6 +344,17 @@ export class ThreeDrawing {
     var positioned: IPositionedAnnotation[] = [];
     var [target, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
     this._notes.forEach(n => {
+      // Skip notes not marked as player-visible
+      if (!this.seeEverything && n.visibleToPlayers === false) {
+        return;
+      }
+
+      // Skip notes outside of the current LoS
+      var visibility = this._los.get(n.position);
+      if (!this.seeEverything && (visibility === undefined || visibility.colour === LoS.oNone)) {
+        return;
+      }
+
       this._gridGeometry.createAnnotationPosition(target, scratch1, scratch2, n.position, 0, noteAlpha);
       this.worldToViewport(target);
       positioned.push({ clientX: target.x, clientY: target.y, ...n });
@@ -382,24 +392,23 @@ export class ThreeDrawing {
     var positions = this.getLoSPositions();
     console.log("LoS positions: " + positions?.length ?? -1);
     this._los.clear();
-    if (positions === undefined) {
-      // Show everything
-      return;
-    }
-
-    if (positions.length === 0) {
+    if (positions?.length === 0) {
       // Show nothing
       var losHere = LoS.create(this._gridGeometry, this._mapColouring, undefined);
       LoS.combine(this._los, losHere);
-      return;
+    } else {
+      // TODO deal with dynamic grid sizing and all that fun here, create a suitable
+      // abstraction!
+      positions?.forEach(p => {
+        var losHere = LoS.create(this._gridGeometry, this._mapColouring, p);
+        LoS.combine(this._los, losHere);
+      });
     }
 
-    // TODO deal with dynamic grid sizing and all that fun here, create a suitable
-    // abstraction!
-    positions.forEach(p => {
-      var losHere = LoS.create(this._gridGeometry, this._mapColouring, p);
-      LoS.combine(this._los, losHere);
-    });
+    // Annotations depend on the LoS.
+    // TODO This mess of dependencies is getting hard to manage!  React Hooks
+    // could do this for me...
+    this.updateAnnotations();
   }
 
   resize() {
@@ -631,7 +640,7 @@ export class ThreeDrawing {
     return chs;
   }
 
-  setNote(cp: THREE.Vector2, id: string, colour: number, text: string): IChange[] {
+  setNote(cp: THREE.Vector2, id: string, colour: number, text: string, visibleToPlayers: boolean): IChange[] {
     var position = this.getGridCoordAt(cp);
     var chs: IChange[] = [];
     if (position !== undefined) {
@@ -652,7 +661,8 @@ export class ThreeDrawing {
             position: position,
             colour: colour,
             id: id,
-            text: text
+            text: text,
+            visibleToPlayers: visibleToPlayers
           }
         } as INoteAdd);
       }

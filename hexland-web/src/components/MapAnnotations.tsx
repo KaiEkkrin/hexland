@@ -33,6 +33,8 @@ interface IMapPopoverProps extends PopoverProps {
   bottom: string;
 }
 
+const defaultPinColour = "#5bc0de";
+
 function MapAnnotation(props: IMapAnnotationProps) {
   // Show tooltips by default, unless you click them off.
   // TODO Have a way of click-hiding, click-showing all?
@@ -44,10 +46,12 @@ function MapAnnotation(props: IMapAnnotationProps) {
 
   const [left, setLeft] = useState("0vw");
   const [bottom, setBottom] = useState("0vh");
+  const [pinColour, setPinColour] = useState(defaultPinColour);
 
   useEffect(() => {
     setLeft(viewToPercent(props.annotation.clientX) + "vw");
     setBottom(viewToPercent(props.annotation.clientY) + "vh");
+    setPinColour(props.annotation.visibleToPlayers === true ? defaultPinColour : "orange");
   }, [props.annotation]);
 
   return (
@@ -56,12 +60,15 @@ function MapAnnotation(props: IMapAnnotationProps) {
         {props.annotation.text}
       </UpdatingPopover>
     }>
-      <FontAwesomeIcon icon={faMapMarker} color="#5bc0de" onClick={() => setShowTooltip(!showTooltip)} style={{
-        position: 'fixed',
-        left: left,
-        bottom: bottom,
-        zIndex: 1
-      }} />
+      <FontAwesomeIcon icon={faMapMarker} color={pinColour}
+        onClick={() => setShowTooltip(!showTooltip)}
+        style={{
+          position: 'fixed',
+          left: left,
+          bottom: bottom,
+          zIndex: 1
+        }}
+      />
     </OverlayTrigger>
   );
 }

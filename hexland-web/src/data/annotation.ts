@@ -7,6 +7,7 @@ import { IFeature } from "./feature";
 export interface IAnnotation extends IFeature<IGridCoord> {
   id: string;
   text: string;
+  visibleToPlayers: boolean; // if false, only the owner will see it rendered
 }
 
 // This will not be stored, but will be sent to the React layer for rendering.

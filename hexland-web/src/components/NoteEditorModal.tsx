@@ -13,19 +13,21 @@ interface INoteEditorModalProps {
   note: IAnnotation | undefined;
   handleClose: () => void;
   handleDelete: () => void;
-  handleSave: (id: string, colour: number, text: string) => void;
+  handleSave: (id: string, colour: number, text: string, visibleToPlayers: boolean) => void;
 }
 
 function NoteEditorModal(props: INoteEditorModalProps) {
   const [id, setId] = useState("");
   const [colour, setColour] = useState(0); // TODO do something with this?
   const [text, setText] = useState("");
+  const [visibleToPlayers, setVisibleToPlayers] = useState(false);
 
   useEffect(() => {
     if (props.show) {
       setId(props.note?.id ?? uuidv4());
       setColour(props.note?.colour ?? 0);
       setText(props.note?.text ?? "");
+      setVisibleToPlayers(props.note?.visibleToPlayers ?? false);
     }
   }, [props.show, props.note]);
 
@@ -33,6 +35,10 @@ function NoteEditorModal(props: INoteEditorModalProps) {
   useEffect(() => {
     setSaveDisabled(text.length === 0);
   }, [text]);
+
+  function handleVtoPChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setVisibleToPlayers(e.currentTarget.checked);
+  }
 
   return (
     <Modal show={props.show} onHide={props.handleClose}>
@@ -46,6 +52,10 @@ function NoteEditorModal(props: INoteEditorModalProps) {
             <Form.Control type="text" maxLength={30} value={text}
               onChange={e => setText(e.target.value)} />
           </Form.Group>
+          <Form.Group>
+            <Form.Check type="checkbox" label="Visible to players" checked={visibleToPlayers}
+              onChange={handleVtoPChange} />
+          </Form.Group>
         </Form>
       </Modal.Body>
       <Modal.Footer>
@@ -53,7 +63,7 @@ function NoteEditorModal(props: INoteEditorModalProps) {
         <Button variant="secondary" onClick={props.handleClose}>Close</Button>
         <Button variant="primary"
           disabled={saveDisabled}
-          onClick={() => props.handleSave(id, colour, text)}>Save</Button>
+          onClick={() => props.handleSave(id, colour, text, visibleToPlayers)}>Save</Button>
       </Modal.Footer>
     </Modal>
   );

@@ -194,14 +194,14 @@ function Map(props: IMapPageProps) {
 
   function handleNoteEditorDelete() {
     if (noteToEditPosition !== undefined) {
-      addChanges(drawing?.setNote(noteToEditPosition, "", -1, ""));
+      addChanges(drawing?.setNote(noteToEditPosition, "", -1, "", false));
     }
     setShowNoteEditor(false);
   }
 
-  function handleNoteEditorSave(id: string, colour: number, text: string) {
+  function handleNoteEditorSave(id: string, colour: number, text: string, visibleToPlayers: boolean) {
     if (noteToEditPosition !== undefined) {
-      addChanges(drawing?.setNote(noteToEditPosition, id, colour, text));
+      addChanges(drawing?.setNote(noteToEditPosition, id, colour, text, visibleToPlayers));
     }
     setShowNoteEditor(false);
   }
