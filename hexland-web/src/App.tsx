@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import './App.css';
 
 import * as firebase from 'firebase/app';
@@ -18,7 +18,7 @@ import SharedPage from './Shared';
 import Status from './components/Status';
 
 import { BrowserRouter, Route, Switch } from 'react-router-dom';
-import { IDataService } from './services/interfaces';
+import { IDataService, IUser } from './services/interfaces';
 
 export interface IFirebaseContext {
   auth: firebase.auth.Auth | undefined;
@@ -35,54 +35,79 @@ export const FirebaseContext = React.createContext<IFirebaseContext>({
 });
 
 export interface IUserContext {
-  user: firebase.User | null;
+  user: IUser | undefined;
   dataService: IDataService | undefined;
 }
 
 export const UserContext = React.createContext<IUserContext>({
-  user: null,
+  user: undefined,
   dataService: undefined
 });
 
 export const ProfileContext = React.createContext<IProfile | undefined>(undefined);
 
-function App() {
+export interface IContextProviderProps {
+  children: React.ReactNode;
+}
+
+// This provides the Firebase and user contexts, and should be replaced to unit test with the
+// Firebase simulator.
+export function FirebaseContextProvider(props: IContextProviderProps) {
   const [firebaseContext, setFirebaseContext] = useState<IFirebaseContext>({
     auth: undefined,
     db: undefined,
     googleAuthProvider: undefined,
     timestampProvider: undefined
   });
-  const [userContext, setUserContext] = useState<IUserContext>({ user: null, dataService: undefined });
-  const [profile, setProfile] = useState<IProfile | undefined>(undefined);
 
   // On load, fetch our Firebase config and initialize
   async function configureFirebase() {
     var response = await fetch('/__/firebase/init.json');
-    firebase.initializeApp(await response.json());
+    var app = firebase.initializeApp(await response.json());
     setFirebaseContext({
-      auth: firebase.auth(),
-      db: firebase.firestore(),
+      auth: app.auth(),
+      db: app.firestore(),
       googleAuthProvider: new firebase.auth.GoogleAuthProvider(),
       timestampProvider: firebase.firestore.FieldValue.serverTimestamp
     });
   }
 
   useEffect(() => {
-    configureFirebase().catch(e => console.error("Error configuring Firebase", e));
+    configureFirebase()
+      .catch(e => console.error("Error configuring Firebase", e));
   }, []);
+
+  const [userContext, setUserContext] = useState<IUserContext>({ user: undefined, dataService: undefined });
 
   // When we're connected to Firebase, subscribe to the auth state change event and create a
   // suitable user context
-  useEffect(() => {
-    return firebaseContext.auth?.onAuthStateChanged(u => {
-      setUserContext({
-        user: u,
-        dataService: (firebaseContext.db === undefined || firebaseContext.timestampProvider === undefined || u === null) ?
-          undefined : new DataService(firebaseContext.db, firebaseContext.timestampProvider, u.uid)
-      });
+  function createUserContext(u: firebase.User | null | undefined) {
+    console.log("Creating user context from " + u?.uid);
+    setUserContext({
+      user: (u === null || u === undefined) ? undefined : { displayName: u.displayName, email: u.email, uid: u.uid },
+      dataService: (firebaseContext.db === undefined || firebaseContext.timestampProvider === undefined || u === null || u === undefined) ?
+        undefined : new DataService(firebaseContext.db, firebaseContext.timestampProvider, u.uid)
     });
+  }
+
+  useEffect(() => {
+    return firebaseContext.auth?.onAuthStateChanged(createUserContext);
   }, [firebaseContext.auth, firebaseContext.db, firebaseContext.timestampProvider]);
+
+  return (
+    <FirebaseContext.Provider value={firebaseContext}>
+      <UserContext.Provider value={userContext}>
+        {props.children}
+      </UserContext.Provider>
+    </FirebaseContext.Provider>
+  );
+}
+
+// This provides the profile context, and can be wrapped around individual components
+// for unit testing.
+export function ProfileContextProvider(props: IContextProviderProps) {
+  const userContext = useContext(UserContext);
+  const [profile, setProfile] = useState<IProfile | undefined>(undefined);
 
   // Watch the user's profile:
   useEffect(() => {
@@ -98,25 +123,31 @@ function App() {
   }, [userContext]);
 
   return (
+    <ProfileContext.Provider value={profile}>
+      {props.children}
+    </ProfileContext.Provider>
+  );
+}
+
+function App() {
+  return (
     <div className="App">
-      <FirebaseContext.Provider value={firebaseContext}>
-        <UserContext.Provider value={userContext}>
-          <ProfileContext.Provider value={profile}>
-            <BrowserRouter>
-              <Switch>
-                <Route exact path="/" component={HomePage} />
-                <Route exact path="/all" component={AllPage} />
-                <Route exact path="/adventure/:adventureId" component={Adventure} />
-                <Route exact path="/adventure/:adventureId/invite/:inviteId" component={InvitePage} />
-                <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
-                <Route exact path="/login" component={Login} />
-                <Route exact page="/shared" component={SharedPage} />
-              </Switch>
-            </BrowserRouter>
-          </ProfileContext.Provider>
-        </UserContext.Provider>
-      </FirebaseContext.Provider>
-      <Status />
+      <FirebaseContextProvider>
+        <ProfileContextProvider>
+          <BrowserRouter>
+            <Switch>
+              <Route exact path="/" component={HomePage} />
+              <Route exact path="/all" component={AllPage} />
+              <Route exact path="/adventure/:adventureId" component={Adventure} />
+              <Route exact path="/adventure/:adventureId/invite/:inviteId" component={InvitePage} />
+              <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
+              <Route exact path="/login" component={Login} />
+              <Route exact page="/shared" component={SharedPage} />
+            </Switch>
+          </BrowserRouter>
+          <Status />
+        </ProfileContextProvider>
+      </FirebaseContextProvider>
     </div>
   );
 }

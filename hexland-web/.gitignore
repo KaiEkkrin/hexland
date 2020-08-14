@@ -19,9 +19,11 @@
 .env.production.local
 
 npm-debug.log*
+ui-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
 # firebase
 /.firebase
 /firebase-debug.log*
+/firestore-debug.log*

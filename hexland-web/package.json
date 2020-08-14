@@ -3,6 +3,7 @@
   "version": "0.3.1",
   "private": true,
   "dependencies": {
+    "@firebase/testing": "^0.20.11",
     "@fortawesome/fontawesome-svg-core": "^1.2.30",
     "@fortawesome/free-solid-svg-icons": "^5.14.0",
     "@fortawesome/react-fontawesome": "^0.1.11",
@@ -31,7 +32,7 @@
   },
   "scripts": {
     "start": "run-p --race dev:firebase dev:react",
-    "dev:firebase": "firebase serve -p 4000",
+    "dev:firebase": "firebase serve -p 3400",
     "dev:react": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",

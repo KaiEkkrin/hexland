@@ -5,6 +5,14 @@ import { IInvite } from '../data/invite';
 import { IMap } from '../data/map';
 import { IProfile } from '../data/profile';
 
+// A user.  (Exposes the things we want from `firebase.User` -- may need extending;
+// but needs to be hidden behind this interface to facilitate unit testing.)
+export interface IUser {
+  displayName: string | null;
+  email: string | null;
+  uid: string;
+}
+
 // A reference to stored data.
 export interface IDataReference<T> {
   id: string;
