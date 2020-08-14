@@ -45,7 +45,7 @@ function Invite(props: IInviteProps) {
 
   return (
     <div>
-      <Navigation getTitle={() => undefined} />
+      <Navigation title={undefined} />
       <header className="App-header">
         {invite === undefined ? <div></div> :
           joined === false ? <div>

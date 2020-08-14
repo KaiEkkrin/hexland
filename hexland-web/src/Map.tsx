@@ -312,7 +312,7 @@ function Map(props: IMapPageProps) {
   return (
     <div className="Map-container">
       <div className="Map-nav">
-        <Navigation getTitle={() => record?.name} />
+        <Navigation title={record?.name} />
       </div>
       <MapControls colours={getHexColours()}
         getEditMode={() => editMode}

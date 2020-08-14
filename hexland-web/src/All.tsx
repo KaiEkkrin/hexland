@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useEffect, useMemo } from 'react';
 import './App.css';
 
 import { UserContext, ProfileContext } from './App';
@@ -7,110 +7,73 @@ import Navigation from './components/Navigation';
 
 import { IAdventure, summariseAdventure } from './data/adventure';
 import { IIdentified } from './data/identified';
-import { IAdventureSummary, IProfile } from './data/profile';
 import { editAdventure } from './services/extensions';
-import { IDataService } from './services/interfaces';
 
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 
-import { RouteComponentProps } from 'react-router-dom';
-
 import { v4 as uuidv4 } from 'uuid';
 
-interface IAllProps {
-  dataService: IDataService | undefined;
-  profile: IProfile | undefined;
-}
+function All() {
+  const userContext = useContext(UserContext);
+  const profile = useContext(ProfileContext);
 
-class AllState {
-  adventures: IIdentified<IAdventure>[] = [];
-}
+  const [adventures, setAdventures] = useState<IIdentified<IAdventure>[]>([]);
 
-class All extends React.Component<IAllProps, AllState> {
-  private _stopWatchingAdventures: (() => void) | undefined;
+  // Watch all adventures
+  useEffect(() => {
+    return userContext.dataService?.watchAdventures(
+      a => setAdventures(a),
+      e => console.error("Error watching adventures: ", e)
+    );
+  }, [userContext.dataService]);
 
-  constructor(props: IAllProps) {
-    super(props);
-    this.state = new AllState();
+  // Keep summaries of them
+  const adventureSummaries = useMemo(
+    () => adventures.map(a => summariseAdventure(a.id, a.record)),
+    [adventures]
+  );
 
-    this.getAdventures = this.getAdventures.bind(this);
-    this.setAdventure = this.setAdventure.bind(this);
-  }
-
-  private getAdventures(): IAdventureSummary[] {
-    return this.state.adventures.map(a => summariseAdventure(a.id, a.record));
-  }
-
-  private setAdventure(id: string | undefined, name: string, description: string) {
-    var uid = this.props.dataService?.getUid();
+  function setAdventure(id: string | undefined, name: string, description: string) {
+    const uid = userContext.user?.uid;
     if (uid === undefined) {
       return;
     }
 
-    var isNew = id === undefined;
-    var existing = this.state.adventures.find(a => a.id === id)?.record;
-    var updated = {
-      id: id ?? uuidv4(), // TODO learn about uuid versions, pick one least likely to clash :)
+    const isNew = id === undefined;
+    const existing = adventures.find(a => a.id === id)?.record;
+    const updated = {
+      id: id ?? uuidv4(),
       name: name,
       description: description,
       owner: uid,
-      ownerName: this.props.profile?.name ?? "Unknown user"
-    } as IAdventureSummary;
+      ownerName: profile?.name ?? "Unknown user"
+    };
 
-    editAdventure(this.props.dataService, isNew, updated, existing)
+    editAdventure(userContext.dataService, isNew, updated, existing)
       .then(() => console.log("Adventure " + id + " successfully edited"))
       .catch(e => console.error("Error editing adventure " + id, e));
   }
 
-  private watchAdventures() {
-    this._stopWatchingAdventures?.();
-    this._stopWatchingAdventures = this.props.dataService?.watchAdventures(
-      a => this.setState({ adventures: a }),
-      e => console.error("Error watching adventures:", e)
-    );
-  }
-
-  componentDidMount() {
-    this.watchAdventures();
-  }
-
-  componentDidUpdate(prevProps: IAllProps) {
-    if (this.props.dataService !== prevProps.dataService) {
-      this.watchAdventures();
-    }
-  }
-
-  componentWillUnmount() {
-    this._stopWatchingAdventures?.();
-    this._stopWatchingAdventures = undefined;
-  }
-
-  render() {
-    return (
-      <div>
-        <Navigation getTitle={() => "All adventures"}/>
-        <Container fluid>
-          <Row>
-            <Col>
-              <AdventureCollection uid={this.props.dataService?.getUid()}
-                getAdventures={this.getAdventures} setAdventure={this.setAdventure} />
-            </Col>
-          </Row>
-        </Container>
-      </div>
-    );
-  }
+  return (
+    <div>
+      <Navigation title={"All adventures"}/>
+      <Container fluid>
+        <Row>
+          <Col>
+            <AdventureCollection uid={userContext.user?.uid}
+              adventures={adventureSummaries} setAdventure={setAdventure} />
+          </Col>
+        </Row>
+      </Container>
+    </div>
+  );
 }
 
-interface IAllPageProps {}
-
-function AllPage(props: RouteComponentProps<IAllPageProps>) {
-  var userContext = useContext(UserContext);
-  var profile = useContext(ProfileContext);
-  return userContext.user === null ? <div></div> : (
-    <All dataService={userContext.dataService} profile={profile} />);
+function AllPage() {
+  const userContext = useContext(UserContext);
+  return userContext.user === null ? <div></div> : <All />;
 }
 
 export default AllPage;

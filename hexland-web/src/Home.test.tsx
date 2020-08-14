@@ -62,9 +62,6 @@ test('latest maps and latest adventures headings are there', () => {
   const brandElement = getByText(/hexland/i);
   expect(brandElement).toBeInTheDocument();
 
-  const userElement = getByText(/Owner/);
-  expect(userElement).toBeInTheDocument();
-
   const latestMapsElement = getByText(/Latest maps/);
   expect(latestMapsElement).toBeInTheDocument();
 

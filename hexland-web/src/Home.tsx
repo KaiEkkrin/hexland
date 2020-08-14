@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useMemo } from 'react';
 import './App.css';
 
 import { ProfileContext, UserContext } from './App';
@@ -18,10 +18,18 @@ import { v4 as uuidv4 } from 'uuid';
 import { MapType } from './data/map';
 
 function Home() {
-  var userContext = useContext(UserContext);
-  var profile = useContext(ProfileContext);
+  const userContext = useContext(UserContext);
+  const profile = useContext(ProfileContext);
 
-  var setAdventure = function (id: string | undefined, name: string, description: string) {
+  const myAdventures = useMemo(
+    () => profile?.adventures?.filter(a => a.owner === userContext.user?.uid) ?? [],
+    [profile, userContext.user]
+  );
+
+  const adventures = useMemo(() => profile?.adventures ?? [], [profile]);
+  const latestMaps = useMemo(() => profile?.latestMaps ?? [], [profile]);
+
+  function setAdventure(id: string | undefined, name: string, description: string) {
     if (userContext.dataService === undefined) {
       return;
     }
@@ -41,7 +49,7 @@ function Home() {
       .catch(e => console.error("Error editing adventure " + id, e));
   };
 
-  var setMap = function (adventureId: string, id: string | undefined, name: string, description: string, ty: MapType) {
+  function setMap(adventureId: string, id: string | undefined, name: string, description: string, ty: MapType) {
     if (userContext.dataService === undefined) {
       return;
     }
@@ -69,15 +77,15 @@ function Home() {
           <h5 className="mt-4">Latest maps</h5>
           <MapCollection editable={false}
             showAdventureSelection={true}
-            getAdventures={() => profile?.adventures?.filter(a => a.owner === userContext.dataService?.getUid()) ?? []}
-            getMaps={() => profile?.latestMaps ?? []}
+            adventures={myAdventures}
+            maps={latestMaps}
             setMap={setMap} deleteMap={undefined} />
         </Col>
         <Col xl>
           <h5 className="mt-4">Latest adventures</h5>
           <AdventureCollection
-            uid={userContext.dataService?.getUid()}
-            getAdventures={() => profile?.adventures ?? []} setAdventure={setAdventure} />
+            uid={userContext.user?.uid}
+            adventures={adventures} setAdventure={setAdventure} />
         </Col>
       </Row>
     </Container>
@@ -88,8 +96,8 @@ function HomePage() {
   var userContext = useContext(UserContext);
   return (
     <div>
-      <Navigation getTitle={() => undefined} />
-      {userContext.user === null ? <div></div> : <Home />}
+      <Navigation title={undefined} />
+      {userContext.user === undefined ? <div></div> : <Home />}
     </div>
   );
 }

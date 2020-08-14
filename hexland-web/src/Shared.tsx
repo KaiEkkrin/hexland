@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import './App.css';
 
 import { UserContext } from './App';
@@ -6,79 +6,43 @@ import AdventureCollection from './components/AdventureCollection';
 import Navigation from './components/Navigation';
 
 import { IPlayer } from './data/adventure';
-import { IDataService } from './services/interfaces';
 
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 
-import { RouteComponentProps } from 'react-router-dom';
+function Shared() {
+  const userContext = useContext(UserContext);
+  const [adventures, setAdventures] = useState<IPlayer[]>([]);
 
-interface ISharedProps {
-  dataService: IDataService | undefined;
-}
-
-class SharedState {
-  adventures: IPlayer[] = [];
-}
-
-class Shared extends React.Component<ISharedProps, SharedState> {
-  private _stopWatchingAdventures: (() => void) | undefined;
-
-  constructor(props: ISharedProps) {
-    super(props);
-    this.state = new SharedState();
-  }
-
-  private watchAdventures() {
-    this._stopWatchingAdventures?.();
-    this._stopWatchingAdventures = this.props.dataService?.watchSharedAdventures(
+  useEffect(() => {
+    userContext.dataService?.watchSharedAdventures(
       a => {
         console.log("Received " + a.length + " shared adventures");
-        this.setState({ adventures: a.filter(a2 => a2.playerId !== a2.owner) });
+        setAdventures(a.filter(a2 => a2.playerId !== a2.owner));
       },
-      e => console.error("Error watching shared adventures:", e)
+      e => console.error("Error watching shared adventures: ", e)
     );
-  }
+  }, [userContext.dataService]);
 
-  componentDidMount() {
-    this.watchAdventures();
-  }
-
-  componentDidUpdate(prevProps: ISharedProps) {
-    if (this.props.dataService !== prevProps.dataService) {
-      this.watchAdventures();
-    }
-  }
-
-  componentWillUnmount() {
-    this._stopWatchingAdventures?.();
-    this._stopWatchingAdventures = undefined;
-  }
-
-  render() {
-    return (
-      <div>
-        <Navigation getTitle={() => "Adventures shared with me"}/>
-        <Container fluid>
-          <Row>
-            <Col>
-              <AdventureCollection uid={this.props.dataService?.getUid()}
-                getAdventures={() => this.state.adventures} setAdventure={undefined} />
-            </Col>
-          </Row>
-        </Container>
-      </div>
-    );
-  }
+  return (
+    <div>
+      <Navigation title={"Adventures shared with me"} />
+      <Container fluid>
+        <Row>
+          <Col>
+            <AdventureCollection uid={userContext.user?.uid}
+              adventures={adventures} setAdventure={undefined} />
+          </Col>
+        </Row>
+      </Container>
+    </div>
+  );
 }
 
-interface ISharedPageProps {}
-
-function SharedPage(props: RouteComponentProps<ISharedPageProps>) {
-  var userContext = useContext(UserContext);
-  return userContext.user === null ? <div></div> : (
-    <Shared dataService={userContext.dataService} />);
+function SharedPage() {
+  const userContext = useContext(UserContext);
+  return userContext.user === undefined ? <div></div> : <Shared></Shared>;
 }
 
 export default SharedPage;

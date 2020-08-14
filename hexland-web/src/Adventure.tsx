@@ -1,15 +1,14 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState, useMemo } from 'react';
 import './App.css';
 
 import { UserContext, ProfileContext, FirebaseContext } from './App';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
 
-import { IMapSummary, IAdventure, summariseAdventure } from './data/adventure';
+import { IAdventure, summariseAdventure } from './data/adventure';
 import { MapType } from './data/map';
-import { IProfile, IAdventureSummary } from './data/profile';
+import { IAdventureSummary } from './data/profile';
 import { deleteMap, editMap, registerAdventureAsRecent, inviteToAdventure } from './services/extensions';
-import { IDataService } from './services/interfaces';
 
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
@@ -22,168 +21,122 @@ import { Link, RouteComponentProps } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 
 interface IAdventureProps {
-  dataService: IDataService | undefined;
-  timestampProvider: (() => firebase.firestore.FieldValue) | undefined;
-  profile: IProfile | undefined;
   adventureId: string;
 }
 
-class AdventureState {
-  adventure: IAdventure | undefined = undefined;
-  inviteLink: string | undefined = undefined;
-}
+function Adventure(props: RouteComponentProps<IAdventureProps>) {
+  const firebaseContext = useContext(FirebaseContext);
+  const userContext = useContext(UserContext);
+  const profile = useContext(ProfileContext);
 
-class Adventure extends React.Component<IAdventureProps, AdventureState> {
-  private _stopWatchingAdventure: (() => void) | undefined;
+  const adventureId = useMemo(() => props.match.params.adventureId, [props]);
+  const [adventure, setAdventure] = useState<IAdventure | undefined>(undefined);
+  const [adventures, setAdventures] = useState<IAdventureSummary[]>([]);
 
-  constructor(props: IAdventureProps) {
-    super(props);
-    this.state = new AdventureState();
-
-    this.getAdventures = this.getAdventures.bind(this);
-    this.setMap = this.setMap.bind(this);
-    this.deleteMap = this.deleteMap.bind(this);
-    this.createInviteLink = this.createInviteLink.bind(this);
-  }
-
-  private getAdventures(): IAdventureSummary[] {
-    return this.state.adventure === undefined ? [] : [{
-      id: this.props.adventureId,
-      name: this.state.adventure.name,
-      description: this.state.adventure.description,
-      owner: this.state.adventure.owner,
-      ownerName: this.props.profile?.name ?? "Unknown user"
-    }];
-  }
-
-  private setMap(adventureId: string, id: string | undefined, name: string, description: string, ty: MapType) {
-    var uid = this.props.dataService?.getUid();
-    if (uid === undefined) {
-      return;
-    }
-
-    var isNew = id === undefined;
-    var updated = {
-      adventureId: adventureId,
-      id: id ?? uuidv4(),
-      name: name,
-      description: description,
-      owner: uid,
-      ty: ty
-    } as IMapSummary;
-
-    editMap(this.props.dataService, adventureId, isNew, updated)
-      .then(() => console.log("Map " + updated.id + " successfully edited"))
-      .catch(e => console.error("Error editing map " + updated.id, e));
-  }
-
-  private deleteMap(id: string) {
-    deleteMap(this.props.dataService, this.props.adventureId, id)
-      .then(() => console.log("Map " + id + " successfully deleted"))
-      .catch(e => console.error("Error deleting map " + id, e));
-  }
-
-  private adventureLoaded(id: string, a: IAdventure | undefined) {
-    this.setState({ adventure: a });
-    if (a !== undefined) {
-      registerAdventureAsRecent(this.props.dataService, this.props.profile, id, a)
-        .catch(e => console.error("Failed to register adventure " + id + " as recent", e));
-    }
-  }
-
-  private watchAdventure() {
-    this._stopWatchingAdventure?.();
-    var d = this.props.dataService?.getAdventureRef(this.props.adventureId);
+  useEffect(() => {
+    var d = userContext.dataService?.getAdventureRef(adventureId);
     if (d === undefined) {
+      setAdventures([]);
       return;
     }
 
-    this._stopWatchingAdventure = this.props.dataService?.watch(d,
-      a => this.adventureLoaded(this.props.adventureId, a),
-      e => console.error("Error watching adventure " + this.props.adventureId + ":", e)
-    );
-  }
+    return userContext.dataService?.watch(d,
+      a => {
+        setAdventure(a);
 
-  private createInviteLink() {
-    if (this.state.inviteLink !== undefined || this.state.adventure === undefined) {
+        // Summarise what we have loaded
+        setAdventures(a === undefined ? [] : [{
+          id: adventureId,
+          name: a.name,
+          description: a.description,
+          owner: a.owner,
+          ownerName: a.ownerName
+        }]);
+
+        // Register it as recent
+        if (a !== undefined) {
+          registerAdventureAsRecent(userContext.dataService, profile, adventureId, a)
+            .catch(e => console.error("Failed to register adventure " + adventureId + " as recent", e));
+        }
+      },
+      e => console.error("Error watching adventure " + adventureId + ": ", e));
+  }, [userContext.dataService, profile, adventureId]);
+
+  // Invitations
+  const [inviteLink, setInviteLink] = useState<string | undefined>(undefined);
+
+  function createInviteLink() {
+    if (inviteLink !== undefined || adventure === undefined) {
       return;
     }
 
     inviteToAdventure(
-      this.props.dataService,
-      this.props.timestampProvider,
-      summariseAdventure(this.props.adventureId, this.state.adventure)
-    )
-      .then(l => this.setState({ inviteLink: this.props.adventureId + "/invite/" + l }))
-      .catch(e => console.error("Failed to create invite link for " + this.props.adventureId, e));
+      userContext.dataService,
+      firebaseContext.timestampProvider,
+      summariseAdventure(adventureId, adventure))
+      .then(l => setInviteLink(adventureId + "/invite/" + l))
+      .catch(e => console.error("Failed to create invite link for " + adventureId, e));
   }
 
-  componentDidMount() {
-    this.watchAdventure();
+  // Map editing support
+  const mapsEditable = useMemo(() => adventure?.owner === userContext.user?.uid, [userContext.user, adventure]);
+  const maps = useMemo(() => adventure?.maps ?? [], [adventure]);
+
+  function setMap(adventureId: string, id: string | undefined, name: string, description: string, ty: MapType) {
+    const isNew = id === undefined;
+    const updated = {
+      adventureId: adventureId,
+      id: id ?? uuidv4(),
+      name: name,
+      description: description,
+      ty: ty
+    };
+
+    editMap(userContext.dataService, adventureId, isNew, updated)
+      .then(() => console.log("Map " + updated.id + " successfully updated"))
+      .catch(e => console.error("Error editing map " + updated.id, e));
   }
 
-  componentDidUpdate(prevProps: IAdventureProps, prevState: AdventureState) {
-    if (this.props.dataService !== prevProps.dataService || this.props.adventureId !== prevProps.adventureId) {
-      this.watchAdventure();
-    }
+  function mapDelete(id: string) {
+    deleteMap(userContext.dataService, adventureId, id)
+      .then(() => console.log("Map " + id + " successfully deleted"))
+      .catch(e => console.error("Error deleting map " + id, e));
   }
 
-  componentWillUnmount() {
-    this._stopWatchingAdventure?.();
-    this._stopWatchingAdventure = undefined;
-  }
-
-  render() {
-    return (
-      <div>
-        <Navigation getTitle={() => this.state.adventure?.name} />
-        <Container fluid>
-          {this.state.adventure !== undefined ?
-            <Row className="mt-4">
-              <Col>
-                <Card bg="dark" text="white">
-                  <Card.Body>
-                    <Card.Text>{this.state.adventure.description}</Card.Text>
-                  </Card.Body>
-                  <Card.Footer>
-                    {this.state.inviteLink === undefined ? 
-                      <Button variant="primary" onClick={this.createInviteLink}>Create invite link</Button> :
-                      <Link to={this.state.inviteLink}>Send this link to other players to invite them.</Link>
-                    }
-                  </Card.Footer>
-                </Card>
-              </Col>
-            </Row>
-            : <div></div>
-          }
+  return (
+    <div>
+      <Navigation title={adventure?.name} />
+      <Container fluid>
+        {adventure !== undefined ?
           <Row className="mt-4">
             <Col>
-              <MapCollection editable={this.state.adventure?.owner === this.props.dataService?.getUid()}
-                showAdventureSelection={false}
-                getAdventures={this.getAdventures}
-                getMaps={() => this.state.adventure?.maps ?? []}
-                setMap={this.setMap} deleteMap={this.deleteMap} />
+              <Card bg="dark" text="white">
+                <Card.Body>
+                  <Card.Text>{adventure.description}</Card.Text>
+                </Card.Body>
+                <Card.Footer>
+                  {inviteLink === undefined ?
+                    <Button variant="primary" onClick={createInviteLink}>Create invite link</Button> :
+                    <Link to={inviteLink}>Send this link to other players to invite them.</Link>
+                  }
+                </Card.Footer>
+              </Card>
             </Col>
           </Row>
-        </Container>
-      </div>
-    );
-  }
+          : <div></div>
+        }
+        <Row className="mt-4">
+          <Col>
+            <MapCollection editable={mapsEditable}
+              showAdventureSelection={false}
+              adventures={adventures}
+              maps={maps}
+              setMap={setMap} deleteMap={mapDelete} />
+          </Col>
+        </Row>
+      </Container>
+    </div>
+  );
 }
 
-interface IAdventurePageProps {
-  adventureId: string;
-}
-
-function AdventurePage(props: RouteComponentProps<IAdventurePageProps>) {
-  var firebaseContext = useContext(FirebaseContext);
-  var userContext = useContext(UserContext);
-  var profile = useContext(ProfileContext);
-  return userContext.user === null ? <div></div> : (
-    <Adventure dataService={userContext.dataService}
-      timestampProvider={firebaseContext.timestampProvider}
-      profile={profile}
-      adventureId={props.match.params.adventureId} />);
-}
-
-export default AdventurePage;
+export default Adventure;

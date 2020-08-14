@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import '../App.css';
 
 import Button from 'react-bootstrap/Button';
@@ -6,9 +6,9 @@ import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
 
 interface IAdventureModalProps {
-  getDescription: () => string;
-  getName: () => string;
-  getShow: () => boolean;
+  description: string;
+  name: string;
+  show: boolean;
   handleClose: () => void;
   handleSave: () => void;
   setDescription: (value: string) => void;
@@ -16,8 +16,10 @@ interface IAdventureModalProps {
 }
 
 function AdventureModal(props: IAdventureModalProps) {
+  const isSaveDisabled = useMemo(() => props.name.length === 0, [props.name]);
+
   return (
-    <Modal show={props.getShow()} onHide={props.handleClose}>
+    <Modal show={props.show} onHide={props.handleClose}>
       <Modal.Header closeButton>
         <Modal.Title>Adventure</Modal.Title>
       </Modal.Header>
@@ -25,19 +27,19 @@ function AdventureModal(props: IAdventureModalProps) {
         <Form>
           <Form.Group>
             <Form.Label>Name</Form.Label>
-            <Form.Control type="text" maxLength={30} value={props.getName()}
+            <Form.Control type="text" maxLength={30} value={props.name}
               onChange={e => props.setName(e.target.value)} />
           </Form.Group>
           <Form.Group>
             <Form.Label>Description</Form.Label>
-            <Form.Control as="textarea" rows={5} maxLength={300} value={props.getDescription()}
+            <Form.Control as="textarea" rows={5} maxLength={300} value={props.description}
               onChange={e => props.setDescription(e.target.value)} />
           </Form.Group>
         </Form>
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={props.handleClose}>Close</Button>
-        <Button variant="primary" disabled={props.getName().length === 0}
+        <Button variant="primary" disabled={isSaveDisabled}
           onClick={props.handleSave}>
           Save
       </Button>

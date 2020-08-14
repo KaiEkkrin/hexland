@@ -20,7 +20,7 @@ function Login() {
 
   return userContext.user !== null ? <Redirect to="/" /> : (
     <div>
-      <Navigation getTitle={() => undefined} />
+      <Navigation title={undefined} />
       <header className="App-header">
         <Button onClick={handleLoginClick}>
           Sign in with Google

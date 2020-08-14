@@ -9,7 +9,7 @@ import Navbar from 'react-bootstrap/Navbar';
 import { LinkContainer } from 'react-router-bootstrap';
 
 interface INavigationProps {
-  getTitle: () => string | undefined;
+  title: string | undefined;
 }
 
 function Navigation(props: INavigationProps) {
@@ -38,9 +38,9 @@ function Navigation(props: INavigationProps) {
         </Nav>
       </Navbar.Collapse>
       <Navbar.Collapse className="justify-content-center">
-        <Navbar.Text className="mr-2">{props.getTitle() ?? ""}</Navbar.Text>
+        <Navbar.Text className="mr-2">{props.title ?? ""}</Navbar.Text>
       </Navbar.Collapse>
-      {userContext.user !== null ? (
+      {userContext.user !== null && userContext.user !== undefined ? (
         <Navbar.Collapse className="justify-content-end">
           <Navbar.Text className="mr-2">
             {userContext.user.displayName}

@@ -81,17 +81,15 @@ export function FirebaseContextProvider(props: IContextProviderProps) {
 
   // When we're connected to Firebase, subscribe to the auth state change event and create a
   // suitable user context
-  function createUserContext(u: firebase.User | null | undefined) {
-    console.log("Creating user context from " + u?.uid);
-    setUserContext({
-      user: (u === null || u === undefined) ? undefined : { displayName: u.displayName, email: u.email, uid: u.uid },
-      dataService: (firebaseContext.db === undefined || firebaseContext.timestampProvider === undefined || u === null || u === undefined) ?
-        undefined : new DataService(firebaseContext.db, firebaseContext.timestampProvider, u.uid)
-    });
-  }
-
   useEffect(() => {
-    return firebaseContext.auth?.onAuthStateChanged(createUserContext);
+    return firebaseContext.auth?.onAuthStateChanged(u => {
+      console.log("Creating user context from " + u?.uid);
+      setUserContext({
+        user: (u === null || u === undefined) ? undefined : { displayName: u.displayName, email: u.email, uid: u.uid },
+        dataService: (firebaseContext.db === undefined || firebaseContext.timestampProvider === undefined || u === null || u === undefined) ?
+          undefined : new DataService(firebaseContext.db, firebaseContext.timestampProvider, u.uid)
+      });
+    });
   }, [firebaseContext.auth, firebaseContext.db, firebaseContext.timestampProvider]);
 
   return (
@@ -113,6 +111,7 @@ export function ProfileContextProvider(props: IContextProviderProps) {
   useEffect(() => {
     var d = userContext.dataService?.getProfileRef();
     if (d !== undefined) {
+      // TODO debugging if jest is hitting this stuff.
       return userContext.dataService?.watch(d,
         p => setProfile(p),
         e => console.error("Failed to watch profile:", e)
