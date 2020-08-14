@@ -1,9 +1,11 @@
 import React from 'react';
 
 import ColourSelection from './ColourSelection';
+import { ShowAnnotationFlags } from './MapAnnotations';
 
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
+import Dropdown from 'react-bootstrap/Dropdown';
 import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import ToggleButton from 'react-bootstrap/ToggleButton';
 import Tooltip from 'react-bootstrap/Tooltip';
@@ -60,6 +62,7 @@ interface IMapControlsProps {
   canDoAnything: boolean;
   canOpenMapEditor: boolean;
   openMapEditor(): void;
+  setShowAnnotationFlags(flags: ShowAnnotationFlags): void;
 }
 
 function MapControls(props: IMapControlsProps) {
@@ -95,7 +98,7 @@ function MapControls(props: IMapControlsProps) {
   return (
     <div className="Map-controls bg-dark">
       <ButtonGroup className="mb-2" toggle vertical>{createModeButtons()}</ButtonGroup>
-      <ButtonGroup className="mb-2">
+      <ButtonGroup className="mb-2" vertical>
         <OverlayTrigger placement="right" overlay={
           <Tooltip id="reset-tooltip">Reset the map view</Tooltip>
         }>
@@ -103,6 +106,17 @@ function MapControls(props: IMapControlsProps) {
             <FontAwesomeIcon icon={faDotCircle} color="white" />
           </Button>
         </OverlayTrigger>
+        <Dropdown as={ButtonGroup} drop="right">
+          <Dropdown.Toggle variant="dark">
+            <FontAwesomeIcon icon={faMapMarker} color="white" />
+          </Dropdown.Toggle>
+          <Dropdown.Menu>
+          <Dropdown.Item onClick={() => props.setShowAnnotationFlags(ShowAnnotationFlags.None)}>No notes visible</Dropdown.Item>
+          <Dropdown.Item onClick={() => props.setShowAnnotationFlags(ShowAnnotationFlags.MapNotes)}>Map notes only</Dropdown.Item>
+          <Dropdown.Item onClick={() => props.setShowAnnotationFlags(ShowAnnotationFlags.TokenNotes)}>Token notes only</Dropdown.Item>
+          <Dropdown.Item onClick={() => props.setShowAnnotationFlags(ShowAnnotationFlags.All)}>All notes visible</Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown>
       </ButtonGroup>
       <ColourSelection colours={props.colours}
         includeNegative={true}

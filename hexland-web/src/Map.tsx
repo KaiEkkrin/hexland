@@ -4,7 +4,7 @@ import './Map.css';
 
 import { UserContext, ProfileContext, FirebaseContext } from './App';
 import MapControls, { EditMode, MapColourVisualisationMode } from './components/MapControls';
-import MapAnnotations from './components/MapAnnotations';
+import MapAnnotations, { ShowAnnotationFlags } from './components/MapAnnotations';
 import MapEditorModal from './components/MapEditorModal';
 import Navigation from './components/Navigation';
 import NoteEditorModal from './components/NoteEditorModal';
@@ -171,6 +171,8 @@ function Map(props: IMapPageProps) {
 
       // We should always do a consolidate here to avoid accidentally invalidating
       // any recent changes when switching from FFA to non-FFA mode, for example.
+      // TODO I should make this update to the map record inside the consolidate transaction,
+      // shouldn't I?
       consolidateMapChanges(dataService, firebaseContext.timestampProvider, props.adventureId, props.mapId, record)
         .then(() => dataService.update(mapRef, { ffa: ffa }))
         .then(() => console.log("Set FFA to " + ffa))
@@ -291,6 +293,16 @@ function Map(props: IMapPageProps) {
     }
   }
 
+  const [showAnnotationFlags, setShowAnnotationFlags] = useState(ShowAnnotationFlags.All);
+  const [customAnnotationFlags, setCustomAnnotationFlags] = useState(false);
+
+  function cycleShowAnnotationFlags(flags: ShowAnnotationFlags) {
+    // Doing this causes the map annotations to notice if they should override
+    // any customisations
+    setCustomAnnotationFlags(false);
+    setShowAnnotationFlags(flags);
+  }
+
   return (
     <div className="Map-container">
       <div className="Map-nav">
@@ -306,7 +318,8 @@ function Map(props: IMapPageProps) {
         setMapColourVisualisationMode={setMapColourMode}
         canDoAnything={canDoAnything}
         canOpenMapEditor={canOpenMapEditor}
-        openMapEditor={() => setShowMapEditor(true)} />
+        openMapEditor={() => setShowMapEditor(true)}
+        setShowAnnotationFlags={cycleShowAnnotationFlags} />
       <div className="Map-content">
         <div id="drawingDiv" ref={drawingRef}
           onMouseDown={handleMouseDown}
@@ -321,7 +334,8 @@ function Map(props: IMapPageProps) {
         handleDelete={handleTokenEditorDelete} handleSave={handleTokenEditorSave} />
       <NoteEditorModal show={showNoteEditor} note={noteToEdit} handleClose={() => setShowNoteEditor(false)}
         handleDelete={handleNoteEditorDelete} handleSave={handleNoteEditorSave} />
-      <MapAnnotations annotations={annotations} />
+      <MapAnnotations annotations={annotations} showFlags={showAnnotationFlags} customFlags={customAnnotationFlags}
+        setCustomFlags={setCustomAnnotationFlags} />
     </div>
   );
 }
