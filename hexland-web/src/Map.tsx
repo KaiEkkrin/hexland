@@ -134,13 +134,17 @@ function Map(props: IMapPageProps) {
   const [editMode, setEditMode] = useState(EditMode.Select);
   const [mapColourMode, setMapColourMode] = useState(MapColourVisualisationMode.Areas);
   const [selectedColour, setSelectedColour] = useState(0);
+
   const [showMapEditor, setShowMapEditor] = useState(false);
   const [showTokenEditor, setShowTokenEditor] = useState(false);
   const [showNoteEditor, setShowNoteEditor] = useState(false);
+
   const [tokenToEdit, setTokenToEdit] = useState(undefined as IToken | undefined);
   const [tokenToEditPosition, setTokenToEditPosition] = useState(undefined as THREE.Vector2 | undefined);
   const [noteToEdit, setNoteToEdit] = useState(undefined as IAnnotation | undefined);
   const [noteToEditPosition, setNoteToEditPosition] = useState(undefined as THREE.Vector2 | undefined);
+
+  const [isDraggingView, setIsDraggingView] = useState(false);
 
   useEffect(() => {
     setCanDoAnything(record?.ffa === true || userContext.dataService?.getUid() === record?.owner);
@@ -225,6 +229,7 @@ function Map(props: IMapPageProps) {
       return;
     }
 
+    setIsDraggingView(editMode === EditMode.Pan || editMode === EditMode.Zoom);
     switch (editMode) {
       case EditMode.Select: drawing?.selectionDragStart(cp); break;
       case EditMode.Area: drawing?.faceDragStart(cp); break;
@@ -252,6 +257,7 @@ function Map(props: IMapPageProps) {
   }
 
   function handleMouseUp(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+    setIsDraggingView(false);
     var cp = handleMouseMove(e);
     if (cp === undefined) {
       return;
@@ -335,7 +341,7 @@ function Map(props: IMapPageProps) {
       <NoteEditorModal show={showNoteEditor} note={noteToEdit} handleClose={() => setShowNoteEditor(false)}
         handleDelete={handleNoteEditorDelete} handleSave={handleNoteEditorSave} />
       <MapAnnotations annotations={annotations} showFlags={showAnnotationFlags} customFlags={customAnnotationFlags}
-        setCustomFlags={setCustomAnnotationFlags} />
+        setCustomFlags={setCustomAnnotationFlags} isDraggingView={isDraggingView} />
     </div>
   );
 }

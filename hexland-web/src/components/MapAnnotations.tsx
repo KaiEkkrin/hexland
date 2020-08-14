@@ -43,6 +43,7 @@ interface IMapAnnotationProps {
   showFlags: ShowAnnotationFlags;
   customFlags: boolean;
   setCustomFlags: (custom: boolean) => void;
+  isDraggingView: boolean;
 }
 
 const defaultPinColour = "#5bc0de";
@@ -95,14 +96,18 @@ function MapAnnotation(props: IMapAnnotationProps) {
   }, [props, showTooltip]);
 
   var show = useMemo(() => {
-    if (showTooltip !== undefined) {
+    if (props.isDraggingView) {
+      // Annotations are always hidden while dragging the view and re-shown afterwards,
+      // for performance reasons
+      return false;
+    } else if (showTooltip !== undefined) {
       return showTooltip;
     } else if (isToken) {
       return (props.showFlags & ShowAnnotationFlags.TokenNotes) !== 0;
     } else {
       return (props.showFlags & ShowAnnotationFlags.MapNotes) !== 0;
     }
-  }, [props.showFlags, isToken, showTooltip]);
+  }, [props.isDraggingView, props.showFlags, isToken, showTooltip]);
 
   return (
     <OverlayTrigger placement={placement} show={show} overlay={
@@ -128,6 +133,7 @@ interface IMapAnnotationsProps {
   showFlags: ShowAnnotationFlags;
   customFlags: boolean;
   setCustomFlags: (custom: boolean) => void;
+  isDraggingView: boolean;
 }
 
 // This component draws annotations floating above the map.
@@ -139,6 +145,7 @@ function MapAnnotations(props: IMapAnnotationsProps) {
       showFlags={props.showFlags}
       customFlags={props.customFlags}
       setCustomFlags={props.setCustomFlags}
+      isDraggingView={props.isDraggingView}
     />)}</div>
   );
 }
