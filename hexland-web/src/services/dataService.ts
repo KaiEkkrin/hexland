@@ -172,10 +172,6 @@ export class DataService implements IDataService {
     });
   }
 
-  setProfile(profile: IProfile): Promise<void> {
-    return this._db.collection(profiles).doc(this._uid).set(profile);
-  }
-
   watch<T>(
     d: IDataReference<T>,
     onNext: (r: T | undefined) => void,

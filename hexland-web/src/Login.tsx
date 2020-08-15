@@ -1,28 +1,54 @@
 import React, { useContext } from 'react';
 import './App.css';
 
-import { UserContext, FirebaseContext } from './App';
+import { FirebaseContext } from './App';
 import Navigation from './components/Navigation';
 
-import Button from 'react-bootstrap/Button';
+import { DataService } from './services/dataService';
+import { ensureProfile } from './services/extensions';
 
-import { Redirect } from 'react-router-dom';
+import Button from 'react-bootstrap/Button';
+import { useHistory } from 'react-router-dom';
 
 function Login() {
-  var firebaseContext = useContext(FirebaseContext);
-  var userContext = useContext(UserContext);
+  const firebaseContext = useContext(FirebaseContext);
+  const history = useHistory();
 
-  function handleLoginClick() {
+  async function doLogin(provider: firebase.auth.AuthProvider) {
+    const credential = await firebaseContext.auth?.signInWithPopup(provider);
+    if (!credential?.user) {
+      return Promise.reject("Undefined auth context or user");
+    }
+    
+    if (firebaseContext.db === undefined || firebaseContext.timestampProvider === undefined) {
+      return Promise.reject("No database available");
+    }
+
+    const dataService = new DataService(
+      firebaseContext.db,
+      firebaseContext.timestampProvider,
+      credential.user.uid
+    );
+    return await ensureProfile(dataService, {
+      displayName: credential.user.displayName,
+      email: credential.user.email,
+      uid: credential.user.uid
+    });
+  }
+
+  function handleGoogleLoginClick() {
     if (firebaseContext.googleAuthProvider !== undefined) {
-      firebaseContext.auth?.signInWithPopup(firebaseContext.googleAuthProvider);
+      doLogin(firebaseContext.googleAuthProvider)
+        .then(p => history.push("/"))
+        .catch(e => console.error("Login failed:", e));
     }
   }
 
-  return userContext.user !== null ? <Redirect to="/" /> : (
+  return (
     <div>
       <Navigation title={undefined} />
       <header className="App-header">
-        <Button onClick={handleLoginClick}>
+        <Button onClick={handleGoogleLoginClick}>
           Sign in with Google
         </Button>
       </header>

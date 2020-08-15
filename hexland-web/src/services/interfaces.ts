@@ -59,9 +59,6 @@ export interface IDataService extends IDataView {
   // transaction function does things in the transaction's context.
   runTransaction<T>(fn: (dataView: IDataView) => Promise<T>): Promise<T>;
 
-  // Creates or edits the user's profile.
-  setProfile(profile: IProfile): Promise<void>;
-
   // Watches a single object.  Call the returned function to stop.
   watch<T>(
     d: IDataReference<T>,

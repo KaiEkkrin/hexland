@@ -40,7 +40,7 @@ function Navigation(props: INavigationProps) {
       <Navbar.Collapse className="justify-content-center">
         <Navbar.Text className="mr-2">{props.title ?? ""}</Navbar.Text>
       </Navbar.Collapse>
-      {userContext.user !== null && userContext.user !== undefined ? (
+      {userContext.user ? (
         <Navbar.Collapse className="justify-content-end">
           <Navbar.Text className="mr-2">
             {userContext.user.displayName}

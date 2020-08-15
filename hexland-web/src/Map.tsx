@@ -22,7 +22,7 @@ import { ThreeDrawing } from './models/drawing';
 import { FeatureColour } from './models/featureColour';
 import textCreator from './models/textCreator';
 
-import { RouteComponentProps } from 'react-router-dom';
+import { RouteComponentProps, Redirect } from 'react-router-dom';
 
 import * as THREE from 'three';
 
@@ -353,7 +353,7 @@ interface IMapPageProps {
 
 function MapPage(props: RouteComponentProps<IMapPageProps>) {
   var userContext = useContext(UserContext);
-  return userContext.user === null ? <div></div> : (
+  return (!userContext.user) ? <Redirect to="/login" /> : (
     <Map adventureId={props.match.params.adventureId} mapId={props.match.params.mapId} />);
 }
 

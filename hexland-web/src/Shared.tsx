@@ -11,6 +11,8 @@ import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 
+import { Redirect } from 'react-router-dom';
+
 function Shared() {
   const userContext = useContext(UserContext);
   const [adventures, setAdventures] = useState<IPlayer[]>([]);
@@ -42,7 +44,7 @@ function Shared() {
 
 function SharedPage() {
   const userContext = useContext(UserContext);
-  return userContext.user === undefined ? <div></div> : <Shared></Shared>;
+  return (!userContext.user) ? <Redirect to="/login" /> : <Shared></Shared>;
 }
 
 export default SharedPage;

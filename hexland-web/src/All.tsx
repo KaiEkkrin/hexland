@@ -12,6 +12,7 @@ import { editAdventure } from './services/extensions';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
+import { Redirect } from 'react-router-dom';
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -73,7 +74,7 @@ function All() {
 
 function AllPage() {
   const userContext = useContext(UserContext);
-  return userContext.user === null ? <div></div> : <All />;
+  return userContext.user === null ? <Redirect to="/login" /> : <All />;
 }
 
 export default AllPage;

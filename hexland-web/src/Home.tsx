@@ -16,6 +16,7 @@ import Row from 'react-bootstrap/Row';
 
 import { v4 as uuidv4 } from 'uuid';
 import { MapType } from './data/map';
+import { Redirect } from 'react-router-dom';
 
 function Home() {
   const userContext = useContext(UserContext);
@@ -97,7 +98,7 @@ function HomePage() {
   return (
     <div>
       <Navigation title={undefined} />
-      {userContext.user === undefined ? <div></div> : <Home />}
+      {userContext.user === undefined ? <Redirect to="/login" /> : <Home />}
     </div>
   );
 }

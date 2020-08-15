@@ -8,7 +8,7 @@ import 'firebase/firestore';
 import { IProfile } from './data/profile';
 import { DataService } from './services/dataService';
 
-import Adventure from './Adventure';
+import AdventurePage from './Adventure';
 import AllPage from './All';
 import HomePage from './Home';
 import InvitePage from './Invite';
@@ -111,7 +111,6 @@ export function ProfileContextProvider(props: IContextProviderProps) {
   useEffect(() => {
     var d = userContext.dataService?.getProfileRef();
     if (d !== undefined) {
-      // TODO debugging if jest is hitting this stuff.
       return userContext.dataService?.watch(d,
         p => setProfile(p),
         e => console.error("Failed to watch profile:", e)
@@ -137,7 +136,7 @@ function App() {
             <Switch>
               <Route exact path="/" component={HomePage} />
               <Route exact path="/all" component={AllPage} />
-              <Route exact path="/adventure/:adventureId" component={Adventure} />
+              <Route exact path="/adventure/:adventureId" component={AdventurePage} />
               <Route exact path="/adventure/:adventureId/invite/:inviteId" component={InvitePage} />
               <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
               <Route exact path="/login" component={Login} />

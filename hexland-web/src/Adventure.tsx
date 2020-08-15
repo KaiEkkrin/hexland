@@ -16,7 +16,7 @@ import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 
-import { Link, RouteComponentProps } from 'react-router-dom';
+import { Link, RouteComponentProps, Redirect } from 'react-router-dom';
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -24,17 +24,16 @@ interface IAdventureProps {
   adventureId: string;
 }
 
-function Adventure(props: RouteComponentProps<IAdventureProps>) {
+function Adventure(props: IAdventureProps) {
   const firebaseContext = useContext(FirebaseContext);
   const userContext = useContext(UserContext);
   const profile = useContext(ProfileContext);
 
-  const adventureId = useMemo(() => props.match.params.adventureId, [props]);
   const [adventure, setAdventure] = useState<IAdventure | undefined>(undefined);
   const [adventures, setAdventures] = useState<IAdventureSummary[]>([]);
 
   useEffect(() => {
-    var d = userContext.dataService?.getAdventureRef(adventureId);
+    var d = userContext.dataService?.getAdventureRef(props.adventureId);
     if (d === undefined) {
       setAdventures([]);
       return;
@@ -46,7 +45,7 @@ function Adventure(props: RouteComponentProps<IAdventureProps>) {
 
         // Summarise what we have loaded
         setAdventures(a === undefined ? [] : [{
-          id: adventureId,
+          id: props.adventureId,
           name: a.name,
           description: a.description,
           owner: a.owner,
@@ -55,12 +54,12 @@ function Adventure(props: RouteComponentProps<IAdventureProps>) {
 
         // Register it as recent
         if (a !== undefined) {
-          registerAdventureAsRecent(userContext.dataService, profile, adventureId, a)
-            .catch(e => console.error("Failed to register adventure " + adventureId + " as recent", e));
+          registerAdventureAsRecent(userContext.dataService, profile, props.adventureId, a)
+            .catch(e => console.error("Failed to register adventure " + props.adventureId + " as recent", e));
         }
       },
-      e => console.error("Error watching adventure " + adventureId + ": ", e));
-  }, [userContext.dataService, profile, adventureId]);
+      e => console.error("Error watching adventure " + props.adventureId + ": ", e));
+  }, [userContext.dataService, profile, props.adventureId]);
 
   // Invitations
   const [inviteLink, setInviteLink] = useState<string | undefined>(undefined);
@@ -73,9 +72,9 @@ function Adventure(props: RouteComponentProps<IAdventureProps>) {
     inviteToAdventure(
       userContext.dataService,
       firebaseContext.timestampProvider,
-      summariseAdventure(adventureId, adventure))
-      .then(l => setInviteLink(adventureId + "/invite/" + l))
-      .catch(e => console.error("Failed to create invite link for " + adventureId, e));
+      summariseAdventure(props.adventureId, adventure))
+      .then(l => setInviteLink(props.adventureId + "/invite/" + l))
+      .catch(e => console.error("Failed to create invite link for " + props.adventureId, e));
   }
 
   // Map editing support
@@ -98,7 +97,7 @@ function Adventure(props: RouteComponentProps<IAdventureProps>) {
   }
 
   function mapDelete(id: string) {
-    deleteMap(userContext.dataService, adventureId, id)
+    deleteMap(userContext.dataService, props.adventureId, id)
       .then(() => console.log("Map " + id + " successfully deleted"))
       .catch(e => console.error("Error deleting map " + id, e));
   }
@@ -139,4 +138,10 @@ function Adventure(props: RouteComponentProps<IAdventureProps>) {
   );
 }
 
-export default Adventure;
+function AdventurePage(props: RouteComponentProps<IAdventureProps>) {
+  const userContext = useContext(UserContext);
+  return (!userContext.user) ? <Redirect to="/login" /> : (
+    <Adventure adventureId={props.match.params.adventureId} />);
+}
+
+export default AdventurePage;
