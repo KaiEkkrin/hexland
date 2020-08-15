@@ -29,7 +29,6 @@ const UpdatingPopover = React.forwardRef<HTMLElement, IMapPopoverProps>(
       popper.scheduleUpdate();
     }, [popper, left, bottom]);
 
-    // TODO can I style this?  Translucency would be lovely
     return (
       <Popover ref={ref} content {...props}>
         {children}

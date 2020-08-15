@@ -4,14 +4,13 @@ import './App.css';
 import { UserContext } from './App';
 import AdventureCollection from './components/AdventureCollection';
 import Navigation from './components/Navigation';
+import { RequireLoggedIn } from './components/RequireLoggedIn';
 
 import { IPlayer } from './data/adventure';
 
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
-
-import { Redirect } from 'react-router-dom';
 
 function Shared() {
   const userContext = useContext(UserContext);
@@ -28,7 +27,7 @@ function Shared() {
   }, [userContext.dataService]);
 
   return (
-    <div>
+    <RequireLoggedIn>
       <Navigation title={"Adventures shared with me"} />
       <Container fluid>
         <Row>
@@ -38,13 +37,8 @@ function Shared() {
           </Col>
         </Row>
       </Container>
-    </div>
+    </RequireLoggedIn>
   );
 }
 
-function SharedPage() {
-  const userContext = useContext(UserContext);
-  return (!userContext.user) ? <Redirect to="/login" /> : <Shared></Shared>;
-}
-
-export default SharedPage;
+export default Shared;

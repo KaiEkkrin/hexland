@@ -5,6 +5,7 @@ import { ProfileContext, UserContext } from './App';
 import AdventureCollection from './components/AdventureCollection';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
+import { RequireLoggedIn } from './components/RequireLoggedIn';
 
 import { IMapSummary } from './data/adventure';
 import { IAdventureSummary } from './data/profile';
@@ -16,7 +17,6 @@ import Row from 'react-bootstrap/Row';
 
 import { v4 as uuidv4 } from 'uuid';
 import { MapType } from './data/map';
-import { Redirect } from 'react-router-dom';
 
 function Home() {
   const userContext = useContext(UserContext);
@@ -72,35 +72,28 @@ function Home() {
   }
 
   return (
-    <Container fluid>
-      <Row>
-        <Col xl>
-          <h5 className="mt-4">Latest maps</h5>
-          <MapCollection editable={false}
-            showAdventureSelection={true}
-            adventures={myAdventures}
-            maps={latestMaps}
-            setMap={setMap} deleteMap={undefined} />
-        </Col>
-        <Col xl>
-          <h5 className="mt-4">Latest adventures</h5>
-          <AdventureCollection
-            uid={userContext.user?.uid}
-            adventures={adventures} setAdventure={setAdventure} />
-        </Col>
-      </Row>
-    </Container>
-  );
-}
-
-function HomePage() {
-  var userContext = useContext(UserContext);
-  return (
-    <div>
+    <RequireLoggedIn>
       <Navigation title={undefined} />
-      {userContext.user === undefined ? <Redirect to="/login" /> : <Home />}
-    </div>
+      <Container fluid>
+        <Row>
+          <Col xl>
+            <h5 className="mt-4">Latest maps</h5>
+            <MapCollection editable={false}
+              showAdventureSelection={true}
+              adventures={myAdventures}
+              maps={latestMaps}
+              setMap={setMap} deleteMap={undefined} />
+          </Col>
+          <Col xl>
+            <h5 className="mt-4">Latest adventures</h5>
+            <AdventureCollection
+              uid={userContext.user?.uid}
+              adventures={adventures} setAdventure={setAdventure} />
+          </Col>
+        </Row>
+      </Container>
+    </RequireLoggedIn>
   );
 }
 
-export default HomePage;
+export default Home;

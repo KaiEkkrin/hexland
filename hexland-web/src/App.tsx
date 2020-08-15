@@ -9,12 +9,12 @@ import { IProfile } from './data/profile';
 import { DataService } from './services/dataService';
 
 import AdventurePage from './Adventure';
-import AllPage from './All';
-import HomePage from './Home';
+import All from './All';
+import Home from './Home';
 import InvitePage from './Invite';
 import Login from './Login';
 import MapPage from './Map';
-import SharedPage from './Shared';
+import Shared from './Shared';
 import Status from './components/Status';
 
 import { BrowserRouter, Route, Switch } from 'react-router-dom';
@@ -35,7 +35,9 @@ export const FirebaseContext = React.createContext<IFirebaseContext>({
 });
 
 export interface IUserContext {
-  user: IUser | undefined;
+  user: IUser | null | undefined; // This is the field to query for "is a user logged in?"
+                                  // undefined means "I don't know yet, wait"
+                                  // null means "Not logged in"
   dataService: IDataService | undefined;
 }
 
@@ -85,7 +87,7 @@ export function FirebaseContextProvider(props: IContextProviderProps) {
     return firebaseContext.auth?.onAuthStateChanged(u => {
       console.log("Creating user context from " + u?.uid);
       setUserContext({
-        user: (u === null || u === undefined) ? undefined : { displayName: u.displayName, email: u.email, uid: u.uid },
+        user: (u === null) ? null : { displayName: u.displayName, email: u.email, uid: u.uid },
         dataService: (firebaseContext.db === undefined || firebaseContext.timestampProvider === undefined || u === null || u === undefined) ?
           undefined : new DataService(firebaseContext.db, firebaseContext.timestampProvider, u.uid)
       });
@@ -134,13 +136,13 @@ function App() {
         <ProfileContextProvider>
           <BrowserRouter>
             <Switch>
-              <Route exact path="/" component={HomePage} />
-              <Route exact path="/all" component={AllPage} />
+              <Route exact path="/" component={Home} />
+              <Route exact path="/all" component={All} />
               <Route exact path="/adventure/:adventureId" component={AdventurePage} />
               <Route exact path="/adventure/:adventureId/invite/:inviteId" component={InvitePage} />
               <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
               <Route exact path="/login" component={Login} />
-              <Route exact page="/shared" component={SharedPage} />
+              <Route exact page="/shared" component={Shared} />
             </Switch>
           </BrowserRouter>
           <Status />

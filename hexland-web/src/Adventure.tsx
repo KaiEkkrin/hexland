@@ -4,6 +4,7 @@ import './App.css';
 import { UserContext, ProfileContext, FirebaseContext } from './App';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
+import { RequireLoggedIn } from './components/RequireLoggedIn';
 
 import { IAdventure, summariseAdventure } from './data/adventure';
 import { MapType } from './data/map';
@@ -16,7 +17,7 @@ import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 
-import { Link, RouteComponentProps, Redirect } from 'react-router-dom';
+import { Link, RouteComponentProps } from 'react-router-dom';
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -139,9 +140,11 @@ function Adventure(props: IAdventureProps) {
 }
 
 function AdventurePage(props: RouteComponentProps<IAdventureProps>) {
-  const userContext = useContext(UserContext);
-  return (!userContext.user) ? <Redirect to="/login" /> : (
-    <Adventure adventureId={props.match.params.adventureId} />);
+  return (
+    <RequireLoggedIn>
+      <Adventure adventureId={props.match.params.adventureId} />
+    </RequireLoggedIn>
+  );
 }
 
 export default AdventurePage;

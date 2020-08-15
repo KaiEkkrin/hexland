@@ -39,7 +39,13 @@ function Login() {
   function handleGoogleLoginClick() {
     if (firebaseContext.googleAuthProvider !== undefined) {
       doLogin(firebaseContext.googleAuthProvider)
-        .then(p => history.push("/"))
+        .then(p => {
+          if (history.length > 0) {
+            history.goBack();
+          } else {
+            history.replace("/");
+          }
+        })
         .catch(e => console.error("Login failed:", e));
     }
   }

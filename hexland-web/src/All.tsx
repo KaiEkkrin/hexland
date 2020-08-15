@@ -12,9 +12,9 @@ import { editAdventure } from './services/extensions';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
-import { Redirect } from 'react-router-dom';
 
 import { v4 as uuidv4 } from 'uuid';
+import { RequireLoggedIn } from './components/RequireLoggedIn';
 
 function All() {
   const userContext = useContext(UserContext);
@@ -58,7 +58,7 @@ function All() {
   }
 
   return (
-    <div>
+    <RequireLoggedIn>
       <Navigation title={"All adventures"}/>
       <Container fluid>
         <Row>
@@ -68,13 +68,8 @@ function All() {
           </Col>
         </Row>
       </Container>
-    </div>
+    </RequireLoggedIn>
   );
 }
 
-function AllPage() {
-  const userContext = useContext(UserContext);
-  return userContext.user === null ? <Redirect to="/login" /> : <All />;
-}
-
-export default AllPage;
+export default All;

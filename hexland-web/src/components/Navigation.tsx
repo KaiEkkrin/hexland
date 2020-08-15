@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useMemo } from 'react';
 
 import { UserContext, FirebaseContext } from '../App';
 
@@ -13,8 +13,14 @@ interface INavigationProps {
 }
 
 function Navigation(props: INavigationProps) {
-  var firebaseContext = useContext(FirebaseContext);
-  var userContext = useContext(UserContext);
+  const firebaseContext = useContext(FirebaseContext);
+  const userContext = useContext(UserContext);
+  
+  const loggedInItemsHidden = useMemo(
+    () => userContext.user === null || userContext.user === undefined,
+    [userContext.user]
+  );
+
   return (
     <Navbar bg="dark" variant="dark" sticky="top">
       <LinkContainer to="/">
@@ -25,16 +31,12 @@ function Navigation(props: INavigationProps) {
           <LinkContainer to="/">
             <Nav.Link>Home</Nav.Link>
           </LinkContainer>
-          {userContext.user === null ? <div></div> :
-            <LinkContainer to="/all">
-              <Nav.Link>My adventures</Nav.Link>
-            </LinkContainer>
-          }
-          {userContext.user === null ? <div></div> :
-            <LinkContainer to="/shared">
-              <Nav.Link>Shared with me</Nav.Link>
-            </LinkContainer>
-          }
+          <LinkContainer to="/all" hidden={loggedInItemsHidden}>
+            <Nav.Link>My adventures</Nav.Link>
+          </LinkContainer>
+          <LinkContainer to="/shared" hidden={loggedInItemsHidden}>
+            <Nav.Link>Shared with me</Nav.Link>
+          </LinkContainer>
         </Nav>
       </Navbar.Collapse>
       <Navbar.Collapse className="justify-content-center">

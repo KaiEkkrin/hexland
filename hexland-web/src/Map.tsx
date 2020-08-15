@@ -8,6 +8,7 @@ import MapAnnotations, { ShowAnnotationFlags } from './components/MapAnnotations
 import MapEditorModal from './components/MapEditorModal';
 import Navigation from './components/Navigation';
 import NoteEditorModal from './components/NoteEditorModal';
+import { RequireLoggedIn } from './components/RequireLoggedIn';
 import TokenEditorModal from './components/TokenEditorModal';
 
 import { IPlayer } from './data/adventure';
@@ -22,7 +23,7 @@ import { ThreeDrawing } from './models/drawing';
 import { FeatureColour } from './models/featureColour';
 import textCreator from './models/textCreator';
 
-import { RouteComponentProps, Redirect } from 'react-router-dom';
+import { RouteComponentProps } from 'react-router-dom';
 
 import * as THREE from 'three';
 
@@ -352,9 +353,11 @@ interface IMapPageProps {
 }
 
 function MapPage(props: RouteComponentProps<IMapPageProps>) {
-  var userContext = useContext(UserContext);
-  return (!userContext.user) ? <Redirect to="/login" /> : (
-    <Map adventureId={props.match.params.adventureId} mapId={props.match.params.mapId} />);
+  return (
+    <RequireLoggedIn>
+      <Map adventureId={props.match.params.adventureId} mapId={props.match.params.mapId} />
+    </RequireLoggedIn>
+  );
 }
 
 export default MapPage;
