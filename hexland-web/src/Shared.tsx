@@ -1,8 +1,8 @@
 import React, { useContext, useEffect, useState } from 'react';
 import './App.css';
 
-import { UserContext } from './App';
 import AdventureCollection from './components/AdventureCollection';
+import { UserContext } from './components/FirebaseContextProvider';
 import Navigation from './components/Navigation';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 

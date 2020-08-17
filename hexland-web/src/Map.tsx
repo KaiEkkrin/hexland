@@ -2,12 +2,13 @@ import React, { useEffect, useRef, useState, useContext } from 'react';
 import './App.css';
 import './Map.css';
 
-import { UserContext, ProfileContext, FirebaseContext } from './App';
+import { FirebaseContext, UserContext } from './components/FirebaseContextProvider';
 import MapControls, { EditMode, MapColourVisualisationMode } from './components/MapControls';
 import MapAnnotations, { ShowAnnotationFlags } from './components/MapAnnotations';
 import MapEditorModal from './components/MapEditorModal';
 import Navigation from './components/Navigation';
 import NoteEditorModal from './components/NoteEditorModal';
+import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 import TokenEditorModal from './components/TokenEditorModal';
 

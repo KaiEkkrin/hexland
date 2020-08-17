@@ -5,6 +5,20 @@ import { IInvite } from '../data/invite';
 import { IMap } from '../data/map';
 import { IProfile } from '../data/profile';
 
+// Abstracts the Firebase authentication stuff, which isn't supported by the
+// simulator.
+export interface IAuth {
+  signInWithPopup(provider: IAuthProvider | undefined): Promise<IUser | null>;
+  signOut(): Promise<void>;
+
+  onAuthStateChanged(
+    onNext: (user: IUser | null) => void,
+    onError?: ((e: Error) => void) | undefined
+  ): () => void;
+}
+
+export interface IAuthProvider {}
+
 // A user.  (Exposes the things we want from `firebase.User` -- may need extending;
 // but needs to be hidden behind this interface to facilitate unit testing.)
 export interface IUser {

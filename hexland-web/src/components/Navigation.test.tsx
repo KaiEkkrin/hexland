@@ -1,39 +1,42 @@
 import React from 'react';
 
-import { ProfileContextProvider } from '../App';
-import { SimulatedFirebaseContextProvider } from '../Home.test';
+import { SimulatedSingleComponent } from '../App.test';
 import Navigation from './Navigation';
-
-import { StaticRouter } from 'react-router-dom';
 
 import { render } from '@testing-library/react';
 
-test('title, user display name and links appear', () => {
-  const { getByText } = render(
-    <SimulatedFirebaseContextProvider>
-      <ProfileContextProvider>
-        <StaticRouter location="/">
-          <Navigation title="test title" />
-        </StaticRouter>
-      </ProfileContextProvider>
-    </SimulatedFirebaseContextProvider>
-  );
+describe('test navigation with simulated database', () => {
+  var theApp: firebase.app.App[] = [];
 
-  const brandElement = getByText(/hexland/i);
-  expect(brandElement).toBeInTheDocument();
+  afterEach(() => {
+    var toDelete = theApp.pop();
+    toDelete?.delete()
+      .catch(e => console.error("Failed to clean up app: ", e));
+  });
 
-  const homeElement = getByText(/home/i);
-  expect(homeElement).toBeInTheDocument();
+  test('title, user display name and links appear', () => {
+    const { getByText } = render(
+      <SimulatedSingleComponent user={undefined} location="/" setApp={a => theApp.push(a)}>
+        <Navigation title="test title" />
+      </SimulatedSingleComponent>
+    );
 
-  const allElement = getByText(/my adventures/i);
-  expect(allElement).toBeInTheDocument();
+    const brandElement = getByText(/hexland/i);
+    expect(brandElement).toBeInTheDocument();
 
-  const sharedElement = getByText(/shared with me/i);
-  expect(sharedElement).toBeInTheDocument();
+    const homeElement = getByText(/home/i);
+    expect(homeElement).toBeInTheDocument();
 
-  const titleElement = getByText(/test title/);
-  expect(titleElement).toBeInTheDocument();
+    const allElement = getByText(/my adventures/i);
+    expect(allElement).toBeInTheDocument();
 
-  const userElement = getByText(/Owner/);
-  expect(userElement).toBeInTheDocument();
+    const sharedElement = getByText(/shared with me/i);
+    expect(sharedElement).toBeInTheDocument();
+
+    const titleElement = getByText(/test title/);
+    expect(titleElement).toBeInTheDocument();
+
+    const userElement = getByText(/Owner/);
+    expect(userElement).toBeInTheDocument();
+  });
 });

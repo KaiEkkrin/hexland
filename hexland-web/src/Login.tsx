@@ -1,23 +1,40 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import './App.css';
 
-import { FirebaseContext } from './App';
+import { FirebaseContext } from './components/FirebaseContextProvider';
 import Navigation from './components/Navigation';
 
 import { DataService } from './services/dataService';
 import { ensureProfile } from './services/extensions';
+import { IAuthProvider } from './services/interfaces';
 
 import Button from 'react-bootstrap/Button';
 import { useHistory } from 'react-router-dom';
+
+interface ILoginFailedMessageProps {
+  isVisible: boolean;
+}
+
+function LoginFailedMessage(props: ILoginFailedMessageProps) {
+  return props.isVisible ? <p>Login failed.</p> : <div></div>;
+}
 
 function Login() {
   const firebaseContext = useContext(FirebaseContext);
   const history = useHistory();
 
-  async function doLogin(provider: firebase.auth.AuthProvider) {
-    const credential = await firebaseContext.auth?.signInWithPopup(provider);
-    if (!credential?.user) {
+  const [loginFailedVisible, setLoginFailedVisible] = useState(false);
+
+  async function doLogin(provider: IAuthProvider) {
+    setLoginFailedVisible(false);
+    const user = await firebaseContext.auth?.signInWithPopup(provider);
+    if (user === undefined) {
       return Promise.reject("Undefined auth context or user");
+    }
+
+    if (user === null) {
+      setLoginFailedVisible(true);
+      return;
     }
     
     if (firebaseContext.db === undefined || firebaseContext.timestampProvider === undefined) {
@@ -27,13 +44,9 @@ function Login() {
     const dataService = new DataService(
       firebaseContext.db,
       firebaseContext.timestampProvider,
-      credential.user.uid
+      user.uid
     );
-    return await ensureProfile(dataService, {
-      displayName: credential.user.displayName,
-      email: credential.user.email,
-      uid: credential.user.uid
-    });
+    return await ensureProfile(dataService, user);
   }
 
   function handleGoogleLoginClick() {
@@ -57,6 +70,7 @@ function Login() {
         <Button onClick={handleGoogleLoginClick}>
           Sign in with Google
         </Button>
+        <LoginFailedMessage isVisible={loginFailedVisible} />
       </header>
     </div>
   );

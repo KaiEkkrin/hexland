@@ -1,10 +1,11 @@
 import React, { useContext, useMemo } from 'react';
 import './App.css';
 
-import { ProfileContext, UserContext } from './App';
 import AdventureCollection from './components/AdventureCollection';
+import { UserContext } from './components/FirebaseContextProvider';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
+import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 
 import { IMapSummary } from './data/adventure';

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import './App.css';
 
-import { UserContext, ProfileContext } from './App';
+import { UserContext } from './components/FirebaseContextProvider';
 import Navigation from './components/Navigation';
+import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 
 import { IInvite } from './data/invite';

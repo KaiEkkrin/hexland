@@ -1,6 +1,6 @@
 import React, { useContext, useMemo } from 'react';
 
-import { UserContext, FirebaseContext } from '../App';
+import { UserContext, FirebaseContext } from './FirebaseContextProvider';
 
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
@@ -20,6 +20,11 @@ function Navigation(props: INavigationProps) {
     () => userContext.user === null || userContext.user === undefined,
     [userContext.user]
   );
+
+  function handleSignOut() {
+    firebaseContext.auth?.signOut()
+      .catch(e => console.error("Error signing out: ", e));
+  }
 
   return (
     <Navbar bg="dark" variant="dark" sticky="top">
@@ -48,7 +53,7 @@ function Navigation(props: INavigationProps) {
             {userContext.user.displayName}
           </Navbar.Text>
           <Form inline>
-            <Button variant="outline-primary" onClick={() => firebaseContext.auth?.signOut()}>Log out</Button>
+            <Button variant="outline-primary" onClick={handleSignOut}>Log out</Button>
           </Form>
         </Navbar.Collapse>
       ) : (
