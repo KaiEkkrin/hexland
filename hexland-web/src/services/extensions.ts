@@ -81,7 +81,7 @@ async function editAdventureTransaction(
   // Fetch the profile, which we'll want to edit (maybe)
   var profile = await view.get(profileRef);
   if (profile === undefined) {
-    return Promise.reject("No profile available");
+    throw Error("No profile available");
   }
 
   // Update the adventure record itself, and the players associated with it
@@ -227,7 +227,7 @@ async function editMapTransaction(
   // Fetch the adventure, which we'll certainly want to edit
   var adventure = await view.get(adventureRef);
   if (adventure === undefined) {
-    return Promise.reject("Adventure not found");
+    throw Error("Adventure not found");
   }
 
   // Update the profile to include this map if it didn't already, or
@@ -288,7 +288,7 @@ async function deleteMapTransaction(
   // Fetch the adventure, which we'll certainly want to edit
   var adventure = await view.get(adventureRef);
   if (adventure === undefined) {
-    return Promise.reject("Adventure not found");
+    throw Error("Adventure not found");
   }
 
   // Update the profile to omit this map
@@ -335,7 +335,7 @@ async function registerAdventureAsRecentTransaction(
 ) {
   var profile = await view.get(profileRef);
   if (profile === undefined) {
-    return Promise.reject("No such profile");
+    throw Error("No such profile");
   }
 
   var updated = updateProfileAdventures(profile.adventures, {
@@ -375,7 +375,7 @@ async function registerMapAsRecentTransaction(
 ) {
   var profile = await view.get(profileRef);
   if (profile === undefined) {
-    return Promise.reject("No such profile");
+    throw Error("No such profile");
   }
 
   var updated = updateProfileMaps(profile.latestMaps, {
@@ -425,7 +425,7 @@ async function consolidateMapChangesTransaction(
   var latestBaseChange = await view.get(baseChangeRef);
   if (baseChange !== undefined && latestBaseChange !== undefined) {
     if (!latestBaseChange.timestamp.isEqual(baseChange.timestamp)) {
-      return Promise.reject("Map changes have already been consolidated");
+      throw Error("Map changes have already been consolidated");
     }
   }
 
@@ -528,7 +528,7 @@ async function joinAdventureTransaction(
 ): Promise<void> {
   var adventure = await view.get(adventureRef);
   if (adventure === undefined) {
-    return Promise.reject("No such adventure");
+    throw Error("No such adventure");
   }
 
   var player = await view.get(playerRef);

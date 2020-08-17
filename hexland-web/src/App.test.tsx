@@ -18,6 +18,10 @@ import { render } from '@testing-library/react';
 
 import { v4 as uuidv4 } from 'uuid';
 
+// Note that to successfully run tests that use the Firebase emulator you need to have
+// this running somewhere:
+// `firebase emulators:start --only firestore`
+
 // Simulates the authentication subsystem, which the Firebase emulator doesn't provide.
 // TODO Try to make this as a Jest mock instead...  (I expect I'll need to add default
 // user parameters and things like that...)
@@ -61,7 +65,8 @@ class SimulatedAuth implements IAuth {
 // This provides a Firebase context using the emulator.
 interface ISimulatedProps {
   setApp: (app: firebase.app.App) => void; // exports the app for cleanup
-  startLoggedIn: boolean;
+  startLoggedIn: boolean; // TODO Take this away!  There will be no profile if it is true.
+                          // It is not realistic and will cause problems for me.
   user: IUser | null | undefined; // null for none, undefined for default (owner)
 }
 
@@ -73,7 +78,7 @@ export function SimulatedFirebaseContextProvider(props: ISimulatedProps & IConte
   }
 
   const app = initializeTestApp({
-    projectId: 'hexland-test',
+    projectId: uuidv4(),
     auth: user ?? undefined
   });
   props.setApp(app);

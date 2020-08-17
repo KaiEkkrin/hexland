@@ -1,6 +1,7 @@
 import React, { useContext, useMemo } from 'react';
 
 import { FirebaseContext } from './FirebaseContextProvider';
+import { ProfileContext } from './ProfileContextProvider';
 import { UserContext } from './UserContextProvider';
 
 import Button from 'react-bootstrap/Button';
@@ -16,6 +17,7 @@ interface INavigationProps {
 function Navigation(props: INavigationProps) {
   const firebaseContext = useContext(FirebaseContext);
   const userContext = useContext(UserContext);
+  const profile = useContext(ProfileContext);
   
   const loggedInItemsHidden = useMemo(
     () => userContext.user === null || userContext.user === undefined,
@@ -51,7 +53,7 @@ function Navigation(props: INavigationProps) {
       {userContext.user ? (
         <Navbar.Collapse className="justify-content-end">
           <Navbar.Text className="mr-2">
-            {userContext.user.displayName}
+            {profile?.name}
           </Navbar.Text>
           <Form inline>
             <Button variant="outline-primary" onClick={handleSignOut}>Log out</Button>

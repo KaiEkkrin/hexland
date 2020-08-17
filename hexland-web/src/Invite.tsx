@@ -30,9 +30,8 @@ function Invite(props: IInvitePageProps) {
 
   // TODO #33 : Remove this after I'm confident there are no more issues with invites.
   useEffect(() => {
-    console.log("invite page sees user: " + (userContext.user === undefined ? "undefined" :
-      userContext.user === null ? "null" : userContext.user.displayName));
-  }, [userContext.user]);
+    console.log("invite page sees user: " + profile?.name ?? "(undefined)");
+  }, [profile]);
 
   const inviteDescription = useMemo(() =>
     invite === undefined ? "(no such invite)" : invite.adventureName + " by " + invite.ownerName,
@@ -48,7 +47,7 @@ function Invite(props: IInvitePageProps) {
     <div>
       <Navigation title={undefined} />
       <header className="App-header">
-        <h5>{userContext.user?.displayName ?? "Unknown"}, you have been invited to join {inviteDescription}.</h5>
+        <h5>{profile?.name ?? "Unknown"}, you have been invited to join {inviteDescription}.</h5>
         <Button variant="primary" onClick={handleJoin}>Join</Button>
       </header>
     </div>

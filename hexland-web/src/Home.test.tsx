@@ -5,13 +5,14 @@ import HomePage from './Home';
 
 import { render } from '@testing-library/react';
 
+// TODO No; move this kind of multi-page thing to the app test.
+// In general, I think that in all my UI tests, I want to log in first, and
+// then do the thing...?
 describe('test home with simulated database', () => {
   var theApp: firebase.app.App[] = [];
 
-  afterEach(() => {
-    var toDelete = theApp.pop();
-    toDelete?.delete()
-      .catch(e => console.error("Failed to clean up app: ", e));
+  afterEach(async () => {
+    await theApp.pop()?.delete();
   });
 
   test('latest maps and latest adventures headings are there', () => {
@@ -29,8 +30,5 @@ describe('test home with simulated database', () => {
 
     const latestAdventuresElement = getByText(/Latest adventures/);
     expect(latestAdventuresElement).toBeInTheDocument();
-
-    const userElement = getByText(/Owner/);
-    expect(userElement).toBeInTheDocument();
   });
 });

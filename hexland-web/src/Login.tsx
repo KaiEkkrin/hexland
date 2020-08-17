@@ -29,7 +29,7 @@ function Login() {
     setLoginFailedVisible(false);
     const user = await firebaseContext.auth?.signInWithPopup(provider);
     if (user === undefined) {
-      return Promise.reject("Undefined auth context or user");
+      throw Error("Undefined auth context or user");
     }
 
     if (user === null) {
@@ -38,7 +38,7 @@ function Login() {
     }
     
     if (firebaseContext.db === undefined || firebaseContext.timestampProvider === undefined) {
-      return Promise.reject("No database available");
+      throw Error("No database available");
     }
 
     const dataService = new DataService(
@@ -46,6 +46,7 @@ function Login() {
       firebaseContext.timestampProvider,
       user.uid
     );
+
     return await ensureProfile(dataService, user);
   }
 

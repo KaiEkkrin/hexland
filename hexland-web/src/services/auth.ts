@@ -18,7 +18,7 @@ export class FirebaseAuth implements IAuth {
       return credential.user;
     }
 
-    return Promise.reject("Incompatible auth provider");
+    throw Error("Incompatible auth provider");
   }
 
   signOut() {

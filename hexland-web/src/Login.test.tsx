@@ -8,17 +8,15 @@ import Login from './Login';
 import { act } from 'react-dom/test-utils';
 
 describe('test login with simulated database', () => {
-  var theApp: firebase.app.App[] = [];
+  var emul: firebase.app.App[] = [];
 
-  afterEach(() => {
-    var toDelete = theApp.pop();
-    toDelete?.delete()
-      .catch(e => console.error("Failed to clean up app: ", e));
+  afterEach(async () => {
+    await emul.pop()?.delete();
   });
 
   test('login with Google fails', async () => {
-    const { getByRole, queryByText } = render(
-      <SimulatedSingleComponent location="/login" user={null} startLoggedIn={false} setApp={a => theApp.push(a)}>
+    const { findByText, getByRole, queryByText } = render(
+      <SimulatedSingleComponent location="/login" user={null} startLoggedIn={false} setApp={a => emul.push(a)}>
         <Login />
       </SimulatedSingleComponent>
     );
@@ -33,13 +31,13 @@ describe('test login with simulated database', () => {
 
     await act(async () => userEvent.click(buttonElement));
 
-    failedElement = queryByText(/Login failed/i);
+    failedElement = await findByText(/Login failed/i);
     expect(failedElement).toBeInTheDocument();
   }, 1000);
 
   test('login with Google succeeds', async () => {
-    const { getByRole, queryByText } = render(
-      <SimulatedSingleComponent location="/login" user={undefined} startLoggedIn={false} setApp={a => theApp.push(a)}>
+    const { findByText, getByRole, queryByText } = render(
+      <SimulatedSingleComponent location="/login" user={undefined} startLoggedIn={false} setApp={a => emul.push(a)}>
         <Login />
       </SimulatedSingleComponent>
     );
@@ -52,11 +50,9 @@ describe('test login with simulated database', () => {
     const buttonElement = getByRole('button', { name: /Sign in with Google/i });
     expect(buttonElement).toBeInTheDocument();
 
-    await act(async () => userEvent.click(buttonElement));
+    await act(async () => { userEvent.click(buttonElement); });
 
-    // This should have created a profile for the owner and displayed it in the
-    // nav bar:
-    userElement = queryByText(/Owner/);
+    userElement = await findByText(/Owner/);
     expect(userElement).toBeInTheDocument();
 
     // TODO Check that the redirect fires...
