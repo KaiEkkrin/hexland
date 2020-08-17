@@ -16,7 +16,7 @@ describe('test home with simulated database', () => {
 
   test('latest maps and latest adventures headings are there', () => {
     const { getByText } = render(
-      <SimulatedSingleComponent user={undefined} location="/" setApp={a => theApp.push(a)}>
+      <SimulatedSingleComponent user={undefined} startLoggedIn={true} location="/" setApp={a => theApp.push(a)}>
         <HomePage />
       </SimulatedSingleComponent>
     );
@@ -29,5 +29,8 @@ describe('test home with simulated database', () => {
 
     const latestAdventuresElement = getByText(/Latest adventures/);
     expect(latestAdventuresElement).toBeInTheDocument();
+
+    const userElement = getByText(/Owner/);
+    expect(userElement).toBeInTheDocument();
   });
 });

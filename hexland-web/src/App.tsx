@@ -11,6 +11,7 @@ import MapPage from './Map';
 import ProfileContextProvider from './components/ProfileContextProvider';
 import Shared from './Shared';
 import Status from './components/Status';
+import UserContextProvider from './components/UserContextProvider';
 
 import { BrowserRouter, Route, Switch } from 'react-router-dom';
 
@@ -32,12 +33,14 @@ function App() {
   return (
     <div className="App">
       <FirebaseContextProvider>
-        <ProfileContextProvider>
-          <BrowserRouter>
-            <AppRouting />
-          </BrowserRouter>
-          <Status />
-        </ProfileContextProvider>
+        <UserContextProvider>
+          <ProfileContextProvider>
+            <BrowserRouter>
+              <AppRouting />
+            </BrowserRouter>
+            <Status />
+          </ProfileContextProvider>
+        </UserContextProvider>
       </FirebaseContextProvider>
     </div>
   );

@@ -2,9 +2,9 @@ import React, { useContext, useState, useEffect, useMemo } from 'react';
 import './App.css';
 
 import AdventureCollection from './components/AdventureCollection';
-import { UserContext } from './components/FirebaseContextProvider';
 import Navigation from './components/Navigation';
 import { ProfileContext } from './components/ProfileContextProvider';
+import { UserContext } from './components/UserContextProvider';
 
 import { IAdventure, summariseAdventure } from './data/adventure';
 import { IIdentified } from './data/identified';

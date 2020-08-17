@@ -1,5 +1,5 @@
 import React, { useContext, useEffect } from 'react';
-import { UserContext } from './FirebaseContextProvider';
+import { UserContext } from './UserContextProvider';
 import { useHistory } from 'react-router-dom';
 
 // This is a simple helper component that requires you to be logged in

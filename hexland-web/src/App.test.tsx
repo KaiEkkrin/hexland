@@ -1,15 +1,17 @@
 import React from 'react';
 
 import { AppRouting } from './App';
-import { FirebaseContext, UserContext } from './components/FirebaseContextProvider';
+import { FirebaseContext } from './components/FirebaseContextProvider';
 import { IContextProviderProps } from './components/interfaces';
 import ProfileContextProvider from './components/ProfileContextProvider';
-
-import { DataService } from './services/dataService';
+import UserContextProvider from './components/UserContextProvider';
 
 import { StaticRouter, MemoryRouter } from 'react-router-dom';
 
 import * as firebase from 'firebase/app';
+import 'firebase/auth';
+import 'firebase/firestore';
+
 import { initializeTestApp } from '@firebase/testing';
 import { IUser, IAuth, IAuthProvider } from './services/interfaces';
 import { render } from '@testing-library/react';
@@ -22,10 +24,11 @@ import { v4 as uuidv4 } from 'uuid';
 class SimulatedAuth implements IAuth {
   private readonly _user: IUser | null;
   private readonly _userHandlers: { [id: string]: ((user: IUser | null) => void) } = {};
-  private _isLoggedIn = false;
+  private _isLoggedIn: boolean;
 
-  constructor(user: IUser | null) {
+  constructor(user: IUser | null, isLoggedIn: boolean) {
     this._user = user;
+    this._isLoggedIn = isLoggedIn;
   }
 
   signInWithPopup(provider: IAuthProvider | undefined) {
@@ -55,9 +58,10 @@ class SimulatedAuth implements IAuth {
   }
 }
 
-// This provides a Firebase context and user context using the emulator.
+// This provides a Firebase context using the emulator.
 interface ISimulatedProps {
   setApp: (app: firebase.app.App) => void; // exports the app for cleanup
+  startLoggedIn: boolean;
   user: IUser | null | undefined; // null for none, undefined for default (owner)
 }
 
@@ -74,26 +78,16 @@ export function SimulatedFirebaseContextProvider(props: ISimulatedProps & IConte
   });
   props.setApp(app);
 
-  // TODO wipe the existing simulated database first?
-
   const firebaseContext = {
+    auth: new SimulatedAuth(user, props.startLoggedIn),
     db: app.firestore(),
-    auth: new SimulatedAuth(user),
     googleAuthProvider: {},
     timestampProvider: firebase.firestore.FieldValue.serverTimestamp
   };
 
-  const userContext = {
-    user: user,
-    dataService: user != null ? new DataService(firebaseContext.db, firebaseContext.timestampProvider, user.uid) :
-      undefined
-  };
-
   return (
     <FirebaseContext.Provider value={firebaseContext}>
-      <UserContext.Provider value={userContext}>
-        {props.children}
-      </UserContext.Provider>
+      {props.children}
     </FirebaseContext.Provider>
   );
 }
@@ -106,11 +100,13 @@ interface ISimulatedComponentProps extends ISimulatedProps {
 export function SimulatedSingleComponent(props: ISimulatedComponentProps & IContextProviderProps) {
   return (
     <SimulatedFirebaseContextProvider {...props}>
-      <ProfileContextProvider>
-        <StaticRouter location={props.location ?? "/"}>
-          {props.children}
-        </StaticRouter>
-      </ProfileContextProvider>
+      <UserContextProvider>
+        <ProfileContextProvider>
+          <StaticRouter location={props.location ?? "/"}>
+            {props.children}
+          </StaticRouter>
+        </ProfileContextProvider>
+      </UserContextProvider>
     </SimulatedFirebaseContextProvider>
   );
 }
@@ -119,11 +115,13 @@ export function SimulatedSingleComponent(props: ISimulatedComponentProps & ICont
 export function SimulatedApplication(props: ISimulatedComponentProps) {
   return (
     <SimulatedFirebaseContextProvider {...props}>
-      <ProfileContextProvider>
-        <MemoryRouter initialEntries={[ props.location ?? '/' ]}>
-          <AppRouting />
-        </MemoryRouter>
-      </ProfileContextProvider>
+      <UserContextProvider>
+        <ProfileContextProvider>
+          <MemoryRouter initialEntries={[props.location ?? '/']}>
+            <AppRouting />
+          </MemoryRouter>
+        </ProfileContextProvider>
+      </UserContextProvider>
     </SimulatedFirebaseContextProvider>
   );
 }

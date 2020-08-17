@@ -4,10 +4,8 @@ import * as firebase from 'firebase/app';
 import 'firebase/auth';
 import 'firebase/firestore';
 
-import { IContextProviderProps, IFirebaseContext, IUserContext } from './interfaces';
-
+import { IContextProviderProps, IFirebaseContext } from './interfaces';
 import { FirebaseAuth, GoogleAuthProviderWrapper } from '../services/auth';
-import { DataService } from '../services/dataService';
 
 export const FirebaseContext = React.createContext<IFirebaseContext>({
   auth: undefined,
@@ -16,12 +14,7 @@ export const FirebaseContext = React.createContext<IFirebaseContext>({
   timestampProvider: undefined
 });
 
-export const UserContext = React.createContext<IUserContext>({
-  user: undefined,
-  dataService: undefined
-});
-
-// This provides the Firebase and user contexts, and should be replaced to unit test with the
+// This provides the Firebase context, and should be replaced to unit test with the
 // Firebase simulator.
 function FirebaseContextProvider(props: IContextProviderProps) {
   const [firebaseContext, setFirebaseContext] = useState<IFirebaseContext>({
@@ -48,26 +41,9 @@ function FirebaseContextProvider(props: IContextProviderProps) {
       .catch(e => console.error("Error configuring Firebase", e));
   }, []);
 
-  const [userContext, setUserContext] = useState<IUserContext>({ user: undefined, dataService: undefined });
-
-  // When we're connected to Firebase, subscribe to the auth state change event and create a
-  // suitable user context
-  useEffect(() => {
-    return firebaseContext.auth?.onAuthStateChanged(u => {
-      console.log("Creating user context from " + u?.uid);
-      setUserContext({
-        user: u,
-        dataService: (firebaseContext.db === undefined || firebaseContext.timestampProvider === undefined || u === null || u === undefined) ?
-          undefined : new DataService(firebaseContext.db, firebaseContext.timestampProvider, u.uid)
-      });
-    }, e => console.error("Authentication state error: ", e));
-  }, [firebaseContext.auth, firebaseContext.db, firebaseContext.timestampProvider]);
-
   return (
     <FirebaseContext.Provider value={firebaseContext}>
-      <UserContext.Provider value={userContext}>
-        {props.children}
-      </UserContext.Provider>
+      {props.children}
     </FirebaseContext.Provider>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useContext, useMemo } from 'react';
 
-import { UserContext, FirebaseContext } from './FirebaseContextProvider';
+import { FirebaseContext } from './FirebaseContextProvider';
+import { UserContext } from './UserContextProvider';
 
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';

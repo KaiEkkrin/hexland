@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import './App.css';
 
-import { UserContext } from './components/FirebaseContextProvider';
 import Navigation from './components/Navigation';
 import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
+import { UserContext } from './components/UserContextProvider';
 
 import { IInvite } from './data/invite';
 import { joinAdventure } from './services/extensions';

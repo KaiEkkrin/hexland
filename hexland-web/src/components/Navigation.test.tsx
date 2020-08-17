@@ -16,7 +16,7 @@ describe('test navigation with simulated database', () => {
 
   test('title, user display name and links appear', () => {
     const { getByText } = render(
-      <SimulatedSingleComponent user={undefined} location="/" setApp={a => theApp.push(a)}>
+      <SimulatedSingleComponent user={undefined} startLoggedIn={true} location="/" setApp={a => theApp.push(a)}>
         <Navigation title="test title" />
       </SimulatedSingleComponent>
     );

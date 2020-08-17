@@ -2,9 +2,9 @@ import React, { useContext, useEffect, useState } from 'react';
 import './App.css';
 
 import AdventureCollection from './components/AdventureCollection';
-import { UserContext } from './components/FirebaseContextProvider';
 import Navigation from './components/Navigation';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
+import { UserContext } from './components/UserContextProvider';
 
 import { IPlayer } from './data/adventure';
 

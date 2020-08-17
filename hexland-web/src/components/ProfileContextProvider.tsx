@@ -2,7 +2,7 @@ import React, { useEffect, useState, useContext } from 'react';
 
 import { IProfile } from '../data/profile';
 
-import { UserContext } from './FirebaseContextProvider';
+import { UserContext } from './UserContextProvider';
 import { IContextProviderProps } from './interfaces';
 
 export const ProfileContext = React.createContext<IProfile | undefined>(undefined);
