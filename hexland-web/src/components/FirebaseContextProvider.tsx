@@ -4,7 +4,7 @@ import * as firebase from 'firebase/app';
 import 'firebase/auth';
 import 'firebase/firestore';
 
-import { IContextProviderProps, IFirebaseContext } from './interfaces';
+import { IContextProviderProps, IFirebaseContext, IFirebaseProps } from './interfaces';
 import { FirebaseAuth, GoogleAuthProviderWrapper } from '../services/auth';
 
 export const FirebaseContext = React.createContext<IFirebaseContext>({
@@ -16,7 +16,7 @@ export const FirebaseContext = React.createContext<IFirebaseContext>({
 
 // This provides the Firebase context, and should be replaced to unit test with the
 // Firebase simulator.
-function FirebaseContextProvider(props: IContextProviderProps) {
+function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) {
   const [firebaseContext, setFirebaseContext] = useState<IFirebaseContext>({
     auth: undefined,
     db: undefined,

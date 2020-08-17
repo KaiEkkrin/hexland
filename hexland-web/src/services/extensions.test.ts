@@ -9,12 +9,12 @@ import { clearFirestoreData, initializeTestApp } from '@firebase/testing';
 import { v4 as uuidv4 } from 'uuid';
 
 describe('test extensions as owner', () => {
-  const ids: string[] = [];
+  const projectIds: string[] = [];
   const emul: firebase.app.App[] = [];
 
   beforeEach(() => {
     const id = uuidv4();
-    ids.push(id);
+    projectIds.push(id);
     emul.push(initializeTestApp({
       projectId: id,
       auth: {
@@ -30,9 +30,7 @@ describe('test extensions as owner', () => {
   });
 
   afterAll(async () => {
-    // TODO move this cleanup, and managing test databases, into a mock of
-    // the Firebase context provider
-    await Promise.all(ids.map(id => clearFirestoreData({ projectId: id })));
+    await Promise.all(projectIds.map(id => clearFirestoreData({ projectId: id })));
   })
 
   test('create a new profile entry', async () => {

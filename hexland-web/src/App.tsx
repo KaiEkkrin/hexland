@@ -9,35 +9,31 @@ import InvitePage from './Invite';
 import Login from './Login';
 import MapPage from './Map';
 import ProfileContextProvider from './components/ProfileContextProvider';
+import Routing from './components/Routing';
+import { IRoutingProps, IFirebaseProps } from './components/interfaces';
 import Shared from './Shared';
 import Status from './components/Status';
 import UserContextProvider from './components/UserContextProvider';
 
-import { BrowserRouter, Route, Switch } from 'react-router-dom';
+import { Route, Switch } from 'react-router-dom';
 
-export function AppRouting() { // exported for testing purposes only :)
-  return (
-    <Switch>
-      <Route exact path="/" component={Home} />
-      <Route exact path="/all" component={All} />
-      <Route exact path="/adventure/:adventureId" component={AdventurePage} />
-      <Route exact path="/adventure/:adventureId/invite/:inviteId" component={InvitePage} />
-      <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
-      <Route exact path="/login" component={Login} />
-      <Route exact page="/shared" component={Shared} />
-    </Switch>
-  );
-}
-
-function App() {
+function App(props: IFirebaseProps & IRoutingProps) {
   return (
     <div className="App">
-      <FirebaseContextProvider>
+      <FirebaseContextProvider {...props}>
         <UserContextProvider>
           <ProfileContextProvider>
-            <BrowserRouter>
-              <AppRouting />
-            </BrowserRouter>
+            <Routing {...props}>
+              <Switch>
+                <Route exact path="/" component={Home} />
+                <Route exact path="/all" component={All} />
+                <Route exact path="/adventure/:adventureId" component={AdventurePage} />
+                <Route exact path="/adventure/:adventureId/invite/:inviteId" component={InvitePage} />
+                <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
+                <Route exact path="/login" component={Login} />
+                <Route exact page="/shared" component={Shared} />
+              </Switch>
+            </Routing>
             <Status />
           </ProfileContextProvider>
         </UserContextProvider>

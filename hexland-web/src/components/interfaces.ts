@@ -17,3 +17,14 @@ export interface IUserContext {
                                   // null means "Not logged in"
   dataService: IDataService | undefined;
 }
+
+export interface IFirebaseProps {
+  // For testing only -- ignored by the real context provider.
+  projectId?: string | undefined; // in testing, *must* be a unique identifier
+  user?: IUser | null | undefined; // null for no user, undefined for default (the db owner)
+}
+
+export interface IRoutingProps {
+  // For testing only -- ignored by the real routing.
+  defaultRoute?: string | undefined;
+}
