@@ -48,7 +48,7 @@ function Map(props: IMapPageProps) {
 
   const drawingRef = useRef<HTMLDivElement>(null);
 
-  const [record, setRecord] = useState(undefined as IAdventureIdentified<IMap> | undefined);
+  const [map, setMap] = useState(undefined as IAdventureIdentified<IMap> | undefined);
   const [players, setPlayers] = useState([] as IPlayer[]);
   const [drawing, setDrawing] = useState(undefined as ThreeDrawing | undefined);
   const [canDoAnything, setCanDoAnything] = useState(false);
@@ -71,7 +71,7 @@ function Map(props: IMapPageProps) {
     console.log("Watching adventure " + props.adventureId + ", map " + props.mapId);
     var mapRef = userContext.dataService.getMapRef(props.adventureId, props.mapId);
     return userContext.dataService.watch<IMap>(
-      mapRef, m => setRecord(m === undefined ? undefined : {
+      mapRef, m => setMap(m === undefined ? undefined : {
         adventureId: props.adventureId,
         id: props.mapId,
         record: m
@@ -83,35 +83,35 @@ function Map(props: IMapPageProps) {
   // Track changes to the map
   useEffect(() => {
     if (
-      userContext.dataService === undefined || record === undefined ||
+      userContext.dataService === undefined || map === undefined ||
       drawingRef?.current === null
     ) {
       setDrawing(undefined);
       return;
     }
 
-    registerMapAsRecent(userContext.dataService, record.adventureId, record.id, record.record)
+    registerMapAsRecent(userContext.dataService, map.adventureId, map.id, map.record)
       .catch(e => console.error("Error registering map as recent", e));
-    consolidateMapChanges(userContext.dataService, firebaseContext.timestampProvider, record.adventureId, record.id, record.record)
+    consolidateMapChanges(userContext.dataService, firebaseContext.timestampProvider, map.adventureId, map.id, map.record)
       .catch(e => console.error("Error consolidating map changes", e));
 
     var theDrawing = new ThreeDrawing(
-      getStandardColours(), drawingRef.current, textCreator, record.record, userContext.dataService.getUid(),
+      getStandardColours(), drawingRef.current, textCreator, map.record, userContext.dataService.getUid(),
       setAnnotations
     );
     setDrawing(theDrawing);
     theDrawing.animate();
 
-    console.log("Watching changes to map " + record.id);
-    var stopWatchingChanges = userContext.dataService.watchChanges(record.adventureId, record.id,
-      chs => trackChanges(record.record, theDrawing.changeTracker, chs.chs, chs.user),
+    console.log("Watching changes to map " + map.id);
+    var stopWatchingChanges = userContext.dataService.watchChanges(map.adventureId, map.id,
+      chs => trackChanges(map.record, theDrawing.changeTracker, chs.chs, chs.user),
       e => console.error("Error watching map changes", e));
     
     return () => {
       stopWatchingChanges();
       theDrawing.dispose();
     };
-  }, [userContext.dataService, firebaseContext.timestampProvider, record]);
+  }, [userContext.dataService, firebaseContext.timestampProvider, map]);
 
   // Track the adventure's players, if we might need access to this
   useEffect(() => {
@@ -154,12 +154,12 @@ function Map(props: IMapPageProps) {
   const [isDraggingView, setIsDraggingView] = useState(false);
 
   useEffect(() => {
-    setCanDoAnything(record?.record.ffa === true || userContext.dataService?.getUid() === record?.record.owner);
-  }, [userContext.dataService, record]);
+    setCanDoAnything(map?.record.ffa === true || userContext.dataService?.getUid() === map?.record.owner);
+  }, [userContext.dataService, map]);
 
   useEffect(() => {
-    setCanOpenMapEditor(userContext.dataService?.getUid() === record?.record.owner);
-  }, [userContext.dataService, record]);
+    setCanOpenMapEditor(userContext.dataService?.getUid() === map?.record.owner);
+  }, [userContext.dataService, map]);
 
   // When the edit mode changes away from Select, we should clear any selection
   useEffect(() => {
@@ -176,15 +176,15 @@ function Map(props: IMapPageProps) {
 
   function handleMapEditorSave(ffa: boolean) {
     setShowMapEditor(false);
-    if (userContext.dataService !== undefined && record !== undefined) {
+    if (userContext.dataService !== undefined && map !== undefined) {
       var dataService = userContext.dataService;
-      var mapRef = dataService.getMapRef(record.adventureId, record.id);
+      var mapRef = dataService.getMapRef(map.adventureId, map.id);
 
       // We should always do a consolidate here to avoid accidentally invalidating
       // any recent changes when switching from FFA to non-FFA mode, for example.
       // TODO I should make this update to the map record inside the consolidate transaction,
       // shouldn't I?
-      consolidateMapChanges(dataService, firebaseContext.timestampProvider, record.adventureId, record.id, record.record)
+      consolidateMapChanges(dataService, firebaseContext.timestampProvider, map.adventureId, map.id, map.record)
         .then(() => dataService.update(mapRef, { ffa: ffa }))
         .then(() => console.log("Set FFA to " + ffa))
         .catch(e => console.error("Failed to set FFA:", e));
@@ -319,7 +319,7 @@ function Map(props: IMapPageProps) {
   return (
     <div className="Map-container">
       <div className="Map-nav">
-        <Navigation title={record?.record.name} />
+        <Navigation title={map?.record.name} />
       </div>
       <MapControls colours={getHexColours()}
         getEditMode={() => editMode}
@@ -339,7 +339,7 @@ function Map(props: IMapPageProps) {
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp} />
       </div>
-      <MapEditorModal show={showMapEditor} map={record?.record}
+      <MapEditorModal show={showMapEditor} map={map?.record}
         handleClose={() => setShowMapEditor(false)} handleSave={handleMapEditorSave} />
       <TokenEditorModal selectedColour={selectedColour} show={showTokenEditor}
         token={tokenToEdit} hexColours={getHexColours()}

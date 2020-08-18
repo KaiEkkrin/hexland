@@ -9,7 +9,7 @@ import { UserContext } from './components/UserContextProvider';
 
 import { IAdventure, summariseAdventure } from './data/adventure';
 import { MapType } from './data/map';
-import { IAdventureSummary } from './data/profile';
+import { IIdentified } from './data/identified';
 import { deleteMap, editMap, registerAdventureAsRecent, inviteToAdventure } from './services/extensions';
 
 import Button from 'react-bootstrap/Button';
@@ -30,38 +30,34 @@ function Adventure(props: IAdventureProps) {
   const firebaseContext = useContext(FirebaseContext);
   const userContext = useContext(UserContext);
 
-  const [adventure, setAdventure] = useState<IAdventure | undefined>(undefined);
-  const [adventures, setAdventures] = useState<IAdventureSummary[]>([]);
-
+  const [adventure, setAdventure] = useState<IIdentified<IAdventure> | undefined>(undefined);
   useEffect(() => {
     var d = userContext.dataService?.getAdventureRef(props.adventureId);
     if (d === undefined) {
-      setAdventures([]);
       return;
     }
 
     return userContext.dataService?.watch(d,
-      a => {
-        setAdventure(a);
-
-        // Summarise what we have loaded
-        setAdventures(a === undefined ? [] : [{
-          id: props.adventureId,
-          name: a.name,
-          description: a.description,
-          owner: a.owner,
-          ownerName: a.ownerName
-        }]);
-
-        // Register it as recent
-        if (a !== undefined) {
-          registerAdventureAsRecent(userContext.dataService, props.adventureId, a)
-            .then(() => console.log("registered adventure " + props.adventureId + " as recent"))
-            .catch(e => console.error("Failed to register adventure " + props.adventureId + " as recent", e));
-        }
-      },
+      a => setAdventure(a === undefined ? undefined : { id: props.adventureId, record: a }),
       e => console.error("Error watching adventure " + props.adventureId + ": ", e));
   }, [userContext.dataService, props.adventureId]);
+
+  // Track changes to the adventure
+  useEffect(() => {
+    if (userContext.dataService === undefined || adventure === undefined) {
+      return;
+    }
+
+    registerAdventureAsRecent(userContext.dataService, adventure.id, adventure.record)
+      .then(() => console.log("registered adventure " + adventure.id + " as recent"))
+      .catch(e => console.error("Failed to register adventure " + adventure.id + " as recent", e));
+  }, [userContext.dataService, adventure]);
+
+  // Derive the adventures list for the map collection
+  const adventures = useMemo(
+    () => adventure === undefined ? [] : [summariseAdventure(adventure.id, adventure.record)],
+    [adventure]
+  );
 
   // Invitations
   const [inviteLink, setInviteLink] = useState<string | undefined>(undefined);
@@ -74,14 +70,18 @@ function Adventure(props: IAdventureProps) {
     inviteToAdventure(
       userContext.dataService,
       firebaseContext.timestampProvider,
-      summariseAdventure(props.adventureId, adventure))
+      summariseAdventure(adventure.id, adventure.record)
+    )
       .then(l => setInviteLink(props.adventureId + "/invite/" + l))
       .catch(e => console.error("Failed to create invite link for " + props.adventureId, e));
   }
 
   // Map editing support
-  const mapsEditable = useMemo(() => adventure?.owner === userContext.user?.uid, [userContext.user, adventure]);
-  const maps = useMemo(() => adventure?.maps ?? [], [adventure]);
+  const mapsEditable = useMemo(
+    () => adventure?.record.owner === userContext.user?.uid,
+    [userContext.user, adventure]
+  );
+  const maps = useMemo(() => adventure?.record.maps ?? [], [adventure]);
 
   function setMap(adventureId: string, id: string | undefined, name: string, description: string, ty: MapType) {
     const isNew = id === undefined;
@@ -106,14 +106,14 @@ function Adventure(props: IAdventureProps) {
 
   return (
     <div>
-      <Navigation title={adventure?.name} />
+      <Navigation title={adventure?.record.name} />
       <Container fluid>
         {adventure !== undefined ?
           <Row className="mt-4">
             <Col>
               <Card bg="dark" text="white">
                 <Card.Body>
-                  <Card.Text>{adventure.description}</Card.Text>
+                  <Card.Text>{adventure.record.description}</Card.Text>
                 </Card.Body>
                 <Card.Footer>
                   {inviteLink === undefined ?

@@ -17,7 +17,7 @@ function Shared() {
   const [adventures, setAdventures] = useState<IPlayer[]>([]);
 
   useEffect(() => {
-    userContext.dataService?.watchSharedAdventures(
+    return userContext.dataService?.watchSharedAdventures(
       a => {
         console.log("Received " + a.length + " shared adventures");
         setAdventures(a.filter(a2 => a2.playerId !== a2.owner));
