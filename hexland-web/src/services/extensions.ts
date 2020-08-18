@@ -13,6 +13,8 @@ import { MapColouring } from '../models/colouring';
 import { HexGridGeometry } from '../models/hexGridGeometry';
 import { SquareGridGeometry } from '../models/squareGridGeometry';
 
+import * as firebase from 'firebase/app';
+
 import { v4 as uuidv4 } from 'uuid';
 
 const maxProfileEntries = 7;
@@ -181,9 +183,17 @@ export async function editAdventure(
   );
 }
 
-function updateProfileMaps(maps: IMapSummary[] | undefined, changed: IMapSummary): IMapSummary[] {
+function updateProfileMaps(maps: IMapSummary[] | undefined, changed: IMapSummary): IMapSummary[] | undefined {
   var existingIndex = maps?.findIndex(m => m.id === changed.id) ?? -1;
   if (maps !== undefined && existingIndex >= 0) {
+    if (
+      changed.name === maps[existingIndex].name &&
+      changed.description === maps[existingIndex].description
+    ) {
+      // No change to make
+      return undefined;
+    }
+
     var updated = [...maps];
     updated[existingIndex].name = changed.name;
     updated[existingIndex].description = changed.description;
@@ -234,7 +244,9 @@ async function editMapTransaction(
   // alter any existing entry
   if (profile !== undefined) {
     var latestMaps = updateProfileMaps(profile.latestMaps, changed);
-    await view.update(profileRef, { latestMaps: latestMaps });
+    if (latestMaps !== undefined) {
+      await view.update(profileRef, { latestMaps: latestMaps });
+    }
   }
 
   // Update the adventure record to include this map
@@ -346,17 +358,17 @@ async function registerAdventureAsRecentTransaction(
     ownerName: a.ownerName
   });
   if (updated !== undefined) {
+    console.log("updating adventure in profile");
     view.update(profileRef, { adventures: updated });
   }
 }
 
 export async function registerAdventureAsRecent(
   dataService: IDataService | undefined,
-  profile: IProfile | undefined,
   id: string,
   a: IAdventure
 ) {
-  if (dataService === undefined || profile === undefined) {
+  if (dataService === undefined) {
     return;
   }
 
@@ -385,21 +397,18 @@ async function registerMapAsRecentTransaction(
     description: m.description,
     ty: m.ty
   });
-  view.update(profileRef, { latestMaps: updated });
+  if (updated !== undefined) {
+    view.update(profileRef, { latestMaps: updated });
+  }
 }
 
 export async function registerMapAsRecent(
   dataService: IDataService | undefined,
-  profile: IProfile | undefined,
   adventureId: string,
   id: string,
   m: IMap
 ): Promise<void> {
-  if (dataService === undefined || profile === undefined) {
-    return;
-  }
-
-  if (profile.latestMaps?.find(l => l.id === id) !== undefined) {
+  if (dataService === undefined) {
     return;
   }
 
@@ -411,7 +420,7 @@ export async function registerMapAsRecent(
 
 async function consolidateMapChangesTransaction(
   view: IDataView,
-  timestampProvider: () => firebase.firestore.FieldValue,
+  timestampProvider: () => firebase.firestore.FieldValue | number,
   baseChangeRef: IDataReference<IChanges>,
   changes: IDataAndReference<IChanges>[],
   consolidated: IChange[],
@@ -424,8 +433,21 @@ async function consolidateMapChangesTransaction(
 
   var latestBaseChange = await view.get(baseChangeRef);
   if (baseChange !== undefined && latestBaseChange !== undefined) {
-    if (!latestBaseChange.timestamp.isEqual(baseChange.timestamp)) {
-      throw Error("Map changes have already been consolidated");
+    if (
+      typeof(latestBaseChange.timestamp) !== 'number' ||
+      typeof(baseChange.timestamp) !== 'number'
+    ) {
+      // This should be fine, because they shouldn't be mixed within one application;
+      // real application always uses the firestore field value, tests always use number
+      const latestTimestamp = latestBaseChange.timestamp as firebase.firestore.FieldValue;
+      const baseTimestamp = baseChange.timestamp as firebase.firestore.FieldValue;
+      if (!latestTimestamp.isEqual(baseTimestamp)) {
+        throw Error("Map changes have already been consolidated");
+      }
+    } else {
+      if (latestBaseChange.timestamp !== baseChange.timestamp) {
+        throw Error("Map changes have already been consolidated");
+      }
     }
   }
 
@@ -450,7 +472,7 @@ async function consolidateMapChangesTransaction(
 // https://firebase.google.com/docs/firestore/manage-data/delete-data
 export async function consolidateMapChanges(
   dataService: IDataService | undefined,
-  timestampProvider: (() => firebase.firestore.FieldValue) | undefined,
+  timestampProvider: (() => firebase.firestore.FieldValue | number) | undefined,
   adventureId: string,
   mapId: string,
   m: IMap
@@ -494,7 +516,7 @@ export async function consolidateMapChanges(
 // the existing one if it's still valid.  Returns the invite ID.
 export async function inviteToAdventure(
   dataService: IDataService | undefined,
-  timestampProvider: (() => firebase.firestore.FieldValue) | undefined,
+  timestampProvider: (() => firebase.firestore.FieldValue | number) | undefined,
   adventure: IAdventureSummary
 ): Promise<string | undefined> {
   if (dataService === undefined || timestampProvider === undefined) {

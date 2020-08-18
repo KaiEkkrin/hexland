@@ -56,12 +56,12 @@ class DataAndReference<T> extends DataReference<T> implements IDataAndReference<
 // This service is for datastore-related operations for the current user.
 export class DataService implements IDataService {
   private readonly _db: firebase.firestore.Firestore;
-  private readonly _timestampProvider: () => firebase.firestore.FieldValue;
+  private readonly _timestampProvider: () => firebase.firestore.FieldValue | number;
   private readonly _uid: string;
 
   constructor(
     db: firebase.firestore.Firestore,
-    timestampProvider: () => firebase.firestore.FieldValue,
+    timestampProvider: () => firebase.firestore.FieldValue | number,
     uid: string
   ) {
     this._db = db;

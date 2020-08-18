@@ -26,14 +26,14 @@ function AdventureModal(props: IAdventureModalProps) {
       <Modal.Body>
         <Form>
           <Form.Group>
-            <Form.Label>Name</Form.Label>
-            <Form.Control type="text" maxLength={30} value={props.name}
+            <Form.Label htmlFor="adventureNameInput">Adventure name</Form.Label>
+            <Form.Control id="adventureNameInput" type="text" maxLength={30} value={props.name}
               onChange={e => props.setName(e.target.value)} />
           </Form.Group>
           <Form.Group>
-            <Form.Label>Description</Form.Label>
-            <Form.Control as="textarea" rows={5} maxLength={300} value={props.description}
-              onChange={e => props.setDescription(e.target.value)} />
+            <Form.Label htmlFor="adventureDescriptionInput">Adventure description</Form.Label>
+            <Form.Control id="adventureDescriptionInput" as="textarea" rows={5} maxLength={300}
+              value={props.description} onChange={e => props.setDescription(e.target.value)} />
           </Form.Group>
         </Form>
       </Modal.Body>
@@ -41,7 +41,7 @@ function AdventureModal(props: IAdventureModalProps) {
         <Button variant="secondary" onClick={props.handleClose}>Close</Button>
         <Button variant="primary" disabled={isSaveDisabled}
           onClick={props.handleSave}>
-          Save
+          Save adventure
       </Button>
       </Modal.Footer>
     </Modal>

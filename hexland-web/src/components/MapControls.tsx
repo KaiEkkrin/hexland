@@ -118,7 +118,7 @@ function MapControls(props: IMapControlsProps) {
           </Dropdown.Menu>
         </Dropdown>
       </ButtonGroup>
-      <ColourSelection colours={props.colours}
+      <ColourSelection id="mapColourSelect" colours={props.colours}
         includeNegative={true}
         isVertical={true}
         getSelectedColour={props.getSelectedColour}

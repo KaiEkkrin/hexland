@@ -5,6 +5,7 @@ import { IPlayer } from '../data/adventure';
 import Form from 'react-bootstrap/Form';
 
 interface ITokenPlayerSelectionProps {
+  id: string;
   players: IPlayer[];
   tokenPlayerIds: string[];
   setTokenPlayerIds: (playerIds: string[]) => void;
@@ -24,7 +25,7 @@ function TokenPlayerSelection(props: ITokenPlayerSelectionProps) {
   }
 
   return (
-    <Form.Control as="select" multiple value={props.tokenPlayerIds}
+    <Form.Control id={props.id} as="select" multiple value={props.tokenPlayerIds}
       onChange={e => handleChange(e as any)}>
       {props.players.map(p =>
         <option key={p.playerId} value={p.playerId}>{p.playerName}</option>

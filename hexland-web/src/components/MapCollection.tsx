@@ -133,27 +133,27 @@ function MapCollection(props: IMapCollectionProps) {
         <Modal.Body>
           <Form>
             <Form.Group>
-              <Form.Label>Name</Form.Label>
-              <Form.Control type="text" maxLength={30} value={editName}
+              <Form.Label htmlFor="mapNameInput">Map name</Form.Label>
+              <Form.Control id="mapNameInput" type="text" maxLength={30} value={editName}
                 onChange={e => setEditName(e.target.value)} />
             </Form.Group>
             {(props.showAdventureSelection !== true) ? <div></div> :
               <Form.Group>
-                <Form.Label>Adventure</Form.Label>
-                <Form.Control as="select" value={editAdventureId}
+                <Form.Label htmlFor="mapAdventureSelect">Adventure this map is in</Form.Label>
+                <Form.Control id="mapAdventureSelect" as="select" value={editAdventureId}
                   onChange={e => setEditAdventureId(e.target.value)}>
                   {props.adventures.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </Form.Control>
               </Form.Group>
             }
             <Form.Group>
-              <Form.Label>Description</Form.Label>
-              <Form.Control as="textarea" rows={5} maxLength={300} value={editDescription}
-                onChange={e => setEditDescription(e.target.value)} />
+              <Form.Label htmlFor="mapDescriptionInput">Map description</Form.Label>
+              <Form.Control id="mapDescriptionInput" as="textarea" rows={5} maxLength={300}
+                value={editDescription} onChange={e => setEditDescription(e.target.value)} />
             </Form.Group>
             <Form.Group>
-              <Form.Label>Type</Form.Label>
-              <Form.Control as="select" value={editType}
+              <Form.Label htmlFor="mapType">Map type</Form.Label>
+              <Form.Control id="mapType" as="select" value={editType}
                 disabled={editId !== undefined}
                 onChange={e => setEditType(e.target.value as MapType)}>
                 <option>{MapType.Hex}</option>
@@ -166,7 +166,7 @@ function MapCollection(props: IMapCollectionProps) {
           <Button variant="secondary" onClick={handleModalClose}>Close</Button>
           <Button variant="primary" disabled={isModalSaveDisabled}
             onClick={handleEditMapSave}>
-            Save
+            Save map
             </Button>
         </Modal.Footer>
       </Modal>
@@ -180,7 +180,7 @@ function MapCollection(props: IMapCollectionProps) {
         <Modal.Footer>
           <Button variant="secondary" onClick={handleModalClose}>Close</Button>
           <Button variant="danger" onClick={handleDeleteMapSave}>
-            Yes, delete!
+            Yes, delete map!
             </Button>
         </Modal.Footer>
       </Modal>

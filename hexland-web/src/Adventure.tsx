@@ -4,7 +4,6 @@ import './App.css';
 import { FirebaseContext } from './components/FirebaseContextProvider';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
-import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { UserContext } from './components/UserContextProvider';
 
@@ -30,7 +29,6 @@ interface IAdventureProps {
 function Adventure(props: IAdventureProps) {
   const firebaseContext = useContext(FirebaseContext);
   const userContext = useContext(UserContext);
-  const profile = useContext(ProfileContext);
 
   const [adventure, setAdventure] = useState<IAdventure | undefined>(undefined);
   const [adventures, setAdventures] = useState<IAdventureSummary[]>([]);
@@ -57,12 +55,13 @@ function Adventure(props: IAdventureProps) {
 
         // Register it as recent
         if (a !== undefined) {
-          registerAdventureAsRecent(userContext.dataService, profile, props.adventureId, a)
+          registerAdventureAsRecent(userContext.dataService, props.adventureId, a)
+            .then(() => console.log("registered adventure " + props.adventureId + " as recent"))
             .catch(e => console.error("Failed to register adventure " + props.adventureId + " as recent", e));
         }
       },
       e => console.error("Error watching adventure " + props.adventureId + ": ", e));
-  }, [userContext.dataService, profile, props.adventureId]);
+  }, [userContext.dataService, props.adventureId]);
 
   // Invitations
   const [inviteLink, setInviteLink] = useState<string | undefined>(undefined);

@@ -29,7 +29,7 @@ function AdventureCards(props: IAdventureCardsProps) {
           </Card.Body>
           <Card.Footer>
             <LinkContainer to={"/adventure/" + v.id}>
-              <Card.Link>Open</Card.Link>
+              <Card.Link>Open adventure</Card.Link>
             </LinkContainer>
           </Card.Footer>
           {props.editAdventure === undefined || !props.canEditAdventure(v) ? <div></div> :

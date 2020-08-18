@@ -48,8 +48,8 @@ function NoteEditorModal(props: INoteEditorModalProps) {
       <Modal.Body>
         <Form>
           <Form.Group>
-            <Form.Label>Text</Form.Label>
-            <Form.Control type="text" maxLength={30} value={text}
+            <Form.Label htmlFor="noteText">Text</Form.Label>
+            <Form.Control id="noteText" type="text" maxLength={30} value={text}
               onChange={e => setText(e.target.value)} />
           </Form.Group>
           <Form.Group>

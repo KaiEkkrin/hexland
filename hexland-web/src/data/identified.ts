@@ -3,3 +3,7 @@ export interface IIdentified<T> {
   id: string;
   record: T;
 }
+
+export interface IAdventureIdentified<T> extends IIdentified<T> {
+  adventureId: string;
+}

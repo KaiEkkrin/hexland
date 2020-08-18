@@ -27,6 +27,7 @@ function NegativeColour(props: INegativeColourProps) {
 }
 
 interface IColourSelectionProps {
+  id: string;
   colours: string[];
   includeNegative: boolean;
   isVertical: boolean;
@@ -36,7 +37,7 @@ interface IColourSelectionProps {
 
 function ColourSelection(props: IColourSelectionProps) {
   return (
-    <ButtonGroup toggle vertical={props.isVertical === true}>
+    <ButtonGroup id={props.id} toggle vertical={props.isVertical === true}>
       {props.colours.map((c, i) =>
         <ToggleButton type="radio" variant="dark" key={i} value={i}
           checked={props.getSelectedColour() === i}

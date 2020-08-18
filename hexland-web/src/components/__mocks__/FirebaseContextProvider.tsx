@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 
 import * as firebase from 'firebase/app';
 import 'firebase/auth';
@@ -21,50 +21,63 @@ export const FirebaseContext = React.createContext<IFirebaseContext>({
 // This module provides a Firebase context provider that uses the simulator.
 // To do this, we need to track project IDs (different for every test and database)
 // and clean them up afterwards:
-const idsToClear: string[] = [];
-var emul: { [id: string]: firebase.app.App } = {};
-var auths: { [id: string]: SimulatedAuth } = {};
+const emulsToDelete: firebase.app.App[] = [];
+const idsToClear: { [id: string]: boolean } = {};
+
+// The Firebase emulator doesn't appear to provide server timestamps, so instead
+// we increment this global:
+var timestamp = 0;
 
 afterEach(async () => {
-  for (var id in emul) {
-    await emul[id].delete();
-    idsToClear.push(id);
+  while (true) {
+    var emul = emulsToDelete.pop();
+    if (emul === undefined) {
+      break;
+    }
+    await emul.delete();
   }
-  emul = {};
-  auths = {};
-  //console.log("Cleaned up emuls");
 });
 
 afterAll(async () => {
-  await Promise.all(idsToClear.map(id => clearFirestoreData({ projectId: id })));
-  //console.log("Cleaned up " + idsToClear.length + " data");
+  for (var id in idsToClear) {
+    await clearFirestoreData({ projectId: id });
+  }
 });
 
 function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) {
-  if (props.projectId === undefined) {
-    throw RangeError("Project id must be defined in testing");
-  }
-
-  const user = props.user !== undefined ? props.user : {
+  const user = useMemo(() => (props.user !== undefined ? props.user : {
     displayName: 'Owner',
     email: 'owner@example.com',
-    uid: 'owner' // the magical does-everything uid.  TODO test with unprivileged users!
-  }
+    uid: 'owner'
+  }), [props.user]);
 
-  if (!(props.projectId in emul)) {
-    emul[props.projectId] = initializeTestApp({
+  const [firebaseContext, setFirebaseContext] = useState<IFirebaseContext>({
+    auth: undefined,
+    db: undefined,
+    googleAuthProvider: undefined,
+    timestampProvider: undefined
+  });
+
+  useEffect(() => {
+    if (props.projectId === undefined) {
+      throw RangeError("Project id must be defined in testing");
+    }
+
+    const emul = initializeTestApp({
       projectId: props.projectId,
       auth: user ?? undefined
     });
-    auths[props.projectId] = new SimulatedAuth(user);
-  }
 
-  const firebaseContext = {
-    auth: auths[props.projectId],
-    db: emul[props.projectId].firestore(),
-    googleAuthProvider: {},
-    timestampProvider: firebase.firestore.FieldValue.serverTimestamp
-  };
+    simulatedAuth.setUser(user);
+    setFirebaseContext({
+      auth: simulatedAuth,
+      db: emul.firestore(),
+      googleAuthProvider: {},
+      timestampProvider: () => timestamp++
+    });
+
+    return () => { emulsToDelete.push(emul); };
+  }, [props.projectId, user]);
 
   return (
     <FirebaseContext.Provider value={firebaseContext}>
@@ -75,7 +88,7 @@ function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) 
 
 // Simulates the authentication subsystem, which the Firebase emulator doesn't provide.
 class SimulatedAuth implements IAuth {
-  private readonly _user: IUser | null;
+  private _user: IUser | null;
   private readonly _userHandlers: { [id: string]: ((user: IUser | null) => void) } = {};
   private _isLoggedIn = false;
 
@@ -83,19 +96,36 @@ class SimulatedAuth implements IAuth {
     this._user = user;
   }
 
+  private signOutSync() {
+    if (this._isLoggedIn !== false) {
+      this._isLoggedIn = false;
+      for (var id in this._userHandlers) {
+        this._userHandlers[id](null);
+      }
+    }
+  }
+
+  setUser(user: IUser | null) {
+    if (user?.uid !== this._user?.uid) {
+      // We change the expected uid, and sign out of the previous user
+      // if we were signed in:
+      this.signOutSync();
+      this._user = user;
+    }
+  }
+
   signInWithPopup(provider: IAuthProvider | undefined) {
-    this._isLoggedIn = true;
-    for (var id in this._userHandlers) {
-      this._userHandlers[id](this._user);
+    if (this._isLoggedIn !== true) {
+      this._isLoggedIn = true;
+      for (var id in this._userHandlers) {
+        this._userHandlers[id](this._user);
+      }
     }
     return Promise.resolve(this._user);
   }
 
   signOut() {
-    this._isLoggedIn = false;
-    for (var id in this._userHandlers) {
-      this._userHandlers[id](null);
-    }
+    this.signOutSync();
     return Promise.resolve();
   }
 
@@ -109,5 +139,8 @@ class SimulatedAuth implements IAuth {
     }
   }
 }
+
+// We maintain a global simulation of the authentication state:
+const simulatedAuth = new SimulatedAuth(null);
 
 export default FirebaseContextProvider;

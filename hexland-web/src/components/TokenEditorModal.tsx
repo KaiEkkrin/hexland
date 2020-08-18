@@ -65,19 +65,19 @@ function TokenEditorModal(props: ITokenEditorModalProps) {
       <Modal.Body>
         <Form>
           <Form.Group>
-            <Form.Label>Label (maximum 3 characters)</Form.Label>
-            <Form.Control type="text" maxLength={3} value={text}
+            <Form.Label htmlFor="tokenLabel">Label (maximum 3 characters)</Form.Label>
+            <Form.Control id="tokenLabel" type="text" maxLength={3} value={text}
               onChange={e => setText(e.target.value)} />
           </Form.Group>
           <Form.Group>
-            <Form.Label>Note text</Form.Label>
-            <Form.Control type="text" maxLength={30} value={note}
+            <Form.Label htmlFor="tokenNoteText">Note text</Form.Label>
+            <Form.Control id="tokenNoteText" type="text" maxLength={30} value={note}
               onChange={e => setNote(e.target.value)} />
           </Form.Group>
           <Form.Group>
-            <Form.Label>Colour</Form.Label>
+            <Form.Label htmlFor="tokenColour">Colour</Form.Label>
             <Form.Row>
-              <ColourSelection colours={props.hexColours}
+              <ColourSelection id="tokenColour" colours={props.hexColours}
                 includeNegative={false}
                 isVertical={false}
                 getSelectedColour={() => colour}
@@ -85,8 +85,8 @@ function TokenEditorModal(props: ITokenEditorModalProps) {
             </Form.Row>
           </Form.Group>
           <Form.Group>
-            <Form.Label>Assigned to players</Form.Label>
-            <TokenPlayerSelection players={props.players}
+            <Form.Label htmlFor="tokenPlayerSelect">Assigned to players</Form.Label>
+            <TokenPlayerSelection id="tokenPlayerSelect" players={props.players}
               tokenPlayerIds={playerIds} setTokenPlayerIds={setPlayerIds} />
           </Form.Group>
           <Form.Group>

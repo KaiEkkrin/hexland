@@ -8,7 +8,8 @@ export interface IFirebaseContext {
   auth: IAuth | undefined;
   db: firebase.firestore.Firestore | undefined;
   googleAuthProvider: IAuthProvider | undefined;
-  timestampProvider: (() => firebase.firestore.FieldValue) | undefined;
+  // Return a numeric value in testing where the server timestamp isn't accessible
+  timestampProvider: (() => firebase.firestore.FieldValue | number) | undefined;
 }
 
 export interface IUserContext {

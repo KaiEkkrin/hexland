@@ -28,11 +28,6 @@ function Invite(props: IInvitePageProps) {
     }
   }, [userContext.dataService, props.adventureId, props.inviteId]);
 
-  // TODO #33 : Remove this after I'm confident there are no more issues with invites.
-  useEffect(() => {
-    console.log("invite page sees user: " + profile?.name ?? "(undefined)");
-  }, [profile]);
-
   const inviteDescription = useMemo(() =>
     invite === undefined ? "(no such invite)" : invite.adventureName + " by " + invite.ownerName,
     [invite]);

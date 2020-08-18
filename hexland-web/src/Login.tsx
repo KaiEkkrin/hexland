@@ -1,8 +1,9 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import './App.css';
 
 import { FirebaseContext } from './components/FirebaseContextProvider';
 import Navigation from './components/Navigation';
+import { ProfileContext } from './components/ProfileContextProvider';
 
 import { DataService } from './services/dataService';
 import { ensureProfile } from './services/extensions';
@@ -11,19 +12,34 @@ import { IAuthProvider } from './services/interfaces';
 import Button from 'react-bootstrap/Button';
 import { useHistory } from 'react-router-dom';
 
-interface ILoginFailedMessageProps {
+interface ILoginMessageProps {
   isVisible: boolean;
 }
 
-function LoginFailedMessage(props: ILoginFailedMessageProps) {
+function LoginFailedMessage(props: ILoginMessageProps) {
   return props.isVisible ? <p>Login failed.</p> : <div></div>;
+}
+
+function LoginSuccessfulMessage(props: ILoginMessageProps) {
+  return props.isVisible ? <p>Login successful.</p> : <div></div>;
 }
 
 function Login() {
   const firebaseContext = useContext(FirebaseContext);
+  const profileContext = useContext(ProfileContext);
   const history = useHistory();
 
   const [loginFailedVisible, setLoginFailedVisible] = useState(false);
+  const [loginSuccessfulVisible, setLoginSuccessfulVisible] = useState(false);
+
+  // Reset those message statuses as appropriate
+  useEffect(() => {
+    if (profileContext === undefined) {
+      setLoginSuccessfulVisible(false);
+    } else {
+      setLoginFailedVisible(false);
+    }
+  }, [profileContext]);
 
   async function doLogin(provider: IAuthProvider) {
     setLoginFailedVisible(false);
@@ -47,7 +63,8 @@ function Login() {
       user.uid
     );
 
-    return await ensureProfile(dataService, user);
+    await ensureProfile(dataService, user);
+    setLoginSuccessfulVisible(true);
   }
 
   function handleGoogleLoginClick() {
@@ -72,6 +89,7 @@ function Login() {
           Sign in with Google
         </Button>
         <LoginFailedMessage isVisible={loginFailedVisible} />
+        <LoginSuccessfulMessage isVisible={loginSuccessfulVisible} />
       </header>
     </div>
   );

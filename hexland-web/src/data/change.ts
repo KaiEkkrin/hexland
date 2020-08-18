@@ -5,7 +5,8 @@ import { IFeature, IToken } from "./feature";
 // This represents a collection of changes all made to the map at once.
 export interface IChanges {
   chs: IChange[];
-  timestamp: firebase.firestore.FieldValue; // initialise this to `serverTimestamp`
+  timestamp: firebase.firestore.FieldValue | number; // initialise this to `serverTimestamp`;
+                                                     // use the number instead for testing only
   incremental: boolean;
   user: string; // the uid that made these changes.
 }

@@ -31,7 +31,7 @@ function MapCards(props: IMapCardsProps) {
           </Card.Body>
           <Card.Footer>
             <LinkContainer to={"/adventure/" + v.adventureId + "/map/" + v.id}>
-              <Card.Link>Open</Card.Link>
+              <Card.Link>Open map</Card.Link>
             </LinkContainer>
           </Card.Footer>
           {props.editable === true ?
