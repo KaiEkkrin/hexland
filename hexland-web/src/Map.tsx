@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useContext } from 'react';
+import React, { useEffect, useRef, useState, useContext, useMemo } from 'react';
 import './App.css';
 import './Map.css';
 
@@ -316,6 +316,14 @@ function Map(props: IMapPageProps) {
     setShowAnnotationFlags(flags);
   }
 
+  // We need to suppress the map annotations under a few circumstances:
+  // - while the view is being dragged around, to maintain performance
+  // - while a modal is visible, so that the overlays don't appear on top
+  const suppressAnnotations = useMemo(
+    () => isDraggingView || showMapEditor || showTokenEditor,
+    [isDraggingView, showMapEditor, showTokenEditor]
+  );
+
   return (
     <div className="Map-container">
       <div className="Map-nav">
@@ -348,7 +356,7 @@ function Map(props: IMapPageProps) {
       <NoteEditorModal show={showNoteEditor} note={noteToEdit} handleClose={() => setShowNoteEditor(false)}
         handleDelete={handleNoteEditorDelete} handleSave={handleNoteEditorSave} />
       <MapAnnotations annotations={annotations} showFlags={showAnnotationFlags} customFlags={customAnnotationFlags}
-        setCustomFlags={setCustomAnnotationFlags} isDraggingView={isDraggingView} />
+        setCustomFlags={setCustomAnnotationFlags} suppressAnnotations={suppressAnnotations} />
     </div>
   );
 }
