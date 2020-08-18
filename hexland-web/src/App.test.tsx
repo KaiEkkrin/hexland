@@ -170,6 +170,15 @@ describe('test app', () => {
     cleanup();
   }
 
+  function loadPageExpectingRedirect(location: string | undefined, projectId: string, user?: IUser | undefined): Promise<IHistoryChange> {
+    const historyWillChange = historySubject.pipe(first()).toPromise();
+    render(
+      <App projectId={projectId} user={user} defaultRoute={location ?? '/'} />
+    );
+    cleanup();
+    return historyWillChange;
+  }
+
   async function createInviteLink(location: string, projectId: string, user?: IUser | undefined): Promise<string> {
     // Render the adventure page
     const { findByLabelText, findByRole, findByText, queryByLabelText, queryByRole } = render(
@@ -266,13 +275,19 @@ describe('test app', () => {
     const inviteLink = await createInviteLink(adventureLink, projectId);
     console.log("Invite link: " + inviteLink);
 
-    // Get a different user logged in
+    // Trying to load that link when not logged in (which is what our simulated auth does
+    // if we change users) should get us redirected to the login page
     const user1 = {
       displayName: "User One",
       email: "user1@example.com",
       uid: "user1"
     };
 
+    const redirectToLogin = await loadPageExpectingRedirect(inviteLink, projectId, user1);
+    expect(redirectToLogin.verb).toBe('push');
+    expect(redirectToLogin.parameter).toBe('/login');
+
+    // Get user1 logged in
     redirectToHome = await logInWithGoogle(projectId, user1);
     expect(redirectToHome.verb).toBe('replace');
     expect(redirectToHome.parameter).toBe('/');
