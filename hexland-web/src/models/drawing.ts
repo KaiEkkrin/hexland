@@ -437,6 +437,20 @@ export class ThreeDrawing {
     this.updateAnnotations();
   }
 
+  getCanSeeAnything() {
+    if (this.seeEverything) {
+      return true;
+    }
+
+    for (var t of this._tokens) {
+      if (this.canSelectToken(t)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   resize() {
     var width = Math.max(1, Math.floor(window.innerWidth));
     var height = Math.max(1, Math.floor(window.innerHeight));

@@ -13,6 +13,8 @@ import Routing from './components/Routing';
 import { IRoutingProps, IFirebaseProps } from './components/interfaces';
 import Shared from './Shared';
 import Status from './components/Status';
+import StatusContextProvider from './components/StatusContextProvider';
+import ToastCollection from './components/ToastCollection';
 import UserContextProvider from './components/UserContextProvider';
 
 import { Route, Switch } from 'react-router-dom';
@@ -23,18 +25,21 @@ function App(props: IFirebaseProps & IRoutingProps) {
       <FirebaseContextProvider {...props}>
         <UserContextProvider>
           <ProfileContextProvider>
-            <Routing {...props}>
-              <Switch>
-                <Route exact path="/" component={Home} />
-                <Route exact path="/all" component={All} />
-                <Route exact path="/adventure/:adventureId" component={AdventurePage} />
-                <Route exact path="/adventure/:adventureId/invite/:inviteId" component={InvitePage} />
-                <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
-                <Route exact path="/login" component={Login} />
-                <Route exact page="/shared" component={Shared} />
-              </Switch>
-            </Routing>
-            <Status />
+            <StatusContextProvider>
+              <Routing {...props}>
+                <Switch>
+                  <Route exact path="/" component={Home} />
+                  <Route exact path="/all" component={All} />
+                  <Route exact path="/adventure/:adventureId" component={AdventurePage} />
+                  <Route exact path="/adventure/:adventureId/invite/:inviteId" component={InvitePage} />
+                  <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
+                  <Route exact path="/login" component={Login} />
+                  <Route exact page="/shared" component={Shared} />
+                </Switch>
+              </Routing>
+              <Status />
+              <ToastCollection />
+            </StatusContextProvider>
           </ProfileContextProvider>
         </UserContextProvider>
       </FirebaseContextProvider>

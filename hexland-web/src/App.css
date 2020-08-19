@@ -38,6 +38,20 @@
   z-index: 3;
 }
 
+.App-toast-container {
+  position: fixed;
+  left: 50%;
+  top: 80px;
+  transform: translateX(-50%);
+  z-index: 3;
+}
+
+.toast-body {
+  background-color: lightgray;
+  color: #6c757d;
+  font-weight: bold;
+}
+
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);

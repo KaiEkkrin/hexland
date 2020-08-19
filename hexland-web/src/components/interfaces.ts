@@ -1,3 +1,5 @@
+import { Subject } from 'rxjs';
+import { IIdentified } from '../data/identified';
 import { IDataService, IUser, IAuth, IAuthProvider } from '../services/interfaces';
 
 export interface IContextProviderProps {
@@ -17,6 +19,16 @@ export interface IUserContext {
                                   // undefined means "I don't know yet, wait"
                                   // null means "Not logged in"
   dataService: IDataService | undefined;
+}
+
+export interface IToast {
+  title: string;
+  message: string;
+}
+
+export interface IStatusContext {
+  // The subject of toast additions (record set) or removals (record not set.)
+  toasts: Subject<IIdentified<IToast | undefined>>;
 }
 
 export interface IFirebaseProps {

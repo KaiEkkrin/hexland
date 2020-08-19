@@ -9,6 +9,7 @@ import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { UserContext } from './components/UserContextProvider';
 
 import { IMapSummary } from './data/adventure';
+import { MapType } from './data/map';
 import { IAdventureSummary } from './data/profile';
 import { editAdventure, editMap } from './services/extensions';
 
@@ -17,7 +18,6 @@ import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 
 import { v4 as uuidv4 } from 'uuid';
-import { MapType } from './data/map';
 
 function Home() {
   const userContext = useContext(UserContext);

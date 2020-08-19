@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useContext, useMemo } from 'react';
 import './App.css';
 import './Map.css';
 
+import { addToast } from './components/extensions';
 import { FirebaseContext } from './components/FirebaseContextProvider';
 import MapControls, { EditMode, MapColourVisualisationMode } from './components/MapControls';
 import MapAnnotations, { ShowAnnotationFlags } from './components/MapAnnotations';
@@ -9,6 +10,7 @@ import MapEditorModal from './components/MapEditorModal';
 import Navigation from './components/Navigation';
 import NoteEditorModal from './components/NoteEditorModal';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
+import { StatusContext } from './components/StatusContextProvider';
 import TokenEditorModal from './components/TokenEditorModal';
 import { UserContext } from './components/UserContextProvider';
 
@@ -43,8 +45,9 @@ function getHexColours() {
 }
 
 function Map(props: IMapPageProps) {
-  var firebaseContext = useContext(FirebaseContext);
-  var userContext = useContext(UserContext);
+  const firebaseContext = useContext(FirebaseContext);
+  const userContext = useContext(UserContext);
+  const statusContext = useContext(StatusContext);
 
   const drawingRef = useRef<HTMLDivElement>(null);
 
@@ -52,6 +55,7 @@ function Map(props: IMapPageProps) {
   const [players, setPlayers] = useState([] as IPlayer[]);
   const [drawing, setDrawing] = useState(undefined as ThreeDrawing | undefined);
   const [canDoAnything, setCanDoAnything] = useState(false);
+  const [canSeeAnything, setCanSeeAnything] = useState(true);
   const [annotations, setAnnotations] = useState([] as IPositionedAnnotation[]);
 
   // We need an event listener for the window resize so that we can update the drawing
@@ -104,7 +108,10 @@ function Map(props: IMapPageProps) {
 
     console.log("Watching changes to map " + map.id);
     var stopWatchingChanges = userContext.dataService.watchChanges(map.adventureId, map.id,
-      chs => trackChanges(map.record, theDrawing.changeTracker, chs.chs, chs.user),
+      chs => {
+        trackChanges(map.record, theDrawing.changeTracker, chs.chs, chs.user);
+        setCanSeeAnything(theDrawing.getCanSeeAnything());
+      },
       e => console.error("Error watching map changes", e));
     
     return () => {
@@ -112,6 +119,16 @@ function Map(props: IMapPageProps) {
       theDrawing.dispose();
     };
   }, [userContext.dataService, firebaseContext.timestampProvider, map]);
+
+  // If we can't see anything, notify the user
+  useEffect(() => {
+    if (canSeeAnything === false) {
+      return addToast(statusContext, {
+        title: "No tokens available",
+        message: "The map owner has not assigned you any tokens, so you will not see any of the map yet.  If you remain on this page until they do, it will update."
+      });
+    }
+  }, [statusContext, canSeeAnything]);
 
   // Track the adventure's players, if we might need access to this
   useEffect(() => {
