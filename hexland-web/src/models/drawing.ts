@@ -584,6 +584,8 @@ export class ThreeDrawing {
   }
 
   clearHighlights() {
+    this._faceHighlighter.dragCancel();
+    this._wallHighlighter.dragCancel();
     this._faceHighlighter.clear();
     this._wallHighlighter.clear();
   }

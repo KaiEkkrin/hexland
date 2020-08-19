@@ -7,7 +7,8 @@ import { InstancedFeatures } from "./instancedFeatures";
 
 import * as THREE from 'three';
 
-// Given two vertices, plots a straight-line (more or less) wall between them.
+// Given two vertices, plots a straight-line (more or less) wall between them including the
+// intermediate vertices.
 export function *drawWallBetween(geometry: IGridGeometry, a: IGridVertex, b: IGridVertex): Iterable<IGridEdge> {
   var bCentre = geometry.createVertexCentre(new THREE.Vector3(), b, 0);
   var [eCentre, vCentre, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
@@ -59,7 +60,7 @@ export class WallHighlighter {
     this._vertexHighlights.clear();
   }
   
-  dragCancel(position: IGridVertex | undefined) {
+  dragCancel(position?: IGridVertex | undefined) {
     this._edgeHighlighter.dragCancel();
     this.moveHighlight(position);
   }
@@ -83,23 +84,20 @@ export class WallHighlighter {
       if (this._edgeHighlighter.inDrag !== true) {
         this._vertexHighlights.clear();
       }
-    } else if (!verticesEqual(position, this._lastHoverPosition)) {
-      if (this._edgeHighlighter.inDrag === true) {
-        // Draw edges from the last hover position to this one:
-        if (this._lastHoverPosition !== undefined) {
-          for (var wall of drawWallBetween(this._geometry, this._lastHoverPosition, position)) {
-            this._edgeHighlighter.moveHighlight(wall);
-          }
+    } else {
+      if (
+        this._edgeHighlighter.inDrag === true &&
+        this._lastHoverPosition !== undefined &&
+        !verticesEqual(position, this._lastHoverPosition)
+      ) {
+        for (var wall of drawWallBetween(this._geometry, this._lastHoverPosition, position)) {
+          this._edgeHighlighter.moveHighlight(wall);
         }
-
-        // Add the current position to the vertex highlights
-        this._vertexHighlights.add({ position: position, colour: 0 });
-      } else {
-        // Highlight only the current position
-        this._vertexHighlights.clear();
-        this._vertexHighlights.add({ position: position, colour: 0 });
       }
 
+      // Highlight the current vertex position
+      this._vertexHighlights.clear();
+      this._vertexHighlights.add({ position: position, colour: 0 });
       this._lastHoverPosition = position;
     }
   }

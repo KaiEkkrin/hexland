@@ -1,5 +1,5 @@
 import { IChange, ChangeType, ChangeCategory, IWallAdd, IWallRemove, IAreaAdd, IAreaRemove } from "../data/change";
-import { IGridCoord, IGridEdge, edgesEqual, coordsEqual } from "../data/coord";
+import { IGridCoord, IGridEdge, edgesEqual, coordsEqual, edgeString, coordString } from "../data/coord";
 import { IFeature } from '../data/feature';
 import { InstancedFeatures } from "./instancedFeatures";
 
@@ -18,6 +18,7 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
   }
 
   protected abstract keysEqual(a: K, b: K | undefined): boolean;
+  protected abstract keyString(a: K | undefined): string;
   protected abstract createFeatureAdd(position: K, colour: number): IChange;
   protected abstract createFeatureRemove(position: K): IChange;
   protected abstract createHighlight(position: K): F;
@@ -79,15 +80,19 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
         this._highlights.clear();
         this._highlights.add(this.createHighlight(position));
       }
-
-      this._lastHoverPosition = position;
     }
+
+    this._lastHoverPosition = position;
   }
 }
 
 export class EdgeHighlighter extends DragHighlighter<IGridEdge, IFeature<IGridEdge>> {
   protected keysEqual(a: IGridEdge, b: IGridEdge | undefined) {
     return edgesEqual(a, b);
+  }
+
+  protected keyString(a: IGridEdge | undefined) {
+    return a === undefined ? "undefined" : edgeString(a);
   }
 
   protected createFeatureAdd(position: IGridEdge, colour: number): IWallAdd {
@@ -117,6 +122,10 @@ export class EdgeHighlighter extends DragHighlighter<IGridEdge, IFeature<IGridEd
 export class FaceHighlighter extends DragHighlighter<IGridCoord, IFeature<IGridCoord>> {
   protected keysEqual(a: IGridCoord, b: IGridCoord | undefined) {
     return coordsEqual(a, b);
+  }
+
+  protected keyString(a: IGridCoord | undefined) {
+    return a === undefined ? "undefined" : coordString(a);
   }
 
   protected createFeatureAdd(position: IGridCoord, colour: number): IAreaAdd {
