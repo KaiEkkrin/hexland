@@ -10,8 +10,8 @@
 .Map-controls {
   display: flex;
   flex-direction: column;
-  min-width: 3rem;
-  width: 3rem;
+  min-width: 4rem;
+  width: 4rem;
   z-index: 1;
 }
 

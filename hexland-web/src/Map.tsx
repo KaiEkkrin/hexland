@@ -349,17 +349,18 @@ function Map(props: IMapPageProps) {
         <Navigation title={map?.record.name} />
       </div>
       <MapControls colours={getHexColours()}
-        getEditMode={() => editMode}
+        editMode={editMode}
         setEditMode={setEditMode}
-        getSelectedColour={() => selectedColour}
+        selectedColour={selectedColour}
         setSelectedColour={setSelectedColour}
         resetView={() => drawing?.resetView()}
-        getMapColourVisualisationMode={() => mapColourMode}
+        mapColourVisualisationMode={mapColourMode}
         setMapColourVisualisationMode={setMapColourMode}
         canDoAnything={canDoAnything}
         canOpenMapEditor={canOpenMapEditor}
         openMapEditor={() => setShowMapEditor(true)}
-        setShowAnnotationFlags={cycleShowAnnotationFlags} />
+        setShowAnnotationFlags={cycleShowAnnotationFlags}
+        players={players} />
       <div className="Map-content">
         <div id="drawingDiv" ref={drawingRef}
           onMouseDown={handleMouseDown}

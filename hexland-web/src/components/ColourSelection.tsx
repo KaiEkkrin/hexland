@@ -8,7 +8,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 interface INegativeColourProps {
   includeNegative: boolean;
-  getSelectedColour(): number;
+  selectedColour: number;
   setSelectedColour(value: number): void;
 }
 
@@ -19,7 +19,7 @@ function NegativeColour(props: INegativeColourProps) {
 
   return (
     <ToggleButton type="radio" variant="dark" key={-1} value={-1}
-      checked={props.getSelectedColour() === -1}
+      checked={props.selectedColour === -1}
       onChange={(e) => props.setSelectedColour(-1)}>
       <FontAwesomeIcon icon={faSquare} color="black" />
     </ToggleButton>
@@ -31,7 +31,7 @@ interface IColourSelectionProps {
   colours: string[];
   includeNegative: boolean;
   isVertical: boolean;
-  getSelectedColour(): number;
+  selectedColour: number;
   setSelectedColour(value: number): void;
 }
 
@@ -40,13 +40,13 @@ function ColourSelection(props: IColourSelectionProps) {
     <ButtonGroup id={props.id} toggle vertical={props.isVertical === true}>
       {props.colours.map((c, i) =>
         <ToggleButton type="radio" variant="dark" key={i} value={i}
-          checked={props.getSelectedColour() === i}
+          checked={props.selectedColour === i}
           onChange={e => props.setSelectedColour(i)}>
           <FontAwesomeIcon icon={faSquare} color={c} />
         </ToggleButton>
       )}
       <NegativeColour includeNegative={props.includeNegative}
-        getSelectedColour={props.getSelectedColour}
+        selectedColour={props.selectedColour}
         setSelectedColour={props.setSelectedColour} />
     </ButtonGroup>
   );

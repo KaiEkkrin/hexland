@@ -80,7 +80,7 @@ function TokenEditorModal(props: ITokenEditorModalProps) {
               <ColourSelection id="tokenColour" colours={props.hexColours}
                 includeNegative={false}
                 isVertical={false}
-                getSelectedColour={() => colour}
+                selectedColour={colour}
                 setSelectedColour={setColour} />
             </Form.Row>
           </Form.Group>
