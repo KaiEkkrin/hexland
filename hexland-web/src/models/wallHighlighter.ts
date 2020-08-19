@@ -53,6 +53,11 @@ export class WallHighlighter {
     this._edgeHighlighter = new EdgeHighlighter(walls, wallHighlights);
     this._vertexHighlights = vertexHighlights;
   }
+
+  clear() {
+    this._edgeHighlighter.clear();
+    this._vertexHighlights.clear();
+  }
   
   dragCancel(position: IGridVertex | undefined) {
     this._edgeHighlighter.dragCancel();

@@ -24,6 +24,10 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
 
   get inDrag(): boolean { return this._inDrag; }
 
+  clear() {
+    this._highlights.clear();
+  }
+
   dragCancel(position?: K | undefined) {
     this._inDrag = false;
     this.moveHighlight(position);

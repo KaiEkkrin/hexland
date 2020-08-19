@@ -583,8 +583,15 @@ export class ThreeDrawing {
     return trackChanges(this._map, changeTracker, changes, this._uid);
   }
 
+  clearHighlights() {
+    this._faceHighlighter.clear();
+    this._wallHighlighter.clear();
+  }
+
   clearSelection() {
     this._selection.clear();
+    this._selectionDrag.clear();
+    this._selectionDragRed.clear();
   }
 
   faceDragStart(cp: THREE.Vector2) {

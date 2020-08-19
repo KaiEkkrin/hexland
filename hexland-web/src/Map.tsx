@@ -161,8 +161,10 @@ function Map(props: IMapPageProps) {
     setCanOpenMapEditor(userContext.dataService?.getUid() === map?.record.owner);
   }, [userContext.dataService, map]);
 
-  // When the edit mode changes away from Select, we should clear any selection
+  // When the edit mode changes away from Select, we should clear any selection.
+  // #36 When the edit mode changes at all, we should clear the highlights
   useEffect(() => {
+    drawing?.clearHighlights();
     if (editMode !== EditMode.Select) {
       drawing?.clearSelection();
       drawing?.buildLoS(); // TODO only do this if there was something selected...?
