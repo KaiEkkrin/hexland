@@ -23,9 +23,8 @@ import { IAdventureIdentified } from './data/identified';
 import { IMap } from './data/map';
 import { registerMapAsRecent, consolidateMapChanges } from './services/extensions';
 
-import { ThreeDrawing } from './models/drawing';
 import { FeatureColour } from './models/featureColour';
-import textCreator from './models/textCreator';
+import { MapStateMachine } from './models/mapStateMachine';
 
 import { RouteComponentProps } from 'react-router-dom';
 
@@ -53,17 +52,17 @@ function Map(props: IMapPageProps) {
 
   const [map, setMap] = useState(undefined as IAdventureIdentified<IMap> | undefined);
   const [players, setPlayers] = useState([] as IPlayer[]);
-  const [drawing, setDrawing] = useState(undefined as ThreeDrawing | undefined);
+  const [stateMachine, setStateMachine] = useState(undefined as MapStateMachine | undefined);
   const [canDoAnything, setCanDoAnything] = useState(false);
   const [canSeeAnything, setCanSeeAnything] = useState(true);
   const [annotations, setAnnotations] = useState([] as IPositionedAnnotation[]);
 
   // We need an event listener for the window resize so that we can update the drawing
   useEffect(() => {
-    const handleWindowResize = (ev: UIEvent) => { drawing?.resize(); };
+    const handleWindowResize = (ev: UIEvent) => { stateMachine?.resize(); };
     window.addEventListener('resize', handleWindowResize);
     return () => { window.removeEventListener('resize', handleWindowResize); };
-  }, [drawing]);
+  }, [stateMachine]);
 
   // Watch the map when it changes
   useEffect(() => {
@@ -90,7 +89,7 @@ function Map(props: IMapPageProps) {
       userContext.dataService === undefined || map === undefined ||
       drawingRef?.current === null
     ) {
-      setDrawing(undefined);
+      setStateMachine(undefined);
       return;
     }
 
@@ -99,24 +98,19 @@ function Map(props: IMapPageProps) {
     consolidateMapChanges(userContext.dataService, firebaseContext.timestampProvider, map.adventureId, map.id, map.record)
       .catch(e => console.error("Error consolidating map changes", e));
 
-    var theDrawing = new ThreeDrawing(
-      getStandardColours(), drawingRef.current, textCreator, map.record, userContext.dataService.getUid(),
-      setAnnotations
+    var sm = new MapStateMachine(
+      map.record, userContext.dataService.getUid(), getStandardColours(), drawingRef.current, setAnnotations, setCanSeeAnything
     );
-    setDrawing(theDrawing);
-    theDrawing.animate();
+    setStateMachine(sm);
 
     console.log("Watching changes to map " + map.id);
     var stopWatchingChanges = userContext.dataService.watchChanges(map.adventureId, map.id,
-      chs => {
-        trackChanges(map.record, theDrawing.changeTracker, chs.chs, chs.user);
-        setCanSeeAnything(theDrawing.getCanSeeAnything());
-      },
+      chs => trackChanges(map.record, sm.changeTracker, chs.chs, chs.user),
       e => console.error("Error watching map changes", e));
     
     return () => {
       stopWatchingChanges();
-      theDrawing.dispose();
+      sm.dispose();
     };
   }, [userContext.dataService, firebaseContext.timestampProvider, map]);
 
@@ -181,17 +175,17 @@ function Map(props: IMapPageProps) {
   // When the edit mode changes away from Select, we should clear any selection.
   // #36 When the edit mode changes at all, we should clear the highlights
   useEffect(() => {
-    drawing?.clearHighlights();
+    stateMachine?.clearHighlights();
     if (editMode !== EditMode.Select) {
-      drawing?.clearSelection();
-      drawing?.buildLoS(); // TODO only do this if there was something selected...?
+      stateMachine?.clearSelection();
+      stateMachine?.buildLoS(); // TODO only do this if there was something selected...?
     }
-  }, [drawing, editMode]);
+  }, [stateMachine, editMode]);
 
   // Sync the drawing with the map colour mode
   useEffect(() => {
-    drawing?.setShowMapColourVisualisation(mapColourMode === MapColourVisualisationMode.Connectivity);
-  }, [drawing, mapColourMode]);
+    stateMachine?.setShowMapColourVisualisation(mapColourMode === MapColourVisualisationMode.Connectivity);
+  }, [stateMachine, mapColourMode]);
 
   function handleMapEditorSave(ffa: boolean) {
     setShowMapEditor(false);
@@ -212,28 +206,28 @@ function Map(props: IMapPageProps) {
 
   function handleTokenEditorDelete() {
     if (tokenToEditPosition !== undefined) {
-      addChanges(drawing?.setToken(tokenToEditPosition, undefined));
+      addChanges(stateMachine?.setToken(tokenToEditPosition, undefined));
     }
     setShowTokenEditor(false);
   }
 
   function handleTokenEditorSave(properties: ITokenProperties) {
     if (tokenToEditPosition !== undefined) {
-      addChanges(drawing?.setToken(tokenToEditPosition, properties));
+      addChanges(stateMachine?.setToken(tokenToEditPosition, properties));
     }
     setShowTokenEditor(false);
   }
 
   function handleNoteEditorDelete() {
     if (noteToEditPosition !== undefined) {
-      addChanges(drawing?.setNote(noteToEditPosition, "", -1, "", false));
+      addChanges(stateMachine?.setNote(noteToEditPosition, "", -1, "", false));
     }
     setShowNoteEditor(false);
   }
 
   function handleNoteEditorSave(id: string, colour: number, text: string, visibleToPlayers: boolean) {
     if (noteToEditPosition !== undefined) {
-      addChanges(drawing?.setNote(noteToEditPosition, id, colour, text, visibleToPlayers));
+      addChanges(stateMachine?.setNote(noteToEditPosition, id, colour, text, visibleToPlayers));
     }
     setShowNoteEditor(false);
   }
@@ -257,11 +251,11 @@ function Map(props: IMapPageProps) {
 
     setIsDraggingView(editMode === EditMode.Pan || editMode === EditMode.Zoom);
     switch (editMode) {
-      case EditMode.Select: drawing?.selectionDragStart(cp); break;
-      case EditMode.Area: drawing?.faceDragStart(cp); break;
-      case EditMode.Wall: drawing?.wallDragStart(cp); break;
-      case EditMode.Pan: drawing?.panStart(cp); break;
-      case EditMode.Zoom: drawing?.zoomRotateStart(cp, e.shiftKey); break;
+      case EditMode.Select: stateMachine?.selectionDragStart(cp); break;
+      case EditMode.Area: stateMachine?.faceDragStart(cp); break;
+      case EditMode.Wall: stateMachine?.wallDragStart(cp); break;
+      case EditMode.Pan: stateMachine?.panStart(cp); break;
+      case EditMode.Zoom: stateMachine?.zoomRotateStart(cp, e.shiftKey); break;
     }
   }
 
@@ -272,11 +266,11 @@ function Map(props: IMapPageProps) {
     }
 
     switch (editMode) {
-      case EditMode.Select: drawing?.moveSelectionTo(cp); break;
-      case EditMode.Area: drawing?.moveFaceHighlightTo(cp); break;
-      case EditMode.Wall: drawing?.moveWallHighlightTo(cp); break;
-      case EditMode.Pan: drawing?.panTo(cp); break;
-      case EditMode.Zoom: drawing?.zoomRotateTo(cp); break;
+      case EditMode.Select: stateMachine?.moveSelectionTo(cp); break;
+      case EditMode.Area: stateMachine?.moveFaceHighlightTo(cp); break;
+      case EditMode.Wall: stateMachine?.moveWallHighlightTo(cp); break;
+      case EditMode.Pan: stateMachine?.panTo(cp); break;
+      case EditMode.Zoom: stateMachine?.zoomRotateTo(cp); break;
     }
 
     return cp;
@@ -291,13 +285,13 @@ function Map(props: IMapPageProps) {
 
     switch (editMode) {
       case EditMode.Select:
-        addChanges(drawing?.selectionDragEnd(cp, e.shiftKey));
+        addChanges(stateMachine?.selectionDragEnd(cp, e.shiftKey));
         break;
 
       case EditMode.Token:
         // Show the token dialog now.  We'll create or alter the token upon close of
         // the dialog.
-        var token = drawing?.getToken(cp);
+        var token = stateMachine?.getToken(cp);
         setShowTokenEditor(true);
         setTokenToEdit(token);
         setTokenToEditPosition(cp);
@@ -306,22 +300,22 @@ function Map(props: IMapPageProps) {
       case EditMode.Notes:
         // Show the notes dialog now.  Again, we'll create or alter the note upon
         // close of the dialog.
-        var note = drawing?.getNote(cp);
+        var note = stateMachine?.getNote(cp);
         setShowNoteEditor(true);
         setNoteToEdit(note);
         setNoteToEditPosition(cp);
         break;
 
       case EditMode.Area:
-        addChanges(drawing?.faceDragEnd(cp, selectedColour));
+        addChanges(stateMachine?.faceDragEnd(cp, selectedColour));
         break;
 
       case EditMode.Wall:
-        addChanges(drawing?.wallDragEnd(cp, selectedColour));
+        addChanges(stateMachine?.wallDragEnd(cp, selectedColour));
         break;
 
-      case EditMode.Pan: drawing?.panEnd(); break;
-      case EditMode.Zoom: drawing?.zoomRotateEnd(); break;
+      case EditMode.Pan: stateMachine?.panEnd(); break;
+      case EditMode.Zoom: stateMachine?.zoomRotateEnd(); break;
     }
   }
 
@@ -353,7 +347,7 @@ function Map(props: IMapPageProps) {
         setEditMode={setEditMode}
         selectedColour={selectedColour}
         setSelectedColour={setSelectedColour}
-        resetView={() => drawing?.resetView()}
+        resetView={() => stateMachine?.resetView()}
         mapColourVisualisationMode={mapColourMode}
         setMapColourVisualisationMode={setMapColourMode}
         canDoAnything={canDoAnything}

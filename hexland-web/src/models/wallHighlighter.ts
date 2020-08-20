@@ -1,9 +1,8 @@
 import { IChange } from "../data/change";
 import { IGridVertex, IGridEdge, verticesEqual } from "../data/coord";
-import { IFeature } from "../data/feature";
+import { IFeature, IFeatureDictionary } from "../data/feature";
 import { EdgeHighlighter } from "./dragHighlighter";
 import { IGridGeometry } from "./gridGeometry";
-import { InstancedFeatures } from "./instancedFeatures";
 
 import * as THREE from 'three';
 
@@ -40,15 +39,15 @@ export class WallHighlighter {
 
   // We drive this edge highlighter to do that part of the work:
   private readonly _edgeHighlighter: EdgeHighlighter;
-  private readonly _vertexHighlights: InstancedFeatures<IGridVertex, IFeature<IGridVertex>>;
+  private readonly _vertexHighlights: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>>;
 
   private _lastHoverPosition: IGridVertex | undefined = undefined;
 
   constructor(
     geometry: IGridGeometry,
-    walls: InstancedFeatures<IGridEdge, IFeature<IGridEdge>>,
-    wallHighlights: InstancedFeatures<IGridEdge, IFeature<IGridEdge>>,
-    vertexHighlights: InstancedFeatures<IGridVertex, IFeature<IGridVertex>>
+    walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
+    wallHighlights: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
+    vertexHighlights: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>>
   ) {
     this._geometry = geometry;
     this._edgeHighlighter = new EdgeHighlighter(walls, wallHighlights);

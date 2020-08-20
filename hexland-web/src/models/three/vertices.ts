@@ -1,8 +1,8 @@
-import { IGridVertex, vertexString } from '../data/coord';
-import { IFeature } from '../data/feature';
-import { IGridGeometry } from "./gridGeometry";
+import { IGridVertex, vertexString } from '../../data/coord';
+import { IFeature } from '../../data/feature';
+import { IGridGeometry } from "../gridGeometry";
 import { InstancedFeatures } from './instancedFeatures';
-import { RedrawFlag } from './redrawFlag';
+import { RedrawFlag } from '../redrawFlag';
 
 import * as THREE from 'three';
 

@@ -1,18 +1,17 @@
 import { IChange, ChangeType, ChangeCategory, IWallAdd, IWallRemove, IAreaAdd, IAreaRemove } from "../data/change";
 import { IGridCoord, IGridEdge, edgesEqual, coordsEqual, edgeString, coordString } from "../data/coord";
-import { IFeature } from '../data/feature';
-import { InstancedFeatures } from "./instancedFeatures";
+import { IFeature, IFeatureDictionary } from '../data/feature';
 
 // Helps handling a hover highlight with drag to select many and release to commit
 // them into new features.
 abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
-  private readonly _features: InstancedFeatures<K, F>; // inspect, but do not edit directly!
-  private readonly _highlights: InstancedFeatures<K, F>;
+  private readonly _features: IFeatureDictionary<K, F>; // inspect, but do not edit directly!
+  private readonly _highlights: IFeatureDictionary<K, F>;
 
   private _inDrag: boolean = false;
   private _lastHoverPosition: K | undefined = undefined;
 
-  constructor(features: InstancedFeatures<K, F>, highlights: InstancedFeatures<K, F>) {
+  constructor(features: IFeatureDictionary<K, F>, highlights: IFeatureDictionary<K, F>) {
     this._features = features;
     this._highlights = highlights;
   }

@@ -1,8 +1,8 @@
-import { IGridCoord, coordString } from '../data/coord';
-import { IToken } from '../data/feature';
-import { IGridGeometry } from "./gridGeometry";
+import { IGridCoord, coordString } from '../../data/coord';
+import { IToken } from '../../data/feature';
+import { IGridGeometry } from "../gridGeometry";
 import { InstancedFeatures } from './instancedFeatures';
-import { RedrawFlag } from './redrawFlag';
+import { RedrawFlag } from '../redrawFlag';
 import { TextCreator } from './textCreator';
 
 import * as THREE from 'three';

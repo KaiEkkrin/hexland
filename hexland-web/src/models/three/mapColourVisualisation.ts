@@ -1,8 +1,8 @@
 import { Areas } from './areas';
-import { MapColouring } from './colouring';
+import { MapColouring } from '../colouring';
 
-import { IGridCoord } from '../data/coord';
-import { FeatureColour } from './featureColour';
+import { IGridCoord } from '../../data/coord';
+import { FeatureColour } from '../featureColour';
 
 import * as THREE from 'three';
 

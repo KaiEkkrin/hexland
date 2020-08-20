@@ -1,6 +1,6 @@
-import { Drawn } from './drawn';
-import { IGridGeometry } from './gridGeometry';
-import { RedrawFlag } from './redrawFlag';
+import { Drawn } from '../drawn';
+import { IGridGeometry } from '../gridGeometry';
+import { RedrawFlag } from '../redrawFlag';
 
 import * as THREE from 'three';
 
@@ -91,26 +91,6 @@ export class Grid extends Drawn {
         bufferGeometry.setIndex(this._solidVertexIndices);
 
         var colours = this.geometry.createSolidVertexColours(tile);
-        bufferGeometry.setAttribute('color', new THREE.BufferAttribute(colours, 3));
-
-        var mesh = new THREE.Mesh(bufferGeometry, this._solidMaterial);
-        scene.add(mesh);
-
-        this._geometries.push(bufferGeometry);
-      }
-    }
-  }
-
-  // TODO remove when it's working
-  addVertexTestColoursToScene(scene: THREE.Scene, originX: number, originY: number, radius: number) {
-    for (var y = originY - radius; y < originY + radius; ++y) {
-      for (var x = originX - radius; x < originX + radius; ++x) {
-        var tile = new THREE.Vector2(x, y);
-        var vertices = this.geometry.createSolidVertexVertices(tile, this._vertexAlpha, this._z);
-        var bufferGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
-        bufferGeometry.setIndex(this._solidVertexIndices);
-
-        var colours = this.geometry.createSolidVertexTestColours();
         bufferGeometry.setAttribute('color', new THREE.BufferAttribute(colours, 3));
 
         var mesh = new THREE.Mesh(bufferGeometry, this._solidMaterial);

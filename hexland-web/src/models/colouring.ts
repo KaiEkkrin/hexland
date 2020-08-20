@@ -166,7 +166,6 @@ export class MapColouring {
       return;
     }
     
-    // TODO remove debug
     //console.log("Filling " + maybeColour + " from " + coordString(startCoord) + " with bounds " + lowerBounds.toArray() + ", " + upperBounds.toArray());
 
     const colour = maybeFeature.colour;
@@ -177,13 +176,14 @@ export class MapColouring {
         break;
       }
 
-      // TODO remove debug
       //console.log("Filled " + colour + " at " + coordString(coord));
 
       this._geometry.forEachAdjacentFace(coord, (face: IGridCoord, edge: IGridEdge) => {
-        if (face.x < lowerBounds.x || face.y < lowerBounds.y ||
+        if (
+          face.x < lowerBounds.x || face.y < lowerBounds.y ||
           face.x > upperBounds.x || face.y > upperBounds.y ||
-          this._walls.get(edge) !== undefined) {
+          this._walls.get(edge) !== undefined
+        ) {
           return;
         }
 

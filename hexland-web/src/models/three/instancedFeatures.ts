@@ -1,8 +1,8 @@
-import { IGridCoord } from '../data/coord';
-import { FeatureDictionary, IFeature, IFeatureDictionary } from '../data/feature';
-import { Drawn } from './drawn';
-import { IGridGeometry } from "./gridGeometry";
-import { RedrawFlag } from './redrawFlag';
+import { IGridCoord } from '../../data/coord';
+import { FeatureDictionary, IFeature, IFeatureDictionary } from '../../data/feature';
+import { Drawn } from '../drawn';
+import { IGridGeometry } from "../gridGeometry";
+import { RedrawFlag } from '../redrawFlag';
 
 import * as THREE from 'three';
 
