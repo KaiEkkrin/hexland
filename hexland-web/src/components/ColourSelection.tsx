@@ -1,5 +1,7 @@
 import React from 'react';
 
+import { hexColours } from '../models/featureColour';
+
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import ToggleButton from 'react-bootstrap/ToggleButton';
 
@@ -28,7 +30,6 @@ function NegativeColour(props: INegativeColourProps) {
 
 interface IColourSelectionProps {
   id: string;
-  colours: string[];
   includeNegative: boolean;
   isVertical: boolean;
   selectedColour: number;
@@ -38,7 +39,7 @@ interface IColourSelectionProps {
 function ColourSelection(props: IColourSelectionProps) {
   return (
     <ButtonGroup id={props.id} toggle vertical={props.isVertical === true}>
-      {props.colours.map((c, i) =>
+      {hexColours.map((c, i) =>
         <ToggleButton type="radio" variant="dark" key={i} value={i}
           checked={props.selectedColour === i}
           onChange={e => props.setSelectedColour(i)}>

@@ -14,7 +14,6 @@ interface ITokenEditorModalProps {
   selectedColour: number;
   show: boolean;
   token: IToken | undefined;
-  hexColours: string[];
   players: IPlayer[];
   handleClose: () => void;
   handleDelete: () => void;
@@ -77,7 +76,7 @@ function TokenEditorModal(props: ITokenEditorModalProps) {
           <Form.Group>
             <Form.Label htmlFor="tokenColour">Colour</Form.Label>
             <Form.Row>
-              <ColourSelection id="tokenColour" colours={props.hexColours}
+              <ColourSelection id="tokenColour"
                 includeNegative={false}
                 isVertical={false}
                 selectedColour={colour}

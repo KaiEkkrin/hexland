@@ -54,10 +54,17 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
   const walls = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
   const notes = new FeatureDictionary<IGridCoord, IAnnotation>(coordString);
   const colouring = new MapColouring(new HexGridGeometry(100, 8));
-  var changeTracker = new MapChangeTracker(areas, tokens, walls, notes, colouring);
+
+  const handleChangesApplied = jest.fn();
+  const handleChangesAborted = jest.fn();
+  var changeTracker = new MapChangeTracker(areas, tokens, walls, notes, colouring,
+    handleChangesApplied, handleChangesAborted);
 
   var ok = buildWallsOfThreeHexes(changeTracker);
   expect(ok).toBeTruthy();
+  expect(handleChangesApplied.mock.calls.length).toBe(1);
+  expect(handleChangesApplied.mock.calls[0][0]).toBe(false); // no tokens changed
+  expect(handleChangesAborted.mock.calls.length).toBe(0);
 
   // console.log("zero colour: " + colouring.colourOf({ x: 0, y: 0 }));
   // console.log("inner colour: " + colouring.colourOf({ x: 0, y: 1 }));
@@ -77,6 +84,9 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
 
   ok = trackChanges(map, changeTracker, addTokens, ownerUid);
   expect(ok).toBeTruthy();
+  expect(handleChangesApplied.mock.calls.length).toBe(2);
+  expect(handleChangesApplied.mock.calls[1][0]).toBe(true); // this time token changes were made
+  expect(handleChangesAborted.mock.calls.length).toBe(0);
 
   const moveZeroToOuter = {
     ty: ChangeType.Move,
@@ -102,14 +112,21 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
   // We certainly can't do all three together
   ok = trackChanges(map, changeTracker, [moveZeroToOuter, moveWithinInner, moveOuterToOuter], uid1);
   expect(ok).toBeFalsy();
+  expect(handleChangesApplied.mock.calls.length).toBe(2);
+  expect(handleChangesAborted.mock.calls.length).toBe(1); // this call failed
 
   // ...or zero-to-outer all by itself
   ok = trackChanges(map, changeTracker, [moveZeroToOuter], uid1);
   expect(ok).toBeFalsy();
+  expect(handleChangesApplied.mock.calls.length).toBe(2);
+  expect(handleChangesAborted.mock.calls.length).toBe(2); // this call failed
 
   // We can, however, do the inner-to-inner and outer-to-outer moves
   ok = trackChanges(map, changeTracker, [moveWithinInner, moveOuterToOuter], uid1);
   expect(ok).toBeTruthy();
+  expect(handleChangesApplied.mock.calls.length).toBe(3);
+  expect(handleChangesApplied.mock.calls[2][0]).toBe(true); // this time token changes were made
+  expect(handleChangesAborted.mock.calls.length).toBe(2);
 
   // If we remove one of the walls between zero and outer, we can do that move too, even
   // if it's not the shortest-path wall
@@ -121,9 +138,15 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
 
   ok = trackChanges(map, changeTracker, [removeWall], ownerUid);
   expect(ok).toBeTruthy();
+  expect(handleChangesApplied.mock.calls.length).toBe(4);
+  expect(handleChangesApplied.mock.calls[3][0]).toBe(false); // this was a wall change
+  expect(handleChangesAborted.mock.calls.length).toBe(2);
 
   ok = trackChanges(map, changeTracker, [moveZeroToOuter], uid1);
   expect(ok).toBeTruthy();
+  expect(handleChangesApplied.mock.calls.length).toBe(5);
+  expect(handleChangesApplied.mock.calls[4][0]).toBe(true); // this time token changes were made
+  expect(handleChangesAborted.mock.calls.length).toBe(2);
 
   // console.log("wall removed");
   // console.log("zero colour: " + colouring.colourOf({ x: 0, y: 0 }));
@@ -140,8 +163,13 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
 
   ok = trackChanges(map, changeTracker, [moveOuterToInner], uid1);
   expect(ok).toBeFalsy();
+  expect(handleChangesApplied.mock.calls.length).toBe(5);
+  expect(handleChangesAborted.mock.calls.length).toBe(3);
 
   // The owner can do that, though
   ok = trackChanges(map, changeTracker, [moveOuterToInner], ownerUid);
   expect(ok).toBeTruthy();
+  expect(handleChangesApplied.mock.calls.length).toBe(6);
+  expect(handleChangesApplied.mock.calls[5][0]).toBe(true); // this time token changes were made
+  expect(handleChangesAborted.mock.calls.length).toBe(3);
 });

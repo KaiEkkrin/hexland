@@ -20,3 +20,19 @@ export class FeatureColour {
   get darkHexString(): string { return this._dark.getHexString(); }
   get lightHexString(): string { return this._light.getHexString(); }
 }
+
+function getStandardColours() {
+  var colours: FeatureColour[] = [];
+  for (var i = 0; i < 6; ++i) {
+    colours.push(new FeatureColour((i + 0.5) / 6.0));
+  }
+
+  return colours;
+}
+
+function getHexColours() {
+  return getStandardColours().map(c => "#" + c.lightHexString);
+}
+
+export const standardColours = getStandardColours();
+export const hexColours = getHexColours();

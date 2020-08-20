@@ -32,21 +32,36 @@ const zoomMin = 1;
 const zoomMax = 4;
 const rotationStep = 0.004;
 
+// Describes the map state as managed by the state machine below and echoed
+// to the Map component.
+export interface IMapState {
+  seeEverything: boolean;
+  annotations: IPositionedAnnotation[];
+  tokens: (IToken & ISelectable)[];
+}
+
+export interface ISelectable {
+  selectable: boolean;
+}
+
+export function createDefaultState(): IMapState {
+  return {
+    seeEverything: true,
+    annotations: [],
+    tokens: [],
+  };
+}
+
 // Manages the mutable state associated with a map, so that it can be
 // hidden from the React component, Map.tsx.  Create a new one on reload.
 // (Creating new instances of everything whenever a change happens would
 // be far too slow, or very complicated.)
 // In cases where the React component needs to know about the live state
 // of an aspect of the map, the MapState shall be the source of truth and
-// echo it to the React component on change via one of the setter methods
-// that we construct it with.  We'll have a private update method here
-// for each of those setter methods.
-// TODO #40: Perhaps I could roll the whole state together into a single interface
-// and maintain just one of those here, which I observe from the Map component?
-// That would make things easier, right?  Or I could try to split this thing apart
-// into separate helpers for each edit mode?  What I *don't* want is having a replica
-// of state here in the Map component with the Map component calling its own `set`
-// itself as well and trying to sync the two...
+// echo it to the React component on change.  The React component needs to
+// call into this in order to make changes.
+// Any other mutable fields in here are state that the owning component should
+// never find out about.
 export class MapStateMachine {
   private readonly _map: IMap;
   private readonly _uid: string;
@@ -61,8 +76,9 @@ export class MapStateMachine {
   private readonly _faceHighlighter: FaceHighlighter;
   private readonly _wallHighlighter: WallHighlighter;
 
-  private readonly _setAnnotations: (a: IPositionedAnnotation[]) => void;
-  private readonly _setCanSeeAnything: (value: boolean) => void;
+  private readonly _setState: (state: IMapState) => void;
+
+  private _state: IMapState;
 
   private _panX = 0;
   private _panY = 0;
@@ -82,13 +98,18 @@ export class MapStateMachine {
     uid: string,
     colours: FeatureColour[],
     mount: HTMLDivElement,
-    setAnnotations: (a: IPositionedAnnotation[]) => void,
-    setCanSeeAnything: (value: boolean) => void
+    setState: (state: IMapState) => void
   ) {
     this._map = map;
     this._uid = uid;
-    this._setAnnotations = setAnnotations;
-    this._setCanSeeAnything = setCanSeeAnything;
+    this._setState = setState;
+
+    this._state = {
+      seeEverything: this.seeEverything,
+      annotations: [],
+      tokens: []
+    };
+    this._setState(this._state);
 
     this._gridGeometry = map.ty === MapType.Hex ?
       new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
@@ -116,10 +137,16 @@ export class MapStateMachine {
       this._drawing.walls,
       this._notes,
       this._mapColouring,
-      () => {
-        this.buildLoS(); // updates annotations
-        this._drawing.handleChangesApplied(this._mapColouring);
-        this.updateCanSeeAnything();
+      (haveTokensChanged: boolean) => {
+        this.withStateChange(getState => {
+          var state = getState();
+          this.buildLoS(state); // updates annotations
+          this._drawing.handleChangesApplied(this._mapColouring);
+          if (haveTokensChanged) {
+            this.updateTokens(state);
+          }
+          return true;
+        });
       }
     );
 
@@ -128,6 +155,31 @@ export class MapStateMachine {
   }
 
   private get seeEverything() { return this._uid === this._map.owner || this._map.ffa === true; }
+
+  private buildLoS(state: IMapState) {
+    // TODO can I do this incrementally, or do I need to rebuild on every change?
+    // Rebuilding on every change makes it much simpler...
+    var positions = this.getLoSPositions();
+    console.log("LoS positions: " + positions?.length ?? -1);
+    this._drawing.los.clear();
+    if (positions?.length === 0) {
+      // Show nothing
+      var losHere = LoS.create(this._gridGeometry, this._mapColouring, undefined);
+      LoS.combine(this._drawing.los, losHere);
+    } else {
+      // TODO deal with dynamic grid sizing and all that fun here, create a suitable
+      // abstraction!
+      positions?.forEach(p => {
+        var losHere = LoS.create(this._gridGeometry, this._mapColouring, p);
+        LoS.combine(this._drawing.los, losHere);
+      });
+    }
+
+    // Annotations depend on the LoS.
+    // TODO This mess of dependencies is getting hard to manage!  React Hooks
+    // could do this for me...
+    this.updateAnnotations(state);
+  }
 
   private canDropSelectionAt(position: IGridCoord) {
     if (this._tokenMoveDragStart === undefined) {
@@ -209,7 +261,7 @@ export class MapStateMachine {
     }
   }
 
-  private updateAnnotations() {
+  private updateAnnotations(state: IMapState) {
     var positioned: IPositionedAnnotation[] = [];
     var [target, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
     var worldToViewport = this._drawing.getWorldToViewport();
@@ -234,51 +286,45 @@ export class MapStateMachine {
       positioned.push({ clientX: target.x, clientY: target.y, ...n });
     }
 
-    this._setAnnotations(positioned);
+    state.annotations = positioned;
   }
 
-  private updateCanSeeAnything() {
-    if (this.seeEverything) {
-      this._setCanSeeAnything(true);
-      return;
-    }
+  private updateTokens(state: IMapState) {
+    state.tokens = [...fluent(this._drawing.tokens).map(t => ({
+      ...t, selectable: this.canSelectToken(t)
+    }))];
+  }
 
-    for (var t of this._drawing.tokens) {
-      if (this.canSelectToken(t)) {
-        this._setCanSeeAnything(true);
-        return;
+  // Helps create a new map state that might be a combination of more than
+  // one change, and publish it once when we're done.
+  // The supplied function should call `getState` to fetch a state object only when
+  // it means to change it, and then mutate that object.  This ensures there will be
+  // only one copy and not many.
+  // Careful: the output of `getState` is a shallow copy of the state, the caller
+  // is responsible for copying anything within as required.
+  private withStateChange(
+    fn: (getState: () => IMapState) => boolean
+  ) {
+    var initial = this._state;
+    var updated: IMapState[] = [];
+    function getState() {
+      if (updated.length === 0) {
+        updated.push({ ...initial });
       }
+
+      return updated[0];
     }
 
-    this._setCanSeeAnything(false);
+    if (fn(getState) && updated.length > 0) {
+      this._state = updated[0];
+      this._setState(updated[0]);
+      return true;
+    }
+
+    return false;
   }
 
   get changeTracker() { return this._changeTracker; }
-
-  buildLoS() {
-    // TODO can I do this incrementally, or do I need to rebuild on every change?
-    // Rebuilding on every change makes it much simpler...
-    var positions = this.getLoSPositions();
-    console.log("LoS positions: " + positions?.length ?? -1);
-    this._drawing.los.clear();
-    if (positions?.length === 0) {
-      // Show nothing
-      var losHere = LoS.create(this._gridGeometry, this._mapColouring, undefined);
-      LoS.combine(this._drawing.los, losHere);
-    } else {
-      // TODO deal with dynamic grid sizing and all that fun here, create a suitable
-      // abstraction!
-      positions?.forEach(p => {
-        var losHere = LoS.create(this._gridGeometry, this._mapColouring, p);
-        LoS.combine(this._drawing.los, losHere);
-      });
-    }
-
-    // Annotations depend on the LoS.
-    // TODO This mess of dependencies is getting hard to manage!  React Hooks
-    // could do this for me...
-    this.updateAnnotations();
-  }
 
   clearHighlights() {
     this._faceHighlighter.dragCancel();
@@ -288,9 +334,19 @@ export class MapStateMachine {
   }
 
   clearSelection() {
+    const wasAnythingSelected = fluent(this._drawing.selection).any();
     this._drawing.selection.clear();
     this._drawing.selectionDrag.clear();
     this._drawing.selectionDragRed.clear();
+
+    // The LoS may change as a result of no longer having a specific
+    // token selected
+    if (wasAnythingSelected) {
+      this.withStateChange(getState => {
+        this.buildLoS(getState());
+        return true;
+      });
+    }
   }
 
   // For editing
@@ -386,7 +442,10 @@ export class MapStateMachine {
 
     // Upon resize, the positions of annotations may have changed and
     // we should update the UI
-    this.updateAnnotations();
+    this.withStateChange(getState => {
+      this.updateAnnotations(getState());
+      return true;
+    });
   }
 
   selectionDragEnd(cp: THREE.Vector2, shiftKey: boolean): IChange[] {
@@ -433,7 +492,10 @@ export class MapStateMachine {
         }
 
         this._selectDragStart = undefined;
-        this.buildLoS();
+        this.withStateChange(getState => {
+          this.buildLoS(getState());
+          return true;
+        });
       }
     }
 

@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
 import ColourSelection from './ColourSelection';
 import { ShowAnnotationFlags } from './MapAnnotations';
 import { IPlayer } from '../data/adventure';
+import { IMap } from '../data/map';
+import { hexColours } from '../models/featureColour';
 
+import Badge from 'react-bootstrap/Badge';
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import Dropdown from 'react-bootstrap/Dropdown';
@@ -13,6 +16,22 @@ import Tooltip from 'react-bootstrap/Tooltip';
 
 import { faDotCircle, faDrawPolygon, faHandPaper, faMousePointer, faPlus, faSearch, faSquare, IconDefinition, faCog, faSuitcase, faMapMarker, faUsers } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { IToken } from '../data/feature';
+
+import fluent from 'fluent-iterable';
+
+// A quick utility function for figuring out whether a player has any
+// tokens assigned to them so we can show status.
+// Returns undefined for the owner, who is a special case (we don't care.)
+function hasAnyTokens(map: IMap | undefined, player: IPlayer, tokens: IToken[]) {
+  if (player.playerId === map?.owner) {
+    return undefined;
+  }
+
+  return fluent(tokens).any(
+    t => t.players.find(pId => pId === player.playerId) !== undefined
+  );
+}
 
 export enum EditMode {
   Select = "select",
@@ -51,8 +70,37 @@ function ModeButton<T>(props: IModeButtonProps<T>) {
   );
 }
 
+interface IPlayerDropdownItemProps {
+  map: IMap | undefined;
+  player: IPlayer;
+  tokens: IToken[];
+}
+
+function PlayerDropdownItem(props: IPlayerDropdownItemProps) {
+  const myTokens = useMemo(
+    () => props.tokens.filter(t => t.players.find(p => p === props.player.playerId) !== undefined),
+    [props.player, props.tokens]
+  );
+
+  const isNoTokenHidden = useMemo(
+    () => props.player.playerId === props.map?.owner,
+    [props.map, props.player]
+  );
+
+  return (
+    <Dropdown.Item>
+      {props.player.playerName}
+      {myTokens.length > 0 ? myTokens.map(t => (
+        <Badge className="ml-2" style={{ backgroundColor: hexColours[t.colour] }}>{t.text}</Badge>
+      )) : (
+        <Badge className="ml-2" hidden={isNoTokenHidden} variant="danger">Click to assign this player a token</Badge>
+      )}
+    </Dropdown.Item>
+  )
+}
+
 interface IMapControlsProps {
-  colours: string[];
+  map: IMap | undefined;
   editMode: EditMode;
   setEditMode(value: EditMode): void;
   selectedColour: number;
@@ -65,10 +113,11 @@ interface IMapControlsProps {
   openMapEditor(): void;
   setShowAnnotationFlags(flags: ShowAnnotationFlags): void;
   players: IPlayer[];
+  tokens: IToken[];
 }
 
 function MapControls(props: IMapControlsProps) {
-  function createModeButtons() {
+  const modeButtons = useMemo(() => {
     var buttons = [
       <ModeButton key={EditMode.Select} value={EditMode.Select} icon={faMousePointer}
         tooltip="Select and move tokens" mode={props.editMode} setMode={props.setEditMode} />
@@ -95,11 +144,21 @@ function MapControls(props: IMapControlsProps) {
     ]);
 
     return buttons;
-  }
+  }, [props.canDoAnything, props.editMode, props.setEditMode]);
+
+  const numberOfPlayersWithNoTokens = useMemo(
+    () => fluent(props.players).filter(p => hasAnyTokens(props.map, p, props.tokens) === false).count(),
+    [props.map, props.players, props.tokens]
+  );
+
+  const hideNumberOfPlayersWithNoTokens = useMemo(
+    () => numberOfPlayersWithNoTokens === 0,
+    [numberOfPlayersWithNoTokens]
+  );
 
   return (
     <div className="Map-controls bg-dark">
-      <ButtonGroup className="mb-2" toggle vertical>{createModeButtons()}</ButtonGroup>
+      <ButtonGroup className="mb-2" toggle vertical>{modeButtons}</ButtonGroup>
       <ButtonGroup className="mb-2" vertical>
         <OverlayTrigger placement="right" overlay={
           <Tooltip id="reset-tooltip">Reset the map view</Tooltip>
@@ -120,7 +179,7 @@ function MapControls(props: IMapControlsProps) {
           </Dropdown.Menu>
         </Dropdown>
       </ButtonGroup>
-      <ColourSelection id="mapColourSelect" colours={props.colours}
+      <ColourSelection id="mapColourSelect"
         includeNegative={true}
         isVertical={true}
         selectedColour={props.selectedColour}
@@ -136,11 +195,16 @@ function MapControls(props: IMapControlsProps) {
         <ButtonGroup className="mt-2" vertical>
           <Dropdown as={ButtonGroup} drop="right">
             <Dropdown.Toggle variant="dark">
-              <FontAwesomeIcon icon={faUsers} color="white" />
+              <div>
+                <FontAwesomeIcon icon={faUsers} color="white" />
+                <Badge className="Map-min ml-1" hidden={hideNumberOfPlayersWithNoTokens} variant="danger">
+                  {numberOfPlayersWithNoTokens}
+                </Badge>
+              </div>
             </Dropdown.Toggle>
             <Dropdown.Menu>
-              {props.players.map(p => (
-                <Dropdown.Item key={p.playerId}>{p.playerName}</Dropdown.Item>
+              {props.players.filter(p => p.playerId !== props.map?.owner).map(p => (
+                <PlayerDropdownItem key={p.playerId} map={props.map} player={p} tokens={props.tokens} />
               ))}
             </Dropdown.Menu>
           </Dropdown>

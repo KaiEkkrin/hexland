@@ -17,6 +17,9 @@ export interface IChangeTracker {
   // Called after a batch of changes has been completed, before any redraw
   changesApplied(): void;
 
+  // Called after a batch of changes is aborted
+  changesAborted(): void;
+
   // Gets a minimal collection of changes to add everything in this tracker.
   getConsolidated: () => IChange[];
 }
@@ -75,6 +78,9 @@ export class SimpleChangeTracker implements IChangeTracker {
   changesApplied() {
   }
 
+  changesAborted() {
+  }
+
   getConsolidated(): IChange[] {
     var all: IChange[] = [];
     this._areas.forEach(f => all.push({
@@ -114,6 +120,7 @@ export function trackChanges(map: IMap, tracker: IChangeTracker, chs: Iterable<I
     if (a === undefined) {
       // Changes failed -- revert any previously applied and return with an error
       revertChanges(applications);
+      tracker.changesAborted();
       return false;
     }
 
@@ -129,6 +136,7 @@ export function trackChanges(map: IMap, tracker: IChangeTracker, chs: Iterable<I
   // If we got here, that failed and has been rolled back, but we still need to roll back
   // the first pass:
   revertChanges(applications);
+  tracker.changesAborted();
   return false;
 }
 

@@ -15,7 +15,7 @@ import TokenEditorModal from './components/TokenEditorModal';
 import { UserContext } from './components/UserContextProvider';
 
 import { IPlayer } from './data/adventure';
-import { IPositionedAnnotation, IAnnotation } from './data/annotation';
+import { IAnnotation } from './data/annotation';
 import { IChange } from './data/change';
 import { trackChanges } from './data/changeTracking';
 import { IToken, ITokenProperties } from './data/feature';
@@ -23,25 +23,13 @@ import { IAdventureIdentified } from './data/identified';
 import { IMap } from './data/map';
 import { registerMapAsRecent, consolidateMapChanges } from './services/extensions';
 
-import { FeatureColour } from './models/featureColour';
-import { MapStateMachine } from './models/mapStateMachine';
+import { MapStateMachine, createDefaultState } from './models/mapStateMachine';
 
 import { RouteComponentProps } from 'react-router-dom';
 
 import * as THREE from 'three';
-
-function getStandardColours() {
-  var colours: FeatureColour[] = [];
-  for (var i = 0; i < 6; ++i) {
-    colours.push(new FeatureColour((i + 0.5) / 6.0));
-  }
-
-  return colours;
-}
-
-function getHexColours() {
-  return getStandardColours().map(c => "#" + c.lightHexString);
-}
+import fluent from 'fluent-iterable';
+import { standardColours } from './models/featureColour';
 
 function Map(props: IMapPageProps) {
   const firebaseContext = useContext(FirebaseContext);
@@ -54,8 +42,7 @@ function Map(props: IMapPageProps) {
   const [players, setPlayers] = useState([] as IPlayer[]);
   const [stateMachine, setStateMachine] = useState(undefined as MapStateMachine | undefined);
   const [canDoAnything, setCanDoAnything] = useState(false);
-  const [canSeeAnything, setCanSeeAnything] = useState(true);
-  const [annotations, setAnnotations] = useState([] as IPositionedAnnotation[]);
+  const [mapState, setMapState] = useState(createDefaultState());
 
   // We need an event listener for the window resize so that we can update the drawing
   useEffect(() => {
@@ -99,7 +86,7 @@ function Map(props: IMapPageProps) {
       .catch(e => console.error("Error consolidating map changes", e));
 
     var sm = new MapStateMachine(
-      map.record, userContext.dataService.getUid(), getStandardColours(), drawingRef.current, setAnnotations, setCanSeeAnything
+      map.record, userContext.dataService.getUid(), standardColours, drawingRef.current, setMapState
     );
     setStateMachine(sm);
 
@@ -115,6 +102,10 @@ function Map(props: IMapPageProps) {
   }, [userContext.dataService, firebaseContext.timestampProvider, map]);
 
   // If we can't see anything, notify the user
+  const canSeeAnything = useMemo(() => {
+    return mapState.seeEverything || fluent(mapState.tokens).any(t => t.selectable);
+  }, [mapState]);
+
   useEffect(() => {
     if (canSeeAnything === false) {
       return addToast(statusContext, {
@@ -178,7 +169,6 @@ function Map(props: IMapPageProps) {
     stateMachine?.clearHighlights();
     if (editMode !== EditMode.Select) {
       stateMachine?.clearSelection();
-      stateMachine?.buildLoS(); // TODO only do this if there was something selected...?
     }
   }, [stateMachine, editMode]);
 
@@ -342,7 +332,7 @@ function Map(props: IMapPageProps) {
       <div className="Map-nav">
         <Navigation title={map?.record.name} />
       </div>
-      <MapControls colours={getHexColours()}
+      <MapControls
         editMode={editMode}
         setEditMode={setEditMode}
         selectedColour={selectedColour}
@@ -354,7 +344,7 @@ function Map(props: IMapPageProps) {
         canOpenMapEditor={canOpenMapEditor}
         openMapEditor={() => setShowMapEditor(true)}
         setShowAnnotationFlags={cycleShowAnnotationFlags}
-        players={players} />
+        map={map?.record} players={players} tokens={mapState.tokens} />
       <div className="Map-content">
         <div id="drawingDiv" ref={drawingRef}
           onMouseDown={handleMouseDown}
@@ -364,12 +354,12 @@ function Map(props: IMapPageProps) {
       <MapEditorModal show={showMapEditor} map={map?.record}
         handleClose={() => setShowMapEditor(false)} handleSave={handleMapEditorSave} />
       <TokenEditorModal selectedColour={selectedColour} show={showTokenEditor}
-        token={tokenToEdit} hexColours={getHexColours()}
+        token={tokenToEdit}
         players={players} handleClose={() => setShowTokenEditor(false)}
         handleDelete={handleTokenEditorDelete} handleSave={handleTokenEditorSave} />
       <NoteEditorModal show={showNoteEditor} note={noteToEdit} handleClose={() => setShowNoteEditor(false)}
         handleDelete={handleNoteEditorDelete} handleSave={handleNoteEditorSave} />
-      <MapAnnotations annotations={annotations} showFlags={showAnnotationFlags} customFlags={customAnnotationFlags}
+      <MapAnnotations annotations={mapState.annotations} showFlags={showAnnotationFlags} customFlags={customAnnotationFlags}
         setCustomFlags={setCustomAnnotationFlags} suppressAnnotations={suppressAnnotations} />
     </div>
   );

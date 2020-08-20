@@ -24,9 +24,6 @@ export interface IFeatureDictionary<K extends IGridCoord, F extends IFeature<K>>
   // (we didn't replace it.)
   add(f: F): boolean;
 
-  // Returns true if there's anything here, else false.
-  any(): boolean;
-
   // Removes everything
   clear(): void;
 
@@ -68,14 +65,6 @@ export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> impl
 
     this._values[i] = f;
     return true;
-  }
-
-  any() {
-    for (const i in this._values) {
-      return true;
-    }
-
-    return false;
   }
 
   clear() {
