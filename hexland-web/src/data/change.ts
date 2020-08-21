@@ -24,6 +24,7 @@ export enum ChangeType {
 }
 
 export enum ChangeCategory {
+  Undefined = 0, // included so we can provide a default change that does nothing
   Area = 1,
   Token = 2,
   Wall = 3,
@@ -46,10 +47,12 @@ export interface ITokenAdd extends IChange {
 export interface ITokenMove extends IChange {
   newPosition: IGridCoord;
   oldPosition: IGridCoord;
+  tokenId: string | undefined; // must match what's currently there
 }
 
 export interface ITokenRemove extends IChange {
   position: IGridCoord;
+  tokenId: string | undefined; // must match what's currently there
 }
 
 export interface IWallAdd extends IChange {
@@ -66,4 +69,79 @@ export interface INoteAdd extends IChange {
 
 export interface INoteRemove extends IChange {
   position: IGridCoord;
+}
+
+export function createAreaAdd(feature: IFeature<IGridCoord>): IAreaAdd {
+  return {
+    ty: ChangeType.Add,
+    cat: ChangeCategory.Area,
+    feature: feature
+  };
+}
+
+export function createAreaRemove(position: IGridCoord): IAreaRemove {
+  return {
+    ty: ChangeType.Remove,
+    cat: ChangeCategory.Area,
+    position: position
+  };
+}
+
+export function createTokenAdd(feature: IToken): ITokenAdd {
+  return {
+    ty: ChangeType.Add,
+    cat: ChangeCategory.Token,
+    feature: feature
+  };
+}
+
+export function createTokenMove(oldPosition: IGridCoord, newPosition: IGridCoord, tokenId: string | undefined): ITokenMove {
+  return {
+    ty: ChangeType.Move,
+    cat: ChangeCategory.Token,
+    oldPosition: oldPosition,
+    newPosition: newPosition,
+    tokenId: tokenId
+  };
+}
+
+export function createTokenRemove(position: IGridCoord, tokenId: string | undefined): ITokenRemove {
+  return {
+    ty: ChangeType.Remove,
+    cat: ChangeCategory.Token,
+    position: position,
+    tokenId: tokenId
+  };
+}
+
+export function createWallAdd(feature: IFeature<IGridEdge>): IWallAdd {
+  return {
+    ty: ChangeType.Add,
+    cat: ChangeCategory.Wall,
+    feature: feature
+  };
+}
+
+export function createWallRemove(position: IGridEdge): IWallRemove {
+  return {
+    ty: ChangeType.Remove,
+    cat: ChangeCategory.Wall,
+    position: position
+  };
+}
+
+export function createNoteAdd(feature: IAnnotation): INoteAdd {
+  return {
+    ty: ChangeType.Add,
+    cat: ChangeCategory.Note,
+    feature: feature
+  };
+}
+
+export function createNoteRemove(position: IGridCoord): INoteRemove {
+  return {
+    ty: ChangeType.Remove,
+    cat: ChangeCategory.Note,
+    position: position
+  };
 }

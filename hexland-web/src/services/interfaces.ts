@@ -51,9 +51,7 @@ export interface IDataService extends IDataView {
   getLatestInviteRef(adventureId: string): Promise<IDataAndReference<IInvite> | undefined>;
 
   // Gets a map.
-  getMap(adventureId: string, id: string): Promise<IMap | undefined>;
   getMapRef(adventureId: string, id: string): IDataReference<IMap>;
-
   getMapBaseChangeRef(adventureId: string, id: string): IDataReference<IChanges>;
   getMapChangesRefs(adventureId: string, id: string): Promise<IDataAndReference<IChanges>[] | undefined>;
 

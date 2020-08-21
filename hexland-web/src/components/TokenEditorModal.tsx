@@ -10,6 +10,8 @@ import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
 
+import { v4 as uuidv4 } from 'uuid';
+
 interface ITokenEditorModalProps {
   selectedColour: number;
   show: boolean;
@@ -49,6 +51,8 @@ function TokenEditorModal(props: ITokenEditorModalProps) {
   function handleSave() {
     props.handleSave({
       colour: colour,
+      // If this was a new token, make a new id for it
+      id: props.token === undefined ? uuidv4() : props.token.id,
       text: text,
       players: playerIds,
       note: note,

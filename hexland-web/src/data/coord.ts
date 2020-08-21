@@ -7,6 +7,9 @@ export interface IGridCoord {
   y: number;
 }
 
+// This default should end up unseen -- for converters.
+export const defaultGridCoord: IGridCoord = { x: -10000, y: -10000 };
+
 export function getTile(coord: IGridCoord, tileDim: number): THREE.Vector2 {
   return new THREE.Vector2(Math.floor(coord.x / tileDim), Math.floor(coord.y / tileDim));
 }
@@ -45,6 +48,9 @@ export interface IGridEdge extends IGridCoord {
   edge: number;
 }
 
+// This default should end up unseen -- for converters.
+export const defaultGridEdge: IGridEdge = { x: -10000, y: -10000, edge: 0 };
+
 export function edgesEqual(a: IGridEdge, b: IGridEdge | undefined): boolean {
   return (b === undefined) ? false : (coordsEqual(a, b) && a.edge === b.edge);
 }
@@ -61,6 +67,9 @@ export function createGridEdge(tile: THREE.Vector2, face: THREE.Vector2, tileDim
 export interface IGridVertex extends IGridCoord {
   vertex: number;
 }
+
+// This default should end up unseen -- for converters.
+export const defaultGridVertex: IGridVertex = { x: -10000, y: -10000, vertex: 0 };
 
 export function verticesEqual(a: IGridVertex, b: IGridVertex | undefined): boolean {
   return (b === undefined) ? false : (coordsEqual(a, b) && a.vertex === b.vertex);

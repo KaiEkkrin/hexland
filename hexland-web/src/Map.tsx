@@ -23,13 +23,13 @@ import { IAdventureIdentified } from './data/identified';
 import { IMap } from './data/map';
 import { registerMapAsRecent, consolidateMapChanges } from './services/extensions';
 
+import { standardColours } from './models/featureColour';
 import { MapStateMachine, createDefaultState } from './models/mapStateMachine';
 
 import { RouteComponentProps } from 'react-router-dom';
 
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
-import { standardColours } from './models/featureColour';
 
 function Map(props: IMapPageProps) {
   const firebaseContext = useContext(FirebaseContext);

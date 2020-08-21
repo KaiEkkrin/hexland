@@ -1,4 +1,4 @@
-import { IGridCoord } from "./coord";
+import { IGridCoord, defaultGridCoord } from "./coord";
 import { IFeature } from "./feature";
 
 // Describes an annotation on the map.
@@ -9,6 +9,14 @@ export interface IAnnotation extends IFeature<IGridCoord> {
   text: string;
   visibleToPlayers: boolean; // if false, only the owner will see it rendered
 }
+
+export const defaultAnnotation = {
+  position: defaultGridCoord,
+  colour: 0,
+  id: "",
+  text: "",
+  visibleToPlayers: false
+};
 
 // This will not be stored, but will be sent to the React layer for rendering.
 // The clientX and clientY values will be in projected co-ordinates, in the range

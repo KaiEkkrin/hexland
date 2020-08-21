@@ -9,7 +9,7 @@ import { SquareGridGeometry } from './squareGridGeometry';
 import { WallHighlighter } from './wallHighlighter';
 
 import { IAnnotation, IPositionedAnnotation } from '../data/annotation';
-import { IChange, ChangeType, ChangeCategory, ITokenRemove, ITokenAdd, INoteRemove, INoteAdd, ITokenMove } from '../data/change';
+import { IChange, createTokenRemove, createTokenAdd, createNoteRemove, createNoteAdd, createTokenMove } from '../data/change';
 import { trackChanges } from '../data/changeTracking';
 import { IGridCoord, coordString, coordsEqual, coordSub, coordAdd } from '../data/coord';
 import { FeatureDictionary, IToken, ITokenProperties } from '../data/feature';
@@ -204,14 +204,15 @@ export class MapStateMachine {
     // be rejected by the change tracker, and so we create our own change tracker to do this.
     // It's safe for us to use our current areas, walls and map colouring because those won't
     // change, but we need to clone our tokens into a scratch dictionary.
-    var changes = fluent(this._drawing.selection).map(f => {
-      return {
-        ty: ChangeType.Move,
-        cat: ChangeCategory.Token,
-        newPosition: coordAdd(f.position, delta),
-        oldPosition: f.position
-      };
-    });
+    var changes: IChange[] = [];
+    for (var s of this._drawing.selection) {
+      var tokenHere = this._drawing.tokens.get(s.position);
+      if (tokenHere === undefined) {
+        continue;
+      }
+
+      changes.push(createTokenMove(s.position, coordAdd(s.position, delta), tokenHere.id));
+    }
 
     var changeTracker = new MapChangeTracker(
       this._drawing.areas, this._drawing.tokens.clone(), this._drawing.walls, this._notes, this._mapColouring
@@ -459,14 +460,14 @@ export class MapStateMachine {
 
         if (this.canDropSelectionAt(position)) {
           // Create commands that move all the tokens
-          chs.push(...fluent(this._drawing.selection).map(t => {
-            return {
-              ty: ChangeType.Move,
-              cat: ChangeCategory.Token,
-              newPosition: coordAdd(t.position, delta),
-              oldPosition: t.position
-            } as ITokenMove;
-          }));
+          for (var s of this._drawing.selection) {
+            var tokenHere = this._drawing.tokens.get(s.position);
+            if (tokenHere === undefined) {
+              continue;
+            }
+
+            chs.push(createTokenMove(s.position, coordAdd(s.position, delta), tokenHere.id));
+          }
 
           // Move the selection to the target positions
           fluent(this._drawing.selection).map(t => this._drawing.selection.remove(t.position))
@@ -523,25 +524,17 @@ export class MapStateMachine {
     if (position !== undefined) {
       if (this._notes.get(position) !== undefined) {
         // Replace the existing note
-        chs.push({
-          ty: ChangeType.Remove,
-          cat: ChangeCategory.Note,
-          position: position
-        } as INoteRemove);
+        chs.push(createNoteRemove(position));
       }
 
       if (id.length > 0 && colour >= 0 && text.length > 0) {
-        chs.push({
-          ty: ChangeType.Add,
-          cat: ChangeCategory.Note,
-          feature: {
-            position: position,
-            colour: colour,
-            id: id,
-            text: text,
-            visibleToPlayers: visibleToPlayers
-          }
-        } as INoteAdd);
+        chs.push(createNoteAdd({
+          position: position,
+          colour: colour,
+          id: id,
+          text: text,
+          visibleToPlayers: visibleToPlayers
+        }));
       }
     }
 
@@ -556,24 +549,14 @@ export class MapStateMachine {
     var position = this._drawing.getGridCoordAt(cp);
     var chs: IChange[] = [];
     if (position !== undefined) {
-      if (this._drawing.tokens.get(position) !== undefined) {
+      var existingToken = this._drawing.tokens.get(position);
+      if (existingToken !== undefined) {
         // Replace the existing token
-        chs.push({
-          ty: ChangeType.Remove,
-          cat: ChangeCategory.Token,
-          position: position
-        } as ITokenRemove);
+        chs.push(createTokenRemove(position, existingToken.id));
       }
 
       if (properties !== undefined && properties.colour >= 0) {
-        chs.push({
-          ty: ChangeType.Add,
-          cat: ChangeCategory.Token,
-          feature: {
-            position: position,
-            ...properties
-          }
-        } as ITokenAdd);
+        chs.push(createTokenAdd({ position: position, ...properties }));
       }
     }
 

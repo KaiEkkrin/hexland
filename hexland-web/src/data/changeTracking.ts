@@ -1,14 +1,16 @@
 import { IAnnotation } from "./annotation";
-import { IChange, ChangeCategory, ChangeType, IAreaAdd, IAreaRemove, ITokenAdd, IWallAdd, IWallRemove, ITokenRemove, ITokenMove, INoteAdd, INoteRemove } from "./change";
+import { IChange, ChangeCategory, ChangeType, IAreaAdd, IAreaRemove, ITokenAdd, IWallAdd, IWallRemove, ITokenRemove, ITokenMove, INoteAdd, INoteRemove, createAreaAdd, createWallAdd, createNoteAdd, createTokenAdd } from "./change";
 import { IGridCoord, IGridEdge } from "./coord";
 import { IFeature, IToken, IFeatureDictionary } from "./feature";
 import { IMap } from "./map";
+
+import { v4 as uuidv4 } from 'uuid';
 
 export interface IChangeTracker {
   areaAdd: (feature: IFeature<IGridCoord>) => boolean;
   areaRemove: (position: IGridCoord) => IFeature<IGridCoord> | undefined;
   tokenAdd: (map: IMap, user: string, feature: IToken, oldPosition: IGridCoord | undefined) => boolean;
-  tokenRemove: (map: IMap, user: string, position: IGridCoord) => IToken | undefined;
+  tokenRemove: (map: IMap, user: string, position: IGridCoord, tokenId: string | undefined) => IToken | undefined;
   wallAdd: (feature: IFeature<IGridEdge>) => boolean;
   wallRemove: (position: IGridEdge) => IFeature<IGridEdge> | undefined;
   noteAdd: (feature: IAnnotation) => boolean;
@@ -55,8 +57,15 @@ export class SimpleChangeTracker implements IChangeTracker {
     return this._tokens.add(feature);
   }
 
-  tokenRemove(map: IMap, user: string, position: IGridCoord) {
-    return this._tokens.remove(position);
+  tokenRemove(map: IMap, user: string, position: IGridCoord, tokenId: string | undefined) {
+    var removed = this._tokens.remove(position);
+    if (removed !== undefined && removed.id !== tokenId) {
+      // Oops, ID mismatch, put it back!
+      this._tokens.add(removed);
+      return undefined;
+    }
+
+    return removed;
   }
 
   wallAdd(feature: IFeature<IGridEdge>) {
@@ -83,30 +92,20 @@ export class SimpleChangeTracker implements IChangeTracker {
 
   getConsolidated(): IChange[] {
     var all: IChange[] = [];
-    this._areas.forEach(f => all.push({
-      ty: ChangeType.Add,
-      cat: ChangeCategory.Area,
-      feature: f
-    } as IAreaAdd));
+    this._areas.forEach(f => all.push(createAreaAdd(f)));
     
-    this._tokens.forEach(f => all.push({
-      ty: ChangeType.Add,
-      cat: ChangeCategory.Token,
-      feature: f
-    } as ITokenAdd));
+    this._tokens.forEach(f => {
+      // `undefined` isn't supported in Firestore, so correct any token without
+      // an id now
+      if (f.id === undefined) {
+        f.id = uuidv4();
+      }
 
-    this._walls.forEach(f => all.push({
-      ty: ChangeType.Add,
-      cat: ChangeCategory.Wall,
-      feature: f
-    } as IWallAdd));
+      return all.push(createTokenAdd(f));
+    });
 
-    this._notes.forEach(f => all.push({
-      ty: ChangeType.Add,
-      cat: ChangeCategory.Note,
-      feature: f
-    } as INoteAdd));
-
+    this._walls.forEach(f => all.push(createWallAdd(f)));
+    this._notes.forEach(f => all.push(createNoteAdd(f)));
     return all;
   }
 }
@@ -237,7 +236,7 @@ function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: IChange, user:
           var added = tracker.tokenAdd(map, user, chAdd.feature, undefined);
           return added ? {
             revert: function () {
-              tracker.tokenRemove(map, user, chAdd.feature.position);
+              tracker.tokenRemove(map, user, chAdd.feature.position, chAdd.feature.id);
             }
           } : undefined;
         }
@@ -248,7 +247,7 @@ function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: IChange, user:
         return undefined;
       }
       var chRemove = ch as ITokenRemove;
-      var removed = tracker.tokenRemove(map, user, chRemove.position);
+      var removed = tracker.tokenRemove(map, user, chRemove.position, chRemove.tokenId);
       return removed === undefined ? undefined : {
         revert: function () {
           if (removed !== undefined) { tracker.tokenAdd(map, user, removed, undefined); }
@@ -258,7 +257,7 @@ function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: IChange, user:
 
     case ChangeType.Move:
       var chMove = ch as ITokenMove;
-      var moved = tracker.tokenRemove(map, user, chMove.oldPosition);
+      var moved = tracker.tokenRemove(map, user, chMove.oldPosition, chMove.tokenId);
       return moved === undefined ? undefined : {
         revert: function () {
           if (moved !== undefined) { tracker.tokenAdd(map, user, moved, undefined); }
@@ -277,7 +276,7 @@ function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: IChange, user:
           var added = tracker.tokenAdd(map, user, toAdd as IToken, chMove.oldPosition);
           return added ? {
             revert: function revert() {
-              tracker.tokenRemove(map, user, chMove.newPosition);
+              tracker.tokenRemove(map, user, chMove.newPosition, chMove.tokenId);
             }
           } : undefined;
         }

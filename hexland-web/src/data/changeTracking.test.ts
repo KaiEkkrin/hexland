@@ -3,12 +3,14 @@ import { trackChanges, SimpleChangeTracker } from './changeTracking';
 import { IGridCoord, coordString, edgeString, IGridEdge } from './coord';
 import { FeatureDictionary, IFeature, IToken } from './feature';
 import { IMap, MapType } from './map';
+import { IAnnotation } from './annotation';
 
 function createChangeTracker() {
   return new SimpleChangeTracker(
     new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
     new FeatureDictionary<IGridCoord, IToken>(coordString),
-    new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString)
+    new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
+    new FeatureDictionary<IGridCoord, IAnnotation>(coordString)
   );
 }
 
@@ -793,6 +795,7 @@ test('Users can move only their own tokens', () => {
     feature: {
       position: { x: 1, y: 2 },
       colour: 3,
+      id: "tid1",
       text: "a",
       players: [uid1]
     }
@@ -802,6 +805,7 @@ test('Users can move only their own tokens', () => {
     feature: {
       position: { x: 2, y: 2 },
       colour: 2,
+      id: "tid2",
       text: "b",
       players: [uid2]
     }
@@ -811,52 +815,65 @@ test('Users can move only their own tokens', () => {
     feature: {
       position: { x: 3, y: 2 },
       colour: 1,
-      text: "c"
+      id: "tid3",
+      text: "c",
+      players: []
     }
   }];
 
   var ok = trackChanges(map, tracker, chs, ownerUid);
   expect(ok).toBeTruthy();
 
-  function move(x: number, oldY: number, newY: number): ITokenMove {
+  function move(x: number, oldY: number, newY: number, tokenId: string | undefined): ITokenMove {
     return {
       ty: ChangeType.Move,
       cat: ChangeCategory.Token,
       newPosition: { x: x, y: newY },
-      oldPosition: { x: x, y: oldY }
+      oldPosition: { x: x, y: oldY },
+      tokenId: tokenId
     };
   }
 
   // This definitely shouldn't succeed
-  ok = trackChanges(map, tracker, [move(1, 2, 1), move(2, 2, 1), move(3, 2, 1)], uid1);
+  ok = trackChanges(map, tracker, [move(1, 2, 1, "tid1"), move(2, 2, 1, "tid2"), move(3, 2, 1, "tid3")], uid1);
   expect(ok).toBeFalsy();
 
   // Nor should this attempt of uid1 to move uid2's token
-  ok = trackChanges(map, tracker, [move(2, 2, 1)], uid1);
+  ok = trackChanges(map, tracker, [move(2, 2, 1, "tid2")], uid1);
+  expect(ok).toBeFalsy();
+
+  // ...or these attempts to move tokens using the wrong ids...
+  ok = trackChanges(map, tracker, [move(1, 2, 1, "tid2")], uid1);
+  expect(ok).toBeFalsy();
+
+  ok = trackChanges(map, tracker, [move(2, 2, 1, "tid1")], uid2);
+  expect(ok).toBeFalsy();
+
+  ok = trackChanges(map, tracker, [move(3, 2, 1, undefined)], ownerUid);
   expect(ok).toBeFalsy();
 
   // It should be fine for each of them to move their own though
-  ok = trackChanges(map, tracker, [move(1, 2, 1)], uid1);
+  ok = trackChanges(map, tracker, [move(1, 2, 1, "tid1")], uid1);
   expect(ok).toBeTruthy();
 
-  ok = trackChanges(map, tracker, [move(2, 2, 1)], uid2);
+  ok = trackChanges(map, tracker, [move(2, 2, 1, "tid2")], uid2);
   expect(ok).toBeTruthy();
 
-  ok = trackChanges(map, tracker, [move(3, 2, 1)], ownerUid);
+  ok = trackChanges(map, tracker, [move(3, 2, 1, "tid3")], ownerUid);
   expect(ok).toBeTruthy();
 
   // The owner can move them all together
-  ok = trackChanges(map, tracker, [move(1, 1, 0), move(2, 1, 0), move(3, 1, 0)], ownerUid);
+  ok = trackChanges(map, tracker, [move(1, 1, 0, "tid1"), move(2, 1, 0, "tid2"), move(3, 1, 0, "tid3")], ownerUid);
   expect(ok).toBeTruthy();
 
   // We can also move them back again
-  ok = trackChanges(map, tracker, [move(1, 0, 1)], uid1);
+  ok = trackChanges(map, tracker, [move(1, 0, 1, "tid1")], uid1);
   expect(ok).toBeTruthy();
 
-  ok = trackChanges(map, tracker, [move(2, 0, 1)], uid2);
+  ok = trackChanges(map, tracker, [move(2, 0, 1, "tid2")], uid2);
   expect(ok).toBeTruthy();
 
-  ok = trackChanges(map, tracker, [move(3, 0, 1)], ownerUid);
+  ok = trackChanges(map, tracker, [move(3, 0, 1, "tid3")], ownerUid);
   expect(ok).toBeTruthy();
 });
 
@@ -959,7 +976,8 @@ test('In FFA mode, a non-owner can do all token operations', () => {
       ty: ChangeType.Move,
       cat: ChangeCategory.Token,
       newPosition: { x: x, y: newY },
-      oldPosition: { x: x, y: oldY }
+      oldPosition: { x: x, y: oldY },
+      tokenId: undefined
     };
   }
 
@@ -972,7 +990,8 @@ test('In FFA mode, a non-owner can do all token operations', () => {
     return {
       ty: ChangeType.Remove,
       cat: ChangeCategory.Token,
-      position: { x: x, y: y }
+      position: { x: x, y: y },
+      tokenId: undefined
     };
   }
 

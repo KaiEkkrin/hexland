@@ -1,5 +1,6 @@
 import * as firebase from 'firebase/app';
 
+import * as Convert from './converter';
 import { IDataService, IDataReference, IDataView, IDataAndReference } from './interfaces';
 import { IAdventure, IPlayer } from '../data/adventure';
 import { IChange, IChanges } from '../data/change';
@@ -19,9 +20,14 @@ const players = "players";
 
 class DataReference<T> implements IDataReference<T> {
   private readonly _dref: firebase.firestore.DocumentReference<firebase.firestore.DocumentData>;
+  private readonly _converter: Convert.IConverter<T>
 
-  constructor(dref: firebase.firestore.DocumentReference<firebase.firestore.DocumentData>) {
+  constructor(
+    dref: firebase.firestore.DocumentReference<firebase.firestore.DocumentData>,
+    converter: Convert.IConverter<T>
+  ) {
     this._dref = dref;
+    this._converter = converter;
   }
 
   get dref(): firebase.firestore.DocumentReference<firebase.firestore.DocumentData> {
@@ -33,7 +39,7 @@ class DataReference<T> implements IDataReference<T> {
   }
 
   convert(rawData: any): T {
-    return rawData as T;
+    return this._converter.convert(rawData);
   }
 }
 
@@ -42,9 +48,10 @@ class DataAndReference<T> extends DataReference<T> implements IDataAndReference<
 
   constructor(
     dref: firebase.firestore.DocumentReference<firebase.firestore.DocumentData>,
-    data: firebase.firestore.DocumentData
+    data: firebase.firestore.DocumentData,
+    converter: Convert.IConverter<T>
   ) {
-    super(dref);
+    super(dref, converter);
     this._data = data;
   }
 
@@ -105,12 +112,12 @@ export class DataService implements IDataService {
 
   getAdventureRef(id: string): IDataReference<IAdventure> {
     var d = this._db.collection(adventures).doc(id);
-    return new DataReference<IAdventure>(d);
+    return new DataReference<IAdventure>(d, Convert.adventureConverter);
   }
 
   getInviteRef(adventureId: string, id: string): IDataReference<IInvite> {
     var d = this._db.collection(adventures).doc(adventureId).collection(invites).doc(id);
-    return new DataReference<IInvite>(d);
+    return new DataReference<IInvite>(d, Convert.inviteConverter);
   }
 
   async getLatestInviteRef(adventureId: string): Promise<IDataAndReference<IInvite> | undefined> {
@@ -119,23 +126,18 @@ export class DataService implements IDataService {
       .limit(1)
       .get();
     return (s.empty || s.docs.length === 0) ? undefined :
-      new DataAndReference(s.docs[0].ref, s.docs[0].data());
-  }
-
-  async getMap(adventureId: string, id: string): Promise<IMap | undefined> {
-    var d = await this._db.collection(adventures).doc(adventureId).collection(maps).doc(id).get();
-    return d.exists ? (d.data() as IMap) : undefined;
+      new DataAndReference(s.docs[0].ref, s.docs[0].data(), Convert.inviteConverter);
   }
 
   getMapRef(adventureId: string, id: string): IDataReference<IMap> {
     var d = this._db.collection(adventures).doc(adventureId).collection(maps).doc(id);
-    return new DataReference<IMap>(d);
+    return new DataReference<IMap>(d, Convert.mapConverter);
   }
 
   getMapBaseChangeRef(adventureId: string, id: string): IDataReference<IChanges> {
     var d = this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(id).collection(changes).doc(baseChange);
-    return new DataReference<IChanges>(d);
+    return new DataReference<IChanges>(d, Convert.changesConverter);
   }
 
   async getMapChangesRefs(adventureId: string, id: string): Promise<IDataAndReference<IChanges>[] | undefined> {
@@ -143,22 +145,23 @@ export class DataService implements IDataService {
       .collection(maps).doc(id).collection(changes)
       .orderBy("timestamp")
       .get();
-    return s.empty ? undefined : s.docs.map(d => new DataAndReference(d.ref, d.data()));
+    return s.empty ? undefined : s.docs.map(d => new DataAndReference(d.ref, d.data(), Convert.changesConverter));
   }
 
   getPlayerRef(adventureId: string, uid: string): IDataReference<IPlayer> {
     var d = this._db.collection(adventures).doc(adventureId).collection(players).doc(uid);
-    return new DataReference<IPlayer>(d);
+    return new DataReference<IPlayer>(d, Convert.playerConverter);
   }
 
   async getPlayerRefs(adventureId: string): Promise<IDataAndReference<IPlayer>[]> {
     var s = await this._db.collection(adventures).doc(adventureId).collection(players).get();
-    return s.docs.map(d => new DataAndReference(d.ref, d.data() as IPlayer));
+    return s.docs.map(d => new DataAndReference(
+      d.ref, Convert.playerConverter.convert(d.data()), Convert.playerConverter));
   }
 
   getProfileRef(): IDataReference<IProfile> {
     var d = this._db.collection(profiles).doc(this._uid);
-    return new DataReference<IProfile>(d);
+    return new DataReference<IProfile>(d, Convert.profileConverter);
   }
 
   getUid(): string {

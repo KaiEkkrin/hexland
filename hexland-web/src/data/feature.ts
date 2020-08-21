@@ -1,4 +1,4 @@
-import { IGridCoord } from './coord';
+import { IGridCoord, defaultGridCoord, IGridEdge, defaultGridEdge } from './coord';
 
 // Describes an instanced feature:
 // (Must be possible to copy this with Object.assign)
@@ -9,6 +9,7 @@ export interface IFeature<K> {
 
 // A token has some extra properties:
 export interface ITokenProperties {
+  id: string | undefined; // a UUID for this token, that follows it around
   colour: number;
   players: string[]; // the uids of the players that can move this token
   text: string; // maximum of three characters
@@ -17,6 +18,26 @@ export interface ITokenProperties {
 }
 
 export interface IToken extends IFeature<IGridCoord>, ITokenProperties {}
+
+export const defaultArea: IFeature<IGridCoord> = {
+  position: defaultGridCoord,
+  colour: 0
+};
+
+export const defaultToken: IToken = {
+  position: defaultGridCoord,
+  colour: 0,
+  id: undefined,
+  players: [],
+  text: "",
+  note: "",
+  noteVisibleToPlayers: false
+};
+
+export const defaultWall: IFeature<IGridEdge> = {
+  position: defaultGridEdge,
+  colour: 0
+};
 
 // The interface of a dictionary of these
 export interface IFeatureDictionary<K extends IGridCoord, F extends IFeature<K>> extends Iterable<F> {

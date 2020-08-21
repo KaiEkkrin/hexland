@@ -50,8 +50,8 @@ export class MapChangeTracker extends SimpleChangeTracker {
     return true;
   }
 
-  tokenRemove(map: IMap, user: string, position: IGridCoord) {
-    var removed = super.tokenRemove(map, user, position);
+  tokenRemove(map: IMap, user: string, position: IGridCoord, tokenId: string | undefined) {
+    var removed = super.tokenRemove(map, user, position, tokenId);
     if (removed !== undefined) {
       this._haveTokensChanged = true;
     }
