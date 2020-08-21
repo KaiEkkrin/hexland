@@ -7,11 +7,19 @@
   flex-direction: column;
 }
 
+.Map-overlay {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
 .Map-controls {
   display: flex;
   flex-direction: column;
-  min-width: 4rem;
-  width: 4rem;
+  margin-left: 1rem;
+  margin-top: 1rem;
+  min-width: 3rem;
+  width: 3rem;
   z-index: 1;
 }
 
@@ -24,9 +32,21 @@
   height: 100vh;
 }
 
-.Map-min {
-  min-width: 1rem;
-  width: 1rem;
+.Map-info {
+  display: flex;
+  flex-direction: column;
+  margin-right: 1rem;
+  margin-top: 1rem;
+  min-width: 3rem;
+}
+
+.Map-info-card {
+  z-index: 1;
+}
+
+.Map-info-list-item {
+  background-color: #1b1e21 !important;
+  color: #c6c8ca;
 }
 
 .Map-nav {

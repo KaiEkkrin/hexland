@@ -7,6 +7,7 @@ import { FirebaseContext } from './components/FirebaseContextProvider';
 import MapControls, { EditMode, MapColourVisualisationMode } from './components/MapControls';
 import MapAnnotations, { ShowAnnotationFlags } from './components/MapAnnotations';
 import MapEditorModal from './components/MapEditorModal';
+import MapInfo from './components/MapInfo';
 import Navigation from './components/Navigation';
 import NoteEditorModal from './components/NoteEditorModal';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
@@ -115,9 +116,9 @@ function Map(props: IMapPageProps) {
     }
   }, [statusContext, canSeeAnything]);
 
-  // Track the adventure's players, if we might need access to this
+  // Track the adventure's players
   useEffect(() => {
-    if (userContext.dataService === undefined || canDoAnything === false) {
+    if (userContext.dataService === undefined) {
       return () => {};
     }
 
@@ -139,7 +140,7 @@ function Map(props: IMapPageProps) {
 
   // == UI STUFF ==
 
-  const [canOpenMapEditor, setCanOpenMapEditor] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
   const [editMode, setEditMode] = useState(EditMode.Select);
   const [mapColourMode, setMapColourMode] = useState(MapColourVisualisationMode.Areas);
   const [selectedColour, setSelectedColour] = useState(0);
@@ -160,7 +161,7 @@ function Map(props: IMapPageProps) {
   }, [userContext.dataService, map]);
 
   useEffect(() => {
-    setCanOpenMapEditor(userContext.dataService?.getUid() === map?.record.owner);
+    setIsOwner(userContext.dataService?.getUid() === map?.record.owner);
   }, [userContext.dataService, map]);
 
   // When the edit mode changes away from Select, we should clear any selection.
@@ -332,19 +333,21 @@ function Map(props: IMapPageProps) {
       <div className="Map-nav">
         <Navigation title={map?.record.name} />
       </div>
-      <MapControls
-        editMode={editMode}
-        setEditMode={setEditMode}
-        selectedColour={selectedColour}
-        setSelectedColour={setSelectedColour}
-        resetView={() => stateMachine?.resetView()}
-        mapColourVisualisationMode={mapColourMode}
-        setMapColourVisualisationMode={setMapColourMode}
-        canDoAnything={canDoAnything}
-        canOpenMapEditor={canOpenMapEditor}
-        openMapEditor={() => setShowMapEditor(true)}
-        setShowAnnotationFlags={cycleShowAnnotationFlags}
-        map={map?.record} players={players} tokens={mapState.tokens} />
+      <div className="Map-overlay">
+        <MapControls
+          editMode={editMode}
+          setEditMode={setEditMode}
+          selectedColour={selectedColour}
+          setSelectedColour={setSelectedColour}
+          resetView={() => stateMachine?.resetView()}
+          mapColourVisualisationMode={mapColourMode}
+          setMapColourVisualisationMode={setMapColourMode}
+          canDoAnything={canDoAnything}
+          isOwner={isOwner}
+          openMapEditor={() => setShowMapEditor(true)}
+          setShowAnnotationFlags={cycleShowAnnotationFlags} />
+        <MapInfo map={map?.record} players={players} tokens={mapState.tokens} />
+      </div>
       <div className="Map-content">
         <div id="drawingDiv" ref={drawingRef}
           onMouseDown={handleMouseDown}

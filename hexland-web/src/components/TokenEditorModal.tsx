@@ -81,6 +81,7 @@ function TokenEditorModal(props: ITokenEditorModalProps) {
             <Form.Label htmlFor="tokenColour">Colour</Form.Label>
             <Form.Row>
               <ColourSelection id="tokenColour"
+                hidden={false}
                 includeNegative={false}
                 isVertical={false}
                 selectedColour={colour}
