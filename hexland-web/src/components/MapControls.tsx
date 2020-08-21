@@ -99,8 +99,8 @@ function MapControls(props: IMapControlsProps) {
 
   return (
     <div className="Map-controls bg-dark">
-      <ButtonGroup className="mb-2" toggle vertical>{modeButtons}</ButtonGroup>
-      <ButtonGroup className="mb-2" vertical>
+      <ButtonGroup className="Map-control" toggle vertical>{modeButtons}</ButtonGroup>
+      <ButtonGroup className="Map-control" vertical>
         <OverlayTrigger placement="right" overlay={
           <Tooltip id="reset-tooltip">Reset the map view</Tooltip>
         }>
@@ -120,20 +120,20 @@ function MapControls(props: IMapControlsProps) {
           </Dropdown.Menu>
         </Dropdown>
       </ButtonGroup>
-      <ColourSelection id="mapColourSelect"
+      <ColourSelection className="Map-control" id="mapColourSelect"
         hidden={hideExtraControls}
         includeNegative={true}
         isVertical={true}
         selectedColour={props.selectedColour}
         setSelectedColour={props.setSelectedColour} />
-      <ButtonGroup className="mt-2" hidden={hideExtraControls} toggle vertical>
+      <ButtonGroup className="Map-control" hidden={hideExtraControls} toggle vertical>
         <ModeButton value={MapColourVisualisationMode.Areas} icon={faSquare} tooltip="Show area colours"
           mode={props.mapColourVisualisationMode} setMode={props.setMapColourVisualisationMode} />
         <ModeButton value={MapColourVisualisationMode.Connectivity} icon={faSuitcase}
           tooltip="Show map connectivity colours"
           mode={props.mapColourVisualisationMode} setMode={props.setMapColourVisualisationMode} />
       </ButtonGroup>
-      <ButtonGroup className="mt-2" hidden={isNotOwner} vertical>
+      <ButtonGroup className="Map-control" hidden={isNotOwner} vertical>
         <OverlayTrigger placement="right" overlay={
           <Tooltip id="map-editor-tooltip">Open map settings</Tooltip>
         }>
