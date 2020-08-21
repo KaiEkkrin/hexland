@@ -18,6 +18,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 jest.mock('./components/FirebaseContextProvider');
 jest.mock('./components/Routing');
+jest.mock('./models/three/drawing.ts');
 
 interface IHistoryChange {
   verb: string; // 'goBack', 'replace', 'push'
@@ -35,6 +36,11 @@ jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useHistory: () => mockHistory,
 }));
+
+interface IAdventureAndMapLinks {
+  adventureLink: string;
+  mapLink: string;
+}
 
 interface IPageCheck {
   textsPresent: RegExp[];
@@ -66,7 +72,7 @@ describe('test app', () => {
     return historyWillChange;
   }
 
-  async function createAdventureAndMapFromHome(projectId: string, user?: IUser | undefined): Promise<string> {
+  async function createAdventureAndMapFromHome(projectId: string, user?: IUser | undefined): Promise<IAdventureAndMapLinks> {
     const { findByLabelText, findByRole, findByText, queryByLabelText, queryByRole } = render(
       <App projectId={projectId} user={user} defaultRoute="/" />
     );
@@ -145,7 +151,10 @@ describe('test app', () => {
     expect(adventureLinkElement).toBeInTheDocument();
 
     cleanup();
-    return adventureLinkElement.pathname;
+    return {
+      adventureLink: adventureLinkElement.pathname,
+      mapLink: openMapElement.pathname
+    };
   }
 
   async function checkPage(location: string | undefined, check: IPageCheck, projectId: string, user?: IUser | undefined) {
@@ -235,6 +244,42 @@ describe('test app', () => {
     return historyWillChange;
   }
 
+  async function checkNoTokensOnMap(location: string, projectId: string, user?: IUser | undefined): Promise<void> {
+    // render the map page
+    const { findByTitle, findByText, getByTitle } = render(
+      <App projectId={projectId} user={user} defaultRoute={location} />
+    );
+
+    // The "no tokens" message should appear
+    const noTokensElement = await findByText(/The map owner has not assigned you any tokens/);
+    expect(noTokensElement).toBeInTheDocument();
+
+    // TODO find the no players button, click it, and check it expands with
+    // the two users' display names and the "no tokens" badge.
+    const playersButton = getByTitle(/players/i);
+    expect(playersButton).toBeInTheDocument();
+
+    await act(async () => {
+      userEvent.click(playersButton);
+    });
+
+    // The player list should have an entry for the owner, and one for this user.
+    const playersOwnerElement = await findByTitle("Player Owner");
+    expect(playersOwnerElement).toBeInTheDocument();
+
+    const playersUserElement = await findByTitle("Player " + user?.displayName);
+    expect(playersUserElement).toBeInTheDocument();
+
+    // We should also be showing suitable badges
+    const playerOwnerIsOwnerElement = await findByTitle("Player Owner is the map owner");
+    expect(playerOwnerIsOwnerElement).toBeInTheDocument();
+
+    const playerUserHasNoTokenElement = await findByTitle("Player " + user?.displayName + " has no token");
+    expect(playerUserHasNoTokenElement).toBeInTheDocument();
+
+    cleanup();
+  }
+
   // *** TESTS *** 
 
   test('login with Google fails', async () => {
@@ -267,12 +312,12 @@ describe('test app', () => {
 
     // If I load the home page now, it should let me create a new adventure and
     // it should still be showing the profile name
-    const adventureLink = await createAdventureAndMapFromHome(projectId);
-    expect(adventureLink).toMatch(/^\/adventure\/.*$/);
-    console.log("Adventure link: " + adventureLink);
+    const links = await createAdventureAndMapFromHome(projectId);
+    expect(links.adventureLink).toMatch(/^\/adventure\/.*$/);
+    console.log("Adventure link: " + links.adventureLink);
 
     // Open the adventure; we should see the map listed, along with "Create invite link"
-    const inviteLink = await createInviteLink(adventureLink, projectId);
+    const inviteLink = await createInviteLink(links.adventureLink, projectId);
     console.log("Invite link: " + inviteLink);
 
     // Trying to load that link when not logged in (which is what our simulated auth does
@@ -295,9 +340,10 @@ describe('test app', () => {
     // Accept the invite
     var redirectToAdventure = await acceptInvite(inviteLink, projectId, user1);
     expect(redirectToAdventure.verb).toBe('replace');
-    expect(redirectToAdventure.parameter).toBe(adventureLink);
+    expect(redirectToAdventure.parameter).toBe(links.adventureLink);
 
     // The user should see the map and adventure on the adventure page
+    // TODO Really I should be reading the map link from here instead!
     const checks = {
       textsPresent: [/Here be dragons/, /Dragon\'s lair/]
     };
@@ -306,5 +352,8 @@ describe('test app', () => {
     // ...and the adventure on the shared and home pages
     await checkPage('/shared', { textsPresent: [/Here be dragons/] }, projectId, user1);
     await checkPage('/', { textsPresent: [/Test adventure/] }, projectId, user1);
+
+    // Check the map page.  It should tell us we have no tokens
+    await checkNoTokensOnMap(links.mapLink, projectId, user1);
   }, 10000);
 });

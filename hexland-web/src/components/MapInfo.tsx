@@ -44,7 +44,7 @@ function MapInfoCard(props: IMapInfoCardProps) {
 
   if (isCollapsed) {
     return (
-      <Button className="Map-info-card mb-2" variant="dark" onClick={() => setIsCollapsed(false)}>
+      <Button className="Map-info-card mb-2" title="Players" variant="dark" onClick={() => setIsCollapsed(false)}>
         {props.buttonContent}
       </Button>
     );
@@ -93,16 +93,24 @@ function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
 
   return (
     <ListGroup.Item className="Map-info-list-item">
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        {props.player.playerName}
+      <div title={"Player " + props.player.playerName}
+        style={{ display: "flex", justifyContent: "space-between" }}
+      >{props.player.playerName}
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
           {showOwnerBadge ? (
-            <Badge className="ml-2" variant="warning">Owner</Badge>
+            <Badge className="ml-2" variant="warning"
+              title={"Player " + props.player.playerName + " is the map owner"}
+            >Owner</Badge>
           ) : myTokens.length > 0 ? myTokens.map(t => (
-            <Badge className="ml-2" style={{ backgroundColor: hexColours[t.colour], color: "black" }}>{t.text}</Badge>
+            <Badge className="ml-2" key={t.id}
+              title={"Player " + props.player.playerName + " has token " + t.text}
+              style={{ backgroundColor: hexColours[t.colour], color: "black" }}
+            >{t.text}</Badge>
           )) : (
-                <Badge className="ml-2" hidden={isNoTokenHidden} variant="danger">No token</Badge>
-              )}
+            <Badge className="ml-2" hidden={isNoTokenHidden} variant="danger"
+              title={"Player " + props.player.playerName + " has no token"}
+            >No token</Badge>
+          )}
         </div>
       </div>
     </ListGroup.Item>
@@ -119,7 +127,7 @@ function PlayerInfoList(props: IPlayerInfoListProps) {
   return (
     <ListGroup variant="flush">
       {props.players.map(p => (
-        <PlayerInfoListItem map={props.map} player={p} tokens={props.tokens} />
+        <PlayerInfoListItem key={p.playerId} map={props.map} player={p} tokens={props.tokens} />
       ))}
     </ListGroup>
   );
