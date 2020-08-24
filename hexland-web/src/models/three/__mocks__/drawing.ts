@@ -4,6 +4,9 @@ import { IDrawing } from "../../interfaces";
 import { IVisibility } from '../../los';
 import { FeatureDictionary, IFeature, IToken } from "../../../data/feature";
 import { IGridCoord, coordString, IGridEdge, edgeString, IGridVertex, vertexString } from "../../../data/coord";
+import { OutlinedRectangle } from "./overlayRectangle";
+
+jest.mock('../overlayRectangle');
 
 // The mock drawings we create will be pushed here so that the test
 // harness can access them and their mock functions.
@@ -35,10 +38,13 @@ export function createDrawing(
 
     los: new FeatureDictionary<IGridCoord, IVisibility>(coordString),
 
+    outlinedRectangle: OutlinedRectangle(),
+
     animate: jest.fn(),
     getGridCoordAt: jest.fn(),
     getGridEdgeAt: jest.fn(),
     getGridVertexAt: jest.fn(),
+    getViewportToWorld: jest.fn(),
     getWorldToViewport: jest.fn(),
     handleChangesApplied: jest.fn(),
     resize: jest.fn(),

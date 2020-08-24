@@ -1,10 +1,8 @@
 import { IGridCoord, coordString, IGridEdge, coordsEqual } from '../data/coord';
 import { FeatureDictionary, IFeature, IFeatureDictionary } from '../data/feature';
 import { MapColouring } from './colouring';
-import { EdgeOcclusion } from './edgeOcclusion';
+import { TestVertexCollection } from './occlusion';
 import { IGridGeometry } from './gridGeometry';
-
-import * as THREE from 'three';
 
 // Visibility colours.
 export const oNone = 0;
@@ -56,24 +54,18 @@ function combineVisibility(a: IVisibility, b: IVisibility): IVisibility {
   };
 }
 
-function testVisibility(occ: EdgeOcclusion, testVertices: THREE.Vector3[], vis: IVisibility) {
-  // Tests this visibility position for occlusion against the edge and viewer described by `occ`
-  // and mutates it as required.
-  for (var i = 0; i < testVertices.length; ++i) {
-    if (occ.test(testVertices[i])) {
-      vis.hidden |= (1 << i);
-    }
-  }
-
-  vis.colour = getVisibilityColour(vis.count, vis.hidden);
-}
-
 // For unit testing.
 export function testVisibilityOf(geometry: IGridGeometry, coord: IGridCoord, target: IGridCoord, wall: IGridEdge) {
   var occ = geometry.createEdgeOcclusion(coord, wall, z);
-  var testVertices = [...geometry.createOcclusionTestVertices(target, z, alpha)];
-  var vis = createVisibility(target, testVertices.length, false, 0);
-  testVisibility(occ, testVertices, vis);
+  var testCollection = new TestVertexCollection(geometry, z, alpha);
+  var vis = createVisibility(target, testCollection.count, false, 0);
+  testCollection.testCoord(target, (c, v, i) => {
+    if (occ.test(v)) {
+      vis.hidden |= (1 << i);
+    }
+    return true;
+  });
+  vis.colour = getVisibilityColour(vis.count, vis.hidden);
   return vis.colour;
 }
 
@@ -85,15 +77,12 @@ export function create(geometry: IGridGeometry, colouring: MapColouring, coord: 
   // The number of test vertices will be a function of only the geometry.
   // We create them right away and re-use them for each test, because creating
   // them all for each test is very expensive (too many allocations)
-  const testVerticesAtZero = [...geometry.createOcclusionTestVertices({ x: 0, y: 0 }, z, alpha)];
-  var testVertices = [...testVerticesAtZero];
-  const testVertexOrigin = testVerticesAtZero[0]; // cheating -- assume this is right in the middle
-  const testVertexCount = testVerticesAtZero.length;
+  const testCollection = new TestVertexCollection(geometry, z, alpha);
 
   // With the undefined coord, return an LoS that hides everything
   if (coord === undefined) {
     colouring.forEachFace(f => {
-      los.add(createVisibility(f.position, testVertexCount, true, 0));
+      los.add(createVisibility(f.position, testCollection.count, true, 0));
     });
 
     return los;
@@ -104,14 +93,13 @@ export function create(geometry: IGridGeometry, colouring: MapColouring, coord: 
   // TODO can I optimise this somehow...?
   const colour = colouring.colourOf(coord);
   colouring.forEachFace(f => {
-    los.add(createVisibility(f.position, testVertexCount, f.colour !== colour, f.colour));
+    los.add(createVisibility(f.position, testCollection.count, f.colour !== colour, f.colour));
   })
 
   // Get all the relevant walls that we need to check against
   const walls = colouring.getWallsOfColour(colour);
 
   // Check each coord (that isn't the source) for occlusion by each wall.
-  var testVertexOffset = new THREE.Vector3();
   walls.forEach(w => {
     var occ = geometry.createEdgeOcclusion(coord, w.position, z); // TODO re-use this memory too?
     los.forEach(f => {
@@ -125,15 +113,14 @@ export function create(geometry: IGridGeometry, colouring: MapColouring, coord: 
         return;
       }
 
-      // We transform the occlusion test vertices to this position, and then back
-      // again afterwards
-      geometry.createCoordCentre(testVertexOffset, f.position, z).sub(testVertexOrigin);
-      for (var i = 0; i < testVertexCount; ++i) {
-        testVertices[i].copy(testVerticesAtZero[i]);
-        testVertices[i].add(testVertexOffset);
-      }
+      testCollection.testCoord(f.position, (c, v, i) => {
+        if (occ.test(v)) {
+          f.hidden |= (1 << i);
+        }
+        return true;
+      });
 
-      testVisibility(occ, testVertices, f);
+      f.colour = getVisibilityColour(f.count, f.hidden);
     });
   });
 

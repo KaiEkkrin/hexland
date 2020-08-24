@@ -1,5 +1,5 @@
 import { IGridCoord, IGridEdge, coordAdd, IGridVertex } from '../data/coord';
-import { EdgeOcclusion } from './edgeOcclusion';
+import { EdgeOcclusion } from './occlusion';
 import { BaseGeometry, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
 

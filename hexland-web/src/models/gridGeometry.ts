@@ -1,5 +1,5 @@
 import { IGridCoord, IGridEdge, createGridCoord, createGridEdge, coordMultiplyScalar, createGridVertex, IGridVertex } from '../data/coord';
-import { EdgeOcclusion } from './edgeOcclusion';
+import { EdgeOcclusion } from './occlusion';
 import * as THREE from 'three';
 
 // A grid geometry describes a grid's layout (currently either squares

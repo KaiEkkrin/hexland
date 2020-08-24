@@ -6,6 +6,7 @@ import { HexGridGeometry } from './hexGridGeometry';
 import { IDrawing } from './interfaces';
 import * as LoS from './los';
 import { MapChangeTracker } from './mapChangeTracker';
+import { RectangleOcclusion, TestVertexCollection } from './occlusion';
 import { SquareGridGeometry } from './squareGridGeometry';
 import { WallHighlighter } from './wallHighlighter';
 
@@ -96,6 +97,8 @@ export class MapStateMachine {
   private readonly _scratchVector2 = new THREE.Vector3();
   private readonly _scratchVector3 = new THREE.Vector3();
 
+  private readonly _testVertexCollection: TestVertexCollection;
+
   private _state: IMapState;
 
   private _lastAnimationTime: number | undefined;
@@ -107,9 +110,11 @@ export class MapStateMachine {
   private _marginPanningY = 0;
 
   private _isRotating = false;
-  private _panLast: THREE.Vector2 | undefined;
+  private _panLast: THREE.Vector3 | undefined;
 
-  private _selectDragStart: IGridCoord | undefined;
+  private _dragRectangleStart: THREE.Vector3 | undefined; // client position
+  private _dragCumulative = false;
+
   private _tokenMoveDragStart: IGridCoord | undefined;
   private _tokenMoveDragSelectionPosition: IGridCoord | undefined;
 
@@ -169,6 +174,9 @@ export class MapStateMachine {
         });
       }
     );
+
+    // We pre-build the test vertex collection for detecting selections
+    this._testVertexCollection = new TestVertexCollection(this._gridGeometry, 0, 1);
 
     this.resize();
     this._drawing.animate(() => this.onAnimate());
@@ -244,7 +252,7 @@ export class MapStateMachine {
     return this.seeEverything || t.players.find(p => this._uid === p) !== undefined;
   }
 
-  private *enumerateAnnotations(): Iterable<IAnnotation> {
+  private *enumerateAnnotations() {
     // Here we enumerate all the relevant annotations that could be displayed --
     // which means both the map notes, and the token-attached notes.
     for (var n of this._notes) {
@@ -264,6 +272,20 @@ export class MapStateMachine {
     }
   }
 
+  private *enumerateCanvasDragRectanglePoints(scratch: THREE.Vector3) {
+    const outlined = this._drawing.outlinedRectangle;
+    yield outlined.position.clone();
+
+    scratch.set(outlined.scale.x, 0, 0);
+    yield outlined.position.clone().add(scratch);
+
+    scratch.set(outlined.scale.x, outlined.scale.y, 0);
+    yield outlined.position.clone().add(scratch);
+
+    scratch.set(0, outlined.scale.y, 0);
+    yield outlined.position.clone().add(scratch);
+  }
+
   private getLoSPositions() {
     // These are the positions we should be projecting line-of-sight from.
     var myTokens = Array.from(this._drawing.tokens).filter(t => this.canSelectToken(t));
@@ -280,6 +302,25 @@ export class MapStateMachine {
       // Show the LoS of only the selected tokens
       return selectedTokens.map(t => t.position);
     }
+  }
+
+  private moveDragRectangleTo(cp: THREE.Vector3) {
+    this._drawing.outlinedRectangle.visible = true;
+    this._drawing.outlinedRectangle.alter(o => {
+      if (this._dragRectangleStart === undefined) {
+        return false;
+      }
+
+      // Create the translation
+      o.position.copy(this._dragRectangleStart).min(cp);
+
+      // Create the scaling (remembering to scale by 1 in z always...)
+      o.scale.copy(this._dragRectangleStart).max(cp)
+        .sub(o.position).add(zAxis);
+      o.updateMatrix();
+      o.updateMatrixWorld();
+      return true;
+    });
   }
 
   private onAnimate() {
@@ -302,7 +343,7 @@ export class MapStateMachine {
     this._lastAnimationTime = now;
   }
 
-  private panIfWithinMargin(cp: THREE.Vector2) {
+  private panIfWithinMargin(cp: THREE.Vector3) {
     if (cp.x < panMargin) {
       this._marginPanningX = -1;
     } else if (cp.x < (window.innerWidth - panMargin)) {
@@ -317,6 +358,45 @@ export class MapStateMachine {
       this._marginPanningY = 0;
     } else {
       this._marginPanningY = -1;
+    }
+  }
+
+  private selectTokensInDragRectangle() {
+    if (
+      this._drawing.outlinedRectangle.scale.x < 1 ||
+      this._drawing.outlinedRectangle.scale.y < 1
+    ) {
+      // There definitely isn't anything to select
+      return;
+    }
+
+    if (this._dragCumulative === false) {
+      this._drawing.selection.clear();
+    }
+
+    // To achieve this, I need to get the drag rectangle into world co-ordinates,
+    // which are centred at (0, 0).
+    this._scratchVector2.set(2 / window.innerWidth, 2 / window.innerHeight, 1);
+    this._scratchVector3.set(-1, -1, 0);
+    const viewportToWorld = this._drawing.getViewportToWorld(this._scratchMatrix1);
+    const rectanglePoints =
+      [...this.enumerateCanvasDragRectanglePoints(this._scratchVector1)]
+        .map(p => p.multiply(this._scratchVector2).add(this._scratchVector3).applyMatrix4(viewportToWorld));
+
+    // For efficiency, we create the test vertices once and then transform them
+    // as required
+    const rectangleOcclusion = new RectangleOcclusion(0, [...rectanglePoints]);
+    for (var t of this._drawing.tokens) {
+      if (!this.canSelectToken(t)) {
+        continue;
+      }
+
+      this._testVertexCollection.testCoord(t.position, (c, v, i) => {
+        if (rectangleOcclusion.test(v) === true) {
+          this._drawing.selection.add({ position: c, colour: 0 });
+        }
+        return true;
+      });
     }
   }
 
@@ -396,6 +476,9 @@ export class MapStateMachine {
     this._wallHighlighter.dragCancel();
     this._faceHighlighter.clear();
     this._wallHighlighter.clear();
+
+    this._dragRectangleStart = undefined;
+    this._drawing.outlinedRectangle.visible = false;
   }
 
   clearSelection() {
@@ -403,6 +486,9 @@ export class MapStateMachine {
     this._drawing.selection.clear();
     this._drawing.selectionDrag.clear();
     this._drawing.selectionDragRed.clear();
+
+    this._dragRectangleStart = undefined;
+    this._drawing.outlinedRectangle.visible = false;
 
     this._tokenMoveDragStart = undefined;
     this._tokenMoveDragSelectionPosition = undefined;
@@ -418,7 +504,7 @@ export class MapStateMachine {
   }
 
   // For editing
-  getNote(cp: THREE.Vector2): IAnnotation | undefined {
+  getNote(cp: THREE.Vector3): IAnnotation | undefined {
     var position = this._drawing.getGridCoordAt(cp);
     if (position === undefined) {
       return undefined;
@@ -427,17 +513,17 @@ export class MapStateMachine {
     return this._notes.get(position);
   }
 
-  faceDragEnd(cp: THREE.Vector2, colour: number): IChange[] {
+  faceDragEnd(cp: THREE.Vector3, colour: number): IChange[] {
     this.panMarginReset();
     return this._faceHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour);
   }
 
-  faceDragStart(cp: THREE.Vector2) {
+  faceDragStart(cp: THREE.Vector3) {
     this._faceHighlighter.dragStart(this._drawing.getGridCoordAt(cp));
   }
 
   // For editing
-  getToken(cp: THREE.Vector2): IToken | undefined {
+  getToken(cp: THREE.Vector3): IToken | undefined {
     var position = this._drawing.getGridCoordAt(cp);
     if (position === undefined) {
       return undefined;
@@ -446,41 +532,44 @@ export class MapStateMachine {
     return this._drawing.tokens.get(position);
   }
 
-  moveFaceHighlightTo(cp: THREE.Vector2) {
+  moveFaceHighlightTo(cp: THREE.Vector3) {
     if (this._faceHighlighter.inDrag) {
       this.panIfWithinMargin(cp);
     }
     this._faceHighlighter.moveHighlight(this._drawing.getGridCoordAt(cp));
   }
 
-  moveSelectionTo(cp: THREE.Vector2) {
-    if (this._tokenMoveDragStart === undefined || this._tokenMoveDragSelectionPosition === undefined) {
-      return;
+  moveSelectionTo(cp: THREE.Vector3) {
+    if (this._dragRectangleStart !== undefined) {
+      this.moveDragRectangleTo(cp);
     }
 
-    this.panIfWithinMargin(cp);
+    if (this._tokenMoveDragStart !== undefined && this._tokenMoveDragSelectionPosition !== undefined) {
+      this.panIfWithinMargin(cp);
+      var position = this._drawing.getGridCoordAt(cp);
+      if (position !== undefined && !coordsEqual(position, this._tokenMoveDragSelectionPosition)) {
+        var selectionDrag = this.canDropSelectionAt(position) ? this._drawing.selectionDrag :
+          this._drawing.selectionDragRed;
 
-    // TODO: Support drag to create a multiple selection.
-    var position = this._drawing.getGridCoordAt(cp);
-    if (position !== undefined && !coordsEqual(position, this._tokenMoveDragSelectionPosition)) {
-      var selectionDrag = this.canDropSelectionAt(position) ? this._drawing.selectionDrag :
-        this._drawing.selectionDragRed;
+        var delta = coordSub(position, this._tokenMoveDragStart);
+        this._drawing.selectionDrag.clear();
+        this._drawing.selectionDragRed.clear();
+        console.log("Moving " + fluent(this._drawing.selection).count() + " selected positions");
+        this._drawing.selection.forEach(f => {
+          var dragged = { position: coordAdd(f.position, delta), colour: f.colour };
+          console.log(coordString(f.position) + " -> " + coordString(dragged.position));
+          selectionDrag.add(dragged);
+        });
 
-      var delta = coordSub(position, this._tokenMoveDragStart);
-      this._drawing.selectionDrag.clear();
-      this._drawing.selectionDragRed.clear();
-      console.log("Moving " + fluent(this._drawing.selection).count() + " selected positions");
-      this._drawing.selection.forEach(f => {
-        var dragged = { position: coordAdd(f.position, delta), colour: f.colour };
-        console.log(coordString(f.position) + " -> " + coordString(dragged.position));
-        selectionDrag.add(dragged);
-      });
-
-      this._tokenMoveDragSelectionPosition = position;
+        this._tokenMoveDragSelectionPosition = position;
+      }
+    } else if (this._dragRectangleStart !== undefined) {
+      this.panIfWithinMargin(cp);
+      this.selectTokensInDragRectangle();
     }
   }
 
-  moveWallHighlightTo(cp: THREE.Vector2) {
+  moveWallHighlightTo(cp: THREE.Vector3) {
     if (this._wallHighlighter.inDrag) {
       this.panIfWithinMargin(cp);
     }
@@ -496,12 +585,12 @@ export class MapStateMachine {
     this._marginPanningY = 0;
   }
 
-  panStart(cp: THREE.Vector2, rotate: boolean) {
+  panStart(cp: THREE.Vector3, rotate: boolean) {
     this._panLast = cp;
     this._isRotating = rotate;
   }
 
-  panTo(cp: THREE.Vector2) {
+  panTo(cp: THREE.Vector3) {
     if (this._panLast === undefined) {
       return;
     }
@@ -559,7 +648,7 @@ export class MapStateMachine {
     });
   }
 
-  selectionDragEnd(cp: THREE.Vector2, shiftKey: boolean): IChange[] {
+  selectionDragEnd(cp: THREE.Vector3): IChange[] {
     this.panMarginReset();
     var position = this._drawing.getGridCoordAt(cp);
     var chs: IChange[] = [];
@@ -591,19 +680,14 @@ export class MapStateMachine {
 
         this._tokenMoveDragStart = undefined;
         this._tokenMoveDragSelectionPosition = undefined;
-      }
-
-      if (this._selectDragStart !== undefined) {
-        if (!shiftKey) {
-          this._drawing.selection.clear();
-        }
-
+      } else {
+        // Always add the token at this position
+        // (This is needed if the drag rectangle is very small)
         var token = this._drawing.tokens.get(position);
         if (token !== undefined && this.canSelectToken(token)) {
           this._drawing.selection.add({ position: position, colour: 0 });
         }
 
-        this._selectDragStart = undefined;
         this.withStateChange(getState => {
           this.buildLoS(getState());
           return true;
@@ -611,10 +695,12 @@ export class MapStateMachine {
       }
     }
 
+    this._dragRectangleStart = undefined;
+    this._drawing.outlinedRectangle.visible = false;
     return chs;
   }
 
-  selectionDragStart(cp: THREE.Vector2) {
+  selectionDragStart(cp: THREE.Vector3, shiftKey: boolean) {
     var position = this._drawing.getGridCoordAt(cp);
     if (position) {
       if (this._drawing.selection.get(position) !== undefined) {
@@ -624,12 +710,17 @@ export class MapStateMachine {
         this._drawing.selectionDragRed.clear();
         this._drawing.selection.forEach(f => this._drawing.selectionDrag.add(f));
       } else {
-        this._selectDragStart = position;
+        if (!shiftKey) {
+          this._drawing.selection.clear();
+        }
+
+        this._dragRectangleStart = cp;
+        this._dragCumulative = shiftKey;
       }
     }
   }
 
-  setNote(cp: THREE.Vector2, id: string, colour: number, text: string, visibleToPlayers: boolean): IChange[] {
+  setNote(cp: THREE.Vector3, id: string, colour: number, text: string, visibleToPlayers: boolean): IChange[] {
     var position = this._drawing.getGridCoordAt(cp);
     var chs: IChange[] = [];
     if (position !== undefined) {
@@ -656,7 +747,7 @@ export class MapStateMachine {
     this._drawing.setShowMapColourVisualisation(show, this._mapColouring);
   }
 
-  setToken(cp: THREE.Vector2, properties: ITokenProperties | undefined): IChange[] {
+  setToken(cp: THREE.Vector3, properties: ITokenProperties | undefined): IChange[] {
     var position = this._drawing.getGridCoordAt(cp);
     var chs: IChange[] = [];
     if (position !== undefined) {
@@ -674,12 +765,12 @@ export class MapStateMachine {
     return chs;
   }
 
-  wallDragEnd(cp: THREE.Vector2, colour: number): IChange[] {
+  wallDragEnd(cp: THREE.Vector3, colour: number): IChange[] {
     this.panMarginReset();
     return this._wallHighlighter.dragEnd(this._drawing.getGridVertexAt(cp), colour);
   }
 
-  wallDragStart(cp: THREE.Vector2) {
+  wallDragStart(cp: THREE.Vector3) {
     this._wallHighlighter.dragStart(this._drawing.getGridVertexAt(cp));
   }
 

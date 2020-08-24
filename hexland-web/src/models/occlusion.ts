@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import { IGridGeometry } from './gridGeometry';
+import { IGridCoord } from '../data/coord';
 
 // Describes how to test for occlusion behind an edge as seen from a coord.
-
 export class EdgeOcclusion {
   private readonly _front: PlanarOcclusion;
   private readonly _sideA: PlanarOcclusion;
@@ -55,6 +56,34 @@ export class EdgeOcclusion {
   }
 }
 
+// Describes how to test for being within an any-angle rectangle.
+export class RectangleOcclusion {
+  private readonly _planes: PlanarOcclusion[];
+
+  // Construct it with the four points of a rectangle, winding around it.
+  // (If you use a number of points other than four it will do weird stuff...)
+  constructor(epsilon: number, points: THREE.Vector3[]) {
+    this._planes = points.map((p, i) => {
+      var next = points[(i + 1) % points.length];
+      return new PlanarOcclusion(
+        next.clone().sub(p).normalize(),
+        p,
+        epsilon
+      );
+    });
+  }
+
+  test(point: THREE.Vector3) {
+    for (var p of this._planes) {
+      if (!p.test(point)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+}
+
 class PlanarOcclusion {
   private readonly _norm: THREE.Vector3;
   private readonly _min: number;
@@ -66,7 +95,53 @@ class PlanarOcclusion {
 
   test(point: THREE.Vector3) {
     const dot = this._norm.dot(point);
-    // console.log("dot = " + dot + "; min = " + this._min);
+    //console.log("dot = " + dot + "; min = " + this._min);
     return dot >= this._min;
+  }
+}
+
+// This helper wraps a set of occlusion test vertices and lets you
+// transform them around.
+export class TestVertexCollection {
+  private readonly _geometry: IGridGeometry;
+  private readonly _z: number;
+  
+  // We use this as scratch
+  private readonly _vertices: THREE.Vector3[] = [];
+  private readonly _scratch = new THREE.Vector3();
+
+  // We never modify this
+  private readonly _atZero: THREE.Vector3[] = [];
+  private readonly _atOrigin: THREE.Vector3;
+
+  constructor(geometry: IGridGeometry, z: number, alpha: number) {
+    this._geometry = geometry;
+    this._z = z;
+
+    for (var v of geometry.createOcclusionTestVertices(
+      { x: 0, y: 0 }, z, alpha
+    )) {
+      this._atZero.push(v);
+      this._vertices.push(v.clone());
+    }
+
+    this._atOrigin = this._atZero[0]; // a bit cheating, assuming this is the middle :)
+  }
+
+  get count() { return this._vertices.length; }
+
+  // Tests all the vertices at the given coord.
+  // If the test function returns false ever, we stop testing the rest.
+  // Returns false if the test function ever returned false.
+  testCoord(coord: IGridCoord, fn: (c: IGridCoord, v: THREE.Vector3, i: number) => boolean) {
+    this._geometry.createCoordCentre(this._scratch, coord, this._z * 2).sub(this._atOrigin);
+    for (var i = 0; i < this._vertices.length; ++i) {
+      this._vertices[i].copy(this._atZero[i]).add(this._scratch);
+      if (!fn(coord, this._vertices[i], i)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }

@@ -1,4 +1,5 @@
 import { IGridCoord, IGridEdge, IGridVertex } from '../../data/coord';
+import { MapColouring } from '../colouring';
 import { FeatureColour } from '../featureColour';
 import { IGridGeometry } from '../gridGeometry';
 import { IDrawing } from '../interfaces';
@@ -8,14 +9,13 @@ import { Areas } from './areas';
 import { Grid } from './grid';
 import { LoS } from './los';
 import { MapColourVisualisation } from './mapColourVisualisation';
+import { OutlinedRectangle } from './overlayRectangle';
 import textCreator from './textCreator';
 import { Tokens } from './tokens';
 import { Vertices } from './vertices';
 import { Walls } from './walls';
 
 import * as THREE from 'three';
-import { MapColouring } from '../colouring';
-import { Matrix4, Quaternion } from 'three';
 
 const areaZ = 0.5;
 const tokenZ = 0.6;
@@ -44,6 +44,7 @@ export class DrawingOrtho implements IDrawing {
   private readonly _mount: HTMLDivElement;
 
   private readonly _camera: THREE.OrthographicCamera;
+  private readonly _overlayCamera: THREE.OrthographicCamera;
   private readonly _faceCoordRenderTarget: THREE.WebGLRenderTarget;
   private readonly _edgeCoordRenderTarget: THREE.WebGLRenderTarget;
   private readonly _vertexCoordRenderTarget: THREE.WebGLRenderTarget;
@@ -52,6 +53,7 @@ export class DrawingOrtho implements IDrawing {
   private readonly _textureClearColour: THREE.Color;
 
   private readonly _scene: THREE.Scene;
+  private readonly _overlayScene: THREE.Scene;
   private readonly _faceCoordScene: THREE.Scene;
   private readonly _edgeCoordScene: THREE.Scene; // TODO after the vertex scene do I still need this?
   private readonly _vertexCoordScene: THREE.Scene;
@@ -77,10 +79,12 @@ export class DrawingOrtho implements IDrawing {
   private readonly _invalidSelectionMaterials: THREE.MeshBasicMaterial[];
   private readonly _textMaterial: THREE.MeshBasicMaterial;
 
+  private readonly _outlinedRectangle: OutlinedRectangle;
+
   private readonly _gridNeedsRedraw: RedrawFlag;
   private readonly _needsRedraw: RedrawFlag;
 
-  private readonly _scratchMatrix = new THREE.Matrix4();
+  private readonly _scratchMatrix1 = new THREE.Matrix4();
   private readonly _scratchQuaternion = new THREE.Quaternion();
 
   private _showMapColourVisualisation = false;
@@ -102,10 +106,14 @@ export class DrawingOrtho implements IDrawing {
     this._camera = new THREE.OrthographicCamera(0, 0, renderWidth, renderHeight, 0.1, 1000);
     this._camera.position.z = 5;
 
+    this._overlayCamera = new THREE.OrthographicCamera(0, 0, renderWidth, renderHeight, 0.1, 1000);
+    this._overlayCamera.position.z = 5;
+
     this._gridNeedsRedraw = new RedrawFlag();
     this._needsRedraw = new RedrawFlag();
 
     this._scene = new THREE.Scene();
+    this._overlayScene = new THREE.Scene();
     this._renderer = new THREE.WebGLRenderer();
     this._canvasClearColour = new THREE.Color(0.1, 0.1, 0.1);
     this._textureClearColour = new THREE.Color(0, 0, 0); // we'll flip to this when required
@@ -204,6 +212,10 @@ export class DrawingOrtho implements IDrawing {
 
     // The map colour visualisation (added on request instead of the areas)
     this._mapColourVisualisation = new MapColourVisualisation(this._gridGeometry, this._needsRedraw, areaAlpha, areaZ);
+
+    // The outlined rectangle
+    this._outlinedRectangle = new OutlinedRectangle(gridGeometry, this._needsRedraw);
+    this._outlinedRectangle.addToScene(this._overlayScene);
   }
 
   get areas() { return this._areas; }
@@ -219,6 +231,8 @@ export class DrawingOrtho implements IDrawing {
   get selectionDragRed() { return this._selectionDragRed; }
 
   get los() { return this._los; }
+
+  get outlinedRectangle() { return this._outlinedRectangle; }
 
   animate(fn: () => void) {
     if (this._disposed) {
@@ -238,6 +252,12 @@ export class DrawingOrtho implements IDrawing {
 
     if (needsRedraw) {
       this._renderer.render(this._scene, this._camera);
+
+      if (this._outlinedRectangle.visible === true) {
+        this._renderer.autoClear = false;
+        this._renderer.render(this._overlayScene, this._overlayCamera);
+        this._renderer.autoClear = true;
+      }
     }
 
     if (gridNeedsRedraw) {
@@ -256,25 +276,37 @@ export class DrawingOrtho implements IDrawing {
     }
   }
 
-  getGridCoordAt(cp: THREE.Vector2): IGridCoord | undefined {
+  getGridCoordAt(cp: THREE.Vector3): IGridCoord | undefined {
     this._renderer.readRenderTargetPixels(this._faceCoordRenderTarget, cp.x, cp.y, 1, 1, this._texelReadBuf);
     return this._gridGeometry?.decodeCoordSample(this._texelReadBuf, 0);
   }
 
-  getGridEdgeAt(cp: THREE.Vector2): IGridEdge | undefined {
+  getGridEdgeAt(cp: THREE.Vector3): IGridEdge | undefined {
     this._renderer.readRenderTargetPixels(this._edgeCoordRenderTarget, cp.x, cp.y, 1, 1, this._texelReadBuf);
     return this._gridGeometry?.decodeEdgeSample(this._texelReadBuf, 0);
   }
 
-  getGridVertexAt(cp: THREE.Vector2): IGridVertex | undefined {
+  getGridVertexAt(cp: THREE.Vector3): IGridVertex | undefined {
     this._renderer.readRenderTargetPixels(this._vertexCoordRenderTarget, cp.x, cp.y, 1, 1, this._texelReadBuf);
     return this._gridGeometry?.decodeVertexSample(this._texelReadBuf, 0);
+  }
+
+  getViewportToWorld(target: THREE.Matrix4): THREE.Matrix4 {
+    // For some reason, the camera's projection matrix doesn't include
+    // the rotation!
+    const rotationMatrix = this._scratchMatrix1.makeRotationFromQuaternion(
+      this._scratchQuaternion.setFromEuler(this._camera.rotation)
+    );
+    return target.multiplyMatrices(
+      rotationMatrix,
+      this._camera.projectionMatrixInverse
+    );
   }
 
   getWorldToViewport(target: THREE.Matrix4): THREE.Matrix4 {
     // For some reason, the camera's projection matrix doesn't include
     // the rotation!
-    const rotationMatrix = this._scratchMatrix.makeRotationFromQuaternion(
+    const rotationMatrix = this._scratchMatrix1.makeRotationFromQuaternion(
       this._scratchQuaternion.setFromEuler(this._camera.rotation).inverse()
     );
     return target.multiplyMatrices(
@@ -305,6 +337,12 @@ export class DrawingOrtho implements IDrawing {
     this._camera.bottom = translation.y + height / scaling.y;
     this._camera.setRotationFromQuaternion(rotation);
     this._camera.updateProjectionMatrix();
+
+    this._overlayCamera.left = 0;
+    this._overlayCamera.right = width;
+    this._overlayCamera.top = height;
+    this._overlayCamera.bottom = 0;
+    this._overlayCamera.updateProjectionMatrix();
 
     // TODO Also add or remove grid tiles as required
 
@@ -363,6 +401,8 @@ export class DrawingOrtho implements IDrawing {
     this._tokens.dispose();
     this._walls.dispose();
     this._mapColourVisualisation.dispose();
+
+    this._outlinedRectangle.dispose();
 
     this._darkColourMaterials.forEach(m => m.dispose());
     this._lightColourMaterials.forEach(m => m.dispose());

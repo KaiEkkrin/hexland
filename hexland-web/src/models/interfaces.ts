@@ -22,15 +22,24 @@ export interface IDrawing {
 
   los: IFeatureDictionary<IGridCoord, IVisibility>;
 
+  // A drawing always exposes a single outlined rectangle that can be used
+  // for drag-boxes etc.  This object will be drawn separately and will not
+  // be subject to the world transform applied to everything else.
+  outlinedRectangle: IOutlinedRectangle;
+
   // Draws if need be, and requests the next animation frame.
   // The callback is called at the start of every animate() call.
   animate(fn: () => void): void;
 
   // These functions turn viewport co-ordinates (0..windowWidth, 0..windowHeight)
   // into face, edge or vertex coords
-  getGridCoordAt(cp: THREE.Vector2): IGridCoord | undefined;
-  getGridEdgeAt(cp: THREE.Vector2): IGridEdge | undefined;
-  getGridVertexAt(cp: THREE.Vector2): IGridVertex | undefined;
+  getGridCoordAt(cp: THREE.Vector3): IGridCoord | undefined;
+  getGridEdgeAt(cp: THREE.Vector3): IGridEdge | undefined;
+  getGridVertexAt(cp: THREE.Vector3): IGridVertex | undefined;
+
+  // Gets a viewport-to-world transfomation matrix, where the viewport visible
+  // range is (-1..1).
+  getViewportToWorld(target: THREE.Matrix4): THREE.Matrix4;
 
   // Gets a world-to-viewport transformation matrix, where the viewport visible
   // range is (-1..1).
@@ -47,4 +56,18 @@ export interface IDrawing {
 
   // Cleans up and releases all resources.
   dispose(): void;
+}
+
+// Describes an outlined rectangle that can be used as a selection box.
+export interface IOutlinedRectangle {
+  // This object's position and scale.
+  position: THREE.Vector3;
+  scale: THREE.Vector3;
+
+  // This object's visibility.
+  visible: boolean;
+
+  // Alters the drawn object, e.g. changing its transform.
+  // The function should return true if a redraw is required, else false.
+  alter(fn: (o: THREE.Object3D) => boolean): void;
 }

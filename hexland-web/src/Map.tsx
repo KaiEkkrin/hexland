@@ -150,9 +150,9 @@ function Map(props: IMapPageProps) {
   const [showNoteEditor, setShowNoteEditor] = useState(false);
 
   const [tokenToEdit, setTokenToEdit] = useState(undefined as IToken | undefined);
-  const [tokenToEditPosition, setTokenToEditPosition] = useState(undefined as THREE.Vector2 | undefined);
+  const [tokenToEditPosition, setTokenToEditPosition] = useState(undefined as THREE.Vector3 | undefined);
   const [noteToEdit, setNoteToEdit] = useState(undefined as IAnnotation | undefined);
-  const [noteToEditPosition, setNoteToEditPosition] = useState(undefined as THREE.Vector2 | undefined);
+  const [noteToEditPosition, setNoteToEditPosition] = useState(undefined as THREE.Vector3 | undefined);
 
   const [isDraggingView, setIsDraggingView] = useState(false);
 
@@ -225,7 +225,7 @@ function Map(props: IMapPageProps) {
     setShowNoteEditor(false);
   }
 
-  function getClientPosition(e: React.MouseEvent<HTMLDivElement, MouseEvent>): THREE.Vector2 | undefined {
+  function getClientPosition(e: React.MouseEvent<HTMLDivElement, MouseEvent>): THREE.Vector3 | undefined {
     var bounds = drawingRef.current?.getBoundingClientRect();
     if (bounds === undefined) {
       return undefined;
@@ -233,7 +233,7 @@ function Map(props: IMapPageProps) {
 
     var x = e.clientX - bounds.left;
     var y = e.clientY - bounds.top;
-    return new THREE.Vector2(x, bounds.height - y - 1);
+    return new THREE.Vector3(x, bounds.height - y - 1, 0);
   }
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -306,7 +306,7 @@ function Map(props: IMapPageProps) {
 
     setIsDraggingView(editMode === EditMode.Pan);
     switch (editMode) {
-      case EditMode.Select: stateMachine?.selectionDragStart(cp); break;
+      case EditMode.Select: stateMachine?.selectionDragStart(cp, e.shiftKey); break;
       case EditMode.Area: stateMachine?.faceDragStart(cp); break;
       case EditMode.Wall: stateMachine?.wallDragStart(cp); break;
       case EditMode.Pan: stateMachine?.panStart(cp, e.shiftKey); break;
@@ -338,7 +338,7 @@ function Map(props: IMapPageProps) {
 
     switch (editMode) {
       case EditMode.Select:
-        addChanges(stateMachine?.selectionDragEnd(cp, e.shiftKey));
+        addChanges(stateMachine?.selectionDragEnd(cp));
         break;
 
       case EditMode.Token:
