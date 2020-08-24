@@ -31,8 +31,10 @@ const panMargin = 100;
 const panStep = 0.2; // per millisecond.  Try proportion of screen size instead?
 const zoomStep = 1.001;
 const zoomMin = 1;
+const zoomDefault = 2;
 const zoomMax = 4;
-const rotationStep = 0.004;
+
+const zAxis = new THREE.Vector3(0, 0, 1);
 
 // Describes the map state as managed by the state machine below and echoed
 // to the Map component.
@@ -80,6 +82,20 @@ export class MapStateMachine {
 
   private readonly _setState: (state: IMapState) => void;
 
+  private readonly _cameraTranslation = new THREE.Vector3();
+  private readonly _cameraRotation = new THREE.Quaternion();
+  private readonly _cameraScaling = new THREE.Vector3(zoomDefault, zoomDefault, 1);
+
+  private readonly _defaultRotation = new THREE.Quaternion();
+  private readonly _scratchRotation = new THREE.Quaternion();
+  private readonly _scratchTranslation = new THREE.Vector3();
+
+  private readonly _scratchMatrix1 = new THREE.Matrix4();
+
+  private readonly _scratchVector1 = new THREE.Vector3();
+  private readonly _scratchVector2 = new THREE.Vector3();
+  private readonly _scratchVector3 = new THREE.Vector3();
+
   private _state: IMapState;
 
   private _lastAnimationTime: number | undefined;
@@ -90,12 +106,6 @@ export class MapStateMachine {
   private _marginPanningX = 0; // the same, but when dragging to the margin rather than using keys
   private _marginPanningY = 0;
 
-  private _panX = 0;
-  private _panY = 0;
-  private _rotation = 0;
-  private _zoom = 2;
-
-  private _zoomRotateLast: THREE.Vector2 | undefined;
   private _isRotating = false;
   private _panLast: THREE.Vector2 | undefined;
 
@@ -279,8 +289,13 @@ export class MapStateMachine {
     var panningX = this._panningX !== 0 ? this._panningX : this._marginPanningX;
     var panningY = this._panningY !== 0 ? this._panningY : this._marginPanningY;
     if ((panningX !== 0 || panningY !== 0) && this._lastAnimationTime !== undefined) {
-      this._panX += (now - this._lastAnimationTime) * panningX * panStep;
-      this._panY -= (now - this._lastAnimationTime) * panningY * panStep;
+      this._cameraTranslation.add(
+        this._scratchTranslation.set(
+          (now - this._lastAnimationTime) * panningX * panStep,
+          (now - this._lastAnimationTime) * panningY * panStep,
+          0
+        )
+      );
       this.resize();
     }
 
@@ -297,18 +312,18 @@ export class MapStateMachine {
     }
 
     if (cp.y < panMargin) {
-      this._marginPanningY = -1;
+      this._marginPanningY = 1;
     } else if (cp.y < (window.innerHeight - panMargin)) {
       this._marginPanningY = 0;
     } else {
-      this._marginPanningY = 1;
+      this._marginPanningY = -1;
     }
   }
 
   private updateAnnotations(state: IMapState) {
     var positioned: IPositionedAnnotation[] = [];
     var [target, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
-    var worldToViewport = this._drawing.getWorldToViewport();
+    var worldToViewport = this._drawing.getWorldToViewport(this._scratchMatrix1);
     for (var n of this.enumerateAnnotations()) {
       // Skip notes not marked as player-visible
       if (!this.seeEverything && n.visibleToPlayers === false) {
@@ -481,8 +496,9 @@ export class MapStateMachine {
     this._marginPanningY = 0;
   }
 
-  panStart(cp: THREE.Vector2) {
+  panStart(cp: THREE.Vector2, rotate: boolean) {
     this._panLast = cp;
+    this._isRotating = rotate;
   }
 
   panTo(cp: THREE.Vector2) {
@@ -490,22 +506,50 @@ export class MapStateMachine {
       return;
     }
 
-    this._panX -= (cp.x - this._panLast.x);
-    this._panY += (cp.y - this._panLast.y);
+    if (this._isRotating) {
+      // We rotate by the angle around the current centre point
+      this._scratchVector3.set(window.innerWidth / 2, window.innerHeight / 2, 0);
+      this._scratchVector1.set(this._panLast.x, this._panLast.y, 0)
+        .sub(this._scratchVector3);
+      this._scratchVector2.set(cp.x, cp.y, 0).sub(this._scratchVector3);
+
+      var angle = this._scratchVector1.angleTo(this._scratchVector2);
+
+      // deal with THREE being weird about angle direction :/
+      if (this._scratchVector1.cross(this._scratchVector2).z < 0) {
+        angle = -angle;
+      }
+
+      this._cameraRotation.multiply(
+        this._scratchRotation.setFromAxisAngle(zAxis, angle)
+      );
+
+      // We want to effectively rotate around the centre of the window, which means
+      // we also need to rotate our camera translation point to match
+      this._cameraTranslation.applyQuaternion(this._scratchRotation.inverse());
+    } else {
+      this._cameraTranslation.add(
+        this._scratchTranslation.set(
+          this._panLast.x - cp.x,
+          cp.y - this._panLast.y,
+          0
+        )
+      );
+    }
+
     this.resize();
     this._panLast = cp;
   }
 
   resetView() {
-    this._zoom = 2;
-    this._rotation = 0;
-    this._panX = 0;
-    this._panY = 0;
+    this._cameraTranslation.set(0, 0, 0);
+    this._cameraRotation.copy(this._defaultRotation);
+    this._cameraScaling.set(zoomDefault, zoomDefault, 1);
     this.resize();
   }
 
   resize() {
-    this._drawing.resize(this._panX, this._panY, this._rotation, this._zoom);
+    this._drawing.resize(this._cameraTranslation, this._cameraRotation, this._cameraScaling);
 
     // Upon resize, the positions of annotations may have changed and
     // we should update the UI
@@ -640,32 +684,12 @@ export class MapStateMachine {
   }
 
   zoomBy(amount: number) {
-    this._zoom = Math.min(zoomMax, Math.max(zoomMin, this._zoom * Math.pow(zoomStep, -amount)));
+    this._cameraScaling.set(
+      Math.min(zoomMax, Math.max(zoomMin, this._cameraScaling.x * Math.pow(zoomStep, -amount))),
+      Math.min(zoomMax, Math.max(zoomMin, this._cameraScaling.y * Math.pow(zoomStep, -amount))),
+      1
+    );
     this.resize();
-  }
-
-  zoomRotateEnd() {
-    this._zoomRotateLast = undefined;
-  }
-
-  zoomRotateStart(cp: THREE.Vector2, rotate: boolean) {
-    this._zoomRotateLast = cp;
-    this._isRotating = rotate;
-  }
-
-  zoomRotateTo(cp: THREE.Vector2) {
-    if (this._zoomRotateLast === undefined) {
-      return;
-    }
-
-    if (this._isRotating === true) {
-      this._rotation -= (cp.x - this._zoomRotateLast.x) * rotationStep;
-    } else {
-      this._zoom = Math.min(zoomMax, Math.max(zoomMin, this._zoom * Math.pow(zoomStep, cp.y - this._zoomRotateLast.y)));
-    }
-
-    this.resize();
-    this._zoomRotateLast = cp;
   }
 
   dispose() {

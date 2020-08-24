@@ -34,13 +34,13 @@ export interface IDrawing {
 
   // Gets a world-to-viewport transformation matrix, where the viewport visible
   // range is (-1..1).
-  getWorldToViewport(): THREE.Matrix4;
+  getWorldToViewport(target: THREE.Matrix4): THREE.Matrix4;
 
   // Handles the completion of a set of changes by the change tracker.
   handleChangesApplied(mapColouring: MapColouring): void;
 
   // Alters the view.
-  resize(panX: number, panY: number, rotation: number, zoom: number): void;
+  resize(translation: THREE.Vector3, rotation: THREE.Quaternion, scaling: THREE.Vector3): void;
 
   // Sets whether or not to show the map colour visualisation.
   setShowMapColourVisualisation(show: boolean, mapColouring: MapColouring): void;

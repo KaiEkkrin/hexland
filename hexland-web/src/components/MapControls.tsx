@@ -10,7 +10,7 @@ import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import ToggleButton from 'react-bootstrap/ToggleButton';
 import Tooltip from 'react-bootstrap/Tooltip';
 
-import { faDotCircle, faDrawPolygon, faHandPaper, faMousePointer, faPlus, faSearch, faSquare, IconDefinition, faCog, faSuitcase, faMapMarker } from '@fortawesome/free-solid-svg-icons';
+import { faDotCircle, faDrawPolygon, faHandPaper, faMousePointer, faPlus, faSquare, IconDefinition, faCog, faSuitcase, faMapMarker } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 export enum EditMode {
@@ -20,7 +20,6 @@ export enum EditMode {
   Area = "area",
   Wall = "wall",
   Pan = "pan",
-  Zoom = "zoom",
 }
 
 export enum MapColourVisualisationMode {
@@ -100,18 +99,13 @@ function MapControls(props: IMapControlsProps) {
       ]);
     }
 
-    buttons.push(...[
+    buttons.push(
       <ModeButton key={EditMode.Pan} value={EditMode.Pan} icon={faHandPaper}
         mode={props.editMode} setMode={props.setEditMode}
       >
-        <u>P</u>an the map view
-      </ModeButton>,
-      <ModeButton key={EditMode.Zoom} value={EditMode.Zoom} icon={faSearch}
-        mode={props.editMode} setMode={props.setEditMode}
-      >
-        <u>Z</u>oom the map view, or Shift-click to rotate
+        <u>P</u>an the map view, or Shift-drag to rotate
       </ModeButton>
-    ]);
+    );
 
     return buttons;
   }, [props.canDoAnything, props.editMode, props.setEditMode]);

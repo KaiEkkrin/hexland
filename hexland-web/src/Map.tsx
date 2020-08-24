@@ -250,10 +250,10 @@ function Map(props: IMapPageProps) {
       stateMachine.panningX = 1;
       e.preventDefault();
     } else if (e.key === 'ArrowDown') {
-      stateMachine.panningY = -1;
+      stateMachine.panningY = 1;
       e.preventDefault();
     } else if (e.key === 'ArrowUp') {
-      stateMachine.panningY = 1;
+      stateMachine.panningY = -1;
       e.preventDefault();
     }
   }, [stateMachine]);
@@ -295,8 +295,6 @@ function Map(props: IMapPageProps) {
       if (canDoAnything) {
         setEditMode(EditMode.Wall);
       }
-    } else if (e.key === 'z' || e.key === 'Z') {
-      setEditMode(EditMode.Zoom);
     }
   }, [stateMachine, canDoAnything]);
 
@@ -306,13 +304,12 @@ function Map(props: IMapPageProps) {
       return;
     }
 
-    setIsDraggingView(editMode === EditMode.Pan || editMode === EditMode.Zoom);
+    setIsDraggingView(editMode === EditMode.Pan);
     switch (editMode) {
       case EditMode.Select: stateMachine?.selectionDragStart(cp); break;
       case EditMode.Area: stateMachine?.faceDragStart(cp); break;
       case EditMode.Wall: stateMachine?.wallDragStart(cp); break;
-      case EditMode.Pan: stateMachine?.panStart(cp); break;
-      case EditMode.Zoom: stateMachine?.zoomRotateStart(cp, e.shiftKey); break;
+      case EditMode.Pan: stateMachine?.panStart(cp, e.shiftKey); break;
     }
   }
 
@@ -327,7 +324,6 @@ function Map(props: IMapPageProps) {
       case EditMode.Area: stateMachine?.moveFaceHighlightTo(cp); break;
       case EditMode.Wall: stateMachine?.moveWallHighlightTo(cp); break;
       case EditMode.Pan: stateMachine?.panTo(cp); break;
-      case EditMode.Zoom: stateMachine?.zoomRotateTo(cp); break;
     }
 
     return cp;
@@ -372,7 +368,6 @@ function Map(props: IMapPageProps) {
         break;
 
       case EditMode.Pan: stateMachine?.panEnd(); break;
-      case EditMode.Zoom: stateMachine?.zoomRotateEnd(); break;
     }
   }
 

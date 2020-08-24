@@ -38,8 +38,6 @@ const losAlpha = 1.0;
 const areaAlpha = 1.0;
 const vertexHighlightAlpha = 0.35;
 
-const zAxis = new THREE.Vector3(0, 0, 1);
-
 // An orthographic implementation of IDrawing using THREE.js.
 export class DrawingOrtho implements IDrawing {
   private readonly _gridGeometry: IGridGeometry;
@@ -81,6 +79,9 @@ export class DrawingOrtho implements IDrawing {
 
   private readonly _gridNeedsRedraw: RedrawFlag;
   private readonly _needsRedraw: RedrawFlag;
+
+  private readonly _scratchMatrix = new THREE.Matrix4();
+  private readonly _scratchQuaternion = new THREE.Quaternion();
 
   private _showMapColourVisualisation = false;
   private _disposed = false;
@@ -270,13 +271,13 @@ export class DrawingOrtho implements IDrawing {
     return this._gridGeometry?.decodeVertexSample(this._texelReadBuf, 0);
   }
 
-  getWorldToViewport(): THREE.Matrix4 {
+  getWorldToViewport(target: THREE.Matrix4): THREE.Matrix4 {
     // For some reason, the camera's projection matrix doesn't include
     // the rotation!
-    const rotationMatrix = new Matrix4().makeRotationFromQuaternion(
-      new Quaternion().setFromEuler(this._camera.rotation).inverse()
+    const rotationMatrix = this._scratchMatrix.makeRotationFromQuaternion(
+      this._scratchQuaternion.setFromEuler(this._camera.rotation).inverse()
     );
-    return new Matrix4().multiplyMatrices(
+    return target.multiplyMatrices(
       this._camera.projectionMatrix,
       rotationMatrix
     );
@@ -289,7 +290,7 @@ export class DrawingOrtho implements IDrawing {
     }
   }
 
-  resize(panX: number, panY: number, rotation: number, zoom: number) {
+  resize(translation: THREE.Vector3, rotation: THREE.Quaternion, scaling: THREE.Vector3) {
     var width = Math.max(1, Math.floor(window.innerWidth));
     var height = Math.max(1, Math.floor(window.innerHeight));
 
@@ -298,11 +299,11 @@ export class DrawingOrtho implements IDrawing {
     this._faceCoordRenderTarget.setSize(width, height);
     this._vertexCoordRenderTarget.setSize(width, height);
 
-    this._camera.left = panX + width / -zoom;
-    this._camera.right = panX + width / zoom;
-    this._camera.top = panY + height / -zoom;
-    this._camera.bottom = panY + height / zoom;
-    this._camera.setRotationFromAxisAngle(zAxis, rotation);
+    this._camera.left = translation.x + width / -scaling.x;
+    this._camera.right = translation.x + width / scaling.x;
+    this._camera.top = translation.y + height / -scaling.y;
+    this._camera.bottom = translation.y + height / scaling.y;
+    this._camera.setRotationFromQuaternion(rotation);
     this._camera.updateProjectionMatrix();
 
     // TODO Also add or remove grid tiles as required
