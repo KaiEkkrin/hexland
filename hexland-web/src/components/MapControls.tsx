@@ -28,10 +28,11 @@ export enum MapColourVisualisationMode {
   Connectivity = "connectivity"
 }
 
+// We make the children the tooltip contents, to allow for convenient formatting
 interface IModeButtonProps<T> {
   value: T; // the value of this button
   icon: IconDefinition;
-  tooltip: string;
+  children: React.ReactNode;
   mode: T; // the currently selected mode
   setMode(value: T): void;
 }
@@ -39,7 +40,7 @@ interface IModeButtonProps<T> {
 function ModeButton<T>(props: IModeButtonProps<T>) {
   return (
     <OverlayTrigger placement="right" overlay={
-      <Tooltip id={props.value + "-tooltip"}>{props.tooltip}</Tooltip>
+      <Tooltip id={props.value + "-tooltip"}>{props.children}</Tooltip>
     }>
       <ToggleButton type="radio" variant="dark" value={props.value}
         checked={props.mode === props.value}
@@ -68,27 +69,48 @@ function MapControls(props: IMapControlsProps) {
   const modeButtons = useMemo(() => {
     var buttons = [
       <ModeButton key={EditMode.Select} value={EditMode.Select} icon={faMousePointer}
-        tooltip="Select and move tokens" mode={props.editMode} setMode={props.setEditMode} />
+        mode={props.editMode} setMode={props.setEditMode}
+      >
+        <u>S</u>elect and mode tokens
+      </ModeButton>
     ];
 
     if (props.canDoAnything) {
       buttons.push(...[
-        <ModeButton key={EditMode.Token} value={EditMode.Token} icon={faPlus} tooltip="Add and edit tokens"
-          mode={props.editMode} setMode={props.setEditMode} />,
-        <ModeButton key={EditMode.Notes} value={EditMode.Notes} icon={faMapMarker} tooltip="Add and edit map notes"
-          mode={props.editMode} setMode={props.setEditMode} />,
-        <ModeButton key={EditMode.Area} value={EditMode.Area} icon={faSquare} tooltip="Paint areas"
-          mode={props.editMode} setMode={props.setEditMode} />,
-        <ModeButton key={EditMode.Wall} value={EditMode.Wall} icon={faDrawPolygon} tooltip="Paint walls"
-          mode={props.editMode} setMode={props.setEditMode} />
+        <ModeButton key={EditMode.Token} value={EditMode.Token} icon={faPlus}
+          mode={props.editMode} setMode={props.setEditMode}
+        >
+          Add and edit <u>t</u>okens
+        </ModeButton>,
+        <ModeButton key={EditMode.Notes} value={EditMode.Notes} icon={faMapMarker}
+          mode={props.editMode} setMode={props.setEditMode}
+        >
+          Add and edit map <u>n</u>otes
+        </ModeButton>,
+        <ModeButton key={EditMode.Area} value={EditMode.Area} icon={faSquare}
+          mode={props.editMode} setMode={props.setEditMode}
+        >
+          Paint <u>a</u>reas
+        </ModeButton>,
+        <ModeButton key={EditMode.Wall} value={EditMode.Wall} icon={faDrawPolygon}
+          mode={props.editMode} setMode={props.setEditMode}
+        >
+          Paint <u>w</u>alls
+        </ModeButton>
       ]);
     }
 
     buttons.push(...[
-      <ModeButton key={EditMode.Pan} value={EditMode.Pan} icon={faHandPaper} tooltip="Pan the map view"
-        mode={props.editMode} setMode={props.setEditMode} />,
-      <ModeButton key={EditMode.Zoom} value={EditMode.Zoom} icon={faSearch} tooltip="Zoom the map view, or Shift-click to rotate"
-        mode={props.editMode} setMode={props.setEditMode} />
+      <ModeButton key={EditMode.Pan} value={EditMode.Pan} icon={faHandPaper}
+        mode={props.editMode} setMode={props.setEditMode}
+      >
+        <u>P</u>an the map view
+      </ModeButton>,
+      <ModeButton key={EditMode.Zoom} value={EditMode.Zoom} icon={faSearch}
+        mode={props.editMode} setMode={props.setEditMode}
+      >
+        <u>Z</u>oom the map view, or Shift-click to rotate
+      </ModeButton>
     ]);
 
     return buttons;
@@ -102,7 +124,7 @@ function MapControls(props: IMapControlsProps) {
       <ButtonGroup className="Map-control" toggle vertical>{modeButtons}</ButtonGroup>
       <ButtonGroup className="Map-control" vertical>
         <OverlayTrigger placement="right" overlay={
-          <Tooltip id="reset-tooltip">Reset the map view</Tooltip>
+          <Tooltip id="reset-tooltip"><u>R</u>eset the map view</Tooltip>
         }>
           <Button variant="dark" onClick={() => props.resetView()}>
             <FontAwesomeIcon icon={faDotCircle} color="white" />
@@ -127,11 +149,12 @@ function MapControls(props: IMapControlsProps) {
         selectedColour={props.selectedColour}
         setSelectedColour={props.setSelectedColour} />
       <ButtonGroup className="Map-control" hidden={hideExtraControls} toggle vertical>
-        <ModeButton value={MapColourVisualisationMode.Areas} icon={faSquare} tooltip="Show area colours"
-          mode={props.mapColourVisualisationMode} setMode={props.setMapColourVisualisationMode} />
+        <ModeButton value={MapColourVisualisationMode.Areas} icon={faSquare}
+          mode={props.mapColourVisualisationMode} setMode={props.setMapColourVisualisationMode}
+        >Show area colours</ModeButton>
         <ModeButton value={MapColourVisualisationMode.Connectivity} icon={faSuitcase}
-          tooltip="Show map connectivity colours"
-          mode={props.mapColourVisualisationMode} setMode={props.setMapColourVisualisationMode} />
+          mode={props.mapColourVisualisationMode} setMode={props.setMapColourVisualisationMode}
+        >Show map connectivity colours</ModeButton>
       </ButtonGroup>
       <ButtonGroup className="Map-control" hidden={isNotOwner} vertical>
         <OverlayTrigger placement="right" overlay={

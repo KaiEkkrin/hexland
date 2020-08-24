@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useContext, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useContext, useMemo, useCallback } from 'react';
 import './App.css';
 import './Map.css';
 
@@ -45,12 +45,12 @@ function Map(props: IMapPageProps) {
   const [canDoAnything, setCanDoAnything] = useState(false);
   const [mapState, setMapState] = useState(createDefaultState());
 
-  // We need an event listener for the window resize so that we can update the drawing
+  // Hide scroll bars whilst viewing the map.
   useEffect(() => {
-    const handleWindowResize = (ev: UIEvent) => { stateMachine?.resize(); };
-    window.addEventListener('resize', handleWindowResize);
-    return () => { window.removeEventListener('resize', handleWindowResize); };
-  }, [stateMachine]);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, []);
 
   // Watch the map when it changes
   useEffect(() => {
@@ -164,9 +164,11 @@ function Map(props: IMapPageProps) {
     setIsOwner(userContext.dataService?.getUid() === map?.record.owner);
   }, [userContext.dataService, map]);
 
+  // When the edit mode changes at all, reset any margin panning.
   // When the edit mode changes away from Select, we should clear any selection.
   // #36 When the edit mode changes at all, we should clear the highlights
   useEffect(() => {
+    stateMachine?.panMarginReset();
     stateMachine?.clearHighlights();
     if (editMode !== EditMode.Select) {
       stateMachine?.clearSelection();
@@ -233,6 +235,70 @@ function Map(props: IMapPageProps) {
     var y = e.clientY - bounds.top;
     return new THREE.Vector2(x, bounds.height - y - 1);
   }
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (stateMachine === undefined) {
+      return;
+    }
+
+    // See https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values
+    // for a reference of key values.
+    if (e.key === 'ArrowLeft') {
+      stateMachine.panningX = -1;
+      e.preventDefault();
+    } else if (e.key === 'ArrowRight') {
+      stateMachine.panningX = 1;
+      e.preventDefault();
+    } else if (e.key === 'ArrowDown') {
+      stateMachine.panningY = -1;
+      e.preventDefault();
+    } else if (e.key === 'ArrowUp') {
+      stateMachine.panningY = 1;
+      e.preventDefault();
+    }
+  }, [stateMachine]);
+
+  const handleKeyUp = useCallback((e: KeyboardEvent) => {
+    if (stateMachine === undefined) {
+      return;
+    }
+
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      stateMachine.panningX = 0;
+      e.preventDefault();
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      stateMachine.panningY = 0;
+      e.preventDefault();
+    } else if (e.key === 'Escape') {
+      // This should cancel any drag operation
+      stateMachine.clearHighlights();
+      stateMachine.clearSelection();
+    } else if (e.key === 'a' || e.key === 'A') {
+      if (canDoAnything) {
+        setEditMode(EditMode.Area);
+      }
+    } else if (e.key === 'n' || e.key === 'N') {
+      if (canDoAnything) {
+        setEditMode(EditMode.Notes);
+      }
+    } else if (e.key === 'p' || e.key === 'P') {
+      setEditMode(EditMode.Pan);
+    } else if (e.key === 'r' || e.key === 'R') {
+      stateMachine.resetView();
+    } else if (e.key === 's' || e.key === 'S') {
+      setEditMode(EditMode.Select);
+    } else if (e.key === 't' || e.key === 'T') {
+      if (canDoAnything) {
+        setEditMode(EditMode.Token);
+      }
+    } else if (e.key === 'w' || e.key === 'W') {
+      if (canDoAnything) {
+        setEditMode(EditMode.Wall);
+      }
+    } else if (e.key === 'z' || e.key === 'Z') {
+      setEditMode(EditMode.Zoom);
+    }
+  }, [stateMachine, canDoAnything]);
 
   function handleMouseDown(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     var cp = getClientPosition(e);
@@ -309,6 +375,30 @@ function Map(props: IMapPageProps) {
       case EditMode.Zoom: stateMachine?.zoomRotateEnd(); break;
     }
   }
+
+  const handleWheel = useCallback((e: WheelEvent) => {
+    console.log("Handling wheel.  dX=" + e.deltaX + ", dY=" + e.deltaY + ", dZ=" + e.deltaZ);
+    if (e.deltaY !== 0) {
+      stateMachine?.zoomBy(e.deltaY);
+      e.preventDefault();
+    }
+  }, [stateMachine]);
+
+  // We need an event listener for the window resize so that we can update the drawing,
+  // and for the keyboard and wheel events so that we can implement UI functionality with them.
+  useEffect(() => {
+    const handleWindowResize = (ev: UIEvent) => { stateMachine?.resize(); };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('resize', handleWindowResize);
+    window.addEventListener('wheel', handleWheel);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('resize', handleWindowResize);
+      window.removeEventListener('wheel', handleWheel);
+    };
+  }, [stateMachine, handleKeyDown, handleKeyUp, handleWheel]);
 
   const [showAnnotationFlags, setShowAnnotationFlags] = useState(ShowAnnotationFlags.All);
   const [customAnnotationFlags, setCustomAnnotationFlags] = useState(false);

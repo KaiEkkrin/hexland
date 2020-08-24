@@ -203,8 +203,6 @@ export class DrawingOrtho implements IDrawing {
 
     // The map colour visualisation (added on request instead of the areas)
     this._mapColourVisualisation = new MapColourVisualisation(this._gridGeometry, this._needsRedraw, areaAlpha, areaZ);
-
-    this.animate = this.animate.bind(this);
   }
 
   get areas() { return this._areas; }
@@ -221,12 +219,14 @@ export class DrawingOrtho implements IDrawing {
 
   get los() { return this._los; }
 
-  animate() {
+  animate(fn: () => void) {
     if (this._disposed) {
       return;
     }
 
-    requestAnimationFrame(this.animate);
+    requestAnimationFrame(() => this.animate(fn));
+
+    fn();
 
     // Don't re-render the visible scene unless something changed:
     // (Careful -- don't chain these method calls up with ||, it's important

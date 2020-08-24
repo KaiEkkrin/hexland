@@ -16,11 +16,13 @@
 .Map-controls {
   display: flex;
   flex-direction: column;
-  margin-left: 1rem;
+  flex-wrap: wrap;
+  height: calc(100vh - 8rem);
   min-width: 3rem;
 }
 
 .Map-control {
+  margin-left: 1rem;
   margin-top: 1rem;
   z-index: 1;
 }
@@ -37,11 +39,13 @@
 .Map-info {
   display: flex;
   flex-direction: column;
-  margin-right: 1rem;
+  flex-wrap: wrap;
+  height: calc(100vh - 8rem);
   min-width: 3rem;
 }
 
 .Map-info-card {
+  margin-right: 1rem;
   margin-top: 1rem;
   z-index: 1;
 }

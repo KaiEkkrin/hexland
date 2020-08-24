@@ -2,7 +2,6 @@ import { MapColouring } from "./colouring";
 import { IVisibility } from "./los";
 import { IGridCoord, IGridEdge, IGridVertex } from "../data/coord";
 import { IFeature, IToken, IFeatureDictionary } from "../data/feature";
-import { TetrahedronGeometry } from "three";
 
 // Describes the interface to our drawing subsystem,
 // which could be substituted out, won't exist in auto tests, etc.
@@ -24,7 +23,8 @@ export interface IDrawing {
   los: IFeatureDictionary<IGridCoord, IVisibility>;
 
   // Draws if need be, and requests the next animation frame.
-  animate(): void;
+  // The callback is called at the start of every animate() call.
+  animate(fn: () => void): void;
 
   // These functions turn viewport co-ordinates (0..windowWidth, 0..windowHeight)
   // into face, edge or vertex coords

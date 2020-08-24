@@ -1,5 +1,6 @@
 import { MapColouring } from './colouring';
 import { FaceHighlighter } from './dragHighlighter';
+import { FeatureColour } from './featureColour';
 import { IGridGeometry } from './gridGeometry';
 import { HexGridGeometry } from './hexGridGeometry';
 import { IDrawing } from './interfaces';
@@ -19,7 +20,6 @@ import { createDrawing } from './three/drawing';
 
 import fluent from 'fluent-iterable';
 import * as THREE from 'three';
-import { FeatureColour } from './featureColour';
 
 const noteAlpha = 0.9;
 const tokenNoteAlpha = 0.6;
@@ -27,6 +27,8 @@ const tokenNoteAlpha = 0.6;
 const spacing = 75.0;
 const tileDim = 12;
 
+const panMargin = 100;
+const panStep = 0.2; // per millisecond.  Try proportion of screen size instead?
 const zoomStep = 1.001;
 const zoomMin = 1;
 const zoomMax = 4;
@@ -79,6 +81,14 @@ export class MapStateMachine {
   private readonly _setState: (state: IMapState) => void;
 
   private _state: IMapState;
+
+  private _lastAnimationTime: number | undefined;
+
+  private _panningX = 0; // -1, 0 or 1 for which direction we're panning in
+  private _panningY = 0; // likewise
+
+  private _marginPanningX = 0; // the same, but when dragging to the margin rather than using keys
+  private _marginPanningY = 0;
 
   private _panX = 0;
   private _panY = 0;
@@ -151,7 +161,7 @@ export class MapStateMachine {
     );
 
     this.resize();
-    this._drawing.animate();
+    this._drawing.animate(() => this.onAnimate());
   }
 
   private get seeEverything() { return this._uid === this._map.owner || this._map.ffa === true; }
@@ -262,6 +272,39 @@ export class MapStateMachine {
     }
   }
 
+  private onAnimate() {
+    var now = window.performance.now();
+
+    // Do the drag-pan if applicable
+    var panningX = this._panningX !== 0 ? this._panningX : this._marginPanningX;
+    var panningY = this._panningY !== 0 ? this._panningY : this._marginPanningY;
+    if ((panningX !== 0 || panningY !== 0) && this._lastAnimationTime !== undefined) {
+      this._panX += (now - this._lastAnimationTime) * panningX * panStep;
+      this._panY -= (now - this._lastAnimationTime) * panningY * panStep;
+      this.resize();
+    }
+
+    this._lastAnimationTime = now;
+  }
+
+  private panIfWithinMargin(cp: THREE.Vector2) {
+    if (cp.x < panMargin) {
+      this._marginPanningX = -1;
+    } else if (cp.x < (window.innerWidth - panMargin)) {
+      this._marginPanningX = 0;
+    } else {
+      this._marginPanningX = 1;
+    }
+
+    if (cp.y < panMargin) {
+      this._marginPanningY = -1;
+    } else if (cp.y < (window.innerHeight - panMargin)) {
+      this._marginPanningY = 0;
+    } else {
+      this._marginPanningY = 1;
+    }
+  }
+
   private updateAnnotations(state: IMapState) {
     var positioned: IPositionedAnnotation[] = [];
     var [target, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
@@ -327,6 +370,12 @@ export class MapStateMachine {
 
   get changeTracker() { return this._changeTracker; }
 
+  get panningX() { return this._panningX; }
+  set panningX(value: number) { this._panningX = value; }
+
+  get panningY() { return this._panningY; }
+  set panningY(value: number) { this._panningY = value; }
+
   clearHighlights() {
     this._faceHighlighter.dragCancel();
     this._wallHighlighter.dragCancel();
@@ -339,6 +388,9 @@ export class MapStateMachine {
     this._drawing.selection.clear();
     this._drawing.selectionDrag.clear();
     this._drawing.selectionDragRed.clear();
+
+    this._tokenMoveDragStart = undefined;
+    this._tokenMoveDragSelectionPosition = undefined;
 
     // The LoS may change as a result of no longer having a specific
     // token selected
@@ -361,6 +413,7 @@ export class MapStateMachine {
   }
 
   faceDragEnd(cp: THREE.Vector2, colour: number): IChange[] {
+    this.panMarginReset();
     return this._faceHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour);
   }
 
@@ -379,6 +432,9 @@ export class MapStateMachine {
   }
 
   moveFaceHighlightTo(cp: THREE.Vector2) {
+    if (this._faceHighlighter.inDrag) {
+      this.panIfWithinMargin(cp);
+    }
     this._faceHighlighter.moveHighlight(this._drawing.getGridCoordAt(cp));
   }
 
@@ -386,6 +442,8 @@ export class MapStateMachine {
     if (this._tokenMoveDragStart === undefined || this._tokenMoveDragSelectionPosition === undefined) {
       return;
     }
+
+    this.panIfWithinMargin(cp);
 
     // TODO: Support drag to create a multiple selection.
     var position = this._drawing.getGridCoordAt(cp);
@@ -408,11 +466,19 @@ export class MapStateMachine {
   }
 
   moveWallHighlightTo(cp: THREE.Vector2) {
+    if (this._wallHighlighter.inDrag) {
+      this.panIfWithinMargin(cp);
+    }
     this._wallHighlighter.moveHighlight(this._drawing.getGridVertexAt(cp));
   }
 
   panEnd() {
     this._panLast = undefined;
+  }
+
+  panMarginReset() {
+    this._marginPanningX = 0;
+    this._marginPanningY = 0;
   }
 
   panStart(cp: THREE.Vector2) {
@@ -450,6 +516,7 @@ export class MapStateMachine {
   }
 
   selectionDragEnd(cp: THREE.Vector2, shiftKey: boolean): IChange[] {
+    this.panMarginReset();
     var position = this._drawing.getGridCoordAt(cp);
     var chs: IChange[] = [];
     if (position) {
@@ -564,11 +631,17 @@ export class MapStateMachine {
   }
 
   wallDragEnd(cp: THREE.Vector2, colour: number): IChange[] {
+    this.panMarginReset();
     return this._wallHighlighter.dragEnd(this._drawing.getGridVertexAt(cp), colour);
   }
 
   wallDragStart(cp: THREE.Vector2) {
     this._wallHighlighter.dragStart(this._drawing.getGridVertexAt(cp));
+  }
+
+  zoomBy(amount: number) {
+    this._zoom = Math.min(zoomMax, Math.max(zoomMin, this._zoom * Math.pow(zoomStep, -amount)));
+    this.resize();
   }
 
   zoomRotateEnd() {

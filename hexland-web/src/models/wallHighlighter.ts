@@ -54,6 +54,8 @@ export class WallHighlighter {
     this._vertexHighlights = vertexHighlights;
   }
 
+  get inDrag() { return this._edgeHighlighter.inDrag; }
+
   clear() {
     this._edgeHighlighter.clear();
     this._vertexHighlights.clear();
