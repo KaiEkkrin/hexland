@@ -1,12 +1,12 @@
 import { MapColouring } from './colouring';
 import { FaceHighlighter } from './dragHighlighter';
+import { DragRectangle } from './dragRectangle';
 import { FeatureColour } from './featureColour';
 import { IGridGeometry } from './gridGeometry';
 import { HexGridGeometry } from './hexGridGeometry';
-import { IDrawing } from './interfaces';
+import { IDrawing, IDragRectangle } from './interfaces';
 import * as LoS from './los';
 import { MapChangeTracker } from './mapChangeTracker';
-import { RectangleOcclusion, TestVertexCollection } from './occlusion';
 import { SquareGridGeometry } from './squareGridGeometry';
 import { WallHighlighter } from './wallHighlighter';
 
@@ -78,6 +78,7 @@ export class MapStateMachine {
 
   private readonly _changeTracker: MapChangeTracker;
 
+  private readonly _dragRectangle: IDragRectangle;
   private readonly _faceHighlighter: FaceHighlighter;
   private readonly _wallHighlighter: WallHighlighter;
 
@@ -97,8 +98,6 @@ export class MapStateMachine {
   private readonly _scratchVector2 = new THREE.Vector3();
   private readonly _scratchVector3 = new THREE.Vector3();
 
-  private readonly _testVertexCollection: TestVertexCollection;
-
   private _state: IMapState;
 
   private _lastAnimationTime: number | undefined;
@@ -112,7 +111,6 @@ export class MapStateMachine {
   private _isRotating = false;
   private _panLast: THREE.Vector3 | undefined;
 
-  private _dragRectangleStart: THREE.Vector3 | undefined; // client position
   private _dragCumulative = false;
 
   private _tokenMoveDragStart: IGridCoord | undefined;
@@ -140,9 +138,16 @@ export class MapStateMachine {
       new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
     this._drawing = createDrawing(this._gridGeometry, colours, mount, this.seeEverything);
 
-    this._faceHighlighter = new FaceHighlighter(
-      this._drawing.areas, this._drawing.highlightedAreas
+    this._dragRectangle = new DragRectangle(
+      this._drawing.outlinedRectangle, this._gridGeometry,
+      cp => this._drawing.getGridCoordAt(cp),
+      t => this._drawing.getViewportToWorld(t)
     );
+
+    this._faceHighlighter = new FaceHighlighter(
+      this._drawing.areas, this._drawing.highlightedAreas, this._dragRectangle
+    );
+
     this._wallHighlighter = new WallHighlighter(
       this._gridGeometry, this._drawing.walls, this._drawing.highlightedWalls, this._drawing.highlightedVertices
     );
@@ -174,9 +179,6 @@ export class MapStateMachine {
         });
       }
     );
-
-    // We pre-build the test vertex collection for detecting selections
-    this._testVertexCollection = new TestVertexCollection(this._gridGeometry, 0, 1);
 
     this.resize();
     this._drawing.animate(() => this.onAnimate());
@@ -272,20 +274,6 @@ export class MapStateMachine {
     }
   }
 
-  private *enumerateCanvasDragRectanglePoints(scratch: THREE.Vector3) {
-    const outlined = this._drawing.outlinedRectangle;
-    yield outlined.position.clone();
-
-    scratch.set(outlined.scale.x, 0, 0);
-    yield outlined.position.clone().add(scratch);
-
-    scratch.set(outlined.scale.x, outlined.scale.y, 0);
-    yield outlined.position.clone().add(scratch);
-
-    scratch.set(0, outlined.scale.y, 0);
-    yield outlined.position.clone().add(scratch);
-  }
-
   private getLoSPositions() {
     // These are the positions we should be projecting line-of-sight from.
     var myTokens = Array.from(this._drawing.tokens).filter(t => this.canSelectToken(t));
@@ -302,25 +290,6 @@ export class MapStateMachine {
       // Show the LoS of only the selected tokens
       return selectedTokens.map(t => t.position);
     }
-  }
-
-  private moveDragRectangleTo(cp: THREE.Vector3) {
-    this._drawing.outlinedRectangle.visible = true;
-    this._drawing.outlinedRectangle.alter(o => {
-      if (this._dragRectangleStart === undefined) {
-        return false;
-      }
-
-      // Create the translation
-      o.position.copy(this._dragRectangleStart).min(cp);
-
-      // Create the scaling (remembering to scale by 1 in z always...)
-      o.scale.copy(this._dragRectangleStart).max(cp)
-        .sub(o.position).add(zAxis);
-      o.updateMatrix();
-      o.updateMatrixWorld();
-      return true;
-    });
   }
 
   private onAnimate() {
@@ -362,42 +331,14 @@ export class MapStateMachine {
   }
 
   private selectTokensInDragRectangle() {
-    if (
-      this._drawing.outlinedRectangle.scale.x < 1 ||
-      this._drawing.outlinedRectangle.scale.y < 1
-    ) {
-      // There definitely isn't anything to select
-      return;
-    }
-
     if (this._dragCumulative === false) {
       this._drawing.selection.clear();
     }
 
-    // To achieve this, I need to get the drag rectangle into world co-ordinates,
-    // which are centred at (0, 0).
-    this._scratchVector2.set(2 / window.innerWidth, 2 / window.innerHeight, 1);
-    this._scratchVector3.set(-1, -1, 0);
-    const viewportToWorld = this._drawing.getViewportToWorld(this._scratchMatrix1);
-    const rectanglePoints =
-      [...this.enumerateCanvasDragRectanglePoints(this._scratchVector1)]
-        .map(p => p.multiply(this._scratchVector2).add(this._scratchVector3).applyMatrix4(viewportToWorld));
-
-    // For efficiency, we create the test vertices once and then transform them
-    // as required
-    const rectangleOcclusion = new RectangleOcclusion(0, [...rectanglePoints]);
-    for (var t of this._drawing.tokens) {
-      if (!this.canSelectToken(t)) {
-        continue;
-      }
-
-      this._testVertexCollection.testCoord(t.position, (c, v, i) => {
-        if (rectangleOcclusion.test(v) === true) {
-          this._drawing.selection.add({ position: c, colour: 0 });
-        }
-        return true;
-      });
-    }
+    const inDragRectangle = this._dragRectangle.createFilter();
+    fluent(this._drawing.tokens)
+      .filter(t => this.canSelectToken(t) && inDragRectangle(t.position))
+      .forEach(t => this._drawing.selection.add({ position: t.position, colour: 0 }));
   }
 
   private updateAnnotations(state: IMapState) {
@@ -476,9 +417,7 @@ export class MapStateMachine {
     this._wallHighlighter.dragCancel();
     this._faceHighlighter.clear();
     this._wallHighlighter.clear();
-
-    this._dragRectangleStart = undefined;
-    this._drawing.outlinedRectangle.visible = false;
+    this._dragRectangle.reset();
   }
 
   clearSelection() {
@@ -486,9 +425,7 @@ export class MapStateMachine {
     this._drawing.selection.clear();
     this._drawing.selectionDrag.clear();
     this._drawing.selectionDragRed.clear();
-
-    this._dragRectangleStart = undefined;
-    this._drawing.outlinedRectangle.visible = false;
+    this._dragRectangle.reset();
 
     this._tokenMoveDragStart = undefined;
     this._tokenMoveDragSelectionPosition = undefined;
@@ -515,10 +452,15 @@ export class MapStateMachine {
 
   faceDragEnd(cp: THREE.Vector3, colour: number): IChange[] {
     this.panMarginReset();
-    return this._faceHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour);
+    var result = this._faceHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour);
+    this._dragRectangle.reset();
+    return result;
   }
 
-  faceDragStart(cp: THREE.Vector3) {
+  faceDragStart(cp: THREE.Vector3, shiftKey: boolean) {
+    if (shiftKey) {
+      this._dragRectangle.start(cp);
+    }
     this._faceHighlighter.dragStart(this._drawing.getGridCoordAt(cp));
   }
 
@@ -536,13 +478,13 @@ export class MapStateMachine {
     if (this._faceHighlighter.inDrag) {
       this.panIfWithinMargin(cp);
     }
+
+    this._dragRectangle.moveTo(cp);
     this._faceHighlighter.moveHighlight(this._drawing.getGridCoordAt(cp));
   }
 
   moveSelectionTo(cp: THREE.Vector3) {
-    if (this._dragRectangleStart !== undefined) {
-      this.moveDragRectangleTo(cp);
-    }
+    this._dragRectangle.moveTo(cp);
 
     if (this._tokenMoveDragStart !== undefined && this._tokenMoveDragSelectionPosition !== undefined) {
       this.panIfWithinMargin(cp);
@@ -563,7 +505,7 @@ export class MapStateMachine {
 
         this._tokenMoveDragSelectionPosition = position;
       }
-    } else if (this._dragRectangleStart !== undefined) {
+    } else if (this._dragRectangle.isEnabled()) {
       this.panIfWithinMargin(cp);
       this.selectTokensInDragRectangle();
     }
@@ -695,8 +637,7 @@ export class MapStateMachine {
       }
     }
 
-    this._dragRectangleStart = undefined;
-    this._drawing.outlinedRectangle.visible = false;
+    this._dragRectangle.reset();
     return chs;
   }
 
@@ -714,7 +655,7 @@ export class MapStateMachine {
           this._drawing.selection.clear();
         }
 
-        this._dragRectangleStart = cp;
+        this._dragRectangle.start(cp);
         this._dragCumulative = shiftKey;
       }
     }

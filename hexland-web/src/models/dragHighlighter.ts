@@ -1,6 +1,7 @@
 import { IChange, IWallAdd, IWallRemove, IAreaAdd, IAreaRemove, createAreaAdd, createWallAdd, createWallRemove, createAreaRemove } from "../data/change";
 import { IGridCoord, IGridEdge, edgesEqual, coordsEqual, edgeString, coordString } from "../data/coord";
 import { IFeature, IFeatureDictionary } from '../data/feature';
+import { IDragRectangle } from "./interfaces";
 
 // Helps handling a hover highlight with drag to select many and release to commit
 // them into new features.
@@ -22,10 +23,28 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
   protected abstract createFeatureRemove(position: K): IChange;
   protected abstract createHighlight(position: K): F;
 
+  protected addHighlightAt(position: K) {
+    return this._highlights.add(this.createHighlight(position));
+  }
+
+  protected clearHighlights() {
+    this._highlights.clear();
+  }
+
+  protected removeHighlightAt(position: K) {
+    return this._highlights.remove(position);
+  }
+
+  // Override this to change the drag behaviour, e.g. to implement rectangular highlighting.
+  protected dragTo(position: K) {
+    // By default we highlight the new position if it wasn't already
+    this.addHighlightAt(position);
+  }
+
   get inDrag(): boolean { return this._inDrag; }
 
   clear() {
-    this._highlights.clear();
+    this.clearHighlights();
   }
 
   dragCancel(position?: K | undefined) {
@@ -57,7 +76,7 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
       }
 
       if (!this.keysEqual(f.position, position)) {
-        this._highlights.remove(f.position);
+        this.removeHighlightAt(f.position);
       }
     });
 
@@ -68,16 +87,15 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
   moveHighlight(position?: K | undefined) {
     if (position === undefined) {
       if (this._inDrag !== true) {
-        this._highlights.clear();
+        this.clearHighlights();
       }
     } else if (!this.keysEqual(position, this._lastHoverPosition)) {
       if (this._inDrag === true) {
-        // Highlight the new position if it wasn't already
-        this._highlights.add(this.createHighlight(position));
+        this.dragTo(position);
       } else {
         // Highlight only the current position
-        this._highlights.clear();
-        this._highlights.add(this.createHighlight(position));
+        this.clearHighlights();
+        this.addHighlightAt(position);
       }
     }
 
@@ -108,6 +126,29 @@ export class EdgeHighlighter extends DragHighlighter<IGridEdge, IFeature<IGridEd
 }
 
 export class FaceHighlighter extends DragHighlighter<IGridCoord, IFeature<IGridCoord>> {
+  private readonly _dragRectangle: IDragRectangle;
+
+  private _startPosition: IGridCoord | undefined;
+
+  constructor(
+    features: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
+    highlights: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
+    dragRectangle: IDragRectangle
+  ) {
+    super(features, highlights);
+    this._dragRectangle = dragRectangle;
+  }
+
+  private *enumerateCoordsBetween(a: IGridCoord, b: IGridCoord) {
+    const minCoord = { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y) };
+    const maxCoord = { x: Math.max(a.x, b.x), y: Math.max(a.y, b.y) };
+    for (var y = minCoord.y; y <= maxCoord.y; ++y) {
+      for (var x = minCoord.x; x <= maxCoord.x; ++x) {
+        yield { x: x, y: y };
+      }
+    }
+  }
+
   protected keysEqual(a: IGridCoord, b: IGridCoord | undefined) {
     return coordsEqual(a, b);
   }
@@ -126,5 +167,41 @@ export class FaceHighlighter extends DragHighlighter<IGridCoord, IFeature<IGridC
 
   protected createHighlight(position: IGridCoord): IFeature<IGridCoord> {
     return { position: position, colour: 0 };
+  }
+
+  protected dragTo(position: IGridCoord) {
+    if (this._dragRectangle.isEnabled() && this._startPosition !== undefined) {
+      // We highlight the contents of the rectangle between our start position
+      // and this one, replacing anything we might have had; the filtering is
+      // required because the drag rectangle might not be axis-aligned and the
+      // grid might have non-orthogonal axes
+      this.clearHighlights();
+      for (var c of this._dragRectangle.enumerateCoords()) {
+        this.addHighlightAt(c);
+      }
+    } else {
+      super.dragTo(position);
+    }
+  }
+
+  clear() {
+    super.clear();
+    this._startPosition = undefined;
+  }
+
+  dragCancel(position?: IGridCoord | undefined) {
+    super.dragCancel(position);
+    this._startPosition = undefined;
+  }
+
+  dragEnd(position: IGridCoord | undefined, colour: number) {
+    var result = super.dragEnd(position, colour);
+    this._startPosition = undefined;
+    return result;
+  }
+
+  dragStart(position?: IGridCoord | undefined) {
+    super.dragStart(position);
+    this._startPosition = position;
   }
 }

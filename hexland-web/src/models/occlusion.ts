@@ -130,18 +130,13 @@ export class TestVertexCollection {
 
   get count() { return this._vertices.length; }
 
-  // Tests all the vertices at the given coord.
-  // If the test function returns false ever, we stop testing the rest.
-  // Returns false if the test function ever returned false.
-  testCoord(coord: IGridCoord, fn: (c: IGridCoord, v: THREE.Vector3, i: number) => boolean) {
+  // Enumerates all the vertices at the given coord.
+  // The memory yielded will be valid until another enumeration is done.
+  *enumerate(coord: IGridCoord) {
     this._geometry.createCoordCentre(this._scratch, coord, this._z * 2).sub(this._atOrigin);
     for (var i = 0; i < this._vertices.length; ++i) {
       this._vertices[i].copy(this._atZero[i]).add(this._scratch);
-      if (!fn(coord, this._vertices[i], i)) {
-        return false;
-      }
+      yield this._vertices[i];
     }
-
-    return true;
   }
 }

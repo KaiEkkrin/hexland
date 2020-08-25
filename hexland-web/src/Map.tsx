@@ -307,7 +307,7 @@ function Map(props: IMapPageProps) {
     setIsDraggingView(editMode === EditMode.Pan);
     switch (editMode) {
       case EditMode.Select: stateMachine?.selectionDragStart(cp, e.shiftKey); break;
-      case EditMode.Area: stateMachine?.faceDragStart(cp); break;
+      case EditMode.Area: stateMachine?.faceDragStart(cp, e.shiftKey); break;
       case EditMode.Wall: stateMachine?.wallDragStart(cp); break;
       case EditMode.Pan: stateMachine?.panStart(cp, e.shiftKey); break;
     }

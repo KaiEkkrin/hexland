@@ -58,6 +58,29 @@ export interface IDrawing {
   dispose(): void;
 }
 
+// Describes if and where the user has dragged out a rectangle (whose drawing is
+// implemented by an IOutlinedRectangle, below.)
+export interface IDragRectangle {
+  // Creates a filter function admitting features within the current drag rectangle.
+  createFilter(): (c: IGridCoord) => boolean;
+
+  // Enumerates all the grid coords within the current drag rectangle.
+  enumerateCoords(): Iterable<IGridCoord>;
+
+  // True if the drag rectangle is enabled and visible, else false.
+  isEnabled(): boolean;
+
+  // Moves a point of the drag rectangle to the target in client co-ordinates,
+  // returning true if we have a drag rectangle visible, else false.
+  moveTo(cp: THREE.Vector3): boolean;
+
+  // Resets the drag rectangle and disables it until `start` is called again.
+  reset(): void;
+
+  // Starts a drag rectangle from the given target in client co-ordinates.
+  start(cp: THREE.Vector3): void;
+}
+
 // Describes an outlined rectangle that can be used as a selection box.
 export interface IOutlinedRectangle {
   // This object's position and scale.

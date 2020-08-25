@@ -59,12 +59,15 @@ export function testVisibilityOf(geometry: IGridGeometry, coord: IGridCoord, tar
   var occ = geometry.createEdgeOcclusion(coord, wall, z);
   var testCollection = new TestVertexCollection(geometry, z, alpha);
   var vis = createVisibility(target, testCollection.count, false, 0);
-  testCollection.testCoord(target, (c, v, i) => {
+
+  var i = 0;
+  for (var v of testCollection.enumerate(target)) {
     if (occ.test(v)) {
       vis.hidden |= (1 << i);
     }
-    return true;
-  });
+    ++i;
+  }
+
   vis.colour = getVisibilityColour(vis.count, vis.hidden);
   return vis.colour;
 }
@@ -113,12 +116,13 @@ export function create(geometry: IGridGeometry, colouring: MapColouring, coord: 
         return;
       }
 
-      testCollection.testCoord(f.position, (c, v, i) => {
+      var i = 0;
+      for (var v of testCollection.enumerate(f.position)) {
         if (occ.test(v)) {
           f.hidden |= (1 << i);
         }
-        return true;
-      });
+        ++i;
+      }
 
       f.colour = getVisibilityColour(f.count, f.hidden);
     });
