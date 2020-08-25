@@ -143,6 +143,17 @@ export class MapColouring {
     this._faces.forEach(fn);
   }
 
+  getOuterColour(): number {
+    return this._faces.get({
+      x: this._faces.lowerBounds.x,
+      y: this._faces.lowerBounds.y
+    })?.colour ?? -1;
+  }
+
+  getWall(edge: IGridEdge) {
+    return this._walls.get(edge);
+  }
+
   // Gets a dictionary of all the walls adjacent to a particular map colour.
   getWallsOfColour(colour: number) {
     var walls = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);

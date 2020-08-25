@@ -169,11 +169,11 @@ function Map(props: IMapPageProps) {
   // #36 When the edit mode changes at all, we should clear the highlights
   useEffect(() => {
     stateMachine?.panMarginReset();
-    stateMachine?.clearHighlights();
+    stateMachine?.clearHighlights(selectedColour);
     if (editMode !== EditMode.Select) {
       stateMachine?.clearSelection();
     }
-  }, [stateMachine, editMode]);
+  }, [stateMachine, editMode, selectedColour]);
 
   // Sync the drawing with the map colour mode
   useEffect(() => {
@@ -271,7 +271,7 @@ function Map(props: IMapPageProps) {
       e.preventDefault();
     } else if (e.key === 'Escape') {
       // This should cancel any drag operation
-      stateMachine.clearHighlights();
+      stateMachine.clearHighlights(selectedColour);
       stateMachine.clearSelection();
     } else if (e.key === 'a' || e.key === 'A') {
       if (canDoAnything) {
@@ -281,10 +281,14 @@ function Map(props: IMapPageProps) {
       if (canDoAnything) {
         setEditMode(EditMode.Notes);
       }
+    } else if (e.key === 'o' || e.key === 'O') {
+      stateMachine.resetView();
     } else if (e.key === 'p' || e.key === 'P') {
       setEditMode(EditMode.Pan);
     } else if (e.key === 'r' || e.key === 'R') {
-      stateMachine.resetView();
+      if (canDoAnything) {
+        setEditMode(EditMode.Room);
+      }
     } else if (e.key === 's' || e.key === 'S') {
       setEditMode(EditMode.Select);
     } else if (e.key === 't' || e.key === 'T') {
@@ -296,7 +300,7 @@ function Map(props: IMapPageProps) {
         setEditMode(EditMode.Wall);
       }
     }
-  }, [stateMachine, canDoAnything]);
+  }, [stateMachine, canDoAnything, selectedColour]);
 
   function handleMouseDown(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     var cp = getClientPosition(e);
@@ -307,8 +311,9 @@ function Map(props: IMapPageProps) {
     setIsDraggingView(editMode === EditMode.Pan);
     switch (editMode) {
       case EditMode.Select: stateMachine?.selectionDragStart(cp, e.shiftKey); break;
-      case EditMode.Area: stateMachine?.faceDragStart(cp, e.shiftKey); break;
-      case EditMode.Wall: stateMachine?.wallDragStart(cp, e.shiftKey); break;
+      case EditMode.Area: stateMachine?.faceDragStart(cp, e.shiftKey, selectedColour); break;
+      case EditMode.Wall: stateMachine?.wallDragStart(cp, e.shiftKey, selectedColour); break;
+      case EditMode.Room: stateMachine?.roomDragStart(cp, e.shiftKey, selectedColour); break;
       case EditMode.Pan: stateMachine?.panStart(cp, e.shiftKey); break;
     }
   }
@@ -321,8 +326,9 @@ function Map(props: IMapPageProps) {
 
     switch (editMode) {
       case EditMode.Select: stateMachine?.moveSelectionTo(cp); break;
-      case EditMode.Area: stateMachine?.moveFaceHighlightTo(cp); break;
-      case EditMode.Wall: stateMachine?.moveWallHighlightTo(cp, e.shiftKey); break;
+      case EditMode.Area: stateMachine?.moveFaceHighlightTo(cp, selectedColour); break;
+      case EditMode.Wall: stateMachine?.moveWallHighlightTo(cp, e.shiftKey, selectedColour); break;
+      case EditMode.Room: stateMachine?.moveRoomHighlightTo(cp, e.shiftKey, selectedColour); break;
       case EditMode.Pan: stateMachine?.panTo(cp); break;
     }
 
@@ -365,6 +371,10 @@ function Map(props: IMapPageProps) {
 
       case EditMode.Wall:
         addChanges(stateMachine?.wallDragEnd(cp, selectedColour));
+        break;
+
+      case EditMode.Room:
+        addChanges(stateMachine?.roomDragEnd(cp, e.shiftKey, selectedColour));
         break;
 
       case EditMode.Pan: stateMachine?.panEnd(); break;

@@ -144,6 +144,9 @@ export class DrawingOrtho implements IDrawing {
     this._selectionMaterials = [new THREE.MeshBasicMaterial({
       blending: THREE.AdditiveBlending,
       color: 0x606060,
+    }), new THREE.MeshBasicMaterial({
+      blending: THREE.SubtractiveBlending,
+      color: 0x606060
     })];
     this._invalidSelectionMaterials = [new THREE.MeshBasicMaterial({ color: 0xa00000 })];
     this._textMaterial = new THREE.MeshBasicMaterial({ color: 0, side: THREE.DoubleSide });

@@ -10,7 +10,7 @@ import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import ToggleButton from 'react-bootstrap/ToggleButton';
 import Tooltip from 'react-bootstrap/Tooltip';
 
-import { faDotCircle, faDrawPolygon, faHandPaper, faMousePointer, faPlus, faSquare, IconDefinition, faCog, faSuitcase, faMapMarker } from '@fortawesome/free-solid-svg-icons';
+import { faDotCircle, faDrawPolygon, faHandPaper, faMousePointer, faPlus, faSquare, IconDefinition, faCog, faSuitcase, faMapMarker, faVectorSquare } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 export enum EditMode {
@@ -19,6 +19,7 @@ export enum EditMode {
   Notes = "notes",
   Area = "area",
   Wall = "wall",
+  Room = "room",
   Pan = "pan",
 }
 
@@ -70,7 +71,7 @@ function MapControls(props: IMapControlsProps) {
       <ModeButton key={EditMode.Select} value={EditMode.Select} icon={faMousePointer}
         mode={props.editMode} setMode={props.setEditMode}
       >
-        <u>S</u>elect and mode tokens
+        <u>S</u>elect and move tokens
       </ModeButton>
     ];
 
@@ -89,12 +90,17 @@ function MapControls(props: IMapControlsProps) {
         <ModeButton key={EditMode.Area} value={EditMode.Area} icon={faSquare}
           mode={props.editMode} setMode={props.setEditMode}
         >
-          Paint <u>a</u>reas
+          Paint <u>a</u>reas.  Shift-drag to paint rectangular areas.
         </ModeButton>,
         <ModeButton key={EditMode.Wall} value={EditMode.Wall} icon={faDrawPolygon}
           mode={props.editMode} setMode={props.setEditMode}
         >
-          Paint <u>w</u>alls
+          Paint <u>w</u>alls.  Shift-drag to paint rectangles of walls.
+        </ModeButton>,
+        <ModeButton key={EditMode.Room} value={EditMode.Room} icon={faVectorSquare}
+          mode={props.editMode} setMode={props.setEditMode}
+        >
+          Paint the union of <u>r</u>ooms.  Shift-drag to paint the difference of rooms.
         </ModeButton>
       ]);
     }
@@ -118,7 +124,7 @@ function MapControls(props: IMapControlsProps) {
       <ButtonGroup className="Map-control" toggle vertical>{modeButtons}</ButtonGroup>
       <ButtonGroup className="Map-control" vertical>
         <OverlayTrigger placement="right" overlay={
-          <Tooltip id="reset-tooltip"><u>R</u>eset the map view</Tooltip>
+          <Tooltip id="reset-tooltip">Reset the map view to <u>o</u>rigin</Tooltip>
         }>
           <Button variant="dark" onClick={() => props.resetView()}>
             <FontAwesomeIcon icon={faDotCircle} color="white" />
@@ -145,10 +151,10 @@ function MapControls(props: IMapControlsProps) {
       <ButtonGroup className="Map-control" hidden={hideExtraControls} toggle vertical>
         <ModeButton value={MapColourVisualisationMode.Areas} icon={faSquare}
           mode={props.mapColourVisualisationMode} setMode={props.setMapColourVisualisationMode}
-        >Show area colours</ModeButton>
+        >Show painted area colours</ModeButton>
         <ModeButton value={MapColourVisualisationMode.Connectivity} icon={faSuitcase}
           mode={props.mapColourVisualisationMode} setMode={props.setMapColourVisualisationMode}
-        >Show map connectivity colours</ModeButton>
+        >Show each room in a different colour</ModeButton>
       </ButtonGroup>
       <ButtonGroup className="Map-control" hidden={isNotOwner} vertical>
         <OverlayTrigger placement="right" overlay={

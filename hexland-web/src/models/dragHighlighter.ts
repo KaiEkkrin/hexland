@@ -5,6 +5,7 @@ import { IDragRectangle } from "./interfaces";
 
 // Helps handling a hover highlight with drag to select many and release to commit
 // them into new features.
+// We assume two colours in the highlights: 0 for add, 1 for remove.
 abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
   private readonly _features: IFeatureDictionary<K, F>; // inspect, but do not edit directly!
   private readonly _highlights: IFeatureDictionary<K, F>;
@@ -21,10 +22,10 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
   protected abstract keyString(a: K | undefined): string;
   protected abstract createFeatureAdd(position: K, colour: number): IChange;
   protected abstract createFeatureRemove(position: K): IChange;
-  protected abstract createHighlight(position: K): F;
+  protected abstract createHighlight(position: K, subtract: boolean): F;
 
-  protected addHighlightAt(position: K) {
-    return this._highlights.add(this.createHighlight(position));
+  protected addHighlightAt(position: K, subtract: boolean) {
+    return this._highlights.add(this.createHighlight(position, subtract));
   }
 
   protected clearHighlights() {
@@ -36,9 +37,9 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
   }
 
   // Override this to change the drag behaviour, e.g. to implement rectangular highlighting.
-  protected dragTo(position: K) {
+  protected dragTo(position: K, subtract: boolean) {
     // By default we highlight the new position if it wasn't already
-    this.addHighlightAt(position);
+    this.addHighlightAt(position, subtract);
   }
 
   get inDrag(): boolean { return this._inDrag; }
@@ -47,36 +48,36 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
     this.clearHighlights();
   }
 
-  dragCancel(position?: K | undefined) {
+  dragCancel(position: K | undefined, colour: number) {
     this._inDrag = false;
-    this.moveHighlight(position);
+    this.moveHighlight(position, colour);
   }
 
-  dragStart(position?: K | undefined) {
-    this.moveHighlight(position);
+  dragStart(position: K | undefined, colour: number) {
+    this.moveHighlight(position, colour);
     this._inDrag = true;
   }
 
   // Returns a list of changes that would apply this edit to the map, so that it can be
   // synchronised with other clients.
   dragEnd(position: K | undefined, colour: number): IChange[] {
-    this.moveHighlight(position);
+    this.moveHighlight(position, colour);
     if (this._inDrag === false) {
       return [];
     }
 
     var changes: IChange[] = [];
-    this._highlights.forEach(f => {
-      if (this._features.get(f.position) !== undefined) {
-        changes.push(this.createFeatureRemove(f.position));
+    this._highlights.forEach(h => {
+      if (this._features.get(h.position) !== undefined) {
+        changes.push(this.createFeatureRemove(h.position));
       }
 
-      if (colour >= 0) {
-        changes.push(this.createFeatureAdd(f.position, colour));
+      if (colour >= 0 && h.colour === 0) {
+        changes.push(this.createFeatureAdd(h.position, colour));
       }
 
-      if (!this.keysEqual(f.position, position)) {
-        this.removeHighlightAt(f.position);
+      if (!this.keysEqual(h.position, position)) {
+        this.removeHighlightAt(h.position);
       }
     });
 
@@ -84,18 +85,18 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
     return changes;
   }
 
-  moveHighlight(position?: K | undefined) {
+  moveHighlight(position: K | undefined, colour: number) {
     if (position === undefined) {
       if (this._inDrag !== true) {
         this.clearHighlights();
       }
     } else if (!this.keysEqual(position, this._lastHoverPosition)) {
       if (this._inDrag === true) {
-        this.dragTo(position);
+        this.dragTo(position, colour < 0);
       } else {
         // Highlight only the current position
         this.clearHighlights();
-        this.addHighlightAt(position);
+        this.addHighlightAt(position, colour < 0);
       }
     }
 
@@ -120,8 +121,8 @@ export class EdgeHighlighter extends DragHighlighter<IGridEdge, IFeature<IGridEd
     return createWallRemove(position);
   }
 
-  protected createHighlight(position: IGridEdge): IFeature<IGridEdge> {
-    return { position: position, colour: 0 };
+  protected createHighlight(position: IGridEdge, subtract: boolean): IFeature<IGridEdge> {
+    return { position: position, colour: subtract ? 1 : 0 };
   }
 }
 
@@ -166,11 +167,11 @@ export class FaceHighlighter extends DragHighlighter<IGridCoord, IFeature<IGridC
     return createAreaRemove(position);
   }
 
-  protected createHighlight(position: IGridCoord): IFeature<IGridCoord> {
-    return { position: position, colour: 0 };
+  protected createHighlight(position: IGridCoord, subtract: boolean): IFeature<IGridCoord> {
+    return { position: position, colour: subtract ? 1 : 0 };
   }
 
-  protected dragTo(position: IGridCoord) {
+  protected dragTo(position: IGridCoord, subtract: boolean) {
     if (this._dragRectangle.isEnabled() && this._startPosition !== undefined) {
       // We highlight the contents of the rectangle between our start position
       // and this one, replacing anything we might have had; the filtering is
@@ -178,10 +179,10 @@ export class FaceHighlighter extends DragHighlighter<IGridCoord, IFeature<IGridC
       // grid might have non-orthogonal axes
       this.clearHighlights();
       for (var c of this._dragRectangle.enumerateCoords()) {
-        this.addHighlightAt(c);
+        this.addHighlightAt(c, subtract);
       }
     } else {
-      super.dragTo(position);
+      super.dragTo(position, subtract);
     }
   }
 
@@ -190,8 +191,8 @@ export class FaceHighlighter extends DragHighlighter<IGridCoord, IFeature<IGridC
     this._startPosition = undefined;
   }
 
-  dragCancel(position?: IGridCoord | undefined) {
-    super.dragCancel(position);
+  dragCancel(position: IGridCoord | undefined, colour: number) {
+    super.dragCancel(position, colour);
     this._startPosition = undefined;
   }
 
@@ -201,8 +202,8 @@ export class FaceHighlighter extends DragHighlighter<IGridCoord, IFeature<IGridC
     return result;
   }
 
-  dragStart(position?: IGridCoord | undefined) {
-    super.dragStart(position);
+  dragStart(position: IGridCoord | undefined, colour: number) {
+    super.dragStart(position, colour);
     this._startPosition = position;
   }
 }

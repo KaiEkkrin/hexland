@@ -8,7 +8,7 @@ import { IDrawing, IDragRectangle } from './interfaces';
 import * as LoS from './los';
 import { MapChangeTracker } from './mapChangeTracker';
 import { SquareGridGeometry } from './squareGridGeometry';
-import { WallHighlighter, WallRectangleHighlighter } from './wallHighlighter';
+import { WallHighlighter, WallRectangleHighlighter, RoomHighlighter } from './wallHighlighter';
 
 import { IAnnotation, IPositionedAnnotation } from '../data/annotation';
 import { IChange, createTokenRemove, createTokenAdd, createNoteRemove, createNoteAdd, createTokenMove } from '../data/change';
@@ -82,6 +82,7 @@ export class MapStateMachine {
   private readonly _faceHighlighter: FaceHighlighter;
   private readonly _wallHighlighter: WallHighlighter;
   private readonly _wallRectangleHighlighter: WallRectangleHighlighter;
+  private readonly _roomHighlighter: RoomHighlighter;
 
   private readonly _setState: (state: IMapState) => void;
 
@@ -139,6 +140,12 @@ export class MapStateMachine {
       new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
     this._drawing = createDrawing(this._gridGeometry, colours, mount, this.seeEverything);
 
+    this._mapColouring = new MapColouring(this._gridGeometry);
+    this._mapColouring.expandBounds(
+      new THREE.Vector2(-tileDim, -tileDim),
+      new THREE.Vector2(2 * tileDim - 1, 2 * tileDim - 1)
+    );
+
     this._dragRectangle = new DragRectangle(
       this._drawing.outlinedRectangle, this._gridGeometry,
       cp => this._drawing.getGridCoordAt(cp),
@@ -154,14 +161,13 @@ export class MapStateMachine {
     );
 
     this._wallRectangleHighlighter = new WallRectangleHighlighter(
-      this._gridGeometry, this._drawing.walls, this._drawing.highlightedWalls,
+      this._gridGeometry, this._drawing.areas, this._drawing.walls, this._drawing.highlightedWalls,
       this._drawing.highlightedAreas, this._dragRectangle
     );
 
-    this._mapColouring = new MapColouring(this._gridGeometry);
-    this._mapColouring.expandBounds(
-      new THREE.Vector2(-tileDim, -tileDim),
-      new THREE.Vector2(2 * tileDim - 1, 2 * tileDim - 1)
+    this._roomHighlighter = new RoomHighlighter(
+      this._gridGeometry, this._mapColouring, this._drawing.areas, this._drawing.walls, this._drawing.highlightedWalls,
+      this._drawing.highlightedAreas, this._dragRectangle
     );
 
     // The notes are rendered with React, not with Three.js
@@ -418,13 +424,15 @@ export class MapStateMachine {
   get panningY() { return this._panningY; }
   set panningY(value: number) { this._panningY = value; }
 
-  clearHighlights() {
-    this._faceHighlighter.dragCancel();
-    this._wallHighlighter.dragCancel();
-    this._wallRectangleHighlighter.dragCancel();
+  clearHighlights(colour: number) {
+    this._faceHighlighter.dragCancel(undefined, colour);
+    this._wallHighlighter.dragCancel(undefined, colour);
+    this._wallRectangleHighlighter.dragCancel(undefined, colour);
+    this._roomHighlighter.dragCancel(undefined, colour);
     this._faceHighlighter.clear();
     this._wallHighlighter.clear();
     this._wallRectangleHighlighter.clear();
+    this._roomHighlighter.clear();
     this._dragRectangle.reset();
   }
 
@@ -465,11 +473,11 @@ export class MapStateMachine {
     return result;
   }
 
-  faceDragStart(cp: THREE.Vector3, shiftKey: boolean) {
+  faceDragStart(cp: THREE.Vector3, shiftKey: boolean, colour: number) {
     if (shiftKey) {
       this._dragRectangle.start(cp);
     }
-    this._faceHighlighter.dragStart(this._drawing.getGridCoordAt(cp));
+    this._faceHighlighter.dragStart(this._drawing.getGridCoordAt(cp), colour);
   }
 
   // For editing
@@ -482,13 +490,13 @@ export class MapStateMachine {
     return this._drawing.tokens.get(position);
   }
 
-  moveFaceHighlightTo(cp: THREE.Vector3) {
+  moveFaceHighlightTo(cp: THREE.Vector3, colour: number) {
     if (this._faceHighlighter.inDrag) {
       this.panIfWithinMargin(cp);
     }
 
     this._dragRectangle.moveTo(cp);
-    this._faceHighlighter.moveHighlight(this._drawing.getGridCoordAt(cp));
+    this._faceHighlighter.moveHighlight(this._drawing.getGridCoordAt(cp), colour);
   }
 
   moveSelectionTo(cp: THREE.Vector3) {
@@ -519,7 +527,19 @@ export class MapStateMachine {
     }
   }
 
-  moveWallHighlightTo(cp: THREE.Vector3, shiftKey: boolean) {
+  moveRoomHighlightTo(cp: THREE.Vector3, shiftKey: boolean, colour: number) {
+    if (this._roomHighlighter.inDrag) {
+      this.panIfWithinMargin(cp);
+    } else {
+      this._roomHighlighter.clear();
+    }
+
+    this._dragRectangle.moveTo(cp);
+    this._roomHighlighter.difference = shiftKey;
+    this._roomHighlighter.moveHighlight(this._drawing.getGridCoordAt(cp), colour);
+  }
+
+  moveWallHighlightTo(cp: THREE.Vector3, shiftKey: boolean, colour: number) {
     if (this._wallHighlighter.inDrag || this._wallRectangleHighlighter.inDrag) {
       this.panIfWithinMargin(cp);
     }
@@ -534,9 +554,9 @@ export class MapStateMachine {
         this._wallHighlighter.clear();
       }
 
-      this._wallRectangleHighlighter.moveHighlight(this._drawing.getGridCoordAt(cp));
+      this._wallRectangleHighlighter.moveHighlight(this._drawing.getGridCoordAt(cp), colour);
     } else {
-      this._wallHighlighter.moveHighlight(this._drawing.getGridVertexAt(cp));
+      this._wallHighlighter.moveHighlight(this._drawing.getGridVertexAt(cp), colour);
       if (!this._wallHighlighter.inDrag) {
         this._wallRectangleHighlighter.clear();
       }
@@ -613,6 +633,20 @@ export class MapStateMachine {
       this.updateAnnotations(getState());
       return true;
     });
+  }
+
+  roomDragEnd(cp: THREE.Vector3, shiftKey: boolean, colour: number): IChange[] {
+    this.panMarginReset();
+    this._roomHighlighter.difference = shiftKey;
+    var result = this._roomHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour);
+    this._dragRectangle.reset();
+    return result;
+  }
+
+  roomDragStart(cp: THREE.Vector3, shiftKey: boolean, colour: number) {
+    this._dragRectangle.start(cp);
+    this._roomHighlighter.difference = shiftKey;
+    this._roomHighlighter.dragStart(this._drawing.getGridCoordAt(cp), colour);
   }
 
   selectionDragEnd(cp: THREE.Vector3): IChange[] {
@@ -740,12 +774,12 @@ export class MapStateMachine {
     return result;
   }
 
-  wallDragStart(cp: THREE.Vector3, shiftKey: boolean) {
+  wallDragStart(cp: THREE.Vector3, shiftKey: boolean, colour: number) {
     if (shiftKey) {
       this._dragRectangle.start(cp);
-      this._wallRectangleHighlighter.dragStart(this._drawing.getGridCoordAt(cp));
+      this._wallRectangleHighlighter.dragStart(this._drawing.getGridCoordAt(cp), colour);
     } else {
-      this._wallHighlighter.dragStart(this._drawing.getGridVertexAt(cp));
+      this._wallHighlighter.dragStart(this._drawing.getGridVertexAt(cp), colour);
     }
   }
 
