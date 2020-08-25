@@ -8,7 +8,7 @@ import { IDrawing, IDragRectangle } from './interfaces';
 import * as LoS from './los';
 import { MapChangeTracker } from './mapChangeTracker';
 import { SquareGridGeometry } from './squareGridGeometry';
-import { WallHighlighter } from './wallHighlighter';
+import { WallHighlighter, WallRectangleHighlighter } from './wallHighlighter';
 
 import { IAnnotation, IPositionedAnnotation } from '../data/annotation';
 import { IChange, createTokenRemove, createTokenAdd, createNoteRemove, createNoteAdd, createTokenMove } from '../data/change';
@@ -81,6 +81,7 @@ export class MapStateMachine {
   private readonly _dragRectangle: IDragRectangle;
   private readonly _faceHighlighter: FaceHighlighter;
   private readonly _wallHighlighter: WallHighlighter;
+  private readonly _wallRectangleHighlighter: WallRectangleHighlighter;
 
   private readonly _setState: (state: IMapState) => void;
 
@@ -150,6 +151,11 @@ export class MapStateMachine {
 
     this._wallHighlighter = new WallHighlighter(
       this._gridGeometry, this._drawing.walls, this._drawing.highlightedWalls, this._drawing.highlightedVertices
+    );
+
+    this._wallRectangleHighlighter = new WallRectangleHighlighter(
+      this._gridGeometry, this._drawing.walls, this._drawing.highlightedWalls,
+      this._drawing.highlightedAreas, this._dragRectangle
     );
 
     this._mapColouring = new MapColouring(this._gridGeometry);
@@ -415,8 +421,10 @@ export class MapStateMachine {
   clearHighlights() {
     this._faceHighlighter.dragCancel();
     this._wallHighlighter.dragCancel();
+    this._wallRectangleHighlighter.dragCancel();
     this._faceHighlighter.clear();
     this._wallHighlighter.clear();
+    this._wallRectangleHighlighter.clear();
     this._dragRectangle.reset();
   }
 
@@ -511,11 +519,28 @@ export class MapStateMachine {
     }
   }
 
-  moveWallHighlightTo(cp: THREE.Vector3) {
-    if (this._wallHighlighter.inDrag) {
+  moveWallHighlightTo(cp: THREE.Vector3, shiftKey: boolean) {
+    if (this._wallHighlighter.inDrag || this._wallRectangleHighlighter.inDrag) {
       this.panIfWithinMargin(cp);
     }
-    this._wallHighlighter.moveHighlight(this._drawing.getGridVertexAt(cp));
+
+    if (this._dragRectangle.isEnabled() || shiftKey) {
+      // We're in rectangle highlight mode.
+      if (this._dragRectangle.isEnabled()) {
+        this._dragRectangle.moveTo(cp);
+      }
+
+      if (!this._wallRectangleHighlighter.inDrag) {
+        this._wallHighlighter.clear();
+      }
+
+      this._wallRectangleHighlighter.moveHighlight(this._drawing.getGridCoordAt(cp));
+    } else {
+      this._wallHighlighter.moveHighlight(this._drawing.getGridVertexAt(cp));
+      if (!this._wallHighlighter.inDrag) {
+        this._wallRectangleHighlighter.clear();
+      }
+    }
   }
 
   panEnd() {
@@ -708,11 +733,20 @@ export class MapStateMachine {
 
   wallDragEnd(cp: THREE.Vector3, colour: number): IChange[] {
     this.panMarginReset();
-    return this._wallHighlighter.dragEnd(this._drawing.getGridVertexAt(cp), colour);
+    var result = this._dragRectangle.isEnabled() ?
+      this._wallRectangleHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour) :
+      this._wallHighlighter.dragEnd(this._drawing.getGridVertexAt(cp), colour);
+    this._dragRectangle.reset();
+    return result;
   }
 
-  wallDragStart(cp: THREE.Vector3) {
-    this._wallHighlighter.dragStart(this._drawing.getGridVertexAt(cp));
+  wallDragStart(cp: THREE.Vector3, shiftKey: boolean) {
+    if (shiftKey) {
+      this._dragRectangle.start(cp);
+      this._wallRectangleHighlighter.dragStart(this._drawing.getGridCoordAt(cp));
+    } else {
+      this._wallHighlighter.dragStart(this._drawing.getGridVertexAt(cp));
+    }
   }
 
   zoomBy(amount: number) {

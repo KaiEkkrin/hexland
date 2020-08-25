@@ -125,6 +125,7 @@ export class EdgeHighlighter extends DragHighlighter<IGridEdge, IFeature<IGridEd
   }
 }
 
+// This face highlighter is extended to support rectangle highlighting.
 export class FaceHighlighter extends DragHighlighter<IGridCoord, IFeature<IGridCoord>> {
   private readonly _dragRectangle: IDragRectangle;
 

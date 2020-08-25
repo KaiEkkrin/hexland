@@ -308,7 +308,7 @@ function Map(props: IMapPageProps) {
     switch (editMode) {
       case EditMode.Select: stateMachine?.selectionDragStart(cp, e.shiftKey); break;
       case EditMode.Area: stateMachine?.faceDragStart(cp, e.shiftKey); break;
-      case EditMode.Wall: stateMachine?.wallDragStart(cp); break;
+      case EditMode.Wall: stateMachine?.wallDragStart(cp, e.shiftKey); break;
       case EditMode.Pan: stateMachine?.panStart(cp, e.shiftKey); break;
     }
   }
@@ -322,7 +322,7 @@ function Map(props: IMapPageProps) {
     switch (editMode) {
       case EditMode.Select: stateMachine?.moveSelectionTo(cp); break;
       case EditMode.Area: stateMachine?.moveFaceHighlightTo(cp); break;
-      case EditMode.Wall: stateMachine?.moveWallHighlightTo(cp); break;
+      case EditMode.Wall: stateMachine?.moveWallHighlightTo(cp, e.shiftKey); break;
       case EditMode.Pan: stateMachine?.panTo(cp); break;
     }
 
