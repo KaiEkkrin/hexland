@@ -1,4 +1,4 @@
-import { IGridCoord, IGridEdge, IGridVertex } from '../../data/coord';
+import { IGridCoord, IGridVertex } from '../../data/coord';
 import { MapColouring } from '../colouring';
 import { FeatureColour } from '../featureColour';
 import { IGridGeometry } from '../gridGeometry';
@@ -46,7 +46,6 @@ export class DrawingOrtho implements IDrawing {
   private readonly _camera: THREE.OrthographicCamera;
   private readonly _overlayCamera: THREE.OrthographicCamera;
   private readonly _faceCoordRenderTarget: THREE.WebGLRenderTarget;
-  private readonly _edgeCoordRenderTarget: THREE.WebGLRenderTarget;
   private readonly _vertexCoordRenderTarget: THREE.WebGLRenderTarget;
   private readonly _renderer: THREE.WebGLRenderer;
   private readonly _canvasClearColour: THREE.Color;
@@ -55,7 +54,6 @@ export class DrawingOrtho implements IDrawing {
   private readonly _scene: THREE.Scene;
   private readonly _overlayScene: THREE.Scene;
   private readonly _faceCoordScene: THREE.Scene;
-  private readonly _edgeCoordScene: THREE.Scene; // TODO after the vertex scene do I still need this?
   private readonly _vertexCoordScene: THREE.Scene;
   private readonly _texelReadBuf = new Uint8Array(4);
 
@@ -128,11 +126,6 @@ export class DrawingOrtho implements IDrawing {
     this._faceCoordScene = new THREE.Scene();
     this._faceCoordRenderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight);
     this._grid.addCoordColoursToScene(this._faceCoordScene, 0, 0, 1);
-
-    // Texture of edge co-ordinates within the tile.
-    this._edgeCoordScene = new THREE.Scene();
-    this._edgeCoordRenderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight);
-    this._grid.addEdgeColoursToScene(this._edgeCoordScene, 0, 0, 1);
 
     // Texture of vertex co-ordinates within the tile.
     this._vertexCoordScene = new THREE.Scene();
@@ -268,9 +261,6 @@ export class DrawingOrtho implements IDrawing {
       this._renderer.setClearColor(this._textureClearColour);
       this._renderer.render(this._faceCoordScene, this._camera);
 
-      this._renderer.setRenderTarget(this._edgeCoordRenderTarget); // TODO #40 do I still need this?
-      this._renderer.render(this._edgeCoordScene, this._camera);
-
       this._renderer.setRenderTarget(this._vertexCoordRenderTarget);
       this._renderer.render(this._vertexCoordScene, this._camera);
 
@@ -282,11 +272,6 @@ export class DrawingOrtho implements IDrawing {
   getGridCoordAt(cp: THREE.Vector3): IGridCoord | undefined {
     this._renderer.readRenderTargetPixels(this._faceCoordRenderTarget, cp.x, cp.y, 1, 1, this._texelReadBuf);
     return this._gridGeometry?.decodeCoordSample(this._texelReadBuf, 0);
-  }
-
-  getGridEdgeAt(cp: THREE.Vector3): IGridEdge | undefined {
-    this._renderer.readRenderTargetPixels(this._edgeCoordRenderTarget, cp.x, cp.y, 1, 1, this._texelReadBuf);
-    return this._gridGeometry?.decodeEdgeSample(this._texelReadBuf, 0);
   }
 
   getGridVertexAt(cp: THREE.Vector3): IGridVertex | undefined {
@@ -330,7 +315,6 @@ export class DrawingOrtho implements IDrawing {
     var height = Math.max(1, Math.floor(window.innerHeight));
 
     this._renderer.setSize(width, height, false);
-    this._edgeCoordRenderTarget.setSize(width, height);
     this._faceCoordRenderTarget.setSize(width, height);
     this._vertexCoordRenderTarget.setSize(width, height);
 
@@ -385,12 +369,10 @@ export class DrawingOrtho implements IDrawing {
     this._mount.removeChild(this._renderer.domElement);
 
     this._faceCoordRenderTarget.dispose();
-    this._edgeCoordRenderTarget.dispose();
     this._renderer.dispose();
 
     this._scene.dispose();
     this._faceCoordScene.dispose();
-    this._edgeCoordScene.dispose();
     this._vertexCoordScene.dispose();
 
     this._grid.dispose();

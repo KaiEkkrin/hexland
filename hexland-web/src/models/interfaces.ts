@@ -34,7 +34,6 @@ export interface IDrawing {
   // These functions turn viewport co-ordinates (0..windowWidth, 0..windowHeight)
   // into face, edge or vertex coords
   getGridCoordAt(cp: THREE.Vector3): IGridCoord | undefined;
-  getGridEdgeAt(cp: THREE.Vector3): IGridEdge | undefined;
   getGridVertexAt(cp: THREE.Vector3): IGridVertex | undefined;
 
   // Gets a viewport-to-world transfomation matrix, where the viewport visible
