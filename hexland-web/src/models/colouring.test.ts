@@ -179,3 +179,75 @@ test('Surround three hexes on a hex grid', () => {
   outer.forEach(c => expect(colouring.colourOf(c)).toBe(outerColour));
   further.forEach(c => expect(colouring.colourOf(c)).toBe(outerColour));
 });
+
+// We export these functions so that the LoS test can use them too
+export function *enumerateSquares(radius: number, step: number) {
+  for (var j = -radius; j < radius; j += step) {
+    for (var i = -radius; i < radius; i += step) {
+      yield { x: i, y: j };
+    }
+  }
+}
+
+export function walledSquare(x: number, y: number) {
+  return [
+    // Top
+    { x: x, y: y, edge: 1 },
+    { x: x + 1, y: y, edge: 1 },
+    { x: x + 2, y: y, edge: 1 },
+
+    // Right
+    { x: x + 3, y: y, edge: 0 },
+    { x: x + 3, y: y + 1, edge: 0 },
+    { x: x + 3, y: y + 2, edge: 0 },
+
+    // Bottom
+    { x: x + 2, y: y + 3, edge: 1 },
+    { x: x + 1, y: y + 3, edge: 1 },
+    { x: x, y: y + 3, edge: 1 },
+
+    // Left
+    { x: x, y: y + 2, edge: 0 },
+    { x: x, y: y + 1, edge: 0 },
+    { x: x, y: y, edge: 0 }
+  ];
+}
+
+test('Surround lots of 3-square rooms on a square grid', () => {
+  // This test is intended to both confirm the functionality (it should) and
+  // exercise the performance of the colouring algorithm.
+  const radius = 100;
+  const step = 6;
+  var colouring = new MapColouring(new SquareGridGeometry(75, 12));
+
+  for (var sq of enumerateSquares(radius, step)) {
+    walledSquare(sq.x, sq.y).forEach(w => colouring.setWall(w, true));
+  }
+  colouring.recalculate();
+
+  // Each of the faces at offset (0, 0) and (1, 2) should be in the same colour
+  // as each other and different to all the other ones
+  var innerColours: { [c: number]: number } = {};
+  for (var sq of enumerateSquares(radius, step)) {
+    var atZero = colouring.colourOf(sq);
+    expect(atZero in innerColours).toBeFalsy();
+    innerColours[atZero] = 0;
+
+    var atOneTwo = colouring.colourOf({ x: sq.x + 1, y: sq.y + 2 });
+    expect(atOneTwo).toBe(atZero);
+  }
+
+  // Each of the faces at offset (3, 3) should be in the outside colour, which is
+  // different again
+  var outsideColour: number | undefined = undefined;
+  for (var sq of enumerateSquares(radius, step)) {
+    var atThree = colouring.colourOf({ x: sq.x + 3, y: sq.y + 3 });
+    if (outsideColour === undefined) {
+      outsideColour = atThree;
+    } else {
+      expect(atThree).toBe(outsideColour);
+    }
+
+    expect(atThree in innerColours).toBeFalsy();
+  }
+});

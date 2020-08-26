@@ -4,6 +4,8 @@ import { MapColouring } from './colouring';
 import { TestVertexCollection } from './occlusion';
 import { IGridGeometry } from './gridGeometry';
 
+import * as THREE from 'three';
+
 // Visibility colours.
 export const oNone = 0;
 export const oPartial = 1;
@@ -102,11 +104,44 @@ export function create(geometry: IGridGeometry, colouring: MapColouring, coord: 
   // Get all the relevant walls that we need to check against
   const walls = colouring.getWallsOfColour(colour);
 
+  // To achieve a decently performing LoS creation, we need to aggressively cull
+  // walls that we can't see from the algorithm (there should be many of those).
+  // To achieve this, we'll order the walls closest first, and decorate them all
+  // with information about their adjacent faces: if neither adjacent face is visible,
+  // the wall can be ignored.
+
+  // TODO Can I also try removing invisible faces from the LoS entirely rather than
+  // colouring them oNone?  That would avoid the problem of re-checking them, but
+  // make the combine() function below more complicated...
+  const here = geometry.createCoordCentre(new THREE.Vector3(), coord, 0);
+  function *decorateWalls() {
+    const target = new THREE.Vector3();
+    const scratch1 = new THREE.Vector3();
+    const scratch2 = new THREE.Vector3();
+    for (var w of walls) {
+      yield {
+        wall: w,
+        adj: geometry.getEdgeFaceAdjacency(w.position),
+        dsq: geometry.createEdgeCentre(target, scratch1, scratch2, w.position, z)
+          .distanceToSquared(here)
+      };
+    }
+  }
+
+  const decoratedWalls = [...decorateWalls()].sort((a, b) => a.dsq - b.dsq);
+
   // Check each coord (that isn't the source) for occlusion by each wall.
-  walls.forEach(w => {
-    var occ = geometry.createEdgeOcclusion(coord, w.position, z); // TODO re-use this memory too?
+  decoratedWalls.forEach(w => {
+    // If all the adjacent faces are hidden, this wall can be ignored
+    var adjHidden = w.adj.map(c => los.get(c)?.colour === oNone)
+      .reduce((a, b) => a && b);
+    if (adjHidden === true) {
+      return;
+    }
+
+    var occ = geometry.createEdgeOcclusion(coord, w.wall.position, z); // TODO re-use this memory too?
     los.forEach(f => {
-      if (f.mapColour !== colour) {
+      if (f.colour === oNone) {
         // This is definitely not visible from here
         return;
       }
