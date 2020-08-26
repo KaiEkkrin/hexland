@@ -25,13 +25,6 @@ export interface IGridGeometry {
   // Creates the edge occlusion tester for the edge when seen from the coord.
   createEdgeOcclusion(coord: IGridCoord, edge: IGridEdge, z: number): EdgeOcclusion;
 
-  // Creates the vertices involved in drawing a full grid tile.
-  createGridVertices(tile: THREE.Vector2, z: number): Iterable<THREE.Vector3>;
-
-  // Creates a buffer of indices into the output of `createGridVertices`
-  // suitable for drawing a full grid of lines.
-  createGridLineIndices(): Iterable<number>;
-
   // Creates the vertices to use for an occlusion test.
   createOcclusionTestVertices(coord: IGridCoord, z: number, alpha: number): Iterable<THREE.Vector3>;
 

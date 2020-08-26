@@ -5,8 +5,8 @@ import { RedrawFlag } from '../redrawFlag';
 
 import * as THREE from 'three';
 
-const solidZ = 2;
-const outlineZ = 2.1;
+const solidZ = 0.7;
+const outlineZ = 0.8;
 
 // This draws a simple outlined rectangle.
 export class OutlinedRectangle extends Drawn implements IOutlinedRectangle {

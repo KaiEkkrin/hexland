@@ -385,7 +385,6 @@ function Map(props: IMapPageProps) {
     console.log("Handling wheel.  dX=" + e.deltaX + ", dY=" + e.deltaY + ", dZ=" + e.deltaZ);
     if (e.deltaY !== 0) {
       stateMachine?.zoomBy(e.deltaY);
-      e.preventDefault();
     }
   }, [stateMachine]);
 

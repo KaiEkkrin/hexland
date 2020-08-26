@@ -154,42 +154,6 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     return new EdgeOcclusion(centre, edgeA, edgeB, this._hexSize * 0.01);
   }
 
-  *createGridVertices(tile: THREE.Vector2, z: number): Iterable<THREE.Vector3> {
-    // For each hex, we need to add only two unique vertices out of six; we'll use
-    // the left and top-left vertices.  We need to fill in enough points for createLineIndices()
-    // below to have access to all it needs 
-    var centre = new THREE.Vector3();
-    for (var y = -1; y <= this.tileDim; ++y) {
-      for (var x = 0; x <= this.tileDim; ++x) {
-        this.createCentre(centre, tile.x * this.tileDim + x, tile.y * this.tileDim + y, z);
-        yield this.createLeft(new THREE.Vector3(), centre);
-        yield this.createTopLeft(new THREE.Vector3(), centre);
-      }
-    }
-  }
-
-  *createGridLineIndices(): Iterable<number> {
-    // We only need to draw the top part of each hex -- the bottom part will be taken care of.
-    for (var y = 0; y < this.tileDim; ++y) {
-      for (var x = 0; x < this.tileDim; ++x) {
-        // Left -- 1st vertex of the hex at (x, y)
-        yield this.vertexIndexOf(x, y, 0);
-
-        // Top left -- 2nd vertex of the hex at (x, y)
-        yield this.vertexIndexOf(x, y, 1);
-
-        // Top right -- 1st vertex of the hex at (x + 1, y - 1)
-        yield this.vertexIndexOf(x + 1, y - 1, 0);
-
-        // Right -- 2nd vertex of the hex at (x + 1, y)
-        yield this.vertexIndexOf(x + 1, y, 1);
-
-        // Push a primitive restart
-        yield -1;
-      }
-    }
-  }
-
   *createOcclusionTestVertices(coord: IGridCoord, z: number, alpha: number): Iterable<THREE.Vector3> {
     var centre = new THREE.Vector3();
     yield this.createCoordCentre(centre, coord, z);

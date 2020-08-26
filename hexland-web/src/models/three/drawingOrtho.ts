@@ -7,6 +7,7 @@ import { RedrawFlag } from '../redrawFlag';
 
 import { Areas } from './areas';
 import { Grid } from './grid';
+import { GridFilter } from './gridFilter';
 import { LoS } from './los';
 import { MapColourVisualisation } from './mapColourVisualisation';
 import { OutlinedRectangle } from './overlayRectangle';
@@ -17,17 +18,21 @@ import { Walls } from './walls';
 
 import * as THREE from 'three';
 
-const areaZ = 0.5;
-const tokenZ = 0.6;
-const wallZ = 0.6;
-const gridZ = 0.7;
-const losZ = 0.8;
-const selectionZ = 1.0;
-const highlightZ = 1.1;
-const vertexHighlightZ = 1.2;
-const textZ = 1.5; // for some reason the text doesn't alpha blend correctly; putting it
-                   // on top seems to look fine
-const invalidSelectionZ = 1.6; // must hide the text
+// Our Z values are in the range -1..1 so that they're the same in the shaders
+const areaZ = -0.5;
+const tokenZ = -0.4;
+const wallZ = -0.4;
+const gridZ = -0.3;
+const losZ = -0.2;
+const selectionZ = 0;
+const highlightZ = 0.1;
+const vertexHighlightZ = 0.2;
+const textZ = 0.5; // for some reason the text doesn't alpha blend correctly; putting it
+                   // on top seems to look fine.  This might be happening because the
+                   // text was added to the scene later; I could try making a separate
+                   // LoS scene rendered after the main one to get the rendering in the
+                   // right order?
+const invalidSelectionZ = 0.6; // must hide the text
 
 const wallAlpha = 0.15;
 const edgeAlpha = 0.5;
@@ -44,20 +49,23 @@ export class DrawingOrtho implements IDrawing {
   private readonly _mount: HTMLDivElement;
 
   private readonly _camera: THREE.OrthographicCamera;
-  private readonly _overlayCamera: THREE.OrthographicCamera;
+  private readonly _fixedCamera: THREE.OrthographicCamera;
   private readonly _faceCoordRenderTarget: THREE.WebGLRenderTarget;
   private readonly _vertexCoordRenderTarget: THREE.WebGLRenderTarget;
   private readonly _renderer: THREE.WebGLRenderer;
   private readonly _canvasClearColour: THREE.Color;
   private readonly _textureClearColour: THREE.Color;
 
-  private readonly _scene: THREE.Scene;
+  private readonly _mapScene: THREE.Scene;
+  private readonly _fixedFilterScene: THREE.Scene;
+  private readonly _filterScene: THREE.Scene;
   private readonly _overlayScene: THREE.Scene;
   private readonly _faceCoordScene: THREE.Scene;
   private readonly _vertexCoordScene: THREE.Scene;
   private readonly _texelReadBuf = new Uint8Array(4);
 
   private readonly _grid: Grid;
+  private readonly _gridFilter: GridFilter;
   private readonly _areas: Areas;
   private readonly _highlightedAreas: Areas;
   private readonly _highlightedVertices: Vertices;
@@ -101,17 +109,23 @@ export class DrawingOrtho implements IDrawing {
     const renderWidth = Math.max(1, Math.floor(window.innerWidth));
     const renderHeight = Math.max(1, Math.floor(window.innerHeight));
 
-    this._camera = new THREE.OrthographicCamera(0, 0, renderWidth, renderHeight, 0.1, 1000);
-    this._camera.position.z = 5;
+    this._camera = new THREE.OrthographicCamera(0, 0, renderWidth, renderHeight, -1, 1);
+    this._camera.position.z = 0;
 
-    this._overlayCamera = new THREE.OrthographicCamera(0, 0, renderWidth, renderHeight, 0.1, 1000);
-    this._overlayCamera.position.z = 5;
+    this._fixedCamera = new THREE.OrthographicCamera(0, 0, renderWidth, renderHeight, -1, 1);
+    this._fixedCamera.position.z = 0;
 
     this._gridNeedsRedraw = new RedrawFlag();
     this._needsRedraw = new RedrawFlag();
 
-    this._scene = new THREE.Scene();
+    // These scenes need to be drawn in sequence to get the blending right and allow us
+    // to draw the map itself, then overlay fixed features (the grid), then overlay LoS
+    // to allow it to hide the grid, and finally overlay the UI overlay (drag rectangle).
+    this._mapScene = new THREE.Scene();
+    this._fixedFilterScene = new THREE.Scene();
+    this._filterScene = new THREE.Scene();
     this._overlayScene = new THREE.Scene();
+
     this._renderer = new THREE.WebGLRenderer();
     this._canvasClearColour = new THREE.Color(0.1, 0.1, 0.1);
     this._textureClearColour = new THREE.Color(0, 0, 0); // we'll flip to this when required
@@ -120,17 +134,28 @@ export class DrawingOrtho implements IDrawing {
     this._mount = mount;
 
     this._grid = new Grid(this._gridGeometry, this._gridNeedsRedraw, gridZ, edgeAlpha, vertexAlpha);
-    this._grid.addGridToScene(this._scene, 0, 0, 1);
 
     // Texture of face co-ordinates within the tile.
     this._faceCoordScene = new THREE.Scene();
-    this._faceCoordRenderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight);
+    this._faceCoordRenderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
+      minFilter: THREE.NearestFilter,
+      magFilter: THREE.NearestFilter,
+      wrapS: THREE.ClampToEdgeWrapping,
+      wrapT: THREE.ClampToEdgeWrapping
+    });
     this._grid.addCoordColoursToScene(this._faceCoordScene, 0, 0, 1);
 
     // Texture of vertex co-ordinates within the tile.
     this._vertexCoordScene = new THREE.Scene();
-    this._vertexCoordRenderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight);
+    this._vertexCoordRenderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
+      minFilter: THREE.NearestFilter,
+      magFilter: THREE.NearestFilter,
+      wrapS: THREE.ClampToEdgeWrapping,
+      wrapT: THREE.ClampToEdgeWrapping
+    });
     this._grid.addVertexColoursToScene(this._vertexCoordScene, 0, 0, 1);
+
+    this._gridFilter = new GridFilter(this._fixedFilterScene, this._faceCoordRenderTarget.texture, gridZ);
 
     this._darkColourMaterials = colours.map(c => new THREE.MeshBasicMaterial({ color: c.dark.getHex() }));
     this._lightColourMaterials = colours.map(c => new THREE.MeshBasicMaterial({ color: c.light.getHex() }));
@@ -161,50 +186,50 @@ export class DrawingOrtho implements IDrawing {
     // The filled areas
     this._areas = new Areas(this._gridGeometry, this._needsRedraw, areaAlpha, areaZ);
     this._areas.setMaterials(this._darkColourMaterials);
-    this._areas.addToScene(this._scene);
+    this._areas.addToScene(this._mapScene);
 
     // The highlighted areas
     // (TODO does this need to be a different feature set from the selection?)
     this._highlightedAreas = new Areas(this._gridGeometry, this._needsRedraw, areaAlpha, highlightZ, 100);
     this._highlightedAreas.setMaterials(this._selectionMaterials);
-    this._highlightedAreas.addToScene(this._scene);
+    this._highlightedAreas.addToScene(this._filterScene);
 
     // The highlighted vertices
     this._highlightedVertices = new Vertices(this._gridGeometry, this._needsRedraw, vertexHighlightAlpha, vertexHighlightZ, 100);
     this._highlightedVertices.setMaterials(this._selectionMaterials);
-    this._highlightedVertices.addToScene(this._scene);
+    this._highlightedVertices.addToScene(this._filterScene);
 
     // The highlighted walls
     this._highlightedWalls = new Walls(this._gridGeometry, this._needsRedraw, edgeAlpha, highlightZ, 100);
     this._highlightedWalls.setMaterials(this._selectionMaterials);
-    this._highlightedWalls.addToScene(this._scene);
+    this._highlightedWalls.addToScene(this._filterScene);
 
     // The LoS
     this._los = new LoS(this._gridGeometry, this._needsRedraw, losAlpha, losZ, 5000);
     this._los.setMaterials(this._losMaterials);
-    this._los.addToScene(this._scene);
+    this._los.addToScene(this._filterScene);
 
     // The selection
     this._selection = new Areas(this._gridGeometry, this._needsRedraw, selectionAlpha, selectionZ, 100);
     this._selection.setMaterials(this._selectionMaterials);
-    this._selection.addToScene(this._scene);
+    this._selection.addToScene(this._filterScene);
     this._selectionDrag = new Areas(this._gridGeometry, this._needsRedraw, selectionAlpha, selectionZ, 100);
     this._selectionDrag.setMaterials(this._selectionMaterials);
-    this._selectionDrag.addToScene(this._scene);
+    this._selectionDrag.addToScene(this._filterScene);
     this._selectionDragRed = new Areas(this._gridGeometry, this._needsRedraw, selectionAlpha, invalidSelectionZ, 100);
     this._selectionDragRed.setMaterials(this._invalidSelectionMaterials);
-    this._selectionDragRed.addToScene(this._scene);
+    this._selectionDragRed.addToScene(this._filterScene);
 
     // The tokens
     this._tokens = new Tokens(this._gridGeometry, this._needsRedraw, textCreator, this._textMaterial,
       tokenAlpha, tokenZ, textZ);
     this._tokens.setMaterials(this._lightColourMaterials);
-    this._tokens.addToScene(this._scene);
+    this._tokens.addToScene(this._mapScene);
 
     // The walls
     this._walls = new Walls(this._gridGeometry, this._needsRedraw, wallAlpha, wallZ);
     this._walls.setMaterials(this._lightColourMaterials);
-    this._walls.addToScene(this._scene);
+    this._walls.addToScene(this._mapScene);
 
     // The map colour visualisation (added on request instead of the areas)
     this._mapColourVisualisation = new MapColourVisualisation(this._gridGeometry, this._needsRedraw, areaAlpha, areaZ);
@@ -246,16 +271,6 @@ export class DrawingOrtho implements IDrawing {
     var needsRedraw = this._needsRedraw.needsRedraw();
     var gridNeedsRedraw = this._gridNeedsRedraw.needsRedraw();
 
-    if (needsRedraw) {
-      this._renderer.render(this._scene, this._camera);
-
-      if (this._outlinedRectangle.visible === true) {
-        this._renderer.autoClear = false;
-        this._renderer.render(this._overlayScene, this._overlayCamera);
-        this._renderer.autoClear = true;
-      }
-    }
-
     if (gridNeedsRedraw) {
       this._renderer.setRenderTarget(this._faceCoordRenderTarget);
       this._renderer.setClearColor(this._textureClearColour);
@@ -266,6 +281,16 @@ export class DrawingOrtho implements IDrawing {
 
       this._renderer.setRenderTarget(null);
       this._renderer.setClearColor(this._canvasClearColour);
+    }
+
+    if (gridNeedsRedraw || needsRedraw) {
+      this._renderer.render(this._mapScene, this._camera);
+
+      this._renderer.autoClear = false;
+      this._renderer.render(this._fixedFilterScene, this._fixedCamera);
+      this._renderer.render(this._filterScene, this._camera);
+      this._renderer.render(this._overlayScene, this._fixedCamera);
+      this._renderer.autoClear = true;
     }
   }
 
@@ -306,7 +331,7 @@ export class DrawingOrtho implements IDrawing {
   handleChangesApplied(mapColouring: MapColouring) {
     if (this._showMapColourVisualisation === true) {
       this._mapColourVisualisation.clear(); // TODO try to do it incrementally? (requires checking for colour count changes...)
-      this._mapColourVisualisation.visualise(this._scene, mapColouring);
+      this._mapColourVisualisation.visualise(this._mapScene, mapColouring);
     }
   }
 
@@ -325,13 +350,14 @@ export class DrawingOrtho implements IDrawing {
     this._camera.setRotationFromQuaternion(rotation);
     this._camera.updateProjectionMatrix();
 
-    this._overlayCamera.left = 0;
-    this._overlayCamera.right = width;
-    this._overlayCamera.top = height;
-    this._overlayCamera.bottom = 0;
-    this._overlayCamera.updateProjectionMatrix();
+    this._fixedCamera.left = 0;
+    this._fixedCamera.right = width;
+    this._fixedCamera.top = height;
+    this._fixedCamera.bottom = 0;
+    this._fixedCamera.updateProjectionMatrix();
 
     // TODO Also add or remove grid tiles as required
+    this._gridFilter.resize(width, height);
 
     this._needsRedraw.setNeedsRedraw();
     this._gridNeedsRedraw.setNeedsRedraw();
@@ -348,11 +374,11 @@ export class DrawingOrtho implements IDrawing {
       this._areas.removeFromScene();
 
       // Add the map colour visualisation based on the current map colours:
-      this._mapColourVisualisation.visualise(this._scene, mapColouring);
+      this._mapColourVisualisation.visualise(this._mapScene, mapColouring);
     } else {
       // Remove any map colour visualisation and put the area visualisation back
       this._mapColourVisualisation.removeFromScene();
-      this._areas.addToScene(this._scene);
+      this._areas.addToScene(this._mapScene);
     }
   }
 
@@ -371,11 +397,15 @@ export class DrawingOrtho implements IDrawing {
     this._faceCoordRenderTarget.dispose();
     this._renderer.dispose();
 
-    this._scene.dispose();
+    this._mapScene.dispose();
+    this._fixedFilterScene.dispose();
+    this._filterScene.dispose();
+    this._overlayScene.dispose();
     this._faceCoordScene.dispose();
     this._vertexCoordScene.dispose();
 
     this._grid.dispose();
+    this._gridFilter.dispose();
     this._areas.dispose();
     this._walls.dispose();
     this._highlightedAreas.dispose();

@@ -108,32 +108,6 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     return new EdgeOcclusion(centre, edgeA, edgeB, this._squareSize * 0.01);
   }
 
-  *createGridVertices(tile: THREE.Vector2, z: number): Iterable<THREE.Vector3> {
-    var centre = new THREE.Vector3();
-    for (var y = 0; y <= this.tileDim; ++y) {
-      for (var x = 0; x <= this.tileDim; ++x) {
-        this.createCentre(centre, tile.x * this.tileDim + x, tile.y * this.tileDim + y, z);
-        yield this.createTopLeft(new THREE.Vector3(), centre);
-      }
-    }
-  }
-
-  *createGridLineIndices(): Iterable<number> {
-    // All the horizontal lines:
-    for (var i = 0; i <= this.tileDim; ++i) {
-      yield i * (this.tileDim + 1);
-      yield i * (this.tileDim + 1) + this.tileDim;
-      yield -1;
-    }
-
-    // All the vertical lines:
-    for (i = 0; i <= this.tileDim; ++i) {
-      yield i;
-      yield i + this.tileDim * (this.tileDim + 1);
-      yield -1;
-    }
-  }
-
   *createOcclusionTestVertices(coord: IGridCoord, z: number, alpha: number): Iterable<THREE.Vector3> {
     var centre = new THREE.Vector3();
     yield this.createCoordCentre(centre, coord, z);
