@@ -4,6 +4,7 @@ import { FeatureColour } from '../featureColour';
 import { IGridGeometry } from '../gridGeometry';
 import { IDrawing } from '../interfaces';
 import { RedrawFlag } from '../redrawFlag';
+import { RenderTargetReader } from './renderTargetReader';
 
 import { Areas } from './areas';
 import { Grid } from './grid';
@@ -17,6 +18,7 @@ import { Vertices } from './vertices';
 import { Walls } from './walls';
 
 import * as THREE from 'three';
+import fluent from 'fluent-iterable';
 
 // Our Z values are in the range -1..1 so that they're the same in the shaders
 const areaZ = -0.5;
@@ -63,6 +65,7 @@ export class DrawingOrtho implements IDrawing {
   private readonly _faceCoordScene: THREE.Scene;
   private readonly _vertexCoordScene: THREE.Scene;
   private readonly _texelReadBuf = new Uint8Array(4);
+  private readonly _coordTargetReader: RenderTargetReader;
 
   private readonly _grid: Grid;
   private readonly _gridFilter: GridFilter;
@@ -133,8 +136,6 @@ export class DrawingOrtho implements IDrawing {
     mount.appendChild(this._renderer.domElement);
     this._mount = mount;
 
-    this._grid = new Grid(this._gridGeometry, this._gridNeedsRedraw, gridZ, edgeAlpha, vertexAlpha);
-
     // Texture of face co-ordinates within the tile.
     this._faceCoordScene = new THREE.Scene();
     this._faceCoordRenderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
@@ -143,7 +144,6 @@ export class DrawingOrtho implements IDrawing {
       wrapS: THREE.ClampToEdgeWrapping,
       wrapT: THREE.ClampToEdgeWrapping
     });
-    this._grid.addCoordColoursToScene(this._faceCoordScene, 0, 0, 1);
 
     // Texture of vertex co-ordinates within the tile.
     this._vertexCoordScene = new THREE.Scene();
@@ -153,7 +153,22 @@ export class DrawingOrtho implements IDrawing {
       wrapS: THREE.ClampToEdgeWrapping,
       wrapT: THREE.ClampToEdgeWrapping
     });
-    this._grid.addVertexColoursToScene(this._vertexCoordScene, 0, 0, 1);
+
+    this._grid = new Grid(
+      this._gridGeometry,
+      this._gridNeedsRedraw,
+      gridZ,
+      vertexAlpha,
+      this._faceCoordScene,
+      this._vertexCoordScene
+    );
+
+    // We'll be wanting to sample the coord render target a lot in order to detect what grid to draw,
+    // so we'll set up a reader
+    this._coordTargetReader = new RenderTargetReader(this._faceCoordRenderTarget);
+
+    // Render the middle of the grid by default (we need to have something to start things up)
+    this._grid.extendAcrossRange(-1, -1, 1, 1);
 
     this._gridFilter = new GridFilter(this._fixedFilterScene, this._faceCoordRenderTarget.texture, gridZ);
 
@@ -239,6 +254,68 @@ export class DrawingOrtho implements IDrawing {
     this._outlinedRectangle.addToScene(this._overlayScene);
   }
 
+  private extendGridAround(s: number, t: number) {
+    // We extend the grid around the given tile until we added something,
+    // effectively making it at most 1 tile bigger than it previously was.
+    var countAdded = 0;
+    for (var expand = 1; countAdded === 0; ++expand) {
+      countAdded = this._grid.extendAcrossRange(s - expand, t - expand, s + expand, t + expand);
+    }
+  }
+
+  private fitGridToFrame() {
+    const width = this._faceCoordRenderTarget.width;
+    const height = this._faceCoordRenderTarget.height;
+
+    // Take our control samples, which will be in grid coords, and map them
+    // back into tile coords
+    const samples = [...fluent(this.getGridSamples(width, height)).map(c => c === undefined ? undefined : {
+      x: Math.floor(c.x / this._gridGeometry.tileDim),
+      y: Math.floor(c.y / this._gridGeometry.tileDim)
+    })];
+
+    const undefinedCount = fluent(samples).count(s => s === undefined);
+    if (undefinedCount === samples.length) {
+      // This shouldn't happen unless we only just loaded the map.  Extend the grid around the origin.
+      this.extendGridAround(0, 0);
+    } else if (undefinedCount > 0) {
+      // We're missing grid in part of the view.  Extend the grid by one around the first
+      // tile that we found in view -- this should, over the course of a couple of frames,
+      // fill the whole view
+      const coreTile = samples.find(s => s !== undefined);
+      if (coreTile !== undefined) { // clearly :)
+        this.extendGridAround(coreTile.x, coreTile.y);
+      }
+    } else {
+      // Reduce the amount of stuff we need to consider by removing any tiles outside this range.
+      // (The 0 fallbacks here will never be used because of the if clause, and are here to
+      // appease TypeScript)
+      this._grid.shrinkToRange(
+        Math.min(...samples.map(s => s?.x ?? 0)),
+        Math.min(...samples.map(s => s?.y ?? 0)),
+        Math.max(...samples.map(s => s?.x ?? 0)),
+        Math.max(...samples.map(s => s?.y ?? 0))
+      );
+    }
+  }
+
+  private *getGridSamples(width: number, height: number) {
+    var cp = new THREE.Vector3(Math.floor(width * 0.5), Math.floor(height * 0.5), 0);
+    yield this.getGridCoordAt(cp);
+
+    cp.set(0, 0, 0);
+    yield this.getGridCoordAt(cp);
+
+    cp.set(width - 1, 0, 0);
+    yield this.getGridCoordAt(cp);
+
+    cp.set(width - 1, height - 1, 0);
+    yield this.getGridCoordAt(cp);
+
+    cp.set(0, height - 1, 0);
+    yield this.getGridCoordAt(cp);
+  }
+
   get areas() { return this._areas; }
   get tokens() { return this._tokens; }
   get walls() { return this._walls; }
@@ -253,6 +330,7 @@ export class DrawingOrtho implements IDrawing {
 
   get los() { return this._los; }
 
+  get boundsChanged() { return this._grid.boundsChanged; }
   get outlinedRectangle() { return this._outlinedRectangle; }
 
   animate(fn: () => void) {
@@ -263,6 +341,10 @@ export class DrawingOrtho implements IDrawing {
     requestAnimationFrame(() => this.animate(fn));
 
     fn();
+
+    // Check that we have enough grid.
+    // If we don't, we'll fill it in on the next frame:
+    this.fitGridToFrame();
 
     // Don't re-render the visible scene unless something changed:
     // (Careful -- don't chain these method calls up with ||, it's important
@@ -281,6 +363,8 @@ export class DrawingOrtho implements IDrawing {
 
       this._renderer.setRenderTarget(null);
       this._renderer.setClearColor(this._canvasClearColour);
+
+      this._coordTargetReader.refresh(this._renderer);
     }
 
     if (gridNeedsRedraw || needsRedraw) {
@@ -295,8 +379,10 @@ export class DrawingOrtho implements IDrawing {
   }
 
   getGridCoordAt(cp: THREE.Vector3): IGridCoord | undefined {
-    this._renderer.readRenderTargetPixels(this._faceCoordRenderTarget, cp.x, cp.y, 1, 1, this._texelReadBuf);
-    return this._gridGeometry?.decodeCoordSample(this._texelReadBuf, 0);
+    return this._coordTargetReader.sample(
+      cp.x, cp.y,
+      (buf, offset) => this._gridGeometry?.decodeCoordSample(buf, offset)
+    );
   }
 
   getGridVertexAt(cp: THREE.Vector3): IGridVertex | undefined {

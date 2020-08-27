@@ -4,7 +4,7 @@ import { DragRectangle } from './dragRectangle';
 import { FeatureColour } from './featureColour';
 import { IGridGeometry } from './gridGeometry';
 import { HexGridGeometry } from './hexGridGeometry';
-import { IDrawing, IDragRectangle } from './interfaces';
+import { IDrawing, IDragRectangle, IGridBounds } from './interfaces';
 import * as LoS from './los';
 import { MapChangeTracker } from './mapChangeTracker';
 import { SquareGridGeometry } from './squareGridGeometry';
@@ -20,6 +20,7 @@ import { IMap, MapType } from '../data/map';
 import { createDrawing } from './three/drawing';
 
 import fluent from 'fluent-iterable';
+import { Subscription } from 'rxjs';
 import * as THREE from 'three';
 
 const noteAlpha = 0.9;
@@ -100,6 +101,8 @@ export class MapStateMachine {
   private readonly _scratchVector2 = new THREE.Vector3();
   private readonly _scratchVector3 = new THREE.Vector3();
 
+  private readonly _boundsChanged: Subscription;
+
   private _state: IMapState;
 
   private _lastAnimationTime: number | undefined;
@@ -117,6 +120,8 @@ export class MapStateMachine {
 
   private _tokenMoveDragStart: IGridCoord | undefined;
   private _tokenMoveDragSelectionPosition: IGridCoord | undefined;
+
+  private _isDisposed = false;
 
   constructor(
     map: IMap,
@@ -138,13 +143,10 @@ export class MapStateMachine {
 
     this._gridGeometry = map.ty === MapType.Hex ?
       new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
+
     this._drawing = createDrawing(this._gridGeometry, colours, mount, this.seeEverything);
 
     this._mapColouring = new MapColouring(this._gridGeometry);
-    this._mapColouring.expandBounds(
-      new THREE.Vector2(-tileDim, -tileDim),
-      new THREE.Vector2(2 * tileDim - 1, 2 * tileDim - 1)
-    );
 
     this._dragRectangle = new DragRectangle(
       this._drawing.outlinedRectangle, this._gridGeometry,
@@ -192,6 +194,9 @@ export class MapStateMachine {
       }
     );
 
+    // Handle changes in grid bounds
+    this._boundsChanged = this._drawing.boundsChanged.subscribe(b => this.handleBoundsChanged(b));
+
     this.resize();
     this._drawing.animate(() => this.onAnimate());
   }
@@ -202,7 +207,6 @@ export class MapStateMachine {
     // TODO can I do this incrementally, or do I need to rebuild on every change?
     // Rebuilding on every change makes it much simpler...
     var positions = this.getLoSPositions();
-    console.log("LoS positions: " + positions?.length ?? -1);
     this._drawing.los.clear();
     if (positions?.length === 0) {
       // Show nothing
@@ -302,6 +306,24 @@ export class MapStateMachine {
       // Show the LoS of only the selected tokens
       return selectedTokens.map(t => t.position);
     }
+  }
+
+  private handleBoundsChanged(bounds: IGridBounds) {
+    // When the grid bounds change, make sure the map colouring can cover it.
+    // Careful -- the bounds are all-inclusive but represent whole tiles, and we
+    // want to stretch to the entirety of each tile
+    this._mapColouring.setGridBounds(
+      new THREE.Vector2(bounds.minS * this._gridGeometry.tileDim, bounds.minT * this._gridGeometry.tileDim),
+      new THREE.Vector2(
+        (bounds.maxS + 1) * this._gridGeometry.tileDim - 1,
+        (bounds.maxT + 1) * this._gridGeometry.tileDim - 1
+      )
+    );
+
+    this.withStateChange(getState => {
+      this.buildLoS(getState());
+      return true;
+    });
   }
 
   private onAnimate() {
@@ -793,6 +815,10 @@ export class MapStateMachine {
   }
 
   dispose() {
-    this._drawing.dispose();
+    if (this._isDisposed === false) {
+      this._boundsChanged.unsubscribe();
+      this._drawing.dispose();
+      this._isDisposed = true;
+    }
   }
 }

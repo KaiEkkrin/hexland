@@ -1,16 +1,21 @@
 import { FeatureColour } from "../../featureColour";
 import { IGridGeometry } from "../../gridGeometry";
-import { IDrawing } from "../../interfaces";
+import { IDrawing, IGridBounds } from "../../interfaces";
 import { IVisibility } from '../../los';
 import { FeatureDictionary, IFeature, IToken } from "../../../data/feature";
 import { IGridCoord, coordString, IGridEdge, edgeString, IGridVertex, vertexString } from "../../../data/coord";
 import { OutlinedRectangle } from "./overlayRectangle";
+
+import { Subject } from 'rxjs';
 
 jest.mock('../overlayRectangle');
 
 // The mock drawings we create will be pushed here so that the test
 // harness can access them and their mock functions.
 export const __mockDrawings: any[] = [];
+
+// A test harness could action this subject to emulate bounds changes
+export const __mockBoundsChanged = new Subject<IGridBounds>();
 
 export function createDrawing(
   gridGeometry: IGridGeometry,
@@ -38,6 +43,7 @@ export function createDrawing(
 
     los: new FeatureDictionary<IGridCoord, IVisibility>(coordString),
 
+    boundsChanged: __mockBoundsChanged,
     outlinedRectangle: OutlinedRectangle(),
 
     animate: jest.fn(),

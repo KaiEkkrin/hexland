@@ -3,6 +3,8 @@ import { IVisibility } from "./los";
 import { IGridCoord, IGridEdge, IGridVertex } from "../data/coord";
 import { IFeature, IToken, IFeatureDictionary } from "../data/feature";
 
+import { Observable } from 'rxjs';
+
 // Describes the interface to our drawing subsystem,
 // which could be substituted out, won't exist in auto tests, etc.
 // The drawing interface exposes instanced features dictionaries directly --
@@ -21,6 +23,10 @@ export interface IDrawing {
   selectionDragRed: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
 
   los: IFeatureDictionary<IGridCoord, IVisibility>;
+
+  // Subscribe to this to find out when the grid bounds have changed (from
+  // panning, zooming, window resizes etc).
+  boundsChanged: Observable<IGridBounds>;
 
   // A drawing always exposes a single outlined rectangle that can be used
   // for drag-boxes etc.  This object will be drawn separately and will not
@@ -79,6 +85,14 @@ export interface IDragRectangle {
   // Starts a drag rectangle from the given target in client co-ordinates.
   start(cp: THREE.Vector3): void;
 }
+
+// Describes the bounds of the grid, in tiles.
+export interface IGridBounds {
+  minS: number,
+  minT: number,
+  maxS: number,
+  maxT: number
+};
 
 // Describes an outlined rectangle that can be used as a selection box.
 export interface IOutlinedRectangle {

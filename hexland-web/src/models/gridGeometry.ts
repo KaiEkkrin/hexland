@@ -5,6 +5,9 @@ import * as THREE from 'three';
 // A grid geometry describes a grid's layout (currently either squares
 // or hexagons.)
 export interface IGridGeometry {
+  // The number of faces horizontally or vertically in each tile.
+  tileDim: number;
+
   // Creates the co-ordinates of the centre of this face.
   createCoordCentre(target: THREE.Vector3, coord: IGridCoord, z: number): THREE.Vector3;
 
@@ -157,7 +160,7 @@ export abstract class BaseGeometry {
                                  // (requires figuring out how to specify one, however!)
   }
 
-  protected get tileDim() { return this._tileDim; }
+  get tileDim() { return this._tileDim; }
   protected get maxEdge() { return this._maxEdge; }
   protected get maxVertex() { return this._maxVertex; }
 

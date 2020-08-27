@@ -8,6 +8,9 @@ import * as THREE from 'three';
 
 // Encapsulates a mesh for each of the colour channels along with a dictionary
 // of the indexes the features' instances have been placed at.
+// TODO #22 Implement custom colours by making the colour an instance parameter
+// rather than a whole separate draw for each colour.  This might require a
+// custom shader (?) but it would be quite an easy one to make...
 class InstancedMeshCollection<K extends IGridCoord> {
   private readonly _createMesh: (m: THREE.Material, maxInstances: number) => THREE.InstancedMesh;
   private readonly _transformTo: (o: THREE.Object3D, position: K) => void;

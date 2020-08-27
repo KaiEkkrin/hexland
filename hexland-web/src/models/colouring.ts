@@ -3,6 +3,7 @@ import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
 import { FeatureDictionary, IFeature, IFeatureDictionary } from '../data/feature';
 
 import * as THREE from 'three';
+import fluent from 'fluent-iterable';
 
 // This module deals with map colouring, i.e., it tracks contiguous areas of the map
 // (areas that are continuous without separation by walls) and draws them all in the
@@ -71,17 +72,6 @@ class FaceDictionary extends FeatureDictionary<IGridCoord, IFeature<IGridCoord>>
     if (removed === undefined) {
       return undefined;
     }
-
-    if (coord.x > this._lowerBounds.x && coord.y > this._lowerBounds.y &&
-      coord.x < this._upperBounds.x && coord.y < this._upperBounds.y) {
-      // No effect on bounds
-      return removed;
-    }
-
-    // Re-calculate our bounds
-    this.clearBounds();
-    this.forEach(c => this.updateBounds(c.position));
-    return removed;
   }
 
   // Assigns a new colour to the co-ordinate, returning the old colour or
@@ -95,6 +85,32 @@ class FaceDictionary extends FeatureDictionary<IGridCoord, IFeature<IGridCoord>>
     }
 
     return oldFeature;
+  }
+
+  setBounds(newLowerBounds: THREE.Vector2, newUpperBounds: THREE.Vector2) {
+    // Clean out entries outside the new bounds if anything shrank
+    if (
+      newLowerBounds.x > this._lowerBounds.x ||
+      newLowerBounds.y > this._lowerBounds.y ||
+      newUpperBounds.x < this._upperBounds.x ||
+      newUpperBounds.y < this._upperBounds.y
+    ) {
+      const toDelete = [...fluent(this).filter(f =>
+        f.position.x < newLowerBounds.x || f.position.x > newUpperBounds.x ||
+        f.position.y < newLowerBounds.y || f.position.y > newUpperBounds.y
+      )];
+      for (var f of toDelete) {
+        this.remove(f.position);
+      }
+    }
+
+    const boundsChanged = !(this._lowerBounds.equals(newLowerBounds) && this._upperBounds.equals(newUpperBounds));
+    if (boundsChanged) {
+      this._lowerBounds.copy(newLowerBounds);
+      this._upperBounds.copy(newUpperBounds);
+    }
+
+    return boundsChanged;
   }
 }
 
@@ -121,6 +137,16 @@ export class MapColouring {
   // (We can just keep incrementing this; we'll never reach MAX_SAFE_INTEGER.)
   private _nextColour = 0;
 
+  // These are the grid bounds we must conform to.  Always filling these guarantees
+  // we always have a map colour for each visible face.
+  private _lowerGridBounds = new THREE.Vector2(0, 0);
+  private _upperGridBounds = new THREE.Vector2(1, 1);
+
+  // These are the current wall bounds.  Calculating them from scratch is expensive
+  // so we maintain a copy and only recalculate when we have to
+  private _lowerWallBounds = new THREE.Vector2(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
+  private _upperWallBounds = new THREE.Vector2(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER);
+
   constructor(geometry: IGridGeometry) {
     this._geometry = geometry;
     this._walls = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
@@ -133,10 +159,40 @@ export class MapColouring {
     this._faces.replace({ position: { x: 0, y: 0 }, colour: this._nextColour++ });
   }
 
+  private addGutterToWallBounds(lowerBounds: THREE.Vector2, upperBounds: THREE.Vector2) {
+    // This 2-face gutter should be enough to flow an outside colour fill around anything
+    lowerBounds.subScalar(2);
+    upperBounds.addScalar(2);
+  }
+
+  // Calculates the bounds around the walls.  This is the minimum bounds we need in
+  // order to properly colour this map.
+  private calculateWallBounds(lowerBounds: THREE.Vector2, upperBounds: THREE.Vector2) {
+    lowerBounds.set(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
+    upperBounds.set(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER);
+    for (var w of this._walls) {
+      for (var adj of this._geometry.getEdgeFaceAdjacency(w.position)) {
+        lowerBounds.x = Math.min(lowerBounds.x, adj.x);
+        lowerBounds.y = Math.min(lowerBounds.y, adj.y);
+        upperBounds.x = Math.max(upperBounds.x, adj.x);
+        upperBounds.y = Math.max(upperBounds.y, adj.y);
+      }
+    }
+
+    this.addGutterToWallBounds(lowerBounds, upperBounds);
+  }
+
+  // Gets the full bounds we should use, taking into account the wall bounds
+  // and the grid bounds.
+  private getBounds(lowerBounds: THREE.Vector2, upperBounds: THREE.Vector2) {
+    lowerBounds.copy(this._lowerGridBounds).min(this._lowerWallBounds);
+    upperBounds.copy(this._upperGridBounds).max(this._upperWallBounds);
+  }
+
   colourOf(coord: IGridCoord): number {
     var f = this._faces.get(coord);
     //assert(f?.colour !== -1);
-    return f?.colour ?? -1;
+    return f?.colour ?? 0;
   }
 
   forEachFace(fn: (f: IFeature<IGridCoord>) => void) {
@@ -206,14 +262,23 @@ export class MapColouring {
     }
   }
 
-  expandBounds(lowerBounds: THREE.Vector2, upperBounds: THREE.Vector2) {
-    var newLowerBounds = lowerBounds.clone().min(this._faces.lowerBounds);
-    var newUpperBounds = upperBounds.clone().max(this._faces.upperBounds);
-    if (!newLowerBounds.equals(this._faces.lowerBounds) || !newUpperBounds.equals(this._faces.upperBounds)) {
-      // It should be sufficient to fill to the new bounds with the current
-      // bounds colour:
-      var start = { x: this._faces.lowerBounds.x, y: this._faces.lowerBounds.y };
-      this.fill(start, newLowerBounds, newUpperBounds);
+  setGridBounds(lowerBounds: THREE.Vector2, upperBounds: THREE.Vector2) {
+    this._lowerGridBounds.copy(lowerBounds);
+    this._upperGridBounds.copy(upperBounds);
+
+    // Recalculate our overall bounds, and sync our faces dictionary with it
+    const newLowerBounds = new THREE.Vector2();
+    const newUpperBounds = new THREE.Vector2();
+    this.getBounds(newLowerBounds, newUpperBounds);
+    var boundsChanged = this._faces.setBounds(newLowerBounds, newUpperBounds);
+    if (boundsChanged) {
+      // If the bounds have changed, fill them in
+      // (This may or may not be redundant but it's a bit hard to determine)
+      // We can safely use the zero colour for the outside; that's all it can ever
+      // have been.
+      var boundsPosition = { x: newLowerBounds.x, y: newLowerBounds.y };
+      this._faces.replace({ position: boundsPosition, colour: 0 });
+      this.fill(boundsPosition, newLowerBounds, newUpperBounds);
     }
   }
 
@@ -226,10 +291,9 @@ export class MapColouring {
     var newColours: { [colour: number]: boolean } = {};
 
     // Make all the wall edits, and populate our dictionary of things to fill
-    // (with what) and our new bounds
-    var newLowerBounds = this._faces.lowerBounds.clone();
-    var newUpperBounds = this._faces.upperBounds.clone();
-    var [lowerBounds, upperBounds] = [new THREE.Vector2(), new THREE.Vector2()];
+    var addedLowerWallBounds = new THREE.Vector2(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
+    var addedUpperWallBounds = new THREE.Vector2(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER);
+    var removedCount = 0;
     this._pending.forEach(pw => {
       var adjacentFaces = this._geometry.getEdgeFaceAdjacency(pw.position);
       if (pw.present === false) {
@@ -242,32 +306,44 @@ export class MapColouring {
         const colour = this.colourOf(adjacentFaces[0]);
         adjacentFaces.slice(1).forEach(a => {
           this._toFill.set({ position: a, colour: colour });
-        })
+        });
+        ++removedCount;
       } else {
         if (this._walls.add({ position: pw.position, colour: 0 }) === false) {
           return;
         }
-
-        // Inflating the bounds by 2 on both sides should guarantee that the outside
-        // is always all the same colour (TODO this is probably excessive and I should
-        // reduce it a bit...)
-        lowerBounds.set(pw.position.x, pw.position.y).addScalar(-2);
-        upperBounds.set(pw.position.x, pw.position.y).addScalar(2);
-        newLowerBounds.min(lowerBounds);
-        newUpperBounds.max(upperBounds);
 
         // We assign a fresh colour to each side of the wall
         adjacentFaces.forEach(a => {
           var newColour = this._nextColour++;
           this._toFill.set({ position: a, colour: newColour });
           newColours[newColour] = true;
-        })
+
+          // Update the bounds of our added walls
+          addedLowerWallBounds.x = Math.min(addedLowerWallBounds.x, a.x);
+          addedLowerWallBounds.y = Math.min(addedLowerWallBounds.y, a.y);
+          addedUpperWallBounds.x = Math.max(addedUpperWallBounds.x, a.x);
+          addedUpperWallBounds.y = Math.max(addedUpperWallBounds.y, a.y);
+        });
       }
     });
 
     this._pending.clear();
-    const originalBoundsChanged = !this._faces.lowerBounds.equals(newLowerBounds) ||
-      !this._faces.upperBounds.equals(newUpperBounds);
+
+    // Update the bounds.
+    // Unfortunately, if any walls were removed, we do need to do a full recalculate
+    if (removedCount > 0) {
+      this.calculateWallBounds(this._lowerWallBounds, this._upperWallBounds);
+    } else {
+      this.addGutterToWallBounds(addedLowerWallBounds, addedUpperWallBounds);
+      this._lowerWallBounds.min(addedLowerWallBounds);
+      this._upperWallBounds.max(addedUpperWallBounds);
+    }
+
+    const newLowerBounds = new THREE.Vector2();
+    const newUpperBounds = new THREE.Vector2();
+    this.getBounds(newLowerBounds, newUpperBounds);
+    const boundsChanged = this._faces.setBounds(newLowerBounds, newUpperBounds);
 
     // Fill everything -- but skip squares that have been filled over from another
     // square already (which will hopefully be many of them in the case of a large
@@ -284,11 +360,13 @@ export class MapColouring {
       this.fill(f.position, newLowerBounds, newUpperBounds);
     });
 
-    if (originalBoundsChanged) {
+    if (boundsChanged) {
       // If the bounds have changed, fill them in
       // (This may or may not be redundant but it's a bit hard to determine)
+      // We can safely use the zero colour for the outside; that's all it can ever
+      // have been.
       var boundsPosition = { x: newLowerBounds.x, y: newLowerBounds.y };
-      this._faces.replace({ position: boundsPosition, colour: this._nextColour++ });
+      this._faces.replace({ position: boundsPosition, colour: 0 });
       this.fill(boundsPosition, newLowerBounds, newUpperBounds);
     }
   }
