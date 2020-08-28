@@ -4,7 +4,7 @@ import { DragRectangle } from './dragRectangle';
 import { FeatureColour } from './featureColour';
 import { IGridGeometry } from './gridGeometry';
 import { HexGridGeometry } from './hexGridGeometry';
-import { IDrawing, IDragRectangle, IGridBounds } from './interfaces';
+import { IDrawing, IDragRectangle } from './interfaces';
 import * as LoS from './los';
 import { MapChangeTracker } from './mapChangeTracker';
 import { SquareGridGeometry } from './squareGridGeometry';
@@ -20,7 +20,6 @@ import { IMap, MapType } from '../data/map';
 import { createDrawing } from './three/drawing';
 
 import fluent from 'fluent-iterable';
-import { Subscription } from 'rxjs';
 import * as THREE from 'three';
 
 const noteAlpha = 0.9;
@@ -100,8 +99,6 @@ export class MapStateMachine {
   private readonly _scratchVector1 = new THREE.Vector3();
   private readonly _scratchVector2 = new THREE.Vector3();
   private readonly _scratchVector3 = new THREE.Vector3();
-
-  private readonly _boundsChanged: Subscription;
 
   private _state: IMapState;
 
@@ -193,9 +190,6 @@ export class MapStateMachine {
         });
       }
     );
-
-    // Handle changes in grid bounds
-    this._boundsChanged = this._drawing.boundsChanged.subscribe(b => this.handleBoundsChanged(b));
 
     this.resize();
     this._drawing.animate(() => this.onAnimate());
@@ -306,24 +300,6 @@ export class MapStateMachine {
       // Show the LoS of only the selected tokens
       return selectedTokens.map(t => t.position);
     }
-  }
-
-  private handleBoundsChanged(bounds: IGridBounds) {
-    // When the grid bounds change, make sure the map colouring can cover it.
-    // Careful -- the bounds are all-inclusive but represent whole tiles, and we
-    // want to stretch to the entirety of each tile
-    this._mapColouring.setGridBounds(
-      new THREE.Vector2(bounds.minS * this._gridGeometry.tileDim, bounds.minT * this._gridGeometry.tileDim),
-      new THREE.Vector2(
-        (bounds.maxS + 1) * this._gridGeometry.tileDim - 1,
-        (bounds.maxT + 1) * this._gridGeometry.tileDim - 1
-      )
-    );
-
-    this.withStateChange(getState => {
-      this.buildLoS(getState());
-      return true;
-    });
   }
 
   private onAnimate() {
@@ -816,7 +792,6 @@ export class MapStateMachine {
 
   dispose() {
     if (this._isDisposed === false) {
-      this._boundsChanged.unsubscribe();
       this._drawing.dispose();
       this._isDisposed = true;
     }

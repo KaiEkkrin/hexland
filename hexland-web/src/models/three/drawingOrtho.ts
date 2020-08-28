@@ -168,7 +168,7 @@ export class DrawingOrtho implements IDrawing {
     this._coordTargetReader = new RenderTargetReader(this._faceCoordRenderTarget);
 
     // Render the middle of the grid by default (we need to have something to start things up)
-    this._grid.extendAcrossRange(-1, -1, 1, 1);
+    this._grid.extendAcrossRange({ minS: -1, minT: -1, maxS: 1, maxT: 1 });
 
     this._gridFilter = new GridFilter(this._fixedFilterScene, this._faceCoordRenderTarget.texture, gridZ);
 
@@ -259,7 +259,12 @@ export class DrawingOrtho implements IDrawing {
     // effectively making it at most 1 tile bigger than it previously was.
     var countAdded = 0;
     for (var expand = 1; countAdded === 0; ++expand) {
-      countAdded = this._grid.extendAcrossRange(s - expand, t - expand, s + expand, t + expand);
+      countAdded = this._grid.extendAcrossRange({
+        minS: s - expand,
+        minT: t - expand,
+        maxS: s + expand,
+        maxT: t + expand
+      });
     }
   }
 
@@ -290,12 +295,12 @@ export class DrawingOrtho implements IDrawing {
       // Reduce the amount of stuff we need to consider by removing any tiles outside this range.
       // (The 0 fallbacks here will never be used because of the if clause, and are here to
       // appease TypeScript)
-      this._grid.shrinkToRange(
-        Math.min(...samples.map(s => s?.x ?? 0)),
-        Math.min(...samples.map(s => s?.y ?? 0)),
-        Math.max(...samples.map(s => s?.x ?? 0)),
-        Math.max(...samples.map(s => s?.y ?? 0))
-      );
+      this._grid.shrinkToRange({
+        minS: Math.min(...samples.map(s => s?.x ?? 0)),
+        minT: Math.min(...samples.map(s => s?.y ?? 0)),
+        maxS: Math.max(...samples.map(s => s?.x ?? 0)),
+        maxT: Math.max(...samples.map(s => s?.y ?? 0))
+      });
     }
   }
 
@@ -330,7 +335,6 @@ export class DrawingOrtho implements IDrawing {
 
   get los() { return this._los; }
 
-  get boundsChanged() { return this._grid.boundsChanged; }
   get outlinedRectangle() { return this._outlinedRectangle; }
 
   animate(fn: () => void) {

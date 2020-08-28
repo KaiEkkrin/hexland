@@ -24,10 +24,6 @@ export interface IDrawing {
 
   los: IFeatureDictionary<IGridCoord, IVisibility>;
 
-  // Subscribe to this to find out when the grid bounds have changed (from
-  // panning, zooming, window resizes etc).
-  boundsChanged: Observable<IGridBounds>;
-
   // A drawing always exposes a single outlined rectangle that can be used
   // for drag-boxes etc.  This object will be drawn separately and will not
   // be subject to the world transform applied to everything else.
