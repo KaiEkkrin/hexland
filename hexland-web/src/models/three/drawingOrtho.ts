@@ -487,13 +487,6 @@ export class DrawingOrtho implements IDrawing {
     this._faceCoordRenderTarget.dispose();
     this._renderer.dispose();
 
-    this._mapScene.dispose();
-    this._fixedFilterScene.dispose();
-    this._filterScene.dispose();
-    this._overlayScene.dispose();
-    this._faceCoordScene.dispose();
-    this._vertexCoordScene.dispose();
-
     this._grid.dispose();
     this._gridFilter.dispose();
     this._areas.dispose();

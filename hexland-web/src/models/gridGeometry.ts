@@ -28,6 +28,14 @@ export interface IGridGeometry {
   // Creates the edge occlusion tester for the edge when seen from the coord.
   createEdgeOcclusion(coord: IGridCoord, edge: IGridEdge, z: number): EdgeOcclusion;
 
+  // Creates the vertices used for the LoS mesh.  Like the wall vertices,
+  // this will have only edge 0 and we will use the instance matrix to generate
+  // the others.  See three/los.ts for explanation.
+  createLoSVertices(z: number, q: number): Iterable<THREE.Vector3>;
+
+  // Creates the indices that match that LoS mesh.
+  createLoSIndices(): number[];
+
   // Creates the vertices to use for an occlusion test.
   createOcclusionTestVertices(coord: IGridCoord, z: number, alpha: number): Iterable<THREE.Vector3>;
 
@@ -263,6 +271,29 @@ export abstract class BaseGeometry {
       4 * edge +
       4 * this._maxEdge; // this value mixed in so that a 0 sign-and-edge value can be identified as "nothing"
     colours[offset + 1] = this._epsilon + packedSignAndEdge / (8.0 * this._maxEdge);
+  }
+
+  *createLoSVertices(z: number, q: number) {
+    var edgeA = new THREE.Vector3();
+    var edgeB = new THREE.Vector3();
+
+    var centre = this.createCentre(new THREE.Vector3(), 0, 0, z);
+    this.createEdgeVertices(edgeA, edgeB, centre, 0);
+    yield edgeA.clone();
+    yield edgeB.clone();
+
+    this.createCentre(centre, 0, 0, q);
+    this.createEdgeVertices(edgeA, edgeB, centre, 0);
+    yield edgeA;
+    yield edgeB;
+  }
+
+  createLoSIndices() {
+    // You need to disable back-face culling to use these :)
+    return [
+      0, 1, 2, -1,
+      1, 2, 3, -1
+    ];
   }
 
   createSolidEdgeVertices(tile: THREE.Vector2, alpha: number, z: number): THREE.Vector3[] {

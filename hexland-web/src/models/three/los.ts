@@ -6,7 +6,6 @@ import { RedrawFlag } from '../redrawFlag';
 
 import * as THREE from 'three';
 
-
 // TODO #40 This Three.js implementation will need to be split out -- perhaps I should move
 // all the modules that draw with Three.js into their own namespace, for example?
 export class LoS extends InstancedFeatures<IGridCoord, IVisibility> {

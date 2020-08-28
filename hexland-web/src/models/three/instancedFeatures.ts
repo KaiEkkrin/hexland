@@ -156,6 +156,9 @@ export abstract class InstancedFeatures<K extends IGridCoord, F extends IFeature
 
   // setMaterials implies a clear(), because it invalidates our current index tracking.
   // The materials parameter here should be the known colour materials in order.
+  // TODO #52 No -- I must be able to call this *without* implying a clear.
+  // This means a single material for all colours, which means instance colours.  Fix before
+  // going any further!  Rename it to `setMaterial`.
   setMaterials(materials: THREE.Material[]) {
     this.clear();
     this._meshCollections.forEach(c => c.setMaterials(materials));
