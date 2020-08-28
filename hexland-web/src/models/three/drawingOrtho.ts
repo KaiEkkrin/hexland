@@ -26,6 +26,7 @@ const tokenZ = -0.4;
 const wallZ = -0.4;
 const gridZ = -0.3;
 const losZ = -0.2;
+const losQ = 0.2;
 const selectionZ = 0;
 const highlightZ = 0.1;
 const vertexHighlightZ = 0.2;
@@ -41,7 +42,6 @@ const edgeAlpha = 0.5;
 const vertexAlpha = 0.5;
 const tokenAlpha = 0.7;
 const selectionAlpha = 0.9;
-const losAlpha = 1.0;
 const areaAlpha = 1.0;
 const vertexHighlightAlpha = 0.35;
 
@@ -83,7 +83,6 @@ export class DrawingOrtho implements IDrawing {
 
   private readonly _darkColourMaterials: THREE.MeshBasicMaterial[];
   private readonly _lightColourMaterials: THREE.MeshBasicMaterial[];
-  private readonly _losMaterials: THREE.MeshBasicMaterial[];
   private readonly _selectionMaterials: THREE.MeshBasicMaterial[];
   private readonly _invalidSelectionMaterials: THREE.MeshBasicMaterial[];
   private readonly _textMaterial: THREE.MeshBasicMaterial;
@@ -96,6 +95,7 @@ export class DrawingOrtho implements IDrawing {
   private readonly _scratchMatrix1 = new THREE.Matrix4();
   private readonly _scratchQuaternion = new THREE.Quaternion();
 
+  private _showLoS = false;
   private _showMapColourVisualisation = false;
   private _disposed = false;
 
@@ -184,19 +184,8 @@ export class DrawingOrtho implements IDrawing {
     this._invalidSelectionMaterials = [new THREE.MeshBasicMaterial({ color: 0xa00000 })];
     this._textMaterial = new THREE.MeshBasicMaterial({ color: 0, side: THREE.DoubleSide });
 
-    // For the LoS, we'll use different blending depending on the map settings -- non-owners in
-    // FFA mode should find things out of LoS literally invisible; owners and FFA players shouldn't.
-    // The LoS materials are (no visibility, partial visibility, full visibility) in order.
-    this._losMaterials = [new THREE.MeshBasicMaterial({
-      blending: THREE.MultiplyBlending,
-      color: seeEverything ? 0x555555 : 0
-    }), new THREE.MeshBasicMaterial({
-      blending: THREE.MultiplyBlending,
-      color: seeEverything ? 0xaaaaaa : 0x7f7f7f,
-    }), new THREE.MeshBasicMaterial({
-      blending: THREE.MultiplyBlending,
-      color: 0xffffff, // should do nothing :)
-    })];
+    // The LoS
+    this._los = new LoS(this._gridGeometry, this._needsRedraw, losZ, losQ, renderWidth, renderHeight);
 
     // The filled areas
     this._areas = new Areas(this._gridGeometry, this._needsRedraw, areaAlpha, areaZ);
@@ -215,14 +204,9 @@ export class DrawingOrtho implements IDrawing {
     this._highlightedVertices.addToScene(this._filterScene);
 
     // The highlighted walls
-    this._highlightedWalls = new Walls(this._gridGeometry, this._needsRedraw, edgeAlpha, highlightZ, 100);
+    this._highlightedWalls = new Walls(this._gridGeometry, this._needsRedraw, undefined, edgeAlpha, highlightZ, 100);
     this._highlightedWalls.setMaterials(this._selectionMaterials);
     this._highlightedWalls.addToScene(this._filterScene);
-
-    // The LoS
-    this._los = new LoS(this._gridGeometry, this._needsRedraw, losAlpha, losZ, 5000);
-    this._los.setMaterials(this._losMaterials);
-    this._los.addToScene(this._filterScene);
 
     // The selection
     this._selection = new Areas(this._gridGeometry, this._needsRedraw, selectionAlpha, selectionZ, 100);
@@ -242,12 +226,16 @@ export class DrawingOrtho implements IDrawing {
     this._tokens.addToScene(this._mapScene);
 
     // The walls
-    this._walls = new Walls(this._gridGeometry, this._needsRedraw, wallAlpha, wallZ);
+    this._walls = new Walls(this._gridGeometry, this._needsRedraw, this._los.features, wallAlpha, wallZ);
     this._walls.setMaterials(this._lightColourMaterials);
     this._walls.addToScene(this._mapScene);
 
     // The map colour visualisation (added on request instead of the areas)
     this._mapColourVisualisation = new MapColourVisualisation(this._gridGeometry, this._needsRedraw, areaAlpha, areaZ);
+
+    // TODO #52 Temporary: Adding my LoS features to the main scene to verify that
+    // they render properly.
+    // this._los.features.addToScene(this._mapScene);
 
     // The outlined rectangle
     this._outlinedRectangle = new OutlinedRectangle(gridGeometry, this._needsRedraw);
@@ -364,22 +352,37 @@ export class DrawingOrtho implements IDrawing {
 
       this._renderer.setRenderTarget(this._vertexCoordRenderTarget);
       this._renderer.render(this._vertexCoordScene, this._camera);
-
-      this._renderer.setRenderTarget(null);
-      this._renderer.setClearColor(this._canvasClearColour);
-
-      this._coordTargetReader.refresh(this._renderer);
     }
 
     if (gridNeedsRedraw || needsRedraw) {
+      this._renderer.setRenderTarget(null);
+      this._renderer.setClearColor(this._canvasClearColour);
       this._renderer.render(this._mapScene, this._camera);
+      if (this._showLoS === true) {
+        this._los.render(this._camera, this._fixedCamera, this._renderer);
+      }
 
+      this._renderer.setRenderTarget(null);
+      this._renderer.setClearColor(this._canvasClearColour);
       this._renderer.autoClear = false;
       this._renderer.render(this._fixedFilterScene, this._fixedCamera);
       this._renderer.render(this._filterScene, this._camera);
       this._renderer.render(this._overlayScene, this._fixedCamera);
       this._renderer.autoClear = true;
     }
+
+    // Post-render steps -- texture read-backs, etc.
+    if (gridNeedsRedraw) {
+      this._coordTargetReader.refresh(this._renderer);
+    }
+
+    if (this._showLoS === true) {
+      this._los.postRender(this._renderer);
+    }
+  }
+
+  checkLoS(cp: THREE.Vector3) {
+    return this._showLoS ? (this._los.checkLoS(cp) ?? false) : true;
   }
 
   getGridCoordAt(cp: THREE.Vector3): IGridCoord | undefined {
@@ -448,9 +451,25 @@ export class DrawingOrtho implements IDrawing {
 
     // TODO Also add or remove grid tiles as required
     this._gridFilter.resize(width, height);
+    this._los.resize(width, height);
 
     this._needsRedraw.setNeedsRedraw();
     this._gridNeedsRedraw.setNeedsRedraw();
+  }
+
+  setLoSPositions(positions: IGridCoord[] | undefined) {
+    const nowShowLoS = positions !== undefined;
+    if (nowShowLoS && !this._showLoS) {
+      this._los.addToScene(this._fixedFilterScene);
+    } else if (!nowShowLoS && this._showLoS) {
+      this._los.removeFromScene();
+    }
+
+    if (positions !== undefined) {
+      this._los.setTokenPositions(positions);
+    }
+
+    this._showLoS = nowShowLoS;
   }
 
   setShowMapColourVisualisation(show: boolean, mapColouring: MapColouring) {
@@ -498,13 +517,13 @@ export class DrawingOrtho implements IDrawing {
     this._selectionDragRed.dispose();
     this._tokens.dispose();
     this._walls.dispose();
+    this._los.dispose();
     this._mapColourVisualisation.dispose();
 
     this._outlinedRectangle.dispose();
 
     this._darkColourMaterials.forEach(m => m.dispose());
     this._lightColourMaterials.forEach(m => m.dispose());
-    this._losMaterials.forEach(m => m.dispose());
     this._selectionMaterials.forEach(m => m.dispose());
     this._invalidSelectionMaterials.forEach(m => m.dispose());
     this._textMaterial.dispose();

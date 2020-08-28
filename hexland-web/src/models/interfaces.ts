@@ -1,9 +1,6 @@
 import { MapColouring } from "./colouring";
-import { IVisibility } from "./los";
 import { IGridCoord, IGridEdge, IGridVertex } from "../data/coord";
 import { IFeature, IToken, IFeatureDictionary } from "../data/feature";
-
-import { Observable } from 'rxjs';
 
 // Describes the interface to our drawing subsystem,
 // which could be substituted out, won't exist in auto tests, etc.
@@ -22,8 +19,6 @@ export interface IDrawing {
   selectionDrag: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
   selectionDragRed: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
 
-  los: IFeatureDictionary<IGridCoord, IVisibility>;
-
   // A drawing always exposes a single outlined rectangle that can be used
   // for drag-boxes etc.  This object will be drawn separately and will not
   // be subject to the world transform applied to everything else.
@@ -32,6 +27,9 @@ export interface IDrawing {
   // Draws if need be, and requests the next animation frame.
   // The callback is called at the start of every animate() call.
   animate(fn: () => void): void;
+
+  // Checks whether the given viewport position (-1..1) is within the current LoS.
+  checkLoS(cp: THREE.Vector3): boolean;
 
   // These functions turn viewport co-ordinates (0..windowWidth, 0..windowHeight)
   // into face, edge or vertex coords
@@ -51,6 +49,9 @@ export interface IDrawing {
 
   // Alters the view.
   resize(translation: THREE.Vector3, rotation: THREE.Quaternion, scaling: THREE.Vector3): void;
+
+  // Sets the token positions whose LoS we should draw, or undefined to show everything.
+  setLoSPositions(positions: IGridCoord[] | undefined): void;
 
   // Sets whether or not to show the map colour visualisation.
   setShowMapColourVisualisation(show: boolean, mapColouring: MapColouring): void;

@@ -5,7 +5,6 @@ import { FeatureColour } from './featureColour';
 import { IGridGeometry } from './gridGeometry';
 import { HexGridGeometry } from './hexGridGeometry';
 import { IDrawing, IDragRectangle } from './interfaces';
-import * as LoS from './los';
 import { MapChangeTracker } from './mapChangeTracker';
 import { SquareGridGeometry } from './squareGridGeometry';
 import { WallHighlighter, WallRectangleHighlighter, RoomHighlighter } from './wallHighlighter';
@@ -198,22 +197,7 @@ export class MapStateMachine {
   private get seeEverything() { return this._uid === this._map.owner || this._map.ffa === true; }
 
   private buildLoS(state: IMapState) {
-    // TODO can I do this incrementally, or do I need to rebuild on every change?
-    // Rebuilding on every change makes it much simpler...
-    var positions = this.getLoSPositions();
-    this._drawing.los.clear();
-    if (positions?.length === 0) {
-      // Show nothing
-      var losHere = LoS.create(this._gridGeometry, this._mapColouring, undefined);
-      LoS.combine(this._drawing.los, losHere);
-    } else {
-      // TODO deal with dynamic grid sizing and all that fun here, create a suitable
-      // abstraction!
-      positions?.forEach(p => {
-        var losHere = LoS.create(this._gridGeometry, this._mapColouring, p);
-        LoS.combine(this._drawing.los, losHere);
-      });
-    }
+    this._drawing.setLoSPositions(this.getLoSPositions());
 
     // Annotations depend on the LoS.
     // TODO This mess of dependencies is getting hard to manage!  React Hooks
@@ -228,11 +212,13 @@ export class MapStateMachine {
 
     // #27: As a non-enforced improvement (just like LoS as a whole), we stop non-owners from
     // dropping tokens outside of the current LoS.
-    var delta = coordSub(position, this._tokenMoveDragStart);
+    const delta = coordSub(position, this._tokenMoveDragStart);
+    const worldToViewport = this._drawing.getWorldToViewport(this._scratchMatrix1);
     if (this.seeEverything === false) {
       var withinLoS = fluent(this._drawing.selection).map(f => {
-        var los = this._drawing.los.get(coordAdd(f.position, delta));
-        return los !== undefined && los.colour !== LoS.oNone;
+        this._gridGeometry.createCoordCentre(this._scratchVector1, coordAdd(f.position, delta), 0);
+        this._scratchVector1.applyMatrix4(worldToViewport);
+        return this._drawing.checkLoS(this._scratchVector1);
       }).reduce((a, b) => a && b, true);
 
       if (withinLoS === false) {
@@ -362,8 +348,9 @@ export class MapStateMachine {
       }
 
       // Skip notes outside of the current LoS
-      var visibility = this._drawing.los.get(n.position);
-      if (!this.seeEverything && (visibility === undefined || visibility.colour === LoS.oNone)) {
+      this._gridGeometry.createCoordCentre(target, n.position, 0);
+      target.applyMatrix4(worldToViewport);
+      if (!this.seeEverything && !this._drawing.checkLoS(target)) {
         continue;
       }
 

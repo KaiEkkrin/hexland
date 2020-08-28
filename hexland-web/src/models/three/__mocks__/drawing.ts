@@ -1,7 +1,6 @@
 import { FeatureColour } from "../../featureColour";
 import { IGridGeometry } from "../../gridGeometry";
 import { IDrawing, IGridBounds } from "../../interfaces";
-import { IVisibility } from '../../los';
 import { FeatureDictionary, IFeature, IToken } from "../../../data/feature";
 import { IGridCoord, coordString, IGridEdge, edgeString, IGridVertex, vertexString } from "../../../data/coord";
 import { OutlinedRectangle } from "./overlayRectangle";
@@ -41,19 +40,18 @@ export function createDrawing(
     selectionDrag: new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
     selectionDragRed: new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
 
-    los: new FeatureDictionary<IGridCoord, IVisibility>(coordString),
-
     boundsChanged: __mockBoundsChanged,
     outlinedRectangle: OutlinedRectangle(),
 
     animate: jest.fn(),
+    checkLoS: jest.fn(),
     getGridCoordAt: jest.fn(),
-    getGridEdgeAt: jest.fn(),
     getGridVertexAt: jest.fn(),
     getViewportToWorld: jest.fn(),
     getWorldToViewport: jest.fn(),
     handleChangesApplied: jest.fn(),
     resize: jest.fn(),
+    setLoSPositions: jest.fn(),
     setShowMapColourVisualisation: jest.fn(),
     dispose: jest.fn()
   };
