@@ -74,7 +74,7 @@ const featureShader = {
   ].join("\n"),
   fragmentShader: [
     "void main() {",
-    "  gl_FragColor = vec4(0.1, 0.1, 0.1, 1.0);", // TODO #52 Put this back to black after debugging
+    "  gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);", // TODO #52 Put this back to black after debugging
     "}"
   ].join("\n")
 };
@@ -154,8 +154,8 @@ export class LoS extends Drawn {
     this._featureUniforms[zValue].value = z;
     this._featureMaterial = new THREE.ShaderMaterial({
       // TODO #52 Remove these after debugging.
-      blending: THREE.SubtractiveBlending,
-      transparent: true,
+      // blending: THREE.SubtractiveBlending,
+      // transparent: true,
 
       side: THREE.DoubleSide,
       uniforms: this._featureUniforms,
@@ -166,7 +166,6 @@ export class LoS extends Drawn {
 
     this._featureRenderTarget = this.createRenderTarget(renderWidth, renderHeight);
     this._featureScene = new THREE.Scene();
-    // TODO #52 Put this back, after I've confirmed that my features render properly.
     this._features.addToScene(this._featureScene);
 
     // TODO #52 Make this read the composed target, not the feature target
@@ -183,7 +182,11 @@ export class LoS extends Drawn {
     this._mapGeometry.setIndex([
       0, 1, 2, -1, 1, 2, 3, -1
     ]);
-    // TODO #52 do I need to define the UV attribute?  (hopefully not?)
+
+    // Yes, having the UVs specified is mandatory :P
+    this._mapGeometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([
+      0, 0, 1, 0, 0, 1, 1, 1
+    ]), 2));
   }
 
   private createMapMesh() {
@@ -235,16 +238,15 @@ export class LoS extends Drawn {
 
   // Adds an object to the scene that will draw the composed LoS over it.
   addToScene(scene: THREE.Scene): boolean {
-    // TODO #56 Restore this, when I've finished testing the LoS shader on main.
-    // if (this._mapScene !== undefined) {
-    //   return false;
-    // }
+    if (this._mapScene !== undefined) {
+      return false;
+    }
 
-    // if (this._mapMesh !== undefined) {
-    //   scene.add(this._mapMesh);
-    // }
+    if (this._mapMesh !== undefined) {
+      scene.add(this._mapMesh);
+    }
 
-    // this._mapScene = scene;
+    this._mapScene = scene;
     return true;
   }
 
@@ -294,11 +296,9 @@ export class LoS extends Drawn {
 
       // TODO Use different scenes for each token position :P
       // TODO #52 remove debug -- use my intended render target, and remove the autoClear lines.
-      // renderer.setRenderTarget(this._featureRenderTarget);
-      renderer.autoClear = false;
+      renderer.setRenderTarget(this._featureRenderTarget);
       renderer.setClearColor(this._featureClearColour);
       renderer.render(this._featureScene, camera);
-      renderer.autoClear = true;
     });
 
     // TODO Compose into a final LoS frame
