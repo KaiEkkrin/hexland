@@ -1,35 +1,54 @@
-import { Areas } from './areas';
+import { IGridCoord, coordString } from '../../data/coord';
+import { IFeature } from '../../data/feature';
+import { createPaletteColouredAreaObject } from './areas';
 import { MapColouring } from '../colouring';
-
-import { IGridCoord } from '../../data/coord';
 import { FeatureColour } from '../featureColour';
+import { IGridGeometry } from '../gridGeometry';
+import { InstancedFeatures } from './instancedFeatures';
+import { PaletteColouredFeatureObject } from './paletteColouredFeatureObject';
+import { RedrawFlag } from '../redrawFlag';
 
 import * as THREE from 'three';
 
 // Visualises the map colours as areas.
-// Don't addToScene() it directly, but call visualise() -- this object needs to
-// manage its own materials (which may vary).
+// Don't addToScene() it directly, but call visualise(), so that it can manage its palette.
 
-export class MapColourVisualisation extends Areas {
-  private _visMaterials: THREE.Material[] = [];
+const defaultColour = new THREE.Color(0x222222); // should be distinctive -- I shouldn't see this
 
-  removeFromScene() {
-    super.removeFromScene();
-    this._visMaterials.forEach(m => m.dispose());
-    this._visMaterials = [];
+export class MapColourVisualisation extends InstancedFeatures<IGridCoord, IFeature<IGridCoord>, PaletteColouredFeatureObject<IGridCoord, IFeature<IGridCoord>>> {
+  private _colourCount = 0;
+
+  // We start off with no colours; you need to call visualise() to define colours.
+  constructor(
+    gridGeometry: IGridGeometry,
+    redrawFlag: RedrawFlag,
+    alpha: number,
+    areaZ: number,
+    maxInstances?: number | undefined
+  ) {
+    super(
+      gridGeometry,
+      redrawFlag,
+      coordString,
+      createPaletteColouredAreaObject(gridGeometry, alpha, areaZ, { palette: [], defaultColour: defaultColour }),
+      maxInstances
+    );
   }
 
   visualise(scene: THREE.Scene, colouring: MapColouring) {
     colouring.visualise(this, (position: IGridCoord, mapColour: number, mapColourCount: number) => {
-      // If our scene has changed or the number of map colours has changed, we need to re-generate
-      // our materials list:
-      if (scene !== this.scene || mapColourCount !== this._visMaterials.length) {
-        this.removeFromScene();
-        this._visMaterials = [...Array(mapColourCount).keys()].map(c => {
-          var colour = new FeatureColour(c / mapColourCount);
-          return new THREE.MeshBasicMaterial({ color: colour.dark.getHex() });
+      // If our scene has changed or the number of map colours has changed, we need to re-colour
+      // our objects:
+      if (scene !== this.scene || mapColourCount !== this._colourCount) {
+        const colours = [...Array(mapColourCount).keys()].map(c => {
+          return new FeatureColour(c / mapColourCount).dark;
         });
-        this.setMaterials(this._visMaterials);
+
+        this._colourCount = colours.length;
+        for (var o of this.featureObjects) {
+          o.setPalette(colours);
+        }
+
         this.addToScene(scene);
       }
 

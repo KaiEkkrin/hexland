@@ -7,6 +7,8 @@ import { RedrawFlag } from '../redrawFlag';
 import { RenderTargetReader } from './renderTargetReader';
 
 import * as THREE from 'three';
+import { InstancedFeatureObject } from './instancedFeatureObject';
+import { ShaderMaterial } from 'three';
 
 // Shader-based LoS.
 // Careful with this!  In order for it to work correctly, we need to not use the built-in
@@ -79,36 +81,40 @@ const featureShader = {
   ].join("\n")
 };
 
+// This feature object draws the shadows cast by the walls using the above shader.
+// (It doesn't own the material.)
 // Edit the material before rendering this to draw LoS for different tokens
-class LoSFeatures extends InstancedFeatures<IGridEdge, IFeature<IGridEdge>> {
-  private readonly _bufferGeometry: THREE.InstancedBufferGeometry;
+class LoSFeatureObject extends InstancedFeatureObject<IGridEdge, IFeature<IGridEdge>> {
+  private readonly _geometry: THREE.InstancedBufferGeometry;
+  private readonly _material: THREE.ShaderMaterial;
 
-  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, z: number, q: number, maxInstances?: number | undefined) {
-    super(geometry, redrawFlag, edgeString, maxInstances);
+  constructor(gridGeometry: IGridGeometry, z: number, q: number, material: THREE.ShaderMaterial, maxInstances: number) {
+    super(edgeString, (o, p) => gridGeometry.transformToEdge(o, p), maxInstances);
+    const single = gridGeometry.toSingle();
+    const vertices = [...single.createLoSVertices(z, q)];
 
-    var single = this.geometry.toSingle();
-    var vertices = [...single.createLoSVertices(z, q)];
-    //var vertices = [...single.createWallVertices(0.3, z)];
+    this._geometry = new THREE.InstancedBufferGeometry();
+    this._geometry.setFromPoints(vertices);
+    this._geometry.setIndex(gridGeometry.createLoSIndices());
 
-    this._bufferGeometry = new THREE.InstancedBufferGeometry();
-    this._bufferGeometry.setFromPoints(vertices);
-    this._bufferGeometry.setIndex(geometry.createLoSIndices());
+    this._material = material;
   }
 
-  protected createMesh(m: THREE.Material, maxInstances: number): THREE.InstancedMesh {
-    var mesh = new THREE.InstancedMesh(this._bufferGeometry, m, maxInstances);
-    mesh.count = 0;
-    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    return mesh;
-  }
-
-  protected transformTo(o: THREE.Object3D, position: IGridEdge) {
-    this.geometry.transformToEdge(o, position);
+  protected createMesh(maxInstances: number) {
+    return new THREE.InstancedMesh(this._geometry, this._material, maxInstances);
   }
 
   dispose() {
     super.dispose();
-    this._bufferGeometry.dispose();
+    this._geometry.dispose();
+  }
+}
+
+class LoSFeatures extends InstancedFeatures<IGridEdge, IFeature<IGridEdge>, LoSFeatureObject> {
+  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, z: number, q: number, material: THREE.ShaderMaterial, maxInstances?: number | undefined) {
+    super(geometry, redrawFlag, edgeString, maxInstances => {
+      return new LoSFeatureObject(geometry, z, q, material, maxInstances);
+    }, maxInstances);
   }
 }
 
@@ -119,7 +125,7 @@ export class LoS extends Drawn {
   private readonly _featureClearColour: THREE.Color;
   private readonly _features: LoSFeatures;
 
-  private readonly _featureMaterial: THREE.Material;
+  private readonly _featureMaterial: THREE.ShaderMaterial;
   private readonly _featureRenderTarget: THREE.WebGLRenderTarget;
   private readonly _featureScene: THREE.Scene;
   private readonly _featureUniforms: any;
@@ -152,7 +158,6 @@ export class LoS extends Drawn {
     super(geometry, redrawFlag);
 
     this._featureClearColour = new THREE.Color(1, 1, 1); // visible by default; we draw the shadows
-    this._features = new LoSFeatures(geometry, redrawFlag, z, q, maxInstances);
 
     this._featureUniforms = THREE.UniformsUtils.clone(featureShader.uniforms);
     this._featureUniforms[tokenCentre].value = new THREE.Vector3();
@@ -163,8 +168,8 @@ export class LoS extends Drawn {
       vertexShader: featureShader.vertexShader,
       fragmentShader: featureShader.fragmentShader
     });
-    this._features.setMaterials([this._featureMaterial]);
 
+    this._features = new LoSFeatures(geometry, redrawFlag, z, q, this._featureMaterial, maxInstances);
     this._featureRenderTarget = this.createRenderTarget(renderWidth, renderHeight);
     this._featureScene = new THREE.Scene();
     this._features.addToScene(this._featureScene);
@@ -268,7 +273,7 @@ export class LoS extends Drawn {
 
   // Accesses the LoS features themselves -- these should be sync'd with the walls,
   // but with only colour 0.
-  get features(): InstancedFeatures<IGridEdge, IFeature<IGridEdge>> {
+  get features(): InstancedFeatures<IGridEdge, IFeature<IGridEdge>, LoSFeatureObject> {
     return this._features;
   }
 

@@ -6,7 +6,7 @@ import { IDrawing } from '../interfaces';
 import { RedrawFlag } from '../redrawFlag';
 import { RenderTargetReader } from './renderTargetReader';
 
-import { Areas } from './areas';
+import { Areas, createPaletteColouredAreas } from './areas';
 import { Grid } from './grid';
 import { GridFilter } from './gridFilter';
 import { LoS } from './los';
@@ -14,7 +14,7 @@ import { MapColourVisualisation } from './mapColourVisualisation';
 import { OutlinedRectangle } from './overlayRectangle';
 import textCreator from './textCreator';
 import { Tokens } from './tokens';
-import { Vertices } from './vertices';
+import { Vertices, createPaletteColouredVertices } from './vertices';
 import { Walls } from './walls';
 
 import * as THREE from 'three';
@@ -81,10 +81,6 @@ export class DrawingOrtho implements IDrawing {
   private readonly _walls: Walls;
   private readonly _mapColourVisualisation: MapColourVisualisation;
 
-  private readonly _darkColourMaterials: THREE.MeshBasicMaterial[];
-  private readonly _lightColourMaterials: THREE.MeshBasicMaterial[];
-  private readonly _selectionMaterials: THREE.MeshBasicMaterial[];
-  private readonly _invalidSelectionMaterials: THREE.MeshBasicMaterial[];
   private readonly _textMaterial: THREE.MeshBasicMaterial;
 
   private readonly _outlinedRectangle: OutlinedRectangle;
@@ -172,70 +168,71 @@ export class DrawingOrtho implements IDrawing {
 
     this._gridFilter = new GridFilter(this._fixedFilterScene, this._faceCoordRenderTarget.texture, gridZ);
 
-    this._darkColourMaterials = colours.map(c => new THREE.MeshBasicMaterial({ color: c.dark.getHex() }));
-    this._lightColourMaterials = colours.map(c => new THREE.MeshBasicMaterial({ color: c.light.getHex() }));
-    this._selectionMaterials = [new THREE.MeshBasicMaterial({
-      blending: THREE.AdditiveBlending,
-      color: 0x606060,
-    }), new THREE.MeshBasicMaterial({
-      blending: THREE.SubtractiveBlending,
-      color: 0x606060
-    })];
-    this._invalidSelectionMaterials = [new THREE.MeshBasicMaterial({ color: 0xa00000 })];
     this._textMaterial = new THREE.MeshBasicMaterial({ color: 0, side: THREE.DoubleSide });
+
+    const darkColourParameters = { palette: colours.map(c => c.dark) };
+    const lightColourParameters = { palette: colours.map(c => c.light) };
+
+    const selectionColourParameters = {
+      palette: [new THREE.Color(0.375, 0.375, 0.375), new THREE.Color(-0.375, -0.375, -0.375)],
+      blending: THREE.AdditiveBlending
+    };
+
+    const invalidSelectionColourParameters = {
+      palette: [new THREE.Color(0xa00000)]
+    };
 
     // The LoS
     this._los = new LoS(this._gridGeometry, this._needsRedraw, losZ, losQ, renderWidth, renderHeight);
 
     // The filled areas
-    this._areas = new Areas(this._gridGeometry, this._needsRedraw, areaAlpha, areaZ);
-    this._areas.setMaterials(this._darkColourMaterials);
+    this._areas = createPaletteColouredAreas(
+      this._gridGeometry, this._needsRedraw, areaAlpha, areaZ, darkColourParameters
+    );
     this._areas.addToScene(this._mapScene);
 
     // The highlighted areas
     // (TODO does this need to be a different feature set from the selection?)
-    this._highlightedAreas = new Areas(this._gridGeometry, this._needsRedraw, areaAlpha, highlightZ, 100);
-    this._highlightedAreas.setMaterials(this._selectionMaterials);
+    this._highlightedAreas = createPaletteColouredAreas(
+      this._gridGeometry, this._needsRedraw, areaAlpha, highlightZ, selectionColourParameters, 100
+    );
     this._highlightedAreas.addToScene(this._filterScene);
 
     // The highlighted vertices
-    this._highlightedVertices = new Vertices(this._gridGeometry, this._needsRedraw, vertexHighlightAlpha, vertexHighlightZ, 100);
-    this._highlightedVertices.setMaterials(this._selectionMaterials);
+    this._highlightedVertices = createPaletteColouredVertices(
+      this._gridGeometry, this._needsRedraw, vertexHighlightAlpha, vertexHighlightZ, selectionColourParameters, 100
+    );
     this._highlightedVertices.addToScene(this._filterScene);
 
     // The highlighted walls
-    this._highlightedWalls = new Walls(this._gridGeometry, this._needsRedraw, undefined, edgeAlpha, highlightZ, 100);
-    this._highlightedWalls.setMaterials(this._selectionMaterials);
+    this._highlightedWalls = new Walls(this._gridGeometry, this._needsRedraw, undefined, edgeAlpha, highlightZ, selectionColourParameters, 100);
     this._highlightedWalls.addToScene(this._filterScene);
 
     // The selection
-    this._selection = new Areas(this._gridGeometry, this._needsRedraw, selectionAlpha, selectionZ, 100);
-    this._selection.setMaterials(this._selectionMaterials);
+    this._selection = createPaletteColouredAreas(
+      this._gridGeometry, this._needsRedraw, selectionAlpha, selectionZ, selectionColourParameters, 100
+    );
     this._selection.addToScene(this._filterScene);
-    this._selectionDrag = new Areas(this._gridGeometry, this._needsRedraw, selectionAlpha, selectionZ, 100);
-    this._selectionDrag.setMaterials(this._selectionMaterials);
+    this._selectionDrag = createPaletteColouredAreas(
+      this._gridGeometry, this._needsRedraw, selectionAlpha, selectionZ, selectionColourParameters, 100
+    );
     this._selectionDrag.addToScene(this._filterScene);
-    this._selectionDragRed = new Areas(this._gridGeometry, this._needsRedraw, selectionAlpha, invalidSelectionZ, 100);
-    this._selectionDragRed.setMaterials(this._invalidSelectionMaterials);
+    this._selectionDragRed = createPaletteColouredAreas(
+      this._gridGeometry, this._needsRedraw, selectionAlpha, invalidSelectionZ, invalidSelectionColourParameters, 100
+    );
     this._selectionDragRed.addToScene(this._filterScene);
 
     // The tokens
     this._tokens = new Tokens(this._gridGeometry, this._needsRedraw, textCreator, this._textMaterial,
-      tokenAlpha, tokenZ, textZ);
-    this._tokens.setMaterials(this._lightColourMaterials);
+      tokenAlpha, tokenZ, textZ, lightColourParameters);
     this._tokens.addToScene(this._mapScene);
 
     // The walls
-    this._walls = new Walls(this._gridGeometry, this._needsRedraw, this._los.features, wallAlpha, wallZ);
-    this._walls.setMaterials(this._lightColourMaterials);
+    this._walls = new Walls(this._gridGeometry, this._needsRedraw, this._los.features, wallAlpha, wallZ, lightColourParameters);
     this._walls.addToScene(this._mapScene);
 
     // The map colour visualisation (added on request instead of the areas)
     this._mapColourVisualisation = new MapColourVisualisation(this._gridGeometry, this._needsRedraw, areaAlpha, areaZ);
-
-    // TODO #52 Temporary: Adding my LoS features to the main scene to verify that
-    // they render properly.
-    // this._los.features.addToScene(this._mapScene);
 
     // The outlined rectangle
     this._outlinedRectangle = new OutlinedRectangle(gridGeometry, this._needsRedraw);
@@ -522,10 +519,6 @@ export class DrawingOrtho implements IDrawing {
 
     this._outlinedRectangle.dispose();
 
-    this._darkColourMaterials.forEach(m => m.dispose());
-    this._lightColourMaterials.forEach(m => m.dispose());
-    this._selectionMaterials.forEach(m => m.dispose());
-    this._invalidSelectionMaterials.forEach(m => m.dispose());
     this._textMaterial.dispose();
 
     this._disposed = true;

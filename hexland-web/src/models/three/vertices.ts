@@ -2,36 +2,44 @@ import { IGridVertex, vertexString } from '../../data/coord';
 import { IFeature } from '../../data/feature';
 import { IGridGeometry } from "../gridGeometry";
 import { InstancedFeatures } from './instancedFeatures';
+import { PaletteColouredFeatureObject, IColourParameters } from './paletteColouredFeatureObject';
 import { RedrawFlag } from '../redrawFlag';
 
 import * as THREE from 'three';
 
-// These are highlighted grid vertices.
-export class Vertices extends InstancedFeatures<IGridVertex, IFeature<IGridVertex>> {
-  private readonly _bufferGeometry: THREE.BufferGeometry;
-
-  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, alpha: number, z: number, maxInstances?: number | undefined) {
-    super(geometry, redrawFlag, vertexString, maxInstances);
-
-    var single = this.geometry.toSingle();
-    var vertices = single.createSolidVertexVertices(new THREE.Vector2(0, 0), alpha, z, 1);
-    this._bufferGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
-    this._bufferGeometry.setIndex([...single.createSolidVertexIndices(1)]);
-  }
-
-  protected createMesh(m: THREE.Material, maxInstances: number): THREE.InstancedMesh {
-    var mesh = new THREE.InstancedMesh(this._bufferGeometry, m, maxInstances);
-    mesh.count = 0;
-    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    return mesh;
-  }
-
-  protected transformTo(o: THREE.Object3D, position: IGridVertex) {
-    this.geometry.transformToVertex(o, position);
-  }
-
-  dispose() {
-    super.dispose();
-    this._bufferGeometry.dispose();
-  }
+export function createPaletteColouredVertexObject(gridGeometry: IGridGeometry, alpha: number, z: number, colourParameters: IColourParameters) {
+  const single = gridGeometry.toSingle();
+  const vertices = [...single.createSolidVertexVertices(new THREE.Vector2(0, 0), alpha, z, 1)];
+  const indices = [...single.createSolidVertexIndices()];
+  return (maxInstances: number) => new PaletteColouredFeatureObject(
+    vertexString,
+    (o, p) => gridGeometry.transformToVertex(o, p),
+    maxInstances,
+    () => {
+      const geometry = new THREE.InstancedBufferGeometry();
+      geometry.setFromPoints(vertices);
+      geometry.setIndex(indices);
+      return geometry;
+    },
+    colourParameters
+  );
 }
+
+export function createPaletteColouredVertices(
+  gridGeometry: IGridGeometry,
+  needsRedraw: RedrawFlag,
+  alpha: number,
+  z: number,
+  colourParameters: IColourParameters,
+  maxInstances?: number | undefined
+) {
+  return new InstancedFeatures<IGridVertex, IFeature<IGridVertex>, PaletteColouredFeatureObject<IGridVertex, IFeature<IGridVertex>>>(
+    gridGeometry,
+    needsRedraw,
+    vertexString,
+    createPaletteColouredVertexObject(gridGeometry, alpha, z, colourParameters),
+    maxInstances
+  );
+}
+
+export type Vertices = InstancedFeatures<IGridVertex, IFeature<IGridVertex>, PaletteColouredFeatureObject<IGridVertex, IFeature<IGridVertex>>>;

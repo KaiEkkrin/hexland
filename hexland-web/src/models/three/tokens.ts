@@ -6,6 +6,7 @@ import { RedrawFlag } from '../redrawFlag';
 import { TextCreator } from './textCreator';
 
 import * as THREE from 'three';
+import { PaletteColouredFeatureObject, IColourParameters } from './paletteColouredFeatureObject';
 
 // We store text meshes along with our tokens so that they can be propagated
 // upon token move rather than re-created:
@@ -15,46 +16,45 @@ export interface IInstancedToken extends IToken {
 
 // The "tokens" are moveable objects that occupy a face of the map.
 // This object also manages the selection of tokens.
-export class Tokens extends InstancedFeatures<IGridCoord, IInstancedToken> {
-  private readonly _bufferGeometry: THREE.BufferGeometry;
+export class Tokens extends InstancedFeatures<IGridCoord, IInstancedToken, PaletteColouredFeatureObject<IGridCoord, IInstancedToken>> {
   private readonly _textCreator: TextCreator;
   private readonly _textMaterial: THREE.Material;
   private readonly _textZ: number;
 
   constructor(
-    geometry: IGridGeometry,
+    gridGeometry: IGridGeometry,
     redrawFlag: RedrawFlag,
     textCreator: TextCreator,
     textMaterial: THREE.Material,
     alpha: number,
     tokenZ: number,
-    textZ: number
+    textZ: number,
+    colourParameters: IColourParameters,
+    maxInstances?: number | undefined
   ) {
-    super(geometry, redrawFlag, coordString, 1000);
-
-    // TODO Make them look more exciting than just a smaller, brighter face.
-    // Maybe with a shader to draw in a ring highlight, text, an image, etc?
-    var single = this.geometry.toSingle();
-    var vertices = single.createSolidVertices(new THREE.Vector2(0, 0), alpha, tokenZ);
-    var indices = single.createSolidMeshIndices();
-
-    this._bufferGeometry = new THREE.BufferGeometry().setFromPoints([...vertices]);
-    this._bufferGeometry.setIndex([...indices]);
+    super(gridGeometry, redrawFlag, coordString, maxInstances => {
+      // TODO Make them look more exciting than just a smaller, brighter face.
+      // Maybe with a shader to draw in a ring highlight, text, an image, etc?
+      const single = gridGeometry.toSingle();
+      const vertices = [...single.createSolidVertices(new THREE.Vector2(0, 0), alpha, tokenZ)];
+      const indices = [...single.createSolidMeshIndices()];
+      return new PaletteColouredFeatureObject(
+        coordString,
+        (o, p) => gridGeometry.transformToCoord(o, p),
+        maxInstances,
+        () => {
+          const geometry = new THREE.InstancedBufferGeometry();
+          geometry.setFromPoints(vertices);
+          geometry.setIndex(indices);
+          return geometry;
+        },
+        colourParameters
+      );
+    }, maxInstances);
 
     this._textCreator = textCreator;
     this._textMaterial = textMaterial;
     this._textZ = textZ;
-  }
-
-  protected createMesh(m: THREE.Material, maxInstances: number): THREE.InstancedMesh {
-    var mesh = new THREE.InstancedMesh(this._bufferGeometry, m, maxInstances);
-    mesh.count = 0;
-    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    return mesh;
-  }
-
-  protected transformTo(o: THREE.Object3D, position: IGridCoord) {
-    this.geometry.transformToCoord(o, position);
   }
 
   addToScene(scene: THREE.Scene): boolean {
@@ -128,7 +128,6 @@ export class Tokens extends InstancedFeatures<IGridCoord, IInstancedToken> {
 
   dispose() {
     super.dispose();
-    this._bufferGeometry.dispose();
     this._textMaterial.dispose();
   }
 }
