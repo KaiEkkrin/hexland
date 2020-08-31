@@ -74,7 +74,7 @@ const featureShader = {
   ].join("\n"),
   fragmentShader: [
     "void main() {",
-    "  gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);", // TODO #52 Put this back to black after debugging
+    "  gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);",
     "}"
   ].join("\n")
 };
@@ -124,6 +124,11 @@ export class LoS extends Drawn {
   private readonly _featureScene: THREE.Scene;
   private readonly _featureUniforms: any;
 
+  private readonly _composeClearColour: THREE.Color;
+
+  private readonly _composeRenderTarget: THREE.WebGLRenderTarget;
+  private readonly _composeScene: THREE.Scene;
+
   private readonly _composedTargetReader: RenderTargetReader;
 
   private readonly _mapGeometry: THREE.BufferGeometry;
@@ -153,10 +158,6 @@ export class LoS extends Drawn {
     this._featureUniforms[tokenCentre].value = new THREE.Vector3();
     this._featureUniforms[zValue].value = z;
     this._featureMaterial = new THREE.ShaderMaterial({
-      // TODO #52 Remove these after debugging.
-      // blending: THREE.SubtractiveBlending,
-      // transparent: true,
-
       side: THREE.DoubleSide,
       uniforms: this._featureUniforms,
       vertexShader: featureShader.vertexShader,
@@ -168,8 +169,12 @@ export class LoS extends Drawn {
     this._featureScene = new THREE.Scene();
     this._features.addToScene(this._featureScene);
 
-    // TODO #52 Make this read the composed target, not the feature target
-    this._composedTargetReader = new RenderTargetReader(this._featureRenderTarget);
+    this._composeClearColour = new THREE.Color(0, 0, 0); // invisible unless seen by something
+
+    this._composeRenderTarget = this.createRenderTarget(renderWidth, renderHeight);
+    this._composeScene = new THREE.Scene();
+
+    this._composedTargetReader = new RenderTargetReader(this._composeRenderTarget);
 
     // Create the geometry we use to draw the composed LoS onto the map
     // We'll simply stretch this to fill the canvas
@@ -189,10 +194,34 @@ export class LoS extends Drawn {
     ]), 2));
   }
 
+  private composeOne(camera: THREE.Camera, renderer: THREE.WebGLRenderer, zOffset: number) {
+    // Composes the contents of the current feature render onto the compose target.
+    renderer.setRenderTarget(this._composeRenderTarget);
+    const material = new THREE.MeshBasicMaterial({
+      blending: THREE.AdditiveBlending,
+      map: this._featureRenderTarget.texture,
+      side: THREE.DoubleSide,
+      transparent: true
+    });
+
+    const mesh = new THREE.Mesh(this._mapGeometry, material);
+    mesh.position.set(0, 0, zOffset);
+    mesh.scale.set(this._composeRenderTarget.width, this._composeRenderTarget.height, 0);
+    mesh.updateMatrix();
+    mesh.updateMatrixWorld();
+
+    this._composeScene.add(mesh);
+    renderer.render(this._composeScene, camera);
+
+    // Put settings back
+    this._composeScene.remove(mesh);
+    material.dispose();
+  }
+
   private createMapMesh() {
     this._mapMaterial = new THREE.MeshBasicMaterial({
       blending: THREE.MultiplyBlending,
-      map: this._featureRenderTarget.texture, // TODO Use the composed texture :P
+      map: this._composeRenderTarget.texture,
       side: THREE.DoubleSide,
       transparent: true
     });
@@ -225,9 +254,16 @@ export class LoS extends Drawn {
 
   private setMapMeshSize() {
     this._mapMesh?.position.set(0, 0, 0);
-    this._mapMesh?.scale.set(this._featureRenderTarget.width, this._featureRenderTarget.height, 0); // TODO composed texture!
+    this._mapMesh?.scale.set(this._composeRenderTarget.width, this._composeRenderTarget.height, 0);
     this._mapMesh?.updateMatrix();
     this._mapMesh?.updateMatrixWorld();
+  }
+
+  private withAutoClearSetTo(renderer: THREE.WebGLRenderer, autoClear: boolean, fn: (r: THREE.WebGLRenderer) => void) {
+    const previousValue = renderer.autoClear;
+    renderer.autoClear = autoClear;
+    fn(renderer);
+    renderer.autoClear = previousValue;
   }
 
   // Accesses the LoS features themselves -- these should be sync'd with the walls,
@@ -286,6 +322,9 @@ export class LoS extends Drawn {
     // Remove the old map mesh so we can render a new texture
     this.deleteMapMesh();
 
+    var composeCleared = false;
+    var zOffset = 0;
+
     // Render the LoS features for each token position
     this._tokenPositions.forEach(c => {
       this.geometry.createCoordCentre(
@@ -294,14 +333,24 @@ export class LoS extends Drawn {
         this._featureUniforms[zValue].value
       );
 
-      // TODO Use different scenes for each token position :P
-      // TODO #52 remove debug -- use my intended render target, and remove the autoClear lines.
       renderer.setRenderTarget(this._featureRenderTarget);
       renderer.setClearColor(this._featureClearColour);
       renderer.render(this._featureScene, camera);
-    });
 
-    // TODO Compose into a final LoS frame
+      // Compose these into the overall scene.
+      // Each composition must go on top of the previous one, hence the z offset.
+      // TODO This may turn out to be slow when there are large numbers of targets;
+      // I could squash these steps together if I write a shader that samples 4 or so
+      // textures simultaneously and combines them into an output.  However, I expect
+      // that scenario to be rare, so I won't for now.
+      renderer.setClearColor(this._composeClearColour);
+      this.withAutoClearSetTo(renderer, composeCleared === false, r => {
+        this.composeOne(fixedCamera, r, zOffset);
+      });
+
+      composeCleared = true;
+      zOffset += 0.01;
+    });
 
     // Add the map mesh with the newly rendered texture
     // Note that we must wait until we've un-bound the render target before we use it as a
@@ -312,6 +361,7 @@ export class LoS extends Drawn {
 
   resize(width: number, height: number) {
     this._featureRenderTarget.setSize(width, height);
+    this._composeRenderTarget.setSize(width, height);
     this.setMapMeshSize();
   }
 
@@ -335,6 +385,8 @@ export class LoS extends Drawn {
       this._features.dispose();
       this._featureMaterial.dispose();
       this._featureRenderTarget.dispose();
+
+      this._composeRenderTarget.dispose();
 
       this.deleteMapMesh();
       this._mapGeometry.dispose();
