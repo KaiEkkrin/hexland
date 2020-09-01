@@ -15,7 +15,7 @@ import * as THREE from 'three';
 
 const defaultColour = new THREE.Color(0x222222); // should be distinctive -- I shouldn't see this
 
-export class MapColourVisualisation extends InstancedFeatures<IGridCoord, IFeature<IGridCoord>, PaletteColouredFeatureObject<IGridCoord, IFeature<IGridCoord>>> {
+export class MapColourVisualisation extends InstancedFeatures<IGridCoord, IFeature<IGridCoord>> {
   private _colourCount = 0;
 
   // We start off with no colours; you need to call visualise() to define colours.
@@ -46,7 +46,9 @@ export class MapColourVisualisation extends InstancedFeatures<IGridCoord, IFeatu
 
         this._colourCount = colours.length;
         for (var o of this.featureObjects) {
-          o.setPalette(colours);
+          if (o instanceof PaletteColouredFeatureObject) {
+            o.setPalette(colours);
+          }
         }
 
         this.addToScene(scene);

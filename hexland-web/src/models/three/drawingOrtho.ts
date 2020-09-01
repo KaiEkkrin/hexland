@@ -6,7 +6,7 @@ import { IDrawing } from '../interfaces';
 import { RedrawFlag } from '../redrawFlag';
 import { RenderTargetReader } from './renderTargetReader';
 
-import { Areas, createPaletteColouredAreas } from './areas';
+import { Areas, createPaletteColouredAreaObject, createAreas, createSelectionColouredAreaObject } from './areas';
 import { Grid } from './grid';
 import { GridFilter } from './gridFilter';
 import { LoS } from './los';
@@ -14,8 +14,8 @@ import { MapColourVisualisation } from './mapColourVisualisation';
 import { OutlinedRectangle } from './overlayRectangle';
 import textCreator from './textCreator';
 import { Tokens } from './tokens';
-import { Vertices, createPaletteColouredVertices } from './vertices';
-import { Walls } from './walls';
+import { Vertices, createVertices, createSelectionColouredVertexObject } from './vertices';
+import { Walls, createPaletteColouredWallObject, createSelectionColouredWallObject } from './walls';
 
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
@@ -173,11 +173,6 @@ export class DrawingOrtho implements IDrawing {
     const darkColourParameters = { palette: colours.map(c => c.dark) };
     const lightColourParameters = { palette: colours.map(c => c.light) };
 
-    const selectionColourParameters = {
-      palette: [new THREE.Color(0.375, 0.375, 0.375), new THREE.Color(-0.375, -0.375, -0.375)],
-      blending: THREE.AdditiveBlending
-    };
-
     const invalidSelectionColourParameters = {
       palette: [new THREE.Color(0xa00000)]
     };
@@ -186,53 +181,76 @@ export class DrawingOrtho implements IDrawing {
     this._los = new LoS(this._gridGeometry, this._needsRedraw, losZ, losQ, renderWidth, renderHeight);
 
     // The filled areas
-    this._areas = createPaletteColouredAreas(
-      this._gridGeometry, this._needsRedraw, areaAlpha, areaZ, darkColourParameters
+    this._areas = createAreas(
+      this._gridGeometry, this._needsRedraw,
+      createPaletteColouredAreaObject(this._gridGeometry, areaAlpha, areaZ, darkColourParameters)
     );
     this._areas.addToScene(this._mapScene);
 
     // The highlighted areas
     // (TODO does this need to be a different feature set from the selection?)
-    this._highlightedAreas = createPaletteColouredAreas(
-      this._gridGeometry, this._needsRedraw, areaAlpha, highlightZ, selectionColourParameters, 100
+    this._highlightedAreas = createAreas(
+      this._gridGeometry, this._needsRedraw,
+      createSelectionColouredAreaObject(this._gridGeometry, areaAlpha, highlightZ),
+      100
     );
     this._highlightedAreas.addToScene(this._filterScene);
 
     // The highlighted vertices
-    this._highlightedVertices = createPaletteColouredVertices(
-      this._gridGeometry, this._needsRedraw, vertexHighlightAlpha, vertexHighlightZ, selectionColourParameters, 100
+    this._highlightedVertices = createVertices(
+      this._gridGeometry, this._needsRedraw,
+      createSelectionColouredVertexObject(this._gridGeometry, vertexHighlightAlpha, vertexHighlightZ),
+      100
     );
     this._highlightedVertices.addToScene(this._filterScene);
 
     // The highlighted walls
-    this._highlightedWalls = new Walls(this._gridGeometry, this._needsRedraw, undefined, edgeAlpha, highlightZ, selectionColourParameters, 100);
+    this._highlightedWalls = new Walls(
+      this._gridGeometry, this._needsRedraw,
+      createSelectionColouredWallObject(this._gridGeometry, edgeAlpha, highlightZ),
+      undefined, 100
+    );
     this._highlightedWalls.addToScene(this._filterScene);
 
     // The selection
-    this._selection = createPaletteColouredAreas(
-      this._gridGeometry, this._needsRedraw, selectionAlpha, selectionZ, selectionColourParameters, 100
+    this._selection = createAreas(
+      this._gridGeometry, this._needsRedraw,
+      createSelectionColouredAreaObject(this._gridGeometry, selectionAlpha, selectionZ),
+      100
     );
     this._selection.addToScene(this._filterScene);
-    this._selectionDrag = createPaletteColouredAreas(
-      this._gridGeometry, this._needsRedraw, selectionAlpha, selectionZ, selectionColourParameters, 100
+    this._selectionDrag = createAreas(
+      this._gridGeometry, this._needsRedraw,
+      createSelectionColouredAreaObject(this._gridGeometry, selectionAlpha, selectionZ),
+      100
     );
     this._selectionDrag.addToScene(this._filterScene);
-    this._selectionDragRed = createPaletteColouredAreas(
-      this._gridGeometry, this._needsRedraw, selectionAlpha, invalidSelectionZ, invalidSelectionColourParameters, 100
+    this._selectionDragRed = createAreas(
+      this._gridGeometry, this._needsRedraw,
+      createPaletteColouredAreaObject(this._gridGeometry, selectionAlpha, invalidSelectionZ, invalidSelectionColourParameters),
+      100
     );
     this._selectionDragRed.addToScene(this._filterScene);
 
     // The tokens
-    this._tokens = new Tokens(this._gridGeometry, this._needsRedraw, textCreator, this._textMaterial,
-      tokenAlpha, tokenZ, textZ, lightColourParameters);
+    this._tokens = new Tokens(
+      this._gridGeometry, this._needsRedraw, textCreator, this._textMaterial,
+      tokenAlpha, tokenZ, textZ, lightColourParameters
+    );
     this._tokens.addToScene(this._mapScene);
 
     // The walls
-    this._walls = new Walls(this._gridGeometry, this._needsRedraw, this._los.features, wallAlpha, wallZ, lightColourParameters);
+    this._walls = new Walls(
+      this._gridGeometry, this._needsRedraw,
+      createPaletteColouredWallObject(this._gridGeometry, wallAlpha, wallZ, lightColourParameters),
+      this._los.features
+    );
     this._walls.addToScene(this._mapScene);
 
     // The map colour visualisation (added on request instead of the areas)
-    this._mapColourVisualisation = new MapColourVisualisation(this._gridGeometry, this._needsRedraw, areaAlpha, areaZ);
+    this._mapColourVisualisation = new MapColourVisualisation(
+      this._gridGeometry, this._needsRedraw, areaAlpha, areaZ
+    );
 
     // The outlined rectangle
     this._outlinedRectangle = new OutlinedRectangle(gridGeometry, this._needsRedraw);

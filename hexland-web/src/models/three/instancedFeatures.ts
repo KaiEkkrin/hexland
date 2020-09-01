@@ -12,12 +12,12 @@ import * as THREE from 'three';
 // objects, creating more as required.
 // (Argh, more inheritance!  I don't like it, but in this case as with the geometry
 // it seems to fit the problem at hand...)
-export class InstancedFeatures<K extends IGridCoord, F extends IFeature<K>, O extends IInstancedFeatureObject<K, F>> extends Drawn implements IFeatureDictionary<K, F> {
+export class InstancedFeatures<K extends IGridCoord, F extends IFeature<K>> extends Drawn implements IFeatureDictionary<K, F> {
   private readonly _maxInstances: number;
   private readonly _features: FeatureDictionary<K, F>;
 
-  private readonly _createFeatureObject: (maxInstances: number) => O;
-  private readonly _featureObjects: O[] = [];
+  private readonly _createFeatureObject: (maxInstances: number) => IInstancedFeatureObject<K, F>;
+  private readonly _featureObjects: IInstancedFeatureObject<K, F>[] = [];
 
   // We keep hold of the scene so that things can be added and removed later:
   private _scene: THREE.Scene | undefined;
@@ -26,7 +26,7 @@ export class InstancedFeatures<K extends IGridCoord, F extends IFeature<K>, O ex
     geometry: IGridGeometry,
     redrawFlag: RedrawFlag,
     toIndex: (k: K) => string,
-    createFeatureObject: (maxInstances: number) => O,
+    createFeatureObject: (maxInstances: number) => IInstancedFeatureObject<K, F>,
     maxInstances?: number | undefined
   ) {
     super(geometry, redrawFlag);

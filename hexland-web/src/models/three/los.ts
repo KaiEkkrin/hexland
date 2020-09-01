@@ -110,7 +110,7 @@ class LoSFeatureObject extends InstancedFeatureObject<IGridEdge, IFeature<IGridE
   }
 }
 
-class LoSFeatures extends InstancedFeatures<IGridEdge, IFeature<IGridEdge>, LoSFeatureObject> {
+class LoSFeatures extends InstancedFeatures<IGridEdge, IFeature<IGridEdge>> {
   constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, z: number, q: number, material: THREE.ShaderMaterial, maxInstances?: number | undefined) {
     super(geometry, redrawFlag, edgeString, maxInstances => {
       return new LoSFeatureObject(geometry, z, q, material, maxInstances);
@@ -119,8 +119,6 @@ class LoSFeatures extends InstancedFeatures<IGridEdge, IFeature<IGridEdge>, LoSF
 }
 
 // This class encapsulates the LoS drawing along with its intermediate surfaces.
-// TODO Do the composition -- but to make sure things are OK, to begin with, we'll
-// just draw a single-target LoS.
 export class LoS extends Drawn {
   private readonly _featureClearColour: THREE.Color;
   private readonly _features: LoSFeatures;
@@ -273,7 +271,7 @@ export class LoS extends Drawn {
 
   // Accesses the LoS features themselves -- these should be sync'd with the walls,
   // but with only colour 0.
-  get features(): InstancedFeatures<IGridEdge, IFeature<IGridEdge>, LoSFeatureObject> {
+  get features() {
     return this._features;
   }
 

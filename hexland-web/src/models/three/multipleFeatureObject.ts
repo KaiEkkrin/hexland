@@ -6,18 +6,21 @@ import * as THREE from 'three';
 
 // An instanced feature object that wraps several, complete with a numeric selector.
 export class MultipleFeatureObject<K extends IGridCoord, F extends IFeature<K>> implements IInstancedFeatureObject<K, F> {
-  private readonly _createFeatureObj: (index: number) => IInstancedFeatureObject<K, F>;
+  private readonly _createFeatureObj: (index: number, maxInstances: number) => IInstancedFeatureObject<K, F>;
   private readonly _getIndex: (f: F) => number;
   private readonly _featureObjs: { [index: number]: IInstancedFeatureObject<K, F> } = {};
+  private readonly _maxInstances: number;
 
   private _scene: THREE.Scene | undefined;
 
   constructor(
-    createFeatureObj: (index: number) => IInstancedFeatureObject<K, F>,
-    getIndex: (f: F) => number
+    createFeatureObj: (index: number, maxInstances: number) => IInstancedFeatureObject<K, F>,
+    getIndex: (f: F) => number,
+    maxInstances: number
   ) {
     this._createFeatureObj = createFeatureObj;
     this._getIndex = getIndex;
+    this._maxInstances = maxInstances;
   }
 
   private getFeatureObj(index: number) {
@@ -27,7 +30,7 @@ export class MultipleFeatureObject<K extends IGridCoord, F extends IFeature<K>> 
 
     // When we create a new feature object, we should immediately add it to the
     // scene if we have one:
-    const newFeatureObj = this._createFeatureObj(index);
+    const newFeatureObj = this._createFeatureObj(index, this._maxInstances);
     this._featureObjs[index] = newFeatureObj;
     if (this._scene !== undefined) {
       newFeatureObj.addToScene(this._scene);
