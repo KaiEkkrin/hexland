@@ -9,10 +9,9 @@ import { RedrawFlag } from '../redrawFlag';
 
 import * as THREE from 'three';
 
-function createVertexGeometry(gridGeometry: IGridGeometry, alpha: number, z: number) {
-  const single = gridGeometry.toSingle();
-  const vertices = [...single.createSolidVertexVertices(new THREE.Vector2(0, 0), alpha, z, 1)];
-  const indices = [...single.createSolidVertexIndices()];
+export function createVertexGeometry(gridGeometry: IGridGeometry, alpha: number, z: number, maxVertex?: number | undefined) {
+  const vertices = [...gridGeometry.createSolidVertexVertices(new THREE.Vector2(0, 0), alpha, z, maxVertex)];
+  const indices = [...gridGeometry.createSolidVertexIndices()];
   return () => {
     const geometry = new THREE.InstancedBufferGeometry();
     geometry.setFromPoints(vertices);
@@ -21,18 +20,22 @@ function createVertexGeometry(gridGeometry: IGridGeometry, alpha: number, z: num
   };
 }
 
+function createSingleVertexGeometry(gridGeometry: IGridGeometry, alpha: number, z: number) {
+  return createVertexGeometry(gridGeometry.toSingle(), alpha, z, 1);
+}
+
 export function createPaletteColouredVertexObject(gridGeometry: IGridGeometry, alpha: number, z: number, colourParameters: IColourParameters) {
   return (maxInstances: number) => new PaletteColouredFeatureObject(
     vertexString,
     (o, p) => gridGeometry.transformToVertex(o, p),
     maxInstances,
-    createVertexGeometry(gridGeometry, alpha, z),
+    createSingleVertexGeometry(gridGeometry, alpha, z),
     colourParameters
   );
 }
 
 export function createSelectionColouredVertexObject(gridGeometry: IGridGeometry, alpha: number, z: number) {
-  const vertexGeometry = createVertexGeometry(gridGeometry, alpha, z);
+  const vertexGeometry = createSingleVertexGeometry(gridGeometry, alpha, z);
   return (maxInstances: number) => new MultipleFeatureObject<IGridVertex, IFeature<IGridVertex>>(
     (i: number, maxInstances: number) => new PaletteColouredFeatureObject(
       vertexString,

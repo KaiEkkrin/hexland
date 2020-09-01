@@ -13,6 +13,8 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     this._off = squareSize * 0.5;
   }
 
+  protected get faceVertexCount() { return 4; }
+
   protected createCentre(target: THREE.Vector3, x: number, y: number, z: number): THREE.Vector3 {
     return target.set(x * this._squareSize, y * this._squareSize, z);
   }

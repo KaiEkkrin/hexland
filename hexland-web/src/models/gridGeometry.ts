@@ -8,6 +8,10 @@ export interface IGridGeometry {
   // The number of faces horizontally or vertically in each tile.
   tileDim: number;
 
+  // Some more parameters:
+  maxEdge: number;
+  epsilon: number;
+
   // Creates the co-ordinates of the centre of this face.
   createCoordCentre(target: THREE.Vector3, coord: IGridCoord, z: number): THREE.Vector3;
 
@@ -27,6 +31,10 @@ export interface IGridGeometry {
 
   // Creates the edge occlusion tester for the edge when seen from the coord.
   createEdgeOcclusion(coord: IGridCoord, edge: IGridEdge, z: number): EdgeOcclusion;
+
+  // Creates the 'face' attribute array that matches `createSolidVertices` when used
+  // for the grid colours.
+  createFaceAttributes(): Float32Array;
 
   // Creates the vertices used for the LoS mesh.  Like the wall vertices,
   // this will have only edge 0 and we will use the instance matrix to generate
@@ -74,6 +82,10 @@ export interface IGridGeometry {
 
   // Creates some colours for testing the solid vertex vertices, above.
   createSolidVertexTestColours(): Float32Array;
+
+  // Creates the 'face' attribute array that matches `createSolidVertexVertices` when used
+  // for the grid colours.
+  createVertexAttributes(maxVertex?: number | undefined): Float32Array;
 
   // Creates the vertices for the wall instanced mesh.  This will have only
   // edge 0 (we use the instance matrix to generate the others.)
@@ -169,8 +181,13 @@ export abstract class BaseGeometry {
   }
 
   get tileDim() { return this._tileDim; }
-  protected get maxEdge() { return this._maxEdge; }
-  protected get maxVertex() { return this._maxVertex; }
+  get maxEdge() { return this._maxEdge; }
+  get maxVertex() { return this._maxVertex; }
+  get epsilon() { return this._epsilon; }
+
+  // This value must be the same as the number of vertices emitted for each face
+  // by `createSolidVertices`.
+  protected abstract get faceVertexCount(): number;
 
   protected abstract createCentre(target: THREE.Vector3, x: number, y: number, z: number): THREE.Vector3;
 
@@ -271,6 +288,23 @@ export abstract class BaseGeometry {
       4 * edge +
       4 * this._maxEdge; // this value mixed in so that a 0 sign-and-edge value can be identified as "nothing"
     colours[offset + 1] = this._epsilon + packedSignAndEdge / (8.0 * this._maxEdge);
+  }
+
+  createFaceAttributes() {
+    const faceVertexCount = this.faceVertexCount;
+    var attrs = new Float32Array(this.tileDim * this.tileDim * faceVertexCount * 3);
+    var offset = 0;
+    for (var y = 0; y < this.tileDim; ++y) {
+      for (var x = 0; x < this.tileDim; ++x) {
+        for (var f = 0; f < faceVertexCount; ++f) {
+          attrs[offset++] = x;
+          attrs[offset++] = y;
+          attrs[offset++] = 0;
+        }
+      }
+    }
+
+    return attrs;
   }
 
   *createLoSVertices(z: number, q: number) {
@@ -398,6 +432,25 @@ export abstract class BaseGeometry {
     }
 
     return colours;
+  }
+
+  createVertexAttributes(maxVertex?: number | undefined) {
+    maxVertex = Math.min(maxVertex ?? this.maxVertex, this.maxVertex);
+    var attrs = new Float32Array(this.tileDim * this.tileDim * maxVertex * (vertexRimCount + 1) * 3);
+    var offset = 0;
+    for (var y = 0; y < this.tileDim; ++y) {
+      for (var x = 0; x < this.tileDim; ++x) {
+        for (var v = 0; v < maxVertex; ++v) {
+          for (var r = 0; r <= vertexRimCount; ++r) {
+            attrs[offset++] = x;
+            attrs[offset++] = y;
+            attrs[offset++] = v;
+          }
+        }
+      }
+    }
+
+    return attrs;
   }
 
   createWallVertices(alpha: number, z: number): THREE.Vector3[] {

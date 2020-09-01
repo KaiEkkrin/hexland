@@ -24,6 +24,8 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     this._yOffTop = this._hexSize * 0.5;
   }
 
+  protected get faceVertexCount() { return 7; }
+
   protected createCentre(target: THREE.Vector3, x: number, y: number, z: number): THREE.Vector3 {
     return target.set(x * this._xStep, x * this._yStep + y * this._hexSize, z);
   }
