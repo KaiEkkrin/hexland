@@ -33,6 +33,8 @@ export class RenderTargetReader {
 
   // Provides a texel from the buffer to a decoder.
   sample<T>(x: number, y: number, decoder: (buf: Uint8Array, offset: number) => T | undefined) {
+    x = Math.floor(x);
+    y = Math.floor(y);
     if (x < 0 || y < 0 || x >= this._bufWidth || y >= this._bufHeight) {
       return undefined;
     }
