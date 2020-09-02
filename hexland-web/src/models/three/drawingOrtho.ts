@@ -4,7 +4,6 @@ import { FeatureColour } from '../featureColour';
 import { IGridGeometry } from '../gridGeometry';
 import { IDrawing } from '../interfaces';
 import { RedrawFlag } from '../redrawFlag';
-import { RenderTargetReader } from './renderTargetReader';
 
 import { Areas, createPaletteColouredAreaObject, createAreas, createSelectionColouredAreaObject } from './areas';
 import { Grid, IGridLoSPreRenderParameters } from './grid';
@@ -18,7 +17,6 @@ import { Vertices, createVertices, createSelectionColouredVertexObject } from '.
 import { Walls, createPaletteColouredWallObject, createSelectionColouredWallObject } from './walls';
 
 import * as THREE from 'three';
-import fluent from 'fluent-iterable';
 
 // Our Z values are in the range -1..1 so that they're the same in the shaders
 const areaZ = -0.5;
@@ -53,20 +51,13 @@ export class DrawingOrtho implements IDrawing {
   private readonly _camera: THREE.OrthographicCamera;
   private readonly _fixedCamera: THREE.OrthographicCamera;
   private readonly _overlayCamera: THREE.OrthographicCamera;
-  private readonly _faceCoordRenderTarget: THREE.WebGLRenderTarget;
-  private readonly _vertexCoordRenderTarget: THREE.WebGLRenderTarget;
   private readonly _renderer: THREE.WebGLRenderer;
   private readonly _canvasClearColour: THREE.Color;
-  private readonly _textureClearColour: THREE.Color;
 
   private readonly _mapScene: THREE.Scene;
   private readonly _fixedFilterScene: THREE.Scene;
   private readonly _filterScene: THREE.Scene;
   private readonly _overlayScene: THREE.Scene;
-  private readonly _faceCoordScene: THREE.Scene;
-  private readonly _vertexCoordScene: THREE.Scene;
-  private readonly _texelReadBuf = new Uint8Array(4);
-  private readonly _coordTargetReader: RenderTargetReader;
 
   private readonly _grid: Grid;
   private readonly _gridFilter: GridFilter;
@@ -132,47 +123,22 @@ export class DrawingOrtho implements IDrawing {
 
     this._renderer = new THREE.WebGLRenderer();
     this._canvasClearColour = new THREE.Color(0.1, 0.1, 0.1);
-    this._textureClearColour = new THREE.Color(0, 0, 0); // we'll flip to this when required
     this._renderer.setClearColor(this._canvasClearColour); // a dark grey background will show up LoS
     mount.appendChild(this._renderer.domElement);
     this._mount = mount;
 
     // Texture of face co-ordinates within the tile.
-    this._faceCoordScene = new THREE.Scene();
-    this._faceCoordRenderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
-      minFilter: THREE.NearestFilter,
-      magFilter: THREE.NearestFilter,
-      wrapS: THREE.ClampToEdgeWrapping,
-      wrapT: THREE.ClampToEdgeWrapping
-    });
-
-    // Texture of vertex co-ordinates within the tile.
-    this._vertexCoordScene = new THREE.Scene();
-    this._vertexCoordRenderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
-      minFilter: THREE.NearestFilter,
-      magFilter: THREE.NearestFilter,
-      wrapS: THREE.ClampToEdgeWrapping,
-      wrapT: THREE.ClampToEdgeWrapping
-    });
-
     this._grid = new Grid(
       this._gridGeometry,
       this._gridNeedsRedraw,
       gridZ,
       losZ,
       vertexAlpha,
-      this._faceCoordScene,
-      this._vertexCoordScene
+      renderWidth,
+      renderHeight
     );
 
-    // We'll be wanting to sample the coord render target a lot in order to detect what grid to draw,
-    // so we'll set up a reader
-    this._coordTargetReader = new RenderTargetReader(this._faceCoordRenderTarget);
-
-    // Render the middle of the grid by default (we need to have something to start things up)
-    this._grid.extendAcrossRange({ minS: -1, minT: -1, maxS: 1, maxT: 1 });
-
-    this._gridFilter = new GridFilter(this._fixedFilterScene, this._faceCoordRenderTarget.texture, gridZ);
+    this._gridFilter = new GridFilter(this._fixedFilterScene, this._grid.faceCoordRenderTarget.texture, gridZ);
 
     this._textMaterial = new THREE.MeshBasicMaterial({ color: 0, side: THREE.DoubleSide });
 
@@ -278,73 +244,6 @@ export class DrawingOrtho implements IDrawing {
     return [width * 0.5 / scaling.x, height * 0.5 / scaling.y];
   }
 
-  private extendGridAround(s: number, t: number) {
-    // We extend the grid around the given tile until we added something,
-    // effectively making it at most 1 tile bigger than it previously was.
-    var countAdded = 0;
-    for (var expand = 1; countAdded === 0; ++expand) {
-      countAdded = this._grid.extendAcrossRange({
-        minS: s - expand,
-        minT: t - expand,
-        maxS: s + expand,
-        maxT: t + expand
-      });
-    }
-  }
-
-  private fitGridToFrame() {
-    const width = this._faceCoordRenderTarget.width;
-    const height = this._faceCoordRenderTarget.height;
-
-    // Take our control samples, which will be in grid coords, and map them
-    // back into tile coords
-    const samples = [...fluent(this.getGridSamples(width, height)).map(c => c === undefined ? undefined : {
-      x: Math.floor(c.x / this._gridGeometry.tileDim),
-      y: Math.floor(c.y / this._gridGeometry.tileDim)
-    })];
-
-    const undefinedCount = fluent(samples).count(s => s === undefined);
-    if (undefinedCount === samples.length) {
-      // This shouldn't happen unless we only just loaded the map.  Extend the grid around the origin.
-      this.extendGridAround(0, 0);
-    } else if (undefinedCount > 0) {
-      // We're missing grid in part of the view.  Extend the grid by one around the first
-      // tile that we found in view -- this should, over the course of a couple of frames,
-      // fill the whole view
-      const coreTile = samples.find(s => s !== undefined);
-      if (coreTile !== undefined) { // clearly :)
-        this.extendGridAround(coreTile.x, coreTile.y);
-      }
-    } else {
-      // Reduce the amount of stuff we need to consider by removing any tiles outside this range.
-      // (The 0 fallbacks here will never be used because of the if clause, and are here to
-      // appease TypeScript)
-      this._grid.shrinkToRange({
-        minS: Math.min(...samples.map(s => s?.x ?? 0)),
-        minT: Math.min(...samples.map(s => s?.y ?? 0)),
-        maxS: Math.max(...samples.map(s => s?.x ?? 0)),
-        maxT: Math.max(...samples.map(s => s?.y ?? 0))
-      });
-    }
-  }
-
-  private *getGridSamples(width: number, height: number) {
-    var cp = new THREE.Vector3(Math.floor(width * 0.5), Math.floor(height * 0.5), 0);
-    yield this.getGridCoordAt(cp);
-
-    cp.set(0, 0, 0);
-    yield this.getGridCoordAt(cp);
-
-    cp.set(width - 1, 0, 0);
-    yield this.getGridCoordAt(cp);
-
-    cp.set(width - 1, height - 1, 0);
-    yield this.getGridCoordAt(cp);
-
-    cp.set(0, height - 1, 0);
-    yield this.getGridCoordAt(cp);
-  }
-
   get areas() { return this._areas; }
   get tokens() { return this._tokens; }
   get walls() { return this._walls; }
@@ -372,7 +271,7 @@ export class DrawingOrtho implements IDrawing {
 
     // Check that we have enough grid.
     // If we don't, we'll fill it in on the next frame:
-    this.fitGridToFrame();
+    this._grid.fitGridToFrame();
 
     // Don't re-render the visible scene unless something changed:
     // (Careful -- don't chain these method calls up with ||, it's important
@@ -382,12 +281,7 @@ export class DrawingOrtho implements IDrawing {
     var gridNeedsRedraw = this._gridNeedsRedraw.needsRedraw();
 
     if (gridNeedsRedraw) {
-      this._renderer.setRenderTarget(this._faceCoordRenderTarget);
-      this._renderer.setClearColor(this._textureClearColour);
-      this._renderer.render(this._faceCoordScene, this._camera);
-
-      this._renderer.setRenderTarget(this._vertexCoordRenderTarget);
-      this._renderer.render(this._vertexCoordScene, this._camera);
+      this._grid.render(this._renderer, this._camera);
     }
 
     if (gridNeedsRedraw || needsRedraw) {
@@ -411,11 +305,6 @@ export class DrawingOrtho implements IDrawing {
         this._grid.postLoSRender();
       }
     }
-
-    // Post-render steps -- texture read-backs, etc.
-    if (gridNeedsRedraw) {
-      this._coordTargetReader.refresh(this._renderer);
-    }
   }
 
   checkLoS(cp: THREE.Vector3) {
@@ -423,15 +312,11 @@ export class DrawingOrtho implements IDrawing {
   }
 
   getGridCoordAt(cp: THREE.Vector3): IGridCoord | undefined {
-    return this._coordTargetReader.sample(
-      cp.x, cp.y,
-      (buf, offset) => this._gridGeometry?.decodeCoordSample(buf, offset)
-    );
+    return this._grid.getGridCoordAt(cp);
   }
 
   getGridVertexAt(cp: THREE.Vector3): IGridVertex | undefined {
-    this._renderer.readRenderTargetPixels(this._vertexCoordRenderTarget, cp.x, cp.y, 1, 1, this._texelReadBuf);
-    return this._gridGeometry?.decodeVertexSample(this._texelReadBuf, 0);
+    return this._grid.getGridVertexAt(this._renderer, cp);
   }
 
   getViewportToWorld(target: THREE.Matrix4): THREE.Matrix4 {
@@ -470,8 +355,7 @@ export class DrawingOrtho implements IDrawing {
     var height = Math.max(1, Math.floor(window.innerHeight));
 
     this._renderer.setSize(width, height, false);
-    this._faceCoordRenderTarget.setSize(width, height);
-    this._vertexCoordRenderTarget.setSize(width, height);
+    this._grid.resize(width, height);
 
     this._camera.left = translation.x + width / -scaling.x;
     this._camera.right = translation.x + width / scaling.x;
@@ -545,8 +429,6 @@ export class DrawingOrtho implements IDrawing {
 
     this._mount.removeChild(this._renderer.domElement);
 
-    this._faceCoordRenderTarget.dispose();
-    this._vertexCoordRenderTarget.dispose();
     this._renderer.dispose();
 
     this._grid.dispose();

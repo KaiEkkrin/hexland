@@ -7,9 +7,11 @@ import { InstancedFeatureObject } from './instancedFeatureObject';
 import { InstancedFeatures } from './instancedFeatures';
 import { IGridBounds } from '../interfaces';
 import { RedrawFlag } from '../redrawFlag';
+import { RenderTargetReader } from './renderTargetReader';
 import { createVertexGeometry, Vertices, createVertices } from './vertices';
 
 import * as THREE from 'three';
+import fluent from 'fluent-iterable';
 // import fluent from 'fluent-iterable';
 
 // This shading provides the colouring for the coord and vertex colour textures, which
@@ -21,16 +23,19 @@ import * as THREE from 'three';
 const epsilon = "epsilon";
 const maxEdge = "maxEdge";
 const tileDim = "tileDim";
+const tileOrigin = "tileOrigin";
 const gridColouredShader = {
   uniforms: {
     epsilon: { type: 'f', value: null },
     maxEdge: { type: 'f', value: null },
     tileDim: { type: 'f', value: null },
+    tileOrigin: { type: 'v2', value: null },
   },
   vertexShader: [
     "uniform float epsilon;",
     "uniform float maxEdge;",
     "uniform float tileDim;",
+    "uniform vec2 tileOrigin;",
     "attribute vec3 face;", // per-vertex; z is the edge or vertex number
     "attribute vec2 tile;", // per-instance
     "varying vec3 vertexColour;", // packed colour
@@ -51,8 +56,8 @@ const gridColouredShader = {
 
     "void main() {",
     "  vertexColour = vec3(",
-    "    packXYAbs(tile),",
-    "    packXYSignAndEdge(tile, face.z),",
+    "    packXYAbs(tile - tileOrigin),",
+    "    packXYSignAndEdge(tile - tileOrigin, face.z),",
     "    packXYAbs(face.xy)",
     "  );",
     "  gl_Position = projectionMatrix * viewMatrix * instanceMatrix * vec4(position, 1.0);",
@@ -71,6 +76,7 @@ class GridColouredFeatureObject<K extends IGridCoord, F extends IFeature<K>> ext
   private readonly _geometry: THREE.InstancedBufferGeometry;
   private readonly _tileAttr: THREE.InstancedBufferAttribute;
   private readonly _instanceTiles: Float32Array;
+  private readonly _tileOrigin: THREE.Vector2;
 
   private _uniforms: any = null;
   private _material: THREE.ShaderMaterial | undefined; // created when required
@@ -80,11 +86,13 @@ class GridColouredFeatureObject<K extends IGridCoord, F extends IFeature<K>> ext
     transformTo: (o: THREE.Object3D, position: K) => void,
     gridGeometry: IGridGeometry,
     maxInstances: number,
-    createGeometry: () => THREE.InstancedBufferGeometry
+    createGeometry: () => THREE.InstancedBufferGeometry,
+    tileOrigin: THREE.Vector2
   ) {
     super(toIndex, transformTo, maxInstances);
     this._gridGeometry = gridGeometry;
     this._geometry = createGeometry();
+    this._tileOrigin = tileOrigin;
 
     this._instanceTiles = new Float32Array(maxInstances * 2);
     this._tileAttr = new THREE.InstancedBufferAttribute(this._instanceTiles, 2);
@@ -119,6 +127,7 @@ class GridColouredFeatureObject<K extends IGridCoord, F extends IFeature<K>> ext
     uniforms[epsilon].value = this._gridGeometry.epsilon;
     uniforms[maxEdge].value = this._gridGeometry.maxEdge;
     uniforms[tileDim].value = this._gridGeometry.tileDim;
+    uniforms[tileOrigin].value = this._tileOrigin;
 
     const material = new THREE.ShaderMaterial({
       uniforms: uniforms,
@@ -224,10 +233,11 @@ class GridLoSFeatureObject extends GridColouredFeatureObject<IGridCoord, IFeatur
     gridGeometry: IGridGeometry,
     maxInstances: number,
     createGeometry: () => THREE.InstancedBufferGeometry,
+    tileOrigin: THREE.Vector2
   ) {
     super(
       coordString, (o, p) => gridGeometry.transformToCoord(o, p),
-      gridGeometry, maxInstances, createGeometry
+      gridGeometry, maxInstances, createGeometry, tileOrigin
     );
   }
 
@@ -297,38 +307,54 @@ function createGridVertexGeometry(gridGeometry: IGridGeometry, alpha: number, z:
   }
 }
 
-function createGridColouredAreaObject(gridGeometry: IGridGeometry, z: number) {
+function createGridColouredAreaObject(gridGeometry: IGridGeometry, z: number, tileOrigin: THREE.Vector2) {
   return (maxInstances: number) => new GridColouredFeatureObject<IGridCoord, IFeature<IGridCoord>>(
     coordString,
     (o, p) => gridGeometry.transformToCoord(o, p),
     gridGeometry,
     maxInstances,
-    createGridAreaGeometry(gridGeometry, 1.0, z)
+    createGridAreaGeometry(gridGeometry, 1.0, z),
+    tileOrigin
   );
 }
 
-function createGridColouredVertexObject(gridGeometry: IGridGeometry, alpha: number, z: number) {
+function createGridColouredVertexObject(gridGeometry: IGridGeometry, alpha: number, z: number, tileOrigin: THREE.Vector2) {
   return (maxInstances: number) => new GridColouredFeatureObject<IGridVertex, IFeature<IGridVertex>>(
     vertexString,
     (o, p) => gridGeometry.transformToVertex(o, p),
     gridGeometry,
     maxInstances,
-    createGridVertexGeometry(gridGeometry, alpha, z)
+    createGridVertexGeometry(gridGeometry, alpha, z),
+    tileOrigin
   );
 }
 
-function createGridLoSAreaObject(gridGeometry: IGridGeometry, z: number) {
+function createGridLoSAreaObject(gridGeometry: IGridGeometry, z: number, tileOrigin: THREE.Vector2) {
   return (maxInstances: number) => new GridLoSFeatureObject(
     gridGeometry,
     maxInstances,
-    createGridAreaGeometry(gridGeometry, 1.0, z)
+    createGridAreaGeometry(gridGeometry, 1.0, z),
+    tileOrigin
   );
 }
 
 export class Grid extends Drawn {
+  private readonly _textureClearColour = new THREE.Color(0, 0, 0);
+
   private readonly _faces: Areas;
   private readonly _vertices: Vertices;
   private readonly _losFaces: GridLoS;
+
+  private readonly _tileOrigin = new THREE.Vector2(0, 0);
+
+  private readonly _faceCoordScene: THREE.Scene;
+  private readonly _vertexCoordScene: THREE.Scene;
+
+  private readonly _faceCoordRenderTarget: THREE.WebGLRenderTarget;
+  private readonly _vertexCoordRenderTarget: THREE.WebGLRenderTarget;
+
+  private readonly _faceCoordTargetReader: RenderTargetReader;
+  private readonly _texelReadBuf = new Uint8Array(4);
 
   private readonly _temp: FeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
 
@@ -340,26 +366,43 @@ export class Grid extends Drawn {
     gridZ: number,
     losZ: number,
     vertexAlpha: number,
-    coordScene: THREE.Scene,
-    vertexScene: THREE.Scene
+    renderWidth: number,
+    renderHeight: number
   ) {
     super(geometry, redrawFlag);
+
+    this._faceCoordScene = new THREE.Scene();
+    this._faceCoordRenderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
+      minFilter: THREE.NearestFilter,
+      magFilter: THREE.NearestFilter,
+      wrapS: THREE.ClampToEdgeWrapping,
+      wrapT: THREE.ClampToEdgeWrapping
+    });
+
+    // Texture of vertex co-ordinates within the tile.
+    this._vertexCoordScene = new THREE.Scene();
+    this._vertexCoordRenderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
+      minFilter: THREE.NearestFilter,
+      magFilter: THREE.NearestFilter,
+      wrapS: THREE.ClampToEdgeWrapping,
+      wrapT: THREE.ClampToEdgeWrapping
+    });
 
     this._faces = createAreas(
       geometry,
       redrawFlag,
-      createGridColouredAreaObject(geometry, gridZ),
+      createGridColouredAreaObject(geometry, gridZ, this._tileOrigin),
       100
     );
-    this._faces.addToScene(coordScene);
+    this._faces.addToScene(this._faceCoordScene);
 
     this._vertices = createVertices(
       geometry,
       redrawFlag,
-      createGridColouredVertexObject(geometry, vertexAlpha, gridZ),
+      createGridColouredVertexObject(geometry, vertexAlpha, gridZ, this._tileOrigin),
       100
     );
-    this._vertices.addToScene(vertexScene);
+    this._vertices.addToScene(this._vertexCoordScene);
 
     // The LoS object may or may not be in a scene, so we'll expose separate methods
     // to add and remove it.
@@ -367,20 +410,26 @@ export class Grid extends Drawn {
       geometry,
       redrawFlag,
       coordString,
-      createGridLoSAreaObject(geometry, losZ),
+      createGridLoSAreaObject(geometry, losZ, this._tileOrigin),
       100
     );
 
     this._temp = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
+
+    // We'll be wanting to sample the coord render target a lot in order to detect what grid to draw,
+    // so we'll set up a reader
+    this._faceCoordTargetReader = new RenderTargetReader(this._faceCoordRenderTarget);
+
+    // We always start up with the middle of the grid by default:
+    this.extendAcrossRange({ minS: -1, minT: -1, maxS: 1, maxT: 1 });
   }
 
-  addLoSToScene(scene: THREE.Scene) {
-    return this._losFaces.addToScene(scene);
-  }
+  // We need to access this to feed it to the grid filter
+  get faceCoordRenderTarget() { return this._faceCoordRenderTarget; }
 
   // Extends the grid across the given range of tiles.
   // Returns the number of new tiles added.
-  extendAcrossRange(bounds: IGridBounds) {
+  private extendAcrossRange(bounds: IGridBounds) {
     var count = 0;
     for (var t = bounds.minT; t <= bounds.maxT; ++t) {
       for (var s = bounds.minS; s <= bounds.maxS; ++s) {
@@ -408,22 +457,41 @@ export class Grid extends Drawn {
     return count;
   }
 
-  // Call this after rendering the scene containing the LoS.
-  postLoSRender() {
-    this._losFaces.postRender();
+  private extendGridAround(s: number, t: number) {
+    // We extend the grid around the given tile until we added something,
+    // effectively making it at most 1 tile bigger than it previously was.
+    var countAdded = 0;
+    for (var expand = 1; countAdded === 0; ++expand) {
+      countAdded = this.extendAcrossRange({
+        minS: s - expand,
+        minT: t - expand,
+        maxS: s + expand,
+        maxT: t + expand
+      });
+    }
+
+    return countAdded;
   }
 
-  // Call this before rendering the scene containing the LoS.
-  preLoSRender(params: IGridLoSPreRenderParameters) {
-    this._losFaces.preRender(params);
-  }
+  private *getGridSamples(width: number, height: number) {
+    var cp = new THREE.Vector3(Math.floor(width * 0.5), Math.floor(height * 0.5), 0);
+    yield this.getGridCoordAt(cp);
 
-  removeLoSFromScene() {
-    this._losFaces.removeFromScene();
+    cp.set(0, 0, 0);
+    yield this.getGridCoordAt(cp);
+
+    cp.set(width - 1, 0, 0);
+    yield this.getGridCoordAt(cp);
+
+    cp.set(width - 1, height - 1, 0);
+    yield this.getGridCoordAt(cp);
+
+    cp.set(0, height - 1, 0);
+    yield this.getGridCoordAt(cp);
   }
 
   // Makes sure this range is filled and removes all tiles outside it.
-  shrinkToRange(bounds: IGridBounds) {
+  private shrinkToRange(bounds: IGridBounds) {
     const added = this.extendAcrossRange(bounds);
 
     // Fill the temp dictionary with entries for every tile we want to keep
@@ -454,10 +522,126 @@ export class Grid extends Drawn {
     if (added !== 0 || toDelete.length !== 0) {
     //   console.log("shrunk grid to " + fluent(this._faces).count() + " tiles");
     }
+
+    return added + toDelete.length;
+  }
+
+  private updateTileOrigin() {
+    // We pick a tile origin in the middle of the tiles we're rendering to
+    // maximise the limited amount of precision available to us in the
+    // texture colours:
+    var [tileCount, tileXSum, tileYSum] = [0, 0, 0];
+    for (var t of this._faces) {
+      ++tileCount;
+      tileXSum += Math.floor(t.position.x / this.geometry.tileDim);
+      tileYSum += Math.floor(t.position.y / this.geometry.tileDim);
+    }
+
+    if (tileCount !== 0) {
+      this._tileOrigin.set(Math.round(tileXSum / tileCount), Math.round(tileYSum / tileCount));
+      // console.log("Set tile origin to " + this._tileOrigin.toArray());
+    }
+  }
+
+  addLoSToScene(scene: THREE.Scene) {
+    return this._losFaces.addToScene(scene);
+  }
+
+  fitGridToFrame() {
+    const width = this._faceCoordRenderTarget.width;
+    const height = this._faceCoordRenderTarget.height;
+
+    // Take our control samples, which will be in grid coords, and map them
+    // back into tile coords
+    const samples = [...fluent(this.getGridSamples(width, height)).map(c => c === undefined ? undefined : {
+      x: Math.floor(c.x / this.geometry.tileDim),
+      y: Math.floor(c.y / this.geometry.tileDim)
+    })];
+
+    const undefinedCount = fluent(samples).count(s => s === undefined);
+    var countChanged = 0;
+    if (undefinedCount === samples.length) {
+      // This shouldn't happen unless we only just loaded the map.  Extend the grid around the origin.
+      countChanged = this.extendGridAround(0, 0);
+    } else if (undefinedCount > 0) {
+      // We're missing grid in part of the view.  Extend the grid by one around the first
+      // tile that we found in view -- this should, over the course of a couple of frames,
+      // fill the whole view
+      const coreTile = samples.find(s => s !== undefined);
+      if (coreTile !== undefined) { // clearly :)
+        countChanged = this.extendGridAround(coreTile.x, coreTile.y);
+      }
+    } else {
+      // Reduce the amount of stuff we need to consider by removing any tiles outside this range.
+      // (The 0 fallbacks here will never be used because of the if clause, and are here to
+      // appease TypeScript)
+      countChanged = this.shrinkToRange({
+        minS: Math.min(...samples.map(s => s?.x ?? 0)),
+        minT: Math.min(...samples.map(s => s?.y ?? 0)),
+        maxS: Math.max(...samples.map(s => s?.x ?? 0)),
+        maxT: Math.max(...samples.map(s => s?.y ?? 0))
+      });
+    }
+
+    if (countChanged !== 0) {
+      this.updateTileOrigin();
+    }
+  }
+
+  getGridCoordAt(cp: THREE.Vector3): IGridCoord | undefined {
+    return this._faceCoordTargetReader.sample(
+      cp.x, cp.y,
+      (buf, offset) => this.geometry.decodeCoordSample(buf, offset, this._tileOrigin)
+    );
+  }
+
+  getGridVertexAt(renderer: THREE.WebGLRenderer, cp: THREE.Vector3): IGridVertex | undefined {
+    // This is not done very often and only for one texel at a time, so we forego
+    // pre-reading everything
+    renderer.readRenderTargetPixels(this._vertexCoordRenderTarget, cp.x, cp.y, 1, 1, this._texelReadBuf);
+    return this.geometry.decodeVertexSample(this._texelReadBuf, 0, this._tileOrigin);
+  }
+
+  // Call this after rendering the scene containing the LoS.
+  postLoSRender() {
+    this._losFaces.postRender();
+  }
+
+  // Call this before rendering the scene containing the LoS.
+  preLoSRender(params: IGridLoSPreRenderParameters) {
+    this._losFaces.preRender(params);
+  }
+
+  removeLoSFromScene() {
+    this._losFaces.removeFromScene();
+  }
+
+  // Renders the face and vertex coords to their respective targets.
+  render(renderer: THREE.WebGLRenderer, camera: THREE.Camera) {
+    renderer.setRenderTarget(this._faceCoordRenderTarget);
+    renderer.setClearColor(this._textureClearColour);
+    renderer.render(this._faceCoordScene, camera);
+
+    renderer.setRenderTarget(this._vertexCoordRenderTarget);
+    renderer.render(this._vertexCoordScene, camera);
+
+    renderer.setRenderTarget(null);
+    this._faceCoordTargetReader.refresh(renderer);
+  }
+
+  resize(width: number, height: number) {
+    this._faceCoordRenderTarget.setSize(width, height);
+    this._vertexCoordRenderTarget.setSize(width, height);
   }
 
   dispose() {
     if (this._isDisposed === false) {
+      this._faceCoordRenderTarget.dispose();
+      this._vertexCoordRenderTarget.dispose();
+
+      this._faceCoordScene.dispose();
+      this._vertexCoordScene.dispose();
+
       this._faces.dispose();
       this._vertices.dispose();
       this._losFaces.dispose();

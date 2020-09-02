@@ -58,20 +58,6 @@ export interface IGridGeometry {
   // suitable for drawing a solid mesh of the grid.
   createSolidMeshIndices(): Iterable<number>;
 
-  // Creates some colours for testing the solid vertices, above.
-  createSolidTestColours(): Float32Array;
-
-  // Creates the colours for a coord texture.
-  createSolidCoordColours(tile: THREE.Vector2): Float32Array;
-
-  // Creates the vertices involved in drawing grid edges in solid.
-  // The alpha number specifies how thick the edge is drawn.
-  // This is a non-indexed mesh.
-  createSolidEdgeVertices(tile: THREE.Vector2, alpha: number, z: number): THREE.Vector3[];
-
-  // Creates the colours for an edge texture using the solid edge vertices.
-  createSolidEdgeColours(tile: THREE.Vector2): Float32Array;
-
   // Creates the vertices involved in drawing grid vertices in solid.
   // The alpha number specifies how thick the edge is drawn.
   createSolidVertexVertices(tile: THREE.Vector2, alpha: number, z: number, maxVertex?: number | undefined): THREE.Vector3[];
@@ -79,12 +65,6 @@ export interface IGridGeometry {
   // Creates a buffer of indices into the output of `createSolidVertexVertices`
   // suitable for drawing the vertex blobs onto the grid.
   createSolidVertexIndices(maxVertex?: number | undefined): Iterable<number>;
-
-  // Creates the colours for a vertex texture using the solid vertex vertices.
-  createSolidVertexColours(tile: THREE.Vector2): Float32Array;
-
-  // Creates some colours for testing the solid vertex vertices, above.
-  createSolidVertexTestColours(): Float32Array;
 
   // Creates the 'face' attribute array that matches `createSolidVertexVertices` when used
   // for the grid colours.
@@ -97,15 +77,11 @@ export interface IGridGeometry {
 
   // Decodes the given sample from a coord texture (these must be 4 values
   // starting from the offset) into a grid coord.
-  decodeCoordSample(sample: Uint8Array, offset: number): IGridCoord | undefined;
-
-  // Decodes the given sample from an edge texture (these must be 4 values
-  // starting from the offset) into a grid coord.
-  decodeEdgeSample(sample: Uint8Array, offset: number): IGridEdge | undefined;
+  decodeCoordSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): IGridCoord | undefined;
 
   // Decodes the given sample from a vertex texture (these must be 4 values
   // starting from the offset) into a grid coord.
-  decodeVertexSample(sample: Uint8Array, offset: number): IGridVertex | undefined;
+  decodeVertexSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): IGridVertex | undefined;
 
   // Evaluates the function for each face adjacent to the given one.
   forEachAdjacentFace(coord: IGridCoord, fn: (face: IGridCoord, edge: IGridEdge) => void): void;
@@ -289,20 +265,6 @@ export abstract class BaseGeometry {
     return [unpacked, edge];
   }
 
-  protected toPackedXYAbs(colours: Float32Array, offset: number, x: number, y: number) {
-    colours[offset] = this._epsilon + (Math.abs(y) * this._tileDim + Math.abs(x)) / (this._tileDim * this._tileDim);
-  }
-
-  protected toPackedXYEdge(colours: Float32Array, offset: number, x: number, y: number, edge: number) {
-    this.toPackedXYAbs(colours, offset, x, y);
-    var packedSignAndEdge =
-      (Math.sign(x) === -1 ? 1 : 0) +
-      (Math.sign(y) === -1 ? 2 : 0) +
-      4 * edge +
-      4 * this._maxEdge; // this value mixed in so that a 0 sign-and-edge value can be identified as "nothing"
-    colours[offset + 1] = this._epsilon + packedSignAndEdge / (8.0 * this._maxEdge);
-  }
-
   createFaceAttributes() {
     const faceVertexCount = this.faceVertexCount;
     var attrs = new Float32Array(this.tileDim * this.tileDim * faceVertexCount * 3);
@@ -343,37 +305,6 @@ export abstract class BaseGeometry {
     ];
   }
 
-  createSolidEdgeVertices(tile: THREE.Vector2, alpha: number, z: number): THREE.Vector3[] {
-    var vertices: THREE.Vector3[] = [];
-    for (var y = 0; y < this.tileDim; ++y) {
-      for (var x = 0; x < this.tileDim; ++x) {
-        for (var e = 0; e < this.maxEdge; ++e) {
-          this.pushEdgeVertices(vertices, tile, alpha, x, y, z, e);
-        }
-      }
-    }
-
-    return vertices;
-  }
-
-  createSolidEdgeColours(tile: THREE.Vector2): Float32Array {
-    var colours = new Float32Array(this.tileDim * this.tileDim * this.maxEdge * 12 * 3);
-    var offset = 0;
-    for (var y = 0; y < this.tileDim; ++y) {
-      for (var x = 0; x < this.tileDim; ++x) {
-        for (var e = 0; e < this.maxEdge; ++e) {
-          for (var i = 0; i < 12; ++i) { // 12 vertices per edge
-            this.toPackedXYEdge(colours, offset, tile.x, tile.y, e);
-            this.toPackedXYAbs(colours, offset + 2, x, y); // never negative
-            offset += 3;
-          }
-        }
-      }
-    }
-
-    return colours;
-  }
-
   createSolidVertexVertices(tile: THREE.Vector2, alpha: number, z: number, maxVertex?: number | undefined): THREE.Vector3[] {
     var radius = this.getVertexRadius(alpha);
     var vertices: THREE.Vector3[] = [];
@@ -411,42 +342,6 @@ export abstract class BaseGeometry {
     }
   }
 
-  createSolidVertexColours(tile: THREE.Vector2) {
-    var colours = new Float32Array(this.tileDim * this.tileDim * this.maxVertex * (vertexRimCount + 1) * 3);
-    var offset = 0;
-    for (var y = 0; y < this.tileDim; ++y) {
-      for (var x = 0; x < this.tileDim; ++x) {
-        for (var v = 0; v < this.maxVertex; ++v) {
-          for (var w = 0; w < (vertexRimCount + 1); ++w) {
-            this.toPackedXYEdge(colours, offset, tile.x, tile.y, v);
-            this.toPackedXYAbs(colours, offset + 2, x, y); // never negative
-            offset += 3;
-          }
-        }
-      }
-    }
-
-    return colours;
-  }
-
-  createSolidVertexTestColours() {
-    var colours = new Float32Array(this.tileDim * this.tileDim * this.maxVertex * (vertexRimCount + 1) * 3);
-    var colour = new THREE.Color();
-    var offset = 0;
-    for (var i = 0; i < this.tileDim * this.tileDim; ++i) {
-      for (var v = 0; v < this.maxVertex; ++v) {
-        colour.setHSL(i / (this.tileDim * this.tileDim), v === 0 ? 0.5 : 1, 0.5);
-        for (var w = 0; w < (vertexRimCount + 1); ++w) {
-          colours[offset++] = colour.r;
-          colours[offset++] = colour.g;
-          colours[offset++] = colour.b;
-        }
-      }
-    }
-
-    return colours;
-  }
-
   createVertexAttributes(maxVertex?: number | undefined) {
     maxVertex = Math.min(maxVertex ?? this.maxVertex, this.maxVertex);
     var attrs = new Float32Array(this.tileDim * this.tileDim * maxVertex * (vertexRimCount + 1) * 3);
@@ -472,23 +367,16 @@ export abstract class BaseGeometry {
     return vertices;
   }
 
-  decodeCoordSample(sample: Uint8Array, offset: number): IGridCoord | undefined {
+  decodeCoordSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): IGridCoord | undefined {
     var tile = this.fromPackedXYEdge(sample, offset)[0];
     var face = this.fromPackedXYAbs(sample, offset + 2);
-    return tile instanceof THREE.Vector2 ? createGridCoord(tile, face, this.tileDim) : undefined;
+    return tile instanceof THREE.Vector2 ? createGridCoord(tile.add(tileOrigin), face, this.tileDim) : undefined;
   }
 
-  decodeEdgeSample(sample: Uint8Array, offset: number): IGridEdge | undefined {
-    var [tile, edge] = this.fromPackedXYEdge(sample, offset);
-    var face = this.fromPackedXYAbs(sample, offset + 2);
-    return tile instanceof THREE.Vector2 ? createGridEdge(tile, face, this.tileDim, edge as number)
-      : undefined;
-  }
-
-  decodeVertexSample(sample: Uint8Array, offset: number): IGridVertex | undefined {
+  decodeVertexSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): IGridVertex | undefined {
     var [tile, vertex] = this.fromPackedXYEdge(sample, offset);
     var face = this.fromPackedXYAbs(sample, offset + 2);
-    return tile instanceof THREE.Vector2 ? createGridVertex(tile, face, this.tileDim, vertex as number)
+    return tile instanceof THREE.Vector2 ? createGridVertex(tile.add(tileOrigin), face, this.tileDim, vertex as number)
       : undefined;
   }
 

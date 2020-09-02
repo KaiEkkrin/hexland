@@ -198,37 +198,6 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     }
   }
 
-  createSolidTestColours(): Float32Array {
-    var colours = new Float32Array(this.tileDim * this.tileDim * 21);
-    var colour = new THREE.Color();
-    for (var i = 0; i < this.tileDim * this.tileDim; ++i) {
-      colour.setHSL(i / (this.tileDim * this.tileDim), 1, 0.5);
-      for (var j = 0; j < 7; ++j) {
-        colours[i * 21 + j * 3] = colour.r;
-        colours[i * 21 + j * 3 + 1] = colour.g;
-        colours[i * 21 + j * 3 + 2] = colour.b;
-      }
-    }
-
-    return colours;
-  }
-
-  createSolidCoordColours(tile: THREE.Vector2): Float32Array {
-    var colours = new Float32Array(this.tileDim * this.tileDim * 21);
-    var offset = 0;
-    for (var y = 0; y < this.tileDim; ++y) {
-      for (var x = 0; x < this.tileDim; ++x) {
-        for (var i = 0; i < 7; ++i) {
-          this.toPackedXYEdge(colours, offset, tile.x, tile.y, 0);
-          this.toPackedXYAbs(colours, offset + 2, x, y);
-          offset += 3;
-        }
-      }
-    }
-
-    return colours;
-  }
-
   forEachAdjacentFace(coord: IGridCoord, fn: (face: IGridCoord, edge: IGridEdge) => void) {
     // Top left
     fn(
