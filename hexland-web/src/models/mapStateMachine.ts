@@ -515,8 +515,6 @@ export class MapStateMachine {
   moveRoomHighlightTo(cp: THREE.Vector3, shiftKey: boolean, colour: number) {
     if (this._roomHighlighter.inDrag) {
       this.panIfWithinMargin(cp);
-    } else {
-      this._roomHighlighter.clear();
     }
 
     this._dragRectangle.moveTo(cp);

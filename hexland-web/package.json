@@ -1,6 +1,6 @@
 {
   "name": "hexland-web",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
   "dependencies": {
     "@firebase/testing": "^0.20.11",
