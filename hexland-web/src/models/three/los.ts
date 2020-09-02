@@ -8,6 +8,7 @@ import { RedrawFlag } from '../redrawFlag';
 import { RenderTargetReader } from './renderTargetReader';
 
 import * as THREE from 'three';
+import fluent from 'fluent-iterable';
 
 // Shader-based LoS.
 // Careful with this!  In order for it to work correctly, we need to not use the built-in
@@ -119,8 +120,6 @@ class LoSFeatures extends InstancedFeatures<IGridEdge, IFeature<IGridEdge>> {
 
 // This class encapsulates the LoS drawing along with its intermediate surfaces.
 export class LoS extends Drawn {
-  private readonly _faceCoordRenderTarget: THREE.WebGLRenderTarget; // only read by us
-
   private readonly _featureClearColour: THREE.Color;
   private readonly _features: LoSFeatures;
 
@@ -148,11 +147,9 @@ export class LoS extends Drawn {
     q: number,
     renderWidth: number,
     renderHeight: number,
-    faceCoordRenderTarget: THREE.WebGLRenderTarget,
     maxInstances?: number | undefined
   ) {
     super(geometry, redrawFlag);
-    this._faceCoordRenderTarget = faceCoordRenderTarget;
 
     this._featureClearColour = new THREE.Color(1, 1, 1); // visible by default; we draw the shadows
 
@@ -179,11 +176,10 @@ export class LoS extends Drawn {
     this._composedTargetReader = new RenderTargetReader(this._composeRenderTarget);
 
     // Create the geometry we use to compose the LoS together
-    // We'll simply stretch this to fill the canvas
     this._composeGeometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(1, 0, 0),
-      new THREE.Vector3(0, 1, 0),
+      new THREE.Vector3(-1, -1, 0),
+      new THREE.Vector3(1, -1, 0),
+      new THREE.Vector3(-1, 1, 0),
       new THREE.Vector3(1, 1, 0)
     ]);
     this._composeGeometry.setIndex([
@@ -198,6 +194,7 @@ export class LoS extends Drawn {
 
   private composeOne(camera: THREE.Camera, renderer: THREE.WebGLRenderer, zOffset: number) {
     // Composes the contents of the current feature render onto the compose target.
+    // TODO #52 To successfully down-scale the LoS, this here needs its own camera
     renderer.setRenderTarget(this._composeRenderTarget);
     const material = new THREE.MeshBasicMaterial({
       blending: THREE.AdditiveBlending,
@@ -207,11 +204,6 @@ export class LoS extends Drawn {
     });
 
     const mesh = new THREE.Mesh(this._composeGeometry, material);
-    mesh.position.set(0, 0, zOffset);
-    mesh.scale.set(this._composeRenderTarget.width, this._composeRenderTarget.height, 0);
-    mesh.updateMatrix();
-    mesh.updateMatrixWorld();
-
     this._composeScene.add(mesh);
     renderer.render(this._composeScene, camera);
 
@@ -252,13 +244,18 @@ export class LoS extends Drawn {
   checkLoS(cp: THREE.Vector3) {
     const x = Math.floor((cp.x + 1) * 0.5 * this._composeRenderTarget.width);
     const y = Math.floor((cp.y + 1) * 0.5 * this._composeRenderTarget.height);
-    if (x < 0 || y < 0 || x >= this._composeRenderTarget.width || y >= this._composeRenderTarget.height) {
-      return false;
+    function *enumerateSamplePositions() {
+      yield [x, y];
+      yield [x - 2, y - 2];
+      yield [x + 2, y - 2];
+      yield [x - 2, y + 2];
+      yield [x + 2, y + 2];
     }
 
-    return this._composedTargetReader.sample(x, y, (buf, offset) => {
-      return buf[offset] !== 0 || buf[offset + 1] !== 0 || buf[offset + 2] !== 0;
-    });
+    const visibleCount = fluent(enumerateSamplePositions())
+      .map(p => this._composedTargetReader.sample(p[0], p[1], (buf, offset) => buf[offset]))
+      .sum();
+    return visibleCount > 0;
   }
 
   // Renders the LoS frames.  Overwrites the render target and clear colours.

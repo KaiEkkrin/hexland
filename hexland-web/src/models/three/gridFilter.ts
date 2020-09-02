@@ -12,7 +12,7 @@ const gridShader = {
     "varying vec2 texUv;",
     "void main() {",
     "  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);",
-    "  texUv = position.xy + 0.25 * step;",
+    "  texUv = position.xy * 0.5 + 0.5 + 0.25 * step;",
     "}"
   ].join("\n"),
   fragmentShader: [
@@ -52,12 +52,12 @@ export class GridFilter {
     // Our object is, very simply, a unit square that we will
     // stretch to fill the canvas (using the uniforms)
     this._bufferGeometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0, 0, z),
-      new THREE.Vector3(1, 0, z),
-      new THREE.Vector3(0, 1, z),
+      new THREE.Vector3(-1, -1, z),
+      new THREE.Vector3(1, -1, z),
+      new THREE.Vector3(-1, 1, z),
       new THREE.Vector3(1, 1, z),
-      new THREE.Vector3(0, 1, z),
-      new THREE.Vector3(1, 0, z)
+      new THREE.Vector3(-1, 1, z),
+      new THREE.Vector3(1, -1, z)
     ]);
 
     var uniforms = THREE.UniformsUtils.clone(gridShader.uniforms);
@@ -66,11 +66,12 @@ export class GridFilter {
     uniforms["step"].value = new THREE.Vector2();
     uniforms["tex"].value = toSample;
     this._material = new THREE.ShaderMaterial({
+      blending: THREE.NormalBlending,
+      side: THREE.DoubleSide,
+      transparent: true,
       uniforms: uniforms,
       vertexShader: gridShader.vertexShader,
       fragmentShader: gridShader.fragmentShader,
-      blending: THREE.NormalBlending,
-      transparent: true
     });
 
     this._mesh = new THREE.Mesh(this._bufferGeometry, this._material);
@@ -81,11 +82,6 @@ export class GridFilter {
     this._material.uniforms["step"].value = new THREE.Vector2(
       1.0 / width, 1.0 / height
     );
-
-    this._mesh.position.set(0, 0, 0);
-    this._mesh.scale.set(width, height, 1);
-    this._mesh.updateMatrix();
-    this._mesh.updateMatrixWorld();
   }
 
   dispose() {

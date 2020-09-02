@@ -52,6 +52,7 @@ export class DrawingOrtho implements IDrawing {
 
   private readonly _camera: THREE.OrthographicCamera;
   private readonly _fixedCamera: THREE.OrthographicCamera;
+  private readonly _overlayCamera: THREE.OrthographicCamera;
   private readonly _faceCoordRenderTarget: THREE.WebGLRenderTarget;
   private readonly _vertexCoordRenderTarget: THREE.WebGLRenderTarget;
   private readonly _renderer: THREE.WebGLRenderer;
@@ -109,11 +110,14 @@ export class DrawingOrtho implements IDrawing {
     const renderWidth = Math.max(1, Math.floor(window.innerWidth));
     const renderHeight = Math.max(1, Math.floor(window.innerHeight));
 
-    this._camera = new THREE.OrthographicCamera(0, 0, renderWidth, renderHeight, -1, 1);
+    this._camera = new THREE.OrthographicCamera(0, renderWidth, renderHeight, 0, -1, 1);
     this._camera.position.z = 0;
 
-    this._fixedCamera = new THREE.OrthographicCamera(0, 0, renderWidth, renderHeight, -1, 1);
+    this._fixedCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
     this._fixedCamera.position.z = 0;
+
+    this._overlayCamera = new THREE.OrthographicCamera(0, renderWidth, renderHeight, 0, -1, 1);
+    this._overlayCamera.position.z = 0;
 
     this._gridNeedsRedraw = new RedrawFlag();
     this._needsRedraw = new RedrawFlag();
@@ -180,8 +184,9 @@ export class DrawingOrtho implements IDrawing {
     };
 
     // The LoS
+    const [losWidth, losHeight] = this.createLoSSize(renderWidth, renderHeight, new THREE.Vector3(2, 2, 1));
     this._los = new LoS(
-      this._gridGeometry, this._needsRedraw, losZ, losQ, renderWidth, renderHeight, this._faceCoordRenderTarget
+      this._gridGeometry, this._needsRedraw, losZ, losQ, losWidth, losHeight
     );
 
     this._losParameters = {
@@ -265,6 +270,12 @@ export class DrawingOrtho implements IDrawing {
     // The outlined rectangle
     this._outlinedRectangle = new OutlinedRectangle(gridGeometry, this._needsRedraw);
     this._outlinedRectangle.addToScene(this._overlayScene);
+  }
+
+  private createLoSSize(width: number, height: number, scaling: THREE.Vector3) {
+    // We want the size of LoS faces to remain the same at different magnifications;
+    // it can be smaller than the rendered grid (which will improve performance)
+    return [width * 0.5 / scaling.x, height * 0.5 / scaling.y];
   }
 
   private extendGridAround(s: number, t: number) {
@@ -393,7 +404,7 @@ export class DrawingOrtho implements IDrawing {
       this._renderer.autoClear = false;
       this._renderer.render(this._fixedFilterScene, this._fixedCamera);
       this._renderer.render(this._filterScene, this._camera);
-      this._renderer.render(this._overlayScene, this._fixedCamera);
+      this._renderer.render(this._overlayScene, this._overlayCamera);
       this._renderer.autoClear = true;
 
       if (this._showLoS === true) {
@@ -469,14 +480,16 @@ export class DrawingOrtho implements IDrawing {
     this._camera.setRotationFromQuaternion(rotation);
     this._camera.updateProjectionMatrix();
 
-    this._fixedCamera.left = 0;
-    this._fixedCamera.right = width;
-    this._fixedCamera.top = height;
-    this._fixedCamera.bottom = 0;
-    this._fixedCamera.updateProjectionMatrix();
+    this._overlayCamera.left = 0;
+    this._overlayCamera.right = width;
+    this._overlayCamera.top = height;
+    this._overlayCamera.bottom = 0;
+    this._overlayCamera.updateProjectionMatrix();
 
     this._gridFilter.resize(width, height);
-    this._los.resize(width, height);
+
+    const [losWidth, losHeight] = this.createLoSSize(width, height, scaling);
+    this._los.resize(losWidth, losHeight);
 
     this._needsRedraw.setNeedsRedraw();
     this._gridNeedsRedraw.setNeedsRedraw();
@@ -533,6 +546,7 @@ export class DrawingOrtho implements IDrawing {
     this._mount.removeChild(this._renderer.domElement);
 
     this._faceCoordRenderTarget.dispose();
+    this._vertexCoordRenderTarget.dispose();
     this._renderer.dispose();
 
     this._grid.dispose();

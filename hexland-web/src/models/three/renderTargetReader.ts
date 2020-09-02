@@ -41,4 +41,11 @@ export class RenderTargetReader {
 
     return decoder(this._buf, y * this._bufWidth * 4 + x * 4);
   }
+
+  // The same, but with edge clamping.
+  sampleClamped<T>(x: number, y: number, decoder: (buf: Uint8Array, offset: number) => T) {
+    x = Math.max(0, Math.min(this._bufWidth - 1, Math.floor(x)));
+    y = Math.max(0, Math.min(this._bufHeight - 1, Math.floor(y)));
+    return decoder(this._buf, y * this._bufWidth * 4 + x * 4);
+  }
 }
