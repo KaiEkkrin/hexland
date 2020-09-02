@@ -197,7 +197,7 @@ export class MapStateMachine {
   private get seeEverything() { return this._uid === this._map.owner || this._map.ffa === true; }
 
   private buildLoS(state: IMapState) {
-    this._drawing.setLoSPositions(this.getLoSPositions());
+    this._drawing.setLoSPositions(this.getLoSPositions(), this.seeEverything);
 
     // Annotations depend on the LoS.
     // TODO This mess of dependencies is getting hard to manage!  React Hooks

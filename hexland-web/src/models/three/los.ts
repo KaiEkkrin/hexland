@@ -2,13 +2,12 @@ import { IGridCoord, IGridEdge, edgeString, coordsEqual } from '../../data/coord
 import { IFeature } from '../../data/feature';
 import { Drawn } from '../drawn';
 import { IGridGeometry } from '../gridGeometry';
+import { InstancedFeatureObject } from './instancedFeatureObject';
 import { InstancedFeatures } from './instancedFeatures';
 import { RedrawFlag } from '../redrawFlag';
 import { RenderTargetReader } from './renderTargetReader';
 
 import * as THREE from 'three';
-import { InstancedFeatureObject } from './instancedFeatureObject';
-import { ShaderMaterial } from 'three';
 
 // Shader-based LoS.
 // Careful with this!  In order for it to work correctly, we need to not use the built-in
@@ -120,6 +119,8 @@ class LoSFeatures extends InstancedFeatures<IGridEdge, IFeature<IGridEdge>> {
 
 // This class encapsulates the LoS drawing along with its intermediate surfaces.
 export class LoS extends Drawn {
+  private readonly _faceCoordRenderTarget: THREE.WebGLRenderTarget; // only read by us
+
   private readonly _featureClearColour: THREE.Color;
   private readonly _features: LoSFeatures;
 
@@ -130,18 +131,14 @@ export class LoS extends Drawn {
 
   private readonly _composeClearColour: THREE.Color;
 
+  private readonly _composeGeometry: THREE.BufferGeometry;
   private readonly _composeRenderTarget: THREE.WebGLRenderTarget;
   private readonly _composeScene: THREE.Scene;
 
   private readonly _composedTargetReader: RenderTargetReader;
 
-  private readonly _mapGeometry: THREE.BufferGeometry;
-  private _mapMaterial: THREE.Material | undefined;
-  private _mapMesh: THREE.Mesh | undefined;
-
   private _tokenPositions: IGridCoord[] = [];
 
-  private _mapScene: THREE.Scene | undefined;
   private _isDisposed = false;
 
   constructor(
@@ -151,9 +148,11 @@ export class LoS extends Drawn {
     q: number,
     renderWidth: number,
     renderHeight: number,
+    faceCoordRenderTarget: THREE.WebGLRenderTarget,
     maxInstances?: number | undefined
   ) {
     super(geometry, redrawFlag);
+    this._faceCoordRenderTarget = faceCoordRenderTarget;
 
     this._featureClearColour = new THREE.Color(1, 1, 1); // visible by default; we draw the shadows
 
@@ -179,20 +178,20 @@ export class LoS extends Drawn {
 
     this._composedTargetReader = new RenderTargetReader(this._composeRenderTarget);
 
-    // Create the geometry we use to draw the composed LoS onto the map
+    // Create the geometry we use to compose the LoS together
     // We'll simply stretch this to fill the canvas
-    this._mapGeometry = new THREE.BufferGeometry().setFromPoints([
+    this._composeGeometry = new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(0, 0, 0),
       new THREE.Vector3(1, 0, 0),
       new THREE.Vector3(0, 1, 0),
       new THREE.Vector3(1, 1, 0)
     ]);
-    this._mapGeometry.setIndex([
+    this._composeGeometry.setIndex([
       0, 1, 2, -1, 1, 2, 3, -1
     ]);
 
     // Yes, having the UVs specified is mandatory :P
-    this._mapGeometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([
+    this._composeGeometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([
       0, 0, 1, 0, 0, 1, 1, 1
     ]), 2));
   }
@@ -207,7 +206,7 @@ export class LoS extends Drawn {
       transparent: true
     });
 
-    const mesh = new THREE.Mesh(this._mapGeometry, material);
+    const mesh = new THREE.Mesh(this._composeGeometry, material);
     mesh.position.set(0, 0, zOffset);
     mesh.scale.set(this._composeRenderTarget.width, this._composeRenderTarget.height, 0);
     mesh.updateMatrix();
@@ -221,21 +220,6 @@ export class LoS extends Drawn {
     material.dispose();
   }
 
-  private createMapMesh() {
-    this._mapMaterial = new THREE.MeshBasicMaterial({
-      blending: THREE.MultiplyBlending,
-      map: this._composeRenderTarget.texture,
-      side: THREE.DoubleSide,
-      transparent: true
-    });
-
-    this._mapMesh = new THREE.Mesh(this._mapGeometry, this._mapMaterial);
-    this.setMapMeshSize();
-    if (this._mapScene !== undefined) {
-      this._mapScene.add(this._mapMesh);
-    }
-  }
-
   private createRenderTarget(renderWidth: number, renderHeight: number) {
     return new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
       minFilter: THREE.NearestFilter,
@@ -243,23 +227,6 @@ export class LoS extends Drawn {
       wrapS: THREE.ClampToEdgeWrapping,
       wrapT: THREE.ClampToEdgeWrapping
     });
-  }
-
-  private deleteMapMesh() {
-    if (this._mapScene !== undefined && this._mapMesh !== undefined) {
-      this._mapScene.remove(this._mapMesh);
-    }
-
-    this._mapMesh = undefined;
-    this._mapMaterial?.dispose();
-    this._mapMaterial = undefined;
-  }
-
-  private setMapMeshSize() {
-    this._mapMesh?.position.set(0, 0, 0);
-    this._mapMesh?.scale.set(this._composeRenderTarget.width, this._composeRenderTarget.height, 0);
-    this._mapMesh?.updateMatrix();
-    this._mapMesh?.updateMatrixWorld();
   }
 
   private withAutoClearSetTo(renderer: THREE.WebGLRenderer, autoClear: boolean, fn: (r: THREE.WebGLRenderer) => void) {
@@ -275,26 +242,17 @@ export class LoS extends Drawn {
     return this._features;
   }
 
-  // Adds an object to the scene that will draw the composed LoS over it.
-  addToScene(scene: THREE.Scene): boolean {
-    if (this._mapScene !== undefined) {
-      return false;
-    }
-
-    if (this._mapMesh !== undefined) {
-      scene.add(this._mapMesh);
-    }
-
-    this._mapScene = scene;
-    return true;
+  // Accesses the composed LoS render target so that we can use it to draw.
+  get target() {
+    return this._composeRenderTarget;
   }
 
   // Checks the LoS for the given client position and returns true if the position
   // is visible, else false.
   checkLoS(cp: THREE.Vector3) {
-    const x = Math.floor((cp.x + 1) * 0.5 * this._featureRenderTarget.width);
-    const y = Math.floor((cp.y + 1) * 0.5 * this._featureRenderTarget.height);
-    if (x < 0 || y < 0 || x >= this._featureRenderTarget.width || y >= this._featureRenderTarget.height) {
+    const x = Math.floor((cp.x + 1) * 0.5 * this._composeRenderTarget.width);
+    const y = Math.floor((cp.y + 1) * 0.5 * this._composeRenderTarget.height);
+    if (x < 0 || y < 0 || x >= this._composeRenderTarget.width || y >= this._composeRenderTarget.height) {
       return false;
     }
 
@@ -303,28 +261,9 @@ export class LoS extends Drawn {
     });
   }
 
-  // Post-render step.
-  postRender(renderer: THREE.WebGLRenderer) {
-    this._composedTargetReader.refresh(renderer);
-  }
-
-  // Removes the compound LoS draw object from the current scene.
-  removeFromScene() {
-    if (this._mapScene !== undefined) {
-      if (this._mapMesh !== undefined) {
-        this._mapScene.remove(this._mapMesh);
-      }
-
-      this._mapScene = undefined;
-    }
-  }
-
   // Renders the LoS frames.  Overwrites the render target and clear colours.
-  // TODO #52 Can I sometimes avoid re-rendering these?  Separate the `needsRedraw` flags?
+  // TODO Can I sometimes avoid re-rendering these?  Separate the `needsRedraw` flags?
   render(camera: THREE.Camera, fixedCamera: THREE.Camera, renderer: THREE.WebGLRenderer) {
-    // Remove the old map mesh so we can render a new texture
-    this.deleteMapMesh();
-
     var composeCleared = false;
     var zOffset = 0;
 
@@ -355,17 +294,13 @@ export class LoS extends Drawn {
       zOffset += 0.01;
     });
 
-    // Add the map mesh with the newly rendered texture
-    // Note that we must wait until we've un-bound the render target before we use it as a
-    // texture by re-creating the map mesh!
     renderer.setRenderTarget(null);
-    this.createMapMesh();
+    this._composedTargetReader.refresh(renderer);
   }
 
   resize(width: number, height: number) {
     this._featureRenderTarget.setSize(width, height);
     this._composeRenderTarget.setSize(width, height);
-    this.setMapMeshSize();
   }
 
   // Assigns the positions of the tokens to draw LoS for.
@@ -384,15 +319,12 @@ export class LoS extends Drawn {
 
   dispose() {
     if (this._isDisposed === false) {
-
       this._features.dispose();
       this._featureMaterial.dispose();
       this._featureRenderTarget.dispose();
 
+      this._composeGeometry.dispose();
       this._composeRenderTarget.dispose();
-
-      this.deleteMapMesh();
-      this._mapGeometry.dispose();
 
       this._isDisposed = true;
     }

@@ -13,6 +13,8 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     this._off = squareSize * 0.5;
   }
 
+  get faceSize() { return this._squareSize; }
+
   protected get faceVertexCount() { return 4; }
 
   protected createCentre(target: THREE.Vector3, x: number, y: number, z: number): THREE.Vector3 {
@@ -179,10 +181,6 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     return colours;
   }
 
-  faceSize(): number {
-    return this._squareSize;
-  }
-
   forEachAdjacentFace(coord: IGridCoord, fn: (face: IGridCoord, edge: IGridEdge) => void) {
     // Left
     fn(
@@ -255,5 +253,29 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     var centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
     o.translateX(centre.x);
     o.translateY(centre.y);
+  }
+
+  createShaderDeclarations() {
+    return [
+      "uniform float squareSize;"
+    ];
+  }
+
+  createShaderSnippet() {
+    return [
+      "vec2 createCoordCentre(const in vec2 coord) {",
+      "  return vec2(coord.x * squareSize, coord.y * squareSize);",
+      "}"
+    ];
+  }
+
+  createShaderUniforms() {
+    return {
+      squareSize: { type: 'f', value: null }
+    };
+  }
+
+  populateShaderUniforms(uniforms: any) {
+    uniforms['squareSize'].value = this._squareSize;
   }
 }

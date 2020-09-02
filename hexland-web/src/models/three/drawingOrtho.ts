@@ -7,7 +7,7 @@ import { RedrawFlag } from '../redrawFlag';
 import { RenderTargetReader } from './renderTargetReader';
 
 import { Areas, createPaletteColouredAreaObject, createAreas, createSelectionColouredAreaObject } from './areas';
-import { Grid } from './grid';
+import { Grid, IGridLoSPreRenderParameters } from './grid';
 import { GridFilter } from './gridFilter';
 import { LoS } from './los';
 import { MapColourVisualisation } from './mapColourVisualisation';
@@ -74,6 +74,7 @@ export class DrawingOrtho implements IDrawing {
   private readonly _highlightedVertices: Vertices;
   private readonly _highlightedWalls: Walls;
   private readonly _los: LoS;
+  private readonly _losParameters: IGridLoSPreRenderParameters;
   private readonly _selection: Areas;
   private readonly _selectionDrag: Areas; // a copy of the selection shown only while dragging it
   private readonly _selectionDragRed: Areas; // likewise, but shown if the selection couldn't be dropped there
@@ -154,6 +155,7 @@ export class DrawingOrtho implements IDrawing {
       this._gridGeometry,
       this._gridNeedsRedraw,
       gridZ,
+      losZ,
       vertexAlpha,
       this._faceCoordScene,
       this._vertexCoordScene
@@ -178,7 +180,15 @@ export class DrawingOrtho implements IDrawing {
     };
 
     // The LoS
-    this._los = new LoS(this._gridGeometry, this._needsRedraw, losZ, losQ, renderWidth, renderHeight);
+    this._los = new LoS(
+      this._gridGeometry, this._needsRedraw, losZ, losQ, renderWidth, renderHeight, this._faceCoordRenderTarget
+    );
+
+    this._losParameters = {
+      fullyHidden: 0.0, // increased if `seeEverything`
+      fullyVisible: 1.0,
+      losTarget: this._los.target
+    };
 
     // The filled areas
     this._areas = createAreas(
@@ -375,6 +385,7 @@ export class DrawingOrtho implements IDrawing {
       this._renderer.render(this._mapScene, this._camera);
       if (this._showLoS === true) {
         this._los.render(this._camera, this._fixedCamera, this._renderer);
+        this._grid.preLoSRender(this._losParameters);
       }
 
       this._renderer.setRenderTarget(null);
@@ -384,15 +395,15 @@ export class DrawingOrtho implements IDrawing {
       this._renderer.render(this._filterScene, this._camera);
       this._renderer.render(this._overlayScene, this._fixedCamera);
       this._renderer.autoClear = true;
+
+      if (this._showLoS === true) {
+        this._grid.postLoSRender();
+      }
     }
 
     // Post-render steps -- texture read-backs, etc.
     if (gridNeedsRedraw) {
       this._coordTargetReader.refresh(this._renderer);
-    }
-
-    if (this._showLoS === true) {
-      this._los.postRender(this._renderer);
     }
   }
 
@@ -464,7 +475,6 @@ export class DrawingOrtho implements IDrawing {
     this._fixedCamera.bottom = 0;
     this._fixedCamera.updateProjectionMatrix();
 
-    // TODO Also add or remove grid tiles as required
     this._gridFilter.resize(width, height);
     this._los.resize(width, height);
 
@@ -472,12 +482,12 @@ export class DrawingOrtho implements IDrawing {
     this._gridNeedsRedraw.setNeedsRedraw();
   }
 
-  setLoSPositions(positions: IGridCoord[] | undefined) {
+  setLoSPositions(positions: IGridCoord[] | undefined, seeEverything: boolean) {
     const nowShowLoS = positions !== undefined;
-    if (nowShowLoS && !this._showLoS) {
-      this._los.addToScene(this._fixedFilterScene);
-    } else if (!nowShowLoS && this._showLoS) {
-      this._los.removeFromScene();
+    if (nowShowLoS) {
+      this._grid.addLoSToScene(this._filterScene);
+    } else {
+      this._grid.removeLoSFromScene();
     }
 
     if (positions !== undefined) {
@@ -485,6 +495,10 @@ export class DrawingOrtho implements IDrawing {
     }
 
     this._showLoS = nowShowLoS;
+    
+    // Doing this makes fully-hidden areas show up a bit if we can notionally
+    // see everything -- for the map owner / FFA mode.
+    this._losParameters.fullyHidden = seeEverything ? 0.25 : 0.0;
   }
 
   setShowMapColourVisualisation(show: boolean, mapColouring: MapColouring) {

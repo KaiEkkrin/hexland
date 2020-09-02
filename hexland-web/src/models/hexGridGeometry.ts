@@ -24,6 +24,10 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     this._yOffTop = this._hexSize * 0.5;
   }
 
+  get faceSize(): number {
+    return this._hexSize;
+  }
+
   protected get faceVertexCount() { return 7; }
 
   protected createCentre(target: THREE.Vector3, x: number, y: number, z: number): THREE.Vector3 {
@@ -225,10 +229,6 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     return colours;
   }
 
-  faceSize(): number {
-    return this._hexSize;
-  }
-
   forEachAdjacentFace(coord: IGridCoord, fn: (face: IGridCoord, edge: IGridEdge) => void) {
     // Top left
     fn(
@@ -333,5 +333,32 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     if (coord.vertex === 1) {
       o.rotateZ(Math.PI / 3.0);
     }
+  }
+
+  createShaderDeclarations() {
+    return [
+      "uniform vec2 hexStep;",
+      "uniform float hexSize;"
+    ];
+  }
+
+  createShaderSnippet() {
+    return [
+      "vec2 createCoordCentre(const in vec2 coord) {",
+      "  return vec2(coord.x * hexStep.x, coord.x * hexStep.y + coord.y * hexSize);",
+      "}"
+    ];
+  }
+
+  createShaderUniforms() {
+    return {
+      hexStep: { type: 'v2', value: null },
+      hexSize: { type: 'f', value: null }
+    };
+  }
+
+  populateShaderUniforms(uniforms: any) {
+    uniforms['hexStep'].value = new THREE.Vector2(this._xStep, this._yStep);
+    uniforms['hexSize'].value = this._hexSize;
   }
 }

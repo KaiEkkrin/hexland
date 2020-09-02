@@ -119,7 +119,6 @@ interface IPendingWall extends IFeature<IGridEdge> {
   present: boolean; // true to add this, false to remove it
 }
 
-// TODO #52 Remove the grid bounds from the map colouring entirely.  (Should make everything simpler...)
 export class MapColouring {
   private readonly _geometry: IGridGeometry;
   private readonly _walls: FeatureDictionary<IGridEdge, IFeature<IGridEdge>>;

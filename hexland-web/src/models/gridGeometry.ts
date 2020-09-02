@@ -8,6 +8,9 @@ export interface IGridGeometry {
   // The number of faces horizontally or vertically in each tile.
   tileDim: number;
 
+  // A measure of the face size in this geometry.
+  faceSize: number;
+
   // Some more parameters:
   maxEdge: number;
   epsilon: number;
@@ -104,9 +107,6 @@ export interface IGridGeometry {
   // starting from the offset) into a grid coord.
   decodeVertexSample(sample: Uint8Array, offset: number): IGridVertex | undefined;
 
-  // A measure of the face size in this geometry.
-  faceSize(): number;
-
   // Evaluates the function for each face adjacent to the given one.
   forEachAdjacentFace(coord: IGridCoord, fn: (face: IGridCoord, edge: IGridEdge) => void): void;
 
@@ -138,6 +138,19 @@ export interface IGridGeometry {
   // Transforms the object, assumed to be at the zero vertex, to be at the
   // given one instead.
   transformToVertex(o: THREE.Object3D, coord: IGridVertex): void;
+
+  // Emits the shader declarations required by `createShaderSnippet()` below.
+  createShaderDeclarations(): string[];
+
+  // Emits a shader function `vec2 createCoordCentre(const in vec2 coord)` that will
+  // calculate the coord centre in this geometry.
+  createShaderSnippet(): string[];
+
+  // Emits the uniform declarations required by the shader snippet.
+  createShaderUniforms(): any;
+
+  // Populates the shader uniforms.
+  populateShaderUniforms(uniforms: any): void;
 }
 
 export class EdgeGeometry { // to help me share the edge code

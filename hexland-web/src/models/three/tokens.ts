@@ -78,7 +78,7 @@ export class Tokens extends InstancedFeatures<IGridCoord, IInstancedToken> {
       // Create the text that goes with this token now:
       f.textMesh = this._textCreator.create(
         f.text,
-        this.geometry.faceSize() * 0.15,
+        this.geometry.faceSize * 0.15,
         this._textMaterial,
         new THREE.Vector3(0, 0, this._textZ)
       );

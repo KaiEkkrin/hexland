@@ -51,7 +51,7 @@ export interface IDrawing {
   resize(translation: THREE.Vector3, rotation: THREE.Quaternion, scaling: THREE.Vector3): void;
 
   // Sets the token positions whose LoS we should draw, or undefined to show everything.
-  setLoSPositions(positions: IGridCoord[] | undefined): void;
+  setLoSPositions(positions: IGridCoord[] | undefined, seeEverything: boolean): void;
 
   // Sets whether or not to show the map colour visualisation.
   setShowMapColourVisualisation(show: boolean, mapColouring: MapColouring): void;
