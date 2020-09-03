@@ -225,6 +225,13 @@ function Map(props: IMapPageProps) {
     setShowNoteEditor(false);
   }
 
+  // We want to disable most of the handlers, below, if a modal editor is open, to prevent
+  // accidents whilst editing
+  const anEditorIsOpen = useMemo(
+    () => showMapEditor || showNoteEditor || showTokenEditor,
+    [showMapEditor, showNoteEditor, showTokenEditor]
+  );
+
   function getClientPosition(e: React.MouseEvent<HTMLDivElement, MouseEvent>): THREE.Vector3 | undefined {
     var bounds = drawingRef.current?.getBoundingClientRect();
     if (bounds === undefined) {
@@ -237,7 +244,7 @@ function Map(props: IMapPageProps) {
   }
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (stateMachine === undefined) {
+    if (stateMachine === undefined || anEditorIsOpen) {
       return;
     }
 
@@ -256,10 +263,10 @@ function Map(props: IMapPageProps) {
       stateMachine.panningY = -1;
       e.preventDefault();
     }
-  }, [stateMachine]);
+  }, [stateMachine, anEditorIsOpen]);
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
-    if (stateMachine === undefined) {
+    if (stateMachine === undefined || anEditorIsOpen) {
       return;
     }
 
@@ -300,11 +307,11 @@ function Map(props: IMapPageProps) {
         setEditMode(EditMode.Wall);
       }
     }
-  }, [stateMachine, canDoAnything, selectedColour]);
+  }, [stateMachine, anEditorIsOpen, canDoAnything, selectedColour]);
 
   function handleMouseDown(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     var cp = getClientPosition(e);
-    if (cp === undefined) {
+    if (cp === undefined || anEditorIsOpen) {
       return;
     }
 
@@ -320,7 +327,7 @@ function Map(props: IMapPageProps) {
 
   function handleMouseMove(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     var cp = getClientPosition(e);
-    if (cp === undefined) {
+    if (cp === undefined || anEditorIsOpen) {
       return;
     }
 
@@ -338,7 +345,7 @@ function Map(props: IMapPageProps) {
   function handleMouseUp(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     setIsDraggingView(false);
     var cp = handleMouseMove(e);
-    if (cp === undefined) {
+    if (cp === undefined || anEditorIsOpen) {
       return;
     }
 
@@ -382,11 +389,10 @@ function Map(props: IMapPageProps) {
   }
 
   const handleWheel = useCallback((e: WheelEvent) => {
-    console.log("Handling wheel.  dX=" + e.deltaX + ", dY=" + e.deltaY + ", dZ=" + e.deltaZ);
-    if (e.deltaY !== 0) {
+    if (e.deltaY !== 0 && !anEditorIsOpen) {
       stateMachine?.zoomBy(e.deltaY);
     }
-  }, [stateMachine]);
+  }, [stateMachine, anEditorIsOpen]);
 
   // We need an event listener for the window resize so that we can update the drawing,
   // and for the keyboard and wheel events so that we can implement UI functionality with them.
