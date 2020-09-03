@@ -120,7 +120,7 @@ function MapControls(props: IMapControlsProps) {
   const isNotOwner = useMemo(() => !props.isOwner, [props.isOwner]);
 
   return (
-    <div className="Map-controls bg-dark">
+    <div className="Map-controls">
       <ButtonGroup className="Map-control" toggle vertical>{modeButtons}</ButtonGroup>
       <ButtonGroup className="Map-control" vertical>
         <OverlayTrigger placement="right" overlay={

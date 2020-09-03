@@ -35,7 +35,7 @@
   position: fixed;
   right: 0;
   bottom: 0;
-  z-index: 3;
+  z-index: 4;
 }
 
 .App-toast-container {
@@ -43,7 +43,7 @@
   left: 50%;
   top: 80px;
   transform: translateX(-50%);
-  z-index: 3;
+  z-index: 4;
 }
 
 .toast-body {

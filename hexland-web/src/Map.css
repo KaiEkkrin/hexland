@@ -1,5 +1,6 @@
 .popover {
   background-color: rgba(255, 255, 255, 0.7) !important;
+  z-index: 2 !important;
 }
 
 .Map-container {
@@ -14,17 +15,19 @@
 }
 
 .Map-controls {
+  background-color: transparent;
   display: flex;
   flex-direction: column;
   flex-wrap: wrap;
   height: calc(100vh - 8rem);
   min-width: 3rem;
+  z-index: 4;
 }
 
 .Map-control {
+  background-color: transparent;
   margin-left: 1rem;
   margin-top: 1rem;
-  z-index: 1;
 }
 
 .Map-content {
@@ -37,6 +40,7 @@
 }
 
 .Map-info {
+  background-color: transparent;
   display: flex;
   flex-direction: column;
   flex-wrap: wrap;
@@ -45,9 +49,10 @@
 }
 
 .Map-info-card {
+  background-color: transparent;
   margin-right: 1rem;
   margin-top: 1rem;
-  z-index: 1;
+  z-index: 4;
 }
 
 .Map-info-list-item {
@@ -57,5 +62,5 @@
 
 .Map-nav {
   width: 100vw;
-  z-index: 1;
+  z-index: 4;
 }
