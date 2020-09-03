@@ -26,10 +26,10 @@ export class FeatureColour {
 
 function getStandardColours() {
   const colours: FeatureColour[] = [];
-  for (var i = 0; i < 6; ++i) {
-    // This twiddle repels our colours from the blue-green hues in the middle
+  for (var i = 0.5; i < 6; ++i) {
+    // This twiddle repels our colours from the blue-green hues
     // because I find it hard to distinguish those.  Maybe this is a red herring?
-    var shift = (3 - Math.abs(i - 3)) * 0.15 * Math.sign(i - 3);
+    var shift = (4 - Math.abs(i - 4)) * 0.07 * Math.sign(i - 4);
     colours.push(new FeatureColour((i + shift) / 6.0));
   }
 
