@@ -128,7 +128,7 @@ function Map(props: IMapPageProps) {
   }, [userContext.dataService, props.adventureId, canDoAnything]);
 
   // How to create and share the map changes we make
-  function addChanges(changes: IChange[] | undefined) {
+  const addChanges = useCallback((changes: IChange[] | undefined) => {
     if (changes === undefined || changes.length === 0 || userContext.dataService === undefined) {
       return;
     }
@@ -136,7 +136,7 @@ function Map(props: IMapPageProps) {
     userContext.dataService.addChanges(props.adventureId, props.mapId, changes)
       .then(() => console.log("Added " + changes.length + " changes"))
       .catch(e => console.error("Error adding " + changes.length + " changes", e));
-  }
+  }, [userContext.dataService, props.adventureId, props.mapId]);
 
   // == UI STUFF ==
 
@@ -251,19 +251,19 @@ function Map(props: IMapPageProps) {
     // See https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values
     // for a reference of key values.
     if (e.key === 'ArrowLeft') {
-      stateMachine.panningX = -1;
+      addChanges(stateMachine.setPanningX(-1));
       e.preventDefault();
     } else if (e.key === 'ArrowRight') {
-      stateMachine.panningX = 1;
+      addChanges(stateMachine.setPanningX(1));
       e.preventDefault();
     } else if (e.key === 'ArrowDown') {
-      stateMachine.panningY = 1;
+      addChanges(stateMachine.setPanningY(1));
       e.preventDefault();
     } else if (e.key === 'ArrowUp') {
-      stateMachine.panningY = -1;
+      addChanges(stateMachine.setPanningY(-1));
       e.preventDefault();
     }
-  }, [stateMachine, anEditorIsOpen]);
+  }, [stateMachine, addChanges, anEditorIsOpen]);
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
     if (stateMachine === undefined || anEditorIsOpen) {
@@ -271,10 +271,10 @@ function Map(props: IMapPageProps) {
     }
 
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      stateMachine.panningX = 0;
+      addChanges(stateMachine.setPanningX(0));
       e.preventDefault();
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      stateMachine.panningY = 0;
+      addChanges(stateMachine.setPanningY(0));
       e.preventDefault();
     } else if (e.key === 'Escape') {
       // This should cancel any drag operation
@@ -307,7 +307,7 @@ function Map(props: IMapPageProps) {
         setEditMode(EditMode.Wall);
       }
     }
-  }, [stateMachine, anEditorIsOpen, canDoAnything, selectedColour]);
+  }, [stateMachine, addChanges, anEditorIsOpen, canDoAnything, selectedColour]);
 
   function handleMouseDown(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     var cp = getClientPosition(e);

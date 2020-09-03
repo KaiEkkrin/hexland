@@ -34,6 +34,7 @@ const zoomMin = 1;
 const zoomDefault = 2;
 const zoomMax = 4;
 
+const panningPosition = new THREE.Vector3(panMargin, panMargin, 0);
 const zAxis = new THREE.Vector3(0, 0, 1);
 
 // Describes the map state as managed by the state machine below and echoed
@@ -306,11 +307,55 @@ export class MapStateMachine {
       // To correctly move the drag rectangle, we need to take into account it having
       // different ideas about what "top" and "bottom" are
       this._scratchTranslation.x = -this._scratchTranslation.x;
-      this._dragRectangle.translate(this._scratchTranslation);
+      this._dragRectangle.translate(this._scratchTranslation.multiply(this._cameraScaling).multiplyScalar(0.5));
       this.resize();
     }
 
+    // If we have tokens selected, doing this will pan them along with the view
+    // (we must make sure this is done only with deliberate panning and not with
+    // margin panning, which can be triggered by the token move itself)
+    if (this._panningX !== 0 || this._panningY !== 0) {
+      this.moveSelectionTo(panningPosition);
+    }
+
     this._lastAnimationTime = now;
+  }
+
+  private onPanningChange() {
+    if (this._panningX === 0 && this._panningY === 0) {
+      return this.onPanningEnded();
+    } else {
+      return this.onPanningStarted();
+    }
+  }
+
+  private onPanningEnded() {
+    var chs: IChange[] = [];
+    if (fluent(this._drawing.selection).any()) {
+      const position = this._drawing.getGridCoordAt(panningPosition);
+      if (position !== undefined) {
+        this.tokenMoveDragEnd(position, chs);
+      }
+    }
+
+    return chs;
+  }
+
+  private onPanningStarted() {
+    if (this._tokenMoveDragStart !== undefined) {
+      // We've configured the token move already
+      return undefined;
+    }
+
+    if (fluent(this._drawing.selection).any()) {
+      // Start moving this selection along with the panning:
+      const position = this._drawing.getGridCoordAt(panningPosition);
+      if (position !== undefined) {
+        this.tokenMoveDragStart(position);
+      }
+    }
+
+    return undefined;
   }
 
   private panIfWithinMargin(cp: THREE.Vector3) {
@@ -340,6 +385,47 @@ export class MapStateMachine {
     fluent(this._drawing.tokens)
       .filter(t => this.canSelectToken(t) && inDragRectangle(t.position))
       .forEach(t => this._drawing.selection.add({ position: t.position, colour: 0 }));
+  }
+
+  private tokenMoveDragEnd(position: IGridCoord, chs: IChange[]) {
+    if (this._tokenMoveDragStart === undefined) {
+      return;
+    }
+
+    var delta = coordSub(position, this._tokenMoveDragStart);
+    this._drawing.selectionDrag.clear();
+    this._drawing.selectionDragRed.clear();
+
+    if (this.canDropSelectionAt(position)) {
+      // Create commands that move all the tokens
+      for (var s of this._drawing.selection) {
+        var tokenHere = this._drawing.tokens.get(s.position);
+        if (tokenHere === undefined) {
+          continue;
+        }
+
+        chs.push(createTokenMove(s.position, coordAdd(s.position, delta), tokenHere.id));
+      }
+
+      // Move the selection to the target positions
+      fluent(this._drawing.selection).map(t => this._drawing.selection.remove(t.position))
+        .forEach(f => {
+          if (f !== undefined) {
+            this._drawing.selection.add({ position: coordAdd(f.position, delta), colour: f.colour });
+          }
+        });
+    }
+
+    this._tokenMoveDragStart = undefined;
+    this._tokenMoveDragSelectionPosition = undefined;
+  }
+
+  private tokenMoveDragStart(position: IGridCoord) {
+    this._tokenMoveDragStart = position;
+    this._tokenMoveDragSelectionPosition = position;
+    this._drawing.selectionDrag.clear();
+    this._drawing.selectionDragRed.clear();
+    this._drawing.selection.forEach(f => this._drawing.selectionDrag.add(f));
   }
 
   private updateAnnotations(state: IMapState) {
@@ -407,12 +493,8 @@ export class MapStateMachine {
   }
 
   get changeTracker() { return this._changeTracker; }
-
   get panningX() { return this._panningX; }
-  set panningX(value: number) { this._panningX = value; }
-
   get panningY() { return this._panningY; }
-  set panningY(value: number) { this._panningY = value; }
 
   clearHighlights(colour: number) {
     this._faceHighlighter.dragCancel(undefined, colour);
@@ -643,32 +725,7 @@ export class MapStateMachine {
     var chs: IChange[] = [];
     if (position) {
       if (this._tokenMoveDragStart !== undefined) {
-        var delta = coordSub(position, this._tokenMoveDragStart);
-        this._drawing.selectionDrag.clear();
-        this._drawing.selectionDragRed.clear();
-
-        if (this.canDropSelectionAt(position)) {
-          // Create commands that move all the tokens
-          for (var s of this._drawing.selection) {
-            var tokenHere = this._drawing.tokens.get(s.position);
-            if (tokenHere === undefined) {
-              continue;
-            }
-
-            chs.push(createTokenMove(s.position, coordAdd(s.position, delta), tokenHere.id));
-          }
-
-          // Move the selection to the target positions
-          fluent(this._drawing.selection).map(t => this._drawing.selection.remove(t.position))
-            .forEach(f => {
-              if (f !== undefined) {
-                this._drawing.selection.add({ position: coordAdd(f.position, delta), colour: f.colour });
-              }
-            });
-        }
-
-        this._tokenMoveDragStart = undefined;
-        this._tokenMoveDragSelectionPosition = undefined;
+        this.tokenMoveDragEnd(position, chs);
       } else {
         // Always add the token at this position
         // (This is needed if the drag rectangle is very small)
@@ -692,11 +749,7 @@ export class MapStateMachine {
     var position = this._drawing.getGridCoordAt(cp);
     if (position) {
       if (this._drawing.selection.get(position) !== undefined) {
-        this._tokenMoveDragStart = position;
-        this._tokenMoveDragSelectionPosition = position;
-        this._drawing.selectionDrag.clear();
-        this._drawing.selectionDragRed.clear();
-        this._drawing.selection.forEach(f => this._drawing.selectionDrag.add(f));
+        this.tokenMoveDragStart(position);
       } else {
         if (!shiftKey) {
           this._drawing.selection.clear();
@@ -729,6 +782,16 @@ export class MapStateMachine {
     }
 
     return chs;
+  }
+
+  setPanningX(value: number) {
+    this._panningX = value;
+    return this.onPanningChange();
+  }
+
+  setPanningY(value: number) {
+    this._panningY = value;
+    return this.onPanningChange();
   }
 
   setShowMapColourVisualisation(show: boolean) {
