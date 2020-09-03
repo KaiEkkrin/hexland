@@ -181,6 +181,10 @@ export class MapStateMachine {
       (haveTokensChanged: boolean) => {
         this.withStateChange(getState => {
           var state = getState();
+          if (haveTokensChanged) {
+            this.cleanUpSelection();
+          }
+
           this.buildLoS(state); // updates annotations
           this._drawing.handleChangesApplied(this._mapColouring);
           if (haveTokensChanged) {
@@ -249,6 +253,22 @@ export class MapStateMachine {
 
   private canSelectToken(t: IToken) {
     return this.seeEverything || t.players.find(p => this._uid === p) !== undefined;
+  }
+
+  private cleanUpSelection() {
+    // This function makes sure that the selection doesn't contain anything we
+    // couldn't have selected -- call this after changes are applied.
+    var toDelete: IGridCoord[] = [];
+    for (var s of this._drawing.selection) {
+      var token = this._drawing.tokens.get(s.position);
+      if (token === undefined || !this.canSelectToken(token)) {
+        toDelete.push(s.position);
+      }
+    }
+
+    for (var c of toDelete) {
+      this._drawing.selection.remove(c);
+    }
   }
 
   private *enumerateAnnotations() {
@@ -687,10 +707,40 @@ export class MapStateMachine {
     this._panLast = cp;
   }
 
-  resetView() {
+  resetView(centreOn?: IGridCoord | undefined) {
     this._cameraTranslation.set(0, 0, 0);
     this._cameraRotation.copy(this._defaultRotation);
     this._cameraScaling.set(zoomDefault, zoomDefault, 1);
+    this._drawing.resize(this._cameraTranslation, this._cameraRotation, this._cameraScaling);
+
+    // If we have LoS positions, it would be more helpful to centre on the first of
+    // those than on the grid origin:
+    if (centreOn === undefined) {
+      const losPositions = this.getLoSPositions();
+      if (losPositions !== undefined && losPositions.length > 0) {
+        centreOn = losPositions[0];
+      }
+    }
+
+    if (centreOn !== undefined) {
+      console.log("resetView: centre on " + centreOn.x + ", " + centreOn.y);
+      const worldToViewport = this._drawing.getWorldToViewport(this._scratchMatrix1);
+      const viewportScaling = this._scratchVector1.set(
+        0.5 * window.innerWidth,
+        0.5 * window.innerHeight,
+        1
+      );
+      const zeroCentre = this._gridGeometry.createCoordCentre(this._scratchVector2, { x: 0, y: 0 }, 0)
+        .applyMatrix4(worldToViewport)
+        .multiply(viewportScaling);
+      const delta = this._gridGeometry.createCoordCentre(this._scratchVector3, centreOn, 0)
+        .applyMatrix4(worldToViewport)
+        .multiply(viewportScaling)
+        .sub(zeroCentre);
+
+      this._cameraTranslation.set(delta.x, -delta.y, 0);
+    }
+
     this.resize();
   }
 

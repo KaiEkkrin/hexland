@@ -107,14 +107,21 @@ function Map(props: IMapPageProps) {
     return mapState.seeEverything || fluent(mapState.tokens).any(t => t.selectable);
   }, [mapState]);
 
+  // This helps us focus somewhere useful when the map becomes visible
   useEffect(() => {
     if (canSeeAnything === false) {
-      return addToast(statusContext, {
+      var removeToast = addToast(statusContext, {
         title: "No tokens available",
         message: "The map owner has not assigned you any tokens, so you will not see any of the map yet.  If you remain on this page until they do, it will update."
       });
+      return () => {
+        // When this stops being true, as well as removing the toast, we want to
+        // focus somewhere suitable:
+        removeToast();
+        stateMachine?.resetView();
+      };
     }
-  }, [statusContext, canSeeAnything]);
+  }, [statusContext, canSeeAnything, stateMachine]);
 
   // Track the adventure's players
   useEffect(() => {
@@ -438,7 +445,8 @@ function Map(props: IMapPageProps) {
           isOwner={isOwner}
           openMapEditor={() => setShowMapEditor(true)}
           setShowAnnotationFlags={cycleShowAnnotationFlags} />
-        <MapInfo map={map?.record} players={players} tokens={mapState.tokens} />
+        <MapInfo map={map?.record} players={players} tokens={mapState.tokens}
+          resetView={c => stateMachine?.resetView(c)} />
       </div>
       <div className="Map-content">
         <div id="drawingDiv" ref={drawingRef}

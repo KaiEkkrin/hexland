@@ -261,8 +261,13 @@ export class LoS extends Drawn {
   // Renders the LoS frames.  Overwrites the render target and clear colours.
   // TODO Can I sometimes avoid re-rendering these?  Separate the `needsRedraw` flags?
   render(camera: THREE.Camera, fixedCamera: THREE.Camera, renderer: THREE.WebGLRenderer) {
-    var composeCleared = false;
     var zOffset = 0;
+
+    // Always clear the composed target to begin with (otherwise, with 0 token positions to
+    // render, we'll end up returning the old composed target!)
+    renderer.setRenderTarget(this._composeRenderTarget);
+    renderer.setClearColor(this._composeClearColour);
+    renderer.clear();
 
     // Render the LoS features for each token position
     this._tokenPositions.forEach(c => {
@@ -283,11 +288,10 @@ export class LoS extends Drawn {
       // textures simultaneously and combines them into an output.  However, I expect
       // that scenario to be rare, so I won't for now.
       renderer.setClearColor(this._composeClearColour);
-      this.withAutoClearSetTo(renderer, composeCleared === false, r => {
+      this.withAutoClearSetTo(renderer, false, r => {
         this.composeOne(fixedCamera, r, zOffset);
       });
 
-      composeCleared = true;
       zOffset += 0.01;
     });
 

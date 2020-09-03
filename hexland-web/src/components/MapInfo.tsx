@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 
 import { IPlayer } from '../data/adventure';
+import { IGridCoord } from '../data/coord';
 import { IToken } from '../data/feature';
 import { IMap } from '../data/map';
 import { hexColours } from '../models/featureColour';
@@ -73,6 +74,7 @@ interface IPlayerInfoListItemProps {
   map: IMap | undefined;
   player: IPlayer;
   tokens: IToken[];
+  resetView: (centreOn?: IGridCoord | undefined) => void;
 }
 
 function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
@@ -104,7 +106,8 @@ function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
           ) : myTokens.length > 0 ? myTokens.map(t => (
             <Badge className="ml-2" key={t.id}
               title={"Player " + props.player.playerName + " has token " + t.text}
-              style={{ backgroundColor: hexColours[t.colour], color: "black" }}
+              style={{ backgroundColor: hexColours[t.colour], color: "black", userSelect: "none" }}
+              onClick={() => props.resetView(t.position)}
             >{t.text}</Badge>
           )) : (
             <Badge className="ml-2" hidden={isNoTokenHidden} variant="danger"
@@ -117,17 +120,11 @@ function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
   );
 }
 
-interface IPlayerInfoListProps {
-  map: IMap | undefined;
-  players: IPlayer[];
-  tokens: IToken[];
-}
-
-function PlayerInfoList(props: IPlayerInfoListProps) {
+function PlayerInfoList(props: IMapInfoProps) {
   return (
     <ListGroup variant="flush">
       {props.players.map(p => (
-        <PlayerInfoListItem key={p.playerId} map={props.map} player={p} tokens={props.tokens} />
+        <PlayerInfoListItem key={p.playerId} player={p} {...props} />
       ))}
     </ListGroup>
   );
@@ -137,6 +134,7 @@ interface IMapInfoProps {
   map: IMap | undefined;
   players: IPlayer[];
   tokens: IToken[];
+  resetView: (centreOn?: IGridCoord | undefined) => void;
 }
 
 function MapInfo(props: IMapInfoProps) {
@@ -162,7 +160,7 @@ function MapInfo(props: IMapInfoProps) {
   return (
     <div className="Map-info">
       <MapInfoCard title="Players" buttonContent={playerInfoButton}>
-        <PlayerInfoList map={props.map} players={props.players} tokens={props.tokens} />
+        <PlayerInfoList {...props} />
       </MapInfoCard>
     </div>
   );
