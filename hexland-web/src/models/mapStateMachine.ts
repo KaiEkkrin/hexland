@@ -302,6 +302,11 @@ export class MapStateMachine {
           0
         )
       );
+
+      // To correctly move the drag rectangle, we need to take into account it having
+      // different ideas about what "top" and "bottom" are
+      this._scratchTranslation.x = -this._scratchTranslation.x;
+      this._dragRectangle.translate(this._scratchTranslation);
       this.resize();
     }
 

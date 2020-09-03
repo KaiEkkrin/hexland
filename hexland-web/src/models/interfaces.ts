@@ -81,6 +81,10 @@ export interface IDragRectangle {
 
   // Starts a drag rectangle from the given target in client co-ordinates.
   start(cp: THREE.Vector3): void;
+
+  // Moves the whole drag rectangle by some amount in client co-ordinates,
+  // returning true if we have a drag rectangle visible, else false.
+  translate(cp: THREE.Vector3): boolean;
 }
 
 // Describes the bounds of the grid, in tiles.
@@ -102,5 +106,5 @@ export interface IOutlinedRectangle {
 
   // Alters the drawn object, e.g. changing its transform.
   // The function should return true if a redraw is required, else false.
-  alter(fn: (o: THREE.Object3D) => boolean): void;
+  alter(fn: (o: THREE.Object3D) => boolean): boolean;
 }

@@ -114,7 +114,7 @@ export class DragRectangle implements IDragRectangle {
 
     const start = this._start;
     this._outlined.visible = true;
-    this._outlined.alter(o => {
+    return this._outlined.alter(o => {
       // Create the translation
       o.position.copy(start).min(cp);
 
@@ -124,8 +124,6 @@ export class DragRectangle implements IDragRectangle {
       o.updateMatrixWorld();
       return true;
     });
-
-    return true;
   }
 
   reset() {
@@ -138,5 +136,19 @@ export class DragRectangle implements IDragRectangle {
 
     // We don't show the drag rectangle until we receive a move -- it's not
     // interesting to show a zero-size rectangle :)
+  }
+
+  // Translates the whole selection box -- as oppoed to `moveTo`, which moves
+  // only the current drag point.  Call this when the view is panned.
+  translate(cp: THREE.Vector3) {
+    if (this._start === undefined) {
+      return false;
+    }
+
+    this._start.add(cp);
+    return this._outlined.alter(o => {
+      o.position.add(cp);
+      return true;
+    });
   }
 }

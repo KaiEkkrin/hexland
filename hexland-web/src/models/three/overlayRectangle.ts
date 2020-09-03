@@ -104,7 +104,10 @@ export class OutlinedRectangle extends Drawn implements IOutlinedRectangle {
   alter(fn: (o: THREE.Object3D) => boolean) {
     if (fn(this._object)) {
       this.setNeedsRedraw();
+      return true;
     }
+
+    return false;
   }
 
   dispose() {
