@@ -395,10 +395,12 @@ describe('test app', () => {
     expect(redirectToAdventure.verb).toBe('replace');
     expect(redirectToAdventure.parameter).toBe(links.adventureLink);
 
-    // The user should see the map and adventure on the adventure page
+    // The user should see the map and adventure on the adventure page;
+    // they should not be able to create a new map here
     // TODO Really I should be reading the map link from here instead!
     const checks = {
-      textsPresent: [/Here be dragons/, /Dragon\'s lair/]
+      textsPresent: [/Here be dragons/, /Dragon\'s lair/],
+      textsAbsent: [/New map/]
     };
     await checkPage(redirectToAdventure.parameter, checks, projectId, user1);
 

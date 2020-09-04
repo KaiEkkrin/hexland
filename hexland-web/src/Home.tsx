@@ -62,7 +62,6 @@ function Home() {
           <Col xl>
             <h5 className="mt-4">Latest maps</h5>
             <MapCollection
-              showAdventureSelection={true}
               adventures={myAdventures}
               maps={latestMaps}
               setMap={setMap} />

@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useContext, useMemo, useState } from 'react';
 import '../App.css';
 
+import { UserContext } from './UserContextProvider';
 import MapCards from './MapCards';
 
 import { IMapSummary } from '../data/adventure';
@@ -33,7 +34,6 @@ function NewMap(props: INewMapProps) {
 }
 
 interface IMapCollectionProps {
-  showAdventureSelection: boolean,
   adventures: IAdventureSummary[];
   maps: IMapSummary[];
   setMap?: ((adventureId: string, id: string | undefined, map: IMap) => void) | undefined,
@@ -41,6 +41,7 @@ interface IMapCollectionProps {
 }
 
 function MapCollection(props: IMapCollectionProps) {
+  const userContext = useContext(UserContext);
   const [showDeleteMap, setShowDeleteMap] = useState(false);
   const [showEditMap, setShowEditMap] = useState(false);
   const [editId, setEditId] = useState<string | undefined>(undefined);
@@ -77,11 +78,17 @@ function MapCollection(props: IMapCollectionProps) {
     handleModalClose();
   }
 
+  // The only adventures available for new maps are ones that we own
+  const newMapAdventures = useMemo(
+    () => props.adventures.filter(a => a.owner === userContext.user?.uid),
+    [props.adventures, userContext]
+  );
+
   // Don't provide the new map card if no adventures would be selectable
   // or if we couldn't save
   const showNewMapCard = useMemo(
-    () => (props.showAdventureSelection !== true || props.adventures.length !== 0) && props.setMap !== undefined,
-    [props.showAdventureSelection, props.adventures, props.setMap]
+    () => newMapAdventures.length !== 0 && props.setMap !== undefined,
+    [newMapAdventures, props.setMap]
   );
 
   return (
@@ -89,7 +96,7 @@ function MapCollection(props: IMapCollectionProps) {
       <MapCards newMapCard={<NewMap show={showNewMapCard} handleNewMapClick={handleNewMapClick} />}
         adventures={props.adventures} maps={props.maps}
         deleteMap={canDeleteMap ? handleDeleteMapClick : undefined} />
-      <MapEditorModal show={showEditMap} adventures={props.adventures} map={undefined}
+      <MapEditorModal show={showEditMap} adventures={newMapAdventures} map={undefined}
         handleClose={handleModalClose} handleSave={handleNewMapSave} />
       <Modal show={showDeleteMap} onHide={handleModalClose}>
         <Modal.Header closeButton>

@@ -162,7 +162,6 @@ function Adventure(props: IAdventureProps) {
         <Row className="mt-4">
           <Col>
             <MapCollection
-              showAdventureSelection={false}
               adventures={adventures}
               maps={maps}
               setMap={setMap} deleteMap={mapDelete} />
