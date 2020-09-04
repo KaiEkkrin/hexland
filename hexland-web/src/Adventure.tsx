@@ -11,15 +11,16 @@ import { UserContext } from './components/UserContextProvider';
 import { IAdventure, summariseAdventure } from './data/adventure';
 import { IMap } from './data/map';
 import { IIdentified } from './data/identified';
-import { deleteMap, editMap, registerAdventureAsRecent, inviteToAdventure, editAdventure } from './services/extensions';
+import { deleteMap, editMap, registerAdventureAsRecent, inviteToAdventure, editAdventure, deleteAdventure } from './services/extensions';
 
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
+import Modal from 'react-bootstrap/Modal';
 import Row from 'react-bootstrap/Row';
 
-import { Link, RouteComponentProps } from 'react-router-dom';
+import { Link, RouteComponentProps, useHistory } from 'react-router-dom';
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -87,6 +88,20 @@ function Adventure(props: IAdventureProps) {
   const [editAdventureName, setEditAdventureName] = useState("");
   const [editAdventureDescription, setEditAdventureDescription] = useState("");
 
+  // Adventure deletion support
+  const canDeleteAdventure = useMemo(
+    () => canEditAdventure && adventure?.record.maps.length === 0,
+    [canEditAdventure, adventure]
+  );
+  const cannotDeleteAdventure = useMemo(() => canDeleteAdventure === false, [canDeleteAdventure]);
+  const [showDeleteAdventure, setShowDeleteAdventure] = useState(false);
+  const history = useHistory();
+
+  function handleModalClose() {
+    setShowEditAdventure(false);
+    setShowDeleteAdventure(false);
+  }
+
   function handleShowEditAdventure() {
     if (adventure === undefined) {
       return;
@@ -98,7 +113,7 @@ function Adventure(props: IAdventureProps) {
   }
 
   function handleEditAdventureSave() {
-    setShowEditAdventure(false);
+    handleModalClose();
     if (adventure === undefined) {
       return;
     }
@@ -113,6 +128,16 @@ function Adventure(props: IAdventureProps) {
       userContext.dataService, false, summariseAdventure(props.adventureId, updated), updated
     ).then(() => console.log("Adventure " + props.adventureId + " successfully updated"))
       .catch(e => console.error("Error editing adventure " + props.adventureId, e));
+  }
+
+  function handleDeleteAdventureSave() {
+    handleModalClose();
+    deleteAdventure(
+      userContext.dataService, props.adventureId
+    ).then(() => {
+      console.log("Adventure " + props.adventureId + " successfully deleted");
+      history.replace("/");
+    }).catch(e => console.error("Error deleting adventure " + props.adventureId, e));
   }
 
   // Map editing support
@@ -148,10 +173,14 @@ function Adventure(props: IAdventureProps) {
                     <div></div>
                   }
                 </Card.Body>
-                <Card.Footer>
+                <Card.Footer className="card-footer-spaced">
                   {inviteLink === undefined ?
                     <Button variant="primary" onClick={createInviteLink}>Create invite link</Button> :
                     <Link to={inviteLink}>Send this link to other players to invite them.</Link>
+                  }
+                  {canEditAdventure === true ?
+                    <Button variant="danger" onClick={() => setShowDeleteAdventure(true)}>Delete adventure</Button> :
+                    <div></div>
                   }
                 </Card.Footer>
               </Card>
@@ -172,10 +201,25 @@ function Adventure(props: IAdventureProps) {
         description={editAdventureDescription}
         name={editAdventureName}
         show={showEditAdventure}
-        handleClose={() => setShowEditAdventure(false)}
+        handleClose={handleModalClose}
         handleSave={handleEditAdventureSave}
         setDescription={setEditAdventureDescription}
         setName={setEditAdventureName} />
+      <Modal show={showDeleteAdventure} onHide={handleModalClose}>
+        <Modal.Header>
+          <Modal.Title>Delete adventure</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {canDeleteAdventure ? <p>Do you really want to delete this adventure?</p> :
+          <p>Adventures with maps cannot be deleted.</p>}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleModalClose}>Close</Button>
+          <Button disabled={cannotDeleteAdventure} variant="danger" onClick={handleDeleteAdventureSave}>
+            Yes, delete adventure!
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }

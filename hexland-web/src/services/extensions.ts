@@ -183,6 +183,48 @@ export async function editAdventure(
   );
 }
 
+async function deleteAdventureTransaction(
+  view: IDataView,
+  profileRef: IDataReference<IProfile>,
+  adventureRef: IDataReference<IAdventure>,
+  playerRefs: IDataAndReference<IPlayer>[]
+) {
+  // Fetch the profile, which we'll want to edit (maybe)
+  var profile = await view.get(profileRef);
+  if (profile === undefined) {
+    throw Error("No profile available");
+  }
+
+  // Fetch the adventure, so I can complain if it still had maps
+  var adventure = await view.get(adventureRef);
+  if (adventure !== undefined && adventure.maps.length > 0) {
+    throw Error("An adventure with maps cannot be deleted");
+  }
+
+  // Remove that adventure from the profile, if it's there
+  if (profile.adventures !== undefined && profile.adventures.find(a => a.id === adventureRef.id) !== undefined) {
+    await view.update(profileRef, {
+      adventures: profile.adventures.filter(a => a.id !== adventureRef.id)
+    });
+  }
+
+  // Remove the adventure record itself and any player records
+  await Promise.all(playerRefs.map(p => view.delete(p)));
+  await view.delete(adventureRef);
+}
+
+export async function deleteAdventure(dataService: IDataService | undefined, adventureId: string) {
+  if (dataService === undefined) {
+    return;
+  }
+
+  const profileRef = dataService.getProfileRef();
+  const adventureRef = dataService.getAdventureRef(adventureId);
+  const playerRefs = await dataService.getPlayerRefs(adventureId);
+  await dataService.runTransaction(view =>
+    deleteAdventureTransaction(view, profileRef, adventureRef, playerRefs));
+}
+
 function updateProfileMaps(maps: IMapSummary[] | undefined, changed: IMapSummary): IMapSummary[] | undefined {
   var existingIndex = maps?.findIndex(m => m.id === changed.id) ?? -1;
   if (maps !== undefined && existingIndex >= 0) {

@@ -1,5 +1,5 @@
 import { DataService } from './dataService';
-import { ensureProfile, editAdventure, editMap, deleteMap } from './extensions';
+import { ensureProfile, editAdventure, editMap, deleteMap, deleteAdventure } from './extensions';
 
 import * as firebase from 'firebase/app';
 import 'firebase/firestore';
@@ -176,6 +176,17 @@ describe('test extensions as owner', () => {
     profile = await dataService.get(dataService.getProfileRef());
     expect(profile?.latestMaps).toHaveLength(1);
     expect(profile?.latestMaps?.find(m => m.name === 'Map One')).toBeTruthy();
-    expect(profile?.adventures?.find(m => m.description === 'Edited map')).toBeFalsy();
+    expect(profile?.latestMaps?.find(m => m.description === 'Edited map')).toBeFalsy();
+
+    // Delete an adventure and it, too, should vanish
+    await deleteAdventure(dataService, a2Id);
+
+    a2Record = await dataService.get(dataService.getAdventureRef(a2Id));
+    expect(a2Record).toBeUndefined();
+
+    profile = await dataService.get(dataService.getProfileRef());
+    expect(profile?.adventures).toHaveLength(1);
+    expect(profile?.adventures?.find(a => a.name === 'Adventure One')).toBeTruthy();
+    expect(profile?.adventures?.find(a => a.name === 'Adventure Two')).toBeFalsy();
   });
 });
