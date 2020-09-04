@@ -1,5 +1,7 @@
 import { DataService } from './dataService';
-import { ensureProfile, editAdventure, editMap, deleteMap, deleteAdventure } from './extensions';
+import { ensureProfile, editAdventure, editMap, deleteMap, deleteAdventure, inviteToAdventure, joinAdventure, registerAdventureAsRecent, registerMapAsRecent, leaveAdventure } from './extensions';
+import { IUser } from './interfaces';
+import { MapType } from '../data/map';
 
 import * as firebase from 'firebase/app';
 import 'firebase/firestore';
@@ -7,28 +9,50 @@ import 'firebase/firestore';
 import { clearFirestoreData, initializeTestApp } from '@firebase/testing';
 
 import { v4 as uuidv4 } from 'uuid';
-import { MapType } from '../data/map';
+import fluent from 'fluent-iterable';
 
 describe('test extensions as owner', () => {
   const projectIds: string[] = [];
-  const emul: firebase.app.App[] = [];
+  const emul: { [uid: string]: firebase.app.App } = {};
 
-  // TODO Also include testing as a non-owner user here :)
+  function initializeEmul(auth: IUser) {
+    const projectId = fluent(projectIds).last();
+    if (projectId === undefined) {
+      throw Error("No project");
+    }
+
+    if (auth.uid in emul) {
+      return emul[auth.uid];
+    }
+
+    const e = initializeTestApp({
+      projectId: projectId,
+      auth: auth
+    });
+    emul[auth.uid] = e;
+    return e;
+  }
+
   beforeEach(() => {
     const id = uuidv4();
     projectIds.push(id);
-    emul.push(initializeTestApp({
-      projectId: id,
-      auth: {
-        displayName: 'Owner',
-        email: 'owner@example.com',
-        uid: 'owner'
-      }
-    }));
+    initializeEmul({
+      displayName: 'Owner',
+      email: 'owner@example.com',
+      uid: 'owner'
+    });
   });
 
   afterEach(async () => {
-    await emul.pop()?.delete();
+    const toDelete: string[] = [];
+    for (var uid in emul) {
+      toDelete.push(uid);
+    }
+
+    for (var uid of toDelete) {
+      await emul[uid].delete();
+      delete emul[uid];
+    }
   });
 
   afterAll(async () => {
@@ -36,7 +60,7 @@ describe('test extensions as owner', () => {
   })
 
   test('create a new profile entry', async () => {
-    const db = emul[0].firestore();
+    const db = emul['owner'].firestore();
     const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp, 'owner');
     const profile = await ensureProfile(dataService, {
       displayName: 'Owner',
@@ -58,7 +82,7 @@ describe('test extensions as owner', () => {
   });
 
   test('create and edit adventures and maps', async () => {
-    const db = emul[0].firestore();
+    const db = emul['owner'].firestore();
     const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp, 'owner');
     var profile = await ensureProfile(dataService, {
       displayName: 'Owner',
@@ -188,5 +212,111 @@ describe('test extensions as owner', () => {
     expect(profile?.adventures).toHaveLength(1);
     expect(profile?.adventures?.find(a => a.name === 'Adventure One')).toBeTruthy();
     expect(profile?.adventures?.find(a => a.name === 'Adventure Two')).toBeFalsy();
+  });
+
+  test('join and leave an adventure', async () => {
+    // As the owner, create an adventure and a map
+    const db = emul['owner'].firestore();
+    const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp, 'owner');
+    var profile = await ensureProfile(dataService, {
+      displayName: 'Owner',
+      email: 'owner@example.com',
+      uid: 'owner'
+    });
+
+    // There should be no adventures in the profile now
+    expect(profile?.adventures).toHaveLength(0);
+
+    // Add a new adventure
+    const a1Id = uuidv4();
+    const a1 = {
+      name: 'Adventure One',
+      description: 'First adventure',
+      owner: 'owner',
+      ownerName: 'Owner',
+    };
+    await editAdventure(dataService, true, { id: a1Id, ...a1 }, { maps: [], ...a1 });
+
+    // We should be able to add a map
+    const m1Id = uuidv4();
+    const m1 = {
+      adventureName: 'this will be overwritten',
+      name: 'Map One',
+      description: 'First map',
+      owner: 'owner',
+      ty: MapType.Square,
+      ffa: false
+    };
+    await editMap(dataService, a1Id, m1Id, m1);
+
+    // Create an invite to that adventure
+    const invite = await inviteToAdventure(
+      dataService, () => 1, { id: a1Id, ...a1 }
+    );
+    expect(invite).not.toBeUndefined();
+
+    // Get myself a profile as a different user
+    const user = {
+      displayName: "User 1",
+      email: 'user1@example.com',
+      uid: 'user1'
+    };
+    const userDb = initializeEmul(user).firestore();
+    const userDataService = new DataService(userDb, firebase.firestore.FieldValue.serverTimestamp, 'user1');
+    var userProfile = await ensureProfile(userDataService, user);
+
+    // There should be no adventures in that profile
+    expect(userProfile?.adventures).toHaveLength(0);
+
+    // If I try to fetch that map without being invited I should get an error
+    try
+    {
+      await userDataService.get(userDataService.getMapRef(a1Id, m1Id));
+      fail("Fetched map in un-joined adventure");
+    }
+    catch {}
+
+    // Join the adventure.
+    // TODO I really ought to have to redeem that invite string ...
+    await joinAdventure(userDataService, userProfile, a1Id);
+
+    // Having done that, I can open the adventure and map, and register them as recent:
+    const a1Record = await userDataService.get(userDataService.getAdventureRef(a1Id));
+    expect(a1Record).not.toBeUndefined();
+    expect(a1Record?.description).toBe("First adventure");
+
+    const m1Record = await userDataService.get(userDataService.getMapRef(a1Id, m1Id));
+    expect(m1Record).not.toBeUndefined();
+    expect(m1Record?.description).toBe("First map");
+
+    // If I register them as recent they should pop up in my profile
+    if (a1Record === undefined || m1Record === undefined) {
+      throw Error("no record fetched"); // appeases typescript
+    }
+
+    await registerAdventureAsRecent(userDataService, a1Id, a1Record);
+    await registerMapAsRecent(userDataService, a1Id, m1Id, m1Record);
+
+    userProfile = await userDataService.get(userDataService.getProfileRef());
+    expect(userProfile?.adventures).toHaveLength(1);
+    expect(userProfile?.adventures?.find(a => a.name === 'Adventure One')).not.toBeUndefined();
+    expect(userProfile?.latestMaps).toHaveLength(1);
+    expect(userProfile?.latestMaps?.find(m => m.name === 'Map One')).not.toBeUndefined();
+
+    // Leave the adventure
+    await leaveAdventure(userDataService, userProfile, a1Id);
+
+    // It should now be gone from my profile
+    userProfile = await userDataService.get(userDataService.getProfileRef());
+    expect(userProfile?.adventures).toHaveLength(0);
+    expect(userProfile?.latestMaps).toHaveLength(0);
+
+    // ...and I should no longer be able to fetch the map
+    try
+    {
+      await userDataService.get(userDataService.getMapRef(a1Id, m1Id));
+      fail("Fetched map in un-joined adventure");
+    }
+    catch {}
   });
 });

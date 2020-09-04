@@ -647,3 +647,50 @@ export async function joinAdventure(
   var playerRef = dataService.getPlayerRef(adventureId, dataService.getUid());
   await dataService.runTransaction(tr => joinAdventureTransaction(tr, adventureRef, playerRef, profile.name));
 }
+
+async function leaveAdventureTransaction(
+  view: IDataView,
+  profileRef: IDataReference<IProfile>,
+  adventureRef: IDataReference<IAdventure>,
+  playerRef: IDataReference<IPlayer>
+) {
+  // Fetch the profile and adventure
+  const profile = await view.get(profileRef);
+  if (profile === undefined) {
+    return undefined;
+  }
+
+  const adventure = await view.get(adventureRef);
+  if (adventure?.owner === profileRef.id) {
+    throw Error("Cannot leave your own adventure");
+  }
+
+  // Filter that adventure and any of its maps out of our profile
+  if (
+    profile.adventures?.find(a => a.id === adventureRef.id) !== undefined ||
+    profile.latestMaps?.find(m => m.adventureId === adventureRef.id) !== undefined
+  ) {
+    await view.update(profileRef, {
+      adventures: profile.adventures?.filter(a => a.id !== adventureRef.id),
+      latestMaps: profile.latestMaps?.filter(m => m.adventureId !== adventureRef.id)
+    });
+  }
+
+  // Delete the player record
+  await view.delete(playerRef);
+}
+
+export async function leaveAdventure(
+  dataService: IDataService | undefined,
+  profile: IProfile | undefined,
+  adventureId: string
+) {
+  if (dataService === undefined || profile === undefined) {
+    return undefined;
+  }
+
+  var profileRef = dataService.getProfileRef();
+  var adventureRef = dataService.getAdventureRef(adventureId);
+  var playerRef = dataService.getPlayerRef(adventureId, dataService.getUid());
+  await dataService.runTransaction(tr => leaveAdventureTransaction(tr, profileRef, adventureRef, playerRef));
+}

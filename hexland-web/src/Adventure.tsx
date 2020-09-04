@@ -5,13 +5,14 @@ import AdventureModal from './components/AdventureModal';
 import { FirebaseContext } from './components/FirebaseContextProvider';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
+import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { UserContext } from './components/UserContextProvider';
 
 import { IAdventure, summariseAdventure } from './data/adventure';
 import { IMap } from './data/map';
 import { IIdentified } from './data/identified';
-import { deleteMap, editMap, registerAdventureAsRecent, inviteToAdventure, editAdventure, deleteAdventure } from './services/extensions';
+import { deleteMap, editMap, registerAdventureAsRecent, inviteToAdventure, editAdventure, deleteAdventure, leaveAdventure } from './services/extensions';
 
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
@@ -31,6 +32,7 @@ interface IAdventureProps {
 function Adventure(props: IAdventureProps) {
   const firebaseContext = useContext(FirebaseContext);
   const userContext = useContext(UserContext);
+  const profileContext = useContext(ProfileContext);
 
   const [adventure, setAdventure] = useState<IIdentified<IAdventure> | undefined>(undefined);
   useEffect(() => {
@@ -97,9 +99,17 @@ function Adventure(props: IAdventureProps) {
   const [showDeleteAdventure, setShowDeleteAdventure] = useState(false);
   const history = useHistory();
 
+  // Support for leaving the adventure
+  const canLeaveAdventure = useMemo(
+    () => adventure?.record.owner !== userContext.user?.uid,
+    [userContext.user, adventure]
+  );
+  const [showLeaveAdventure, setShowLeaveAdventure] = useState(false);
+
   function handleModalClose() {
     setShowEditAdventure(false);
     setShowDeleteAdventure(false);
+    setShowLeaveAdventure(false);
   }
 
   function handleShowEditAdventure() {
@@ -132,12 +142,22 @@ function Adventure(props: IAdventureProps) {
 
   function handleDeleteAdventureSave() {
     handleModalClose();
-    deleteAdventure(
-      userContext.dataService, props.adventureId
-    ).then(() => {
-      console.log("Adventure " + props.adventureId + " successfully deleted");
-      history.replace("/");
-    }).catch(e => console.error("Error deleting adventure " + props.adventureId, e));
+    deleteAdventure(userContext.dataService, props.adventureId)
+      .then(() => {
+        console.log("Adventure " + props.adventureId + " successfully deleted");
+        history.replace("/");
+      })
+      .catch(e => console.error("Error deleting adventure " + props.adventureId, e));
+  }
+
+  function handleLeaveAdventureSave() {
+    handleModalClose();
+    leaveAdventure(userContext.dataService, profileContext, props.adventureId)
+      .then(() => {
+        console.log("Successfully left adventure " + props.adventureId);
+        history.replace("/");
+      })
+      .catch(e => console.error("Error leaving adventure " + props.adventureId, e));
   }
 
   // Map editing support
@@ -180,6 +200,7 @@ function Adventure(props: IAdventureProps) {
                   }
                   {canEditAdventure === true ?
                     <Button variant="danger" onClick={() => setShowDeleteAdventure(true)}>Delete adventure</Button> :
+                    canLeaveAdventure === true ? <Button variant="warning" onClick={() => setShowLeaveAdventure(true)}>Leave adventure</Button> :
                     <div></div>
                   }
                 </Card.Footer>
@@ -217,6 +238,20 @@ function Adventure(props: IAdventureProps) {
           <Button variant="secondary" onClick={handleModalClose}>Close</Button>
           <Button disabled={cannotDeleteAdventure} variant="danger" onClick={handleDeleteAdventureSave}>
             Yes, delete adventure!
+          </Button>
+        </Modal.Footer>
+      </Modal>
+      <Modal show={showLeaveAdventure} onHide={handleModalClose}>
+        <Modal.Header>
+          <Modal.Title>Leave adventure</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>You will no longer be able to see maps in or participate in this adventure.</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleModalClose}>Close</Button>
+          <Button variant="danger" onClick={handleLeaveAdventureSave}>
+            Yes, leave adventure!
           </Button>
         </Modal.Footer>
       </Modal>
