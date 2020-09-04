@@ -1,19 +1,53 @@
-import React from 'react';
+import React, { useContext, useMemo } from 'react';
 import '../App.css';
 
+import { UserContext } from './UserContextProvider';
 import { IMapSummary } from '../data/adventure';
+import { IAdventureSummary } from '../data/profile';
 
 import Button from 'react-bootstrap/Button';
-import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import Card from 'react-bootstrap/Card';
 import CardDeck from 'react-bootstrap/CardDeck';
 import { LinkContainer } from 'react-router-bootstrap';
 
+interface IMapCardProps {
+  adventures: IAdventureSummary[];
+  map: IMapSummary;
+  deleteMap: ((map: IMapSummary) => void) | undefined;
+}
+
+function MapCard(props: IMapCardProps) {
+  const userContext = useContext(UserContext);
+  const canDeleteMap = useMemo(
+    () => props.deleteMap !== undefined && props.adventures.find(a => a.id === props.map.adventureId)?.owner === userContext.user?.uid,
+    [props, userContext]
+  );
+
+  return (
+    <Card className="mt-4" style={{ minWidth: '16rem', maxWidth: '16rem' }}
+      bg="dark" text="white" key={props.map.id}>
+      <Card.Body>
+        <Card.Title>{props.map.name}</Card.Title>
+        <Card.Subtitle className="text-muted">{props.map.ty as string} map</Card.Subtitle>
+        <Card.Text>{props.map.description}</Card.Text>
+      </Card.Body>
+      <Card.Footer className="card-footer-spaced">
+        <LinkContainer to={"/adventure/" + props.map.adventureId + "/map/" + props.map.id}>
+          <Card.Link>Open map</Card.Link>
+        </LinkContainer>
+        {canDeleteMap ?
+         <Button variant="danger" onClick={() => props.deleteMap?.(props.map)}>Delete</Button> :
+         <div></div>
+        }
+      </Card.Footer>
+    </Card>
+  );
+}
+
 export interface IMapCardsProps {
   newMapCard: JSX.Element | undefined;
-  editable: boolean;
+  adventures: IAdventureSummary[];
   maps: IMapSummary[];
-  editMap: ((map: IMapSummary) => void) | undefined;
   deleteMap: ((map: IMapSummary) => void) | undefined;
 }
 
@@ -21,30 +55,9 @@ function MapCards(props: IMapCardsProps) {
   return (
     <CardDeck>
       {props.newMapCard}
-      {props.maps.map((v) =>
-        <Card className="mt-4" style={{ minWidth: '16rem', maxWidth: '16rem' }}
-          bg="dark" text="white" key={v.id}>
-          <Card.Body>
-            <Card.Title>{v.name}</Card.Title>
-            <Card.Subtitle className="text-muted">{v.ty as string} map</Card.Subtitle>
-            <Card.Text>{v.description}</Card.Text>
-          </Card.Body>
-          <Card.Footer>
-            <LinkContainer to={"/adventure/" + v.adventureId + "/map/" + v.id}>
-              <Card.Link>Open map</Card.Link>
-            </LinkContainer>
-          </Card.Footer>
-          {props.editable === true ?
-            <ButtonGroup>
-              {props.editMap === undefined ? <div></div> :
-                <Button variant="primary" onClick={() => props.editMap?.(v)}>Edit</Button>
-              }
-              {props.deleteMap === undefined ? <div></div> :
-                <Button variant="danger" onClick={() => props.deleteMap?.(v)}>Delete</Button>
-              }
-            </ButtonGroup> : <div></div>}
-        </Card>
-      )}
+      {props.maps.map((v) => (
+        <MapCard key={v.id} adventures={props.adventures} map={v} deleteMap={props.deleteMap} />
+      ))}
     </CardDeck>
   );
 }

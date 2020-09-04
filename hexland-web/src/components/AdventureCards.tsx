@@ -3,16 +3,13 @@ import '../App.css';
 
 import { IAdventureSummary } from '../data/profile';
 
-import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
 import CardDeck from 'react-bootstrap/CardDeck';
 import { LinkContainer } from 'react-router-bootstrap';
 
 interface IAdventureCardsProps {
-  newAdventureCard: JSX.Element;
+  newAdventureCard: JSX.Element | undefined;
   adventures: IAdventureSummary[];
-  canEditAdventure: (adventure: IAdventureSummary) => boolean;
-  editAdventure: ((id: string) => void) | undefined;
 }
 
 function AdventureCards(props: IAdventureCardsProps) {
@@ -32,9 +29,6 @@ function AdventureCards(props: IAdventureCardsProps) {
               <Card.Link>Open adventure</Card.Link>
             </LinkContainer>
           </Card.Footer>
-          {props.editAdventure === undefined || !props.canEditAdventure(v) ? <div></div> :
-            <Button variant="primary" onClick={() => props.editAdventure?.(v.id)}>Edit</Button>
-          }
         </Card>
       )}
     </CardDeck>

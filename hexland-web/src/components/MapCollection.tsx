@@ -4,13 +4,13 @@ import '../App.css';
 import MapCards from './MapCards';
 
 import { IMapSummary } from '../data/adventure';
-import { MapType } from '../data/map';
+import { IMap } from '../data/map';
 import { IAdventureSummary } from '../data/profile';
 
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
-import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
+import MapEditorModal from './MapEditorModal';
 
 interface INewMapProps {
   show: boolean;
@@ -33,50 +33,22 @@ function NewMap(props: INewMapProps) {
 }
 
 interface IMapCollectionProps {
-  editable: boolean,
   showAdventureSelection: boolean,
   adventures: IAdventureSummary[];
   maps: IMapSummary[];
-  setMap: ((adventureId: string, id: string | undefined, name: string, description: string, ty: MapType) => void) | undefined;
-  deleteMap: ((id: string) => void) | undefined;
+  setMap?: ((adventureId: string, id: string | undefined, map: IMap) => void) | undefined,
+  deleteMap?: ((id: string) => void) | undefined
 }
 
 function MapCollection(props: IMapCollectionProps) {
-  const firstAdventureId = useMemo(
-    () => props.adventures.length > 0 ? props.adventures[0].id : undefined,
-    [props.adventures]
-  );
-
-  const [editAdventureId, setEditAdventureId] = useState<string | undefined>(firstAdventureId);
-  const [editId, setEditId] = useState<string | undefined>(undefined);
-  const [editName, setEditName] = useState("New map");
-  const [editDescription, setEditDescription] = useState("");
-  const [editType, setEditType] = useState(MapType.Square);
   const [showDeleteMap, setShowDeleteMap] = useState(false);
   const [showEditMap, setShowEditMap] = useState(false);
+  const [editId, setEditId] = useState<string | undefined>(undefined);
+  const [editName, setEditName] = useState("");
 
-  const isModalSaveDisabled = useMemo(
-    () => editAdventureId === undefined || editName.length === 0,
-    [editAdventureId, editName]
-  );
+  const canDeleteMap = useMemo(() => props.deleteMap !== undefined, [props.deleteMap]);
 
   function handleNewMapClick() {
-    setEditAdventureId(firstAdventureId);
-    setEditId(undefined);
-    setEditName("New map");
-    setEditDescription("");
-    setEditType(MapType.Square);
-    setShowEditMap(true);
-  }
-
-  function handleEditMapClick(m: IMapSummary) {
-    setEditAdventureId(m.adventureId); // TODO #30 do I need to fetch all adventures to stop messing this up?
-                                       // Really I shouldn't allow you to change this at all, when the map
-                                       // already exists!
-    setEditId(m.id);
-    setEditName(m.name);
-    setEditDescription(m.description);
-    setEditType(m.ty);
     setShowEditMap(true);
   }
 
@@ -92,17 +64,8 @@ function MapCollection(props: IMapCollectionProps) {
     setShowEditMap(false);
   }
 
-  function handleEditMapSave() {
-    if (editAdventureId !== undefined) {
-      props.setMap?.(
-        editAdventureId,
-        editId,
-        editName,
-        editDescription,
-        editType
-      );
-    }
-
+  function handleNewMapSave(adventureId: string, map: IMap) {
+    props.setMap?.(adventureId, undefined, map);
     handleModalClose();
   }
 
@@ -115,61 +78,19 @@ function MapCollection(props: IMapCollectionProps) {
   }
 
   // Don't provide the new map card if no adventures would be selectable
+  // or if we couldn't save
   const showNewMapCard = useMemo(
-    () => props.showAdventureSelection !== true || props.adventures.length !== 0,
-    [props.showAdventureSelection, props.adventures]
+    () => (props.showAdventureSelection !== true || props.adventures.length !== 0) && props.setMap !== undefined,
+    [props.showAdventureSelection, props.adventures, props.setMap]
   );
 
   return (
     <div>
       <MapCards newMapCard={<NewMap show={showNewMapCard} handleNewMapClick={handleNewMapClick} />}
-        editable={props.editable} maps={props.maps}
-        editMap={handleEditMapClick}
-        deleteMap={handleDeleteMapClick} />
-      <Modal show={showEditMap} onHide={handleModalClose}>
-        <Modal.Header closeButton>
-          <Modal.Title>Map</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Form.Group>
-              <Form.Label htmlFor="mapNameInput">Map name</Form.Label>
-              <Form.Control id="mapNameInput" type="text" maxLength={30} value={editName}
-                onChange={e => setEditName(e.target.value)} />
-            </Form.Group>
-            {(props.showAdventureSelection !== true) ? <div></div> :
-              <Form.Group>
-                <Form.Label htmlFor="mapAdventureSelect">Adventure this map is in</Form.Label>
-                <Form.Control id="mapAdventureSelect" as="select" value={editAdventureId}
-                  onChange={e => setEditAdventureId(e.target.value)}>
-                  {props.adventures.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </Form.Control>
-              </Form.Group>
-            }
-            <Form.Group>
-              <Form.Label htmlFor="mapDescriptionInput">Map description</Form.Label>
-              <Form.Control id="mapDescriptionInput" as="textarea" rows={5} maxLength={300}
-                value={editDescription} onChange={e => setEditDescription(e.target.value)} />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label htmlFor="mapType">Map type</Form.Label>
-              <Form.Control id="mapType" as="select" value={editType}
-                disabled={editId !== undefined}
-                onChange={e => setEditType(e.target.value as MapType)}>
-                <option>{MapType.Hex}</option>
-                <option>{MapType.Square}</option>
-              </Form.Control>
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleModalClose}>Close</Button>
-          <Button variant="primary" disabled={isModalSaveDisabled}
-            onClick={handleEditMapSave}>
-            Save map
-            </Button>
-        </Modal.Footer>
-      </Modal>
+        adventures={props.adventures} maps={props.maps}
+        deleteMap={canDeleteMap ? handleDeleteMapClick : undefined} />
+      <MapEditorModal show={showEditMap} adventures={props.adventures} map={undefined}
+        handleClose={handleModalClose} handleSave={handleNewMapSave} />
       <Modal show={showDeleteMap} onHide={handleModalClose}>
         <Modal.Header closeButton>
           <Modal.Title>Delete map</Modal.Title>

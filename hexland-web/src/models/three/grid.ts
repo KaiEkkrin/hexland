@@ -639,9 +639,6 @@ export class Grid extends Drawn {
       this._faceCoordRenderTarget.dispose();
       this._vertexCoordRenderTarget.dispose();
 
-      this._faceCoordScene.dispose();
-      this._vertexCoordScene.dispose();
-
       this._faces.dispose();
       this._vertices.dispose();
       this._losFaces.dispose();

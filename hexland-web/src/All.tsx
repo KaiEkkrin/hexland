@@ -37,35 +37,33 @@ function All() {
     [adventures]
   );
 
-  function setAdventure(id: string | undefined, name: string, description: string) {
+  function createAdventure(name: string, description: string) {
     const uid = userContext.user?.uid;
     if (uid === undefined) {
       return;
     }
 
-    const isNew = id === undefined;
-    const existing = adventures.find(a => a.id === id)?.record;
-    const updated = {
-      id: id ?? uuidv4(),
+    const record = {
+      id: uuidv4(),
       name: name,
       description: description,
       owner: uid,
       ownerName: profile?.name ?? "Unknown user"
     };
 
-    editAdventure(userContext.dataService, isNew, updated, existing)
-      .then(() => console.log("Adventure " + id + " successfully edited"))
-      .catch(e => console.error("Error editing adventure " + id, e));
+    editAdventure(userContext.dataService, true, record)
+      .then(() => console.log("Adventure " + record.id + " successfully created"))
+      .catch(e => console.error("Error creating adventure " + record.id, e));
   }
 
   return (
     <RequireLoggedIn>
       <Navigation title={"All adventures"}/>
-      <Container fluid>
+      <Container>
         <Row>
           <Col>
             <AdventureCollection uid={userContext.user?.uid}
-              adventures={adventureSummaries} setAdventure={setAdventure} />
+              adventures={adventureSummaries} createAdventure={createAdventure} />
           </Col>
         </Row>
       </Container>

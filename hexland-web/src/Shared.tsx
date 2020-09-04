@@ -29,11 +29,11 @@ function Shared() {
   return (
     <RequireLoggedIn>
       <Navigation title={"Adventures shared with me"} />
-      <Container fluid>
+      <Container>
         <Row>
           <Col>
             <AdventureCollection uid={userContext.user?.uid}
-              adventures={adventures} setAdventure={undefined} />
+              adventures={adventures} createAdventure={undefined} />
           </Col>
         </Row>
       </Container>

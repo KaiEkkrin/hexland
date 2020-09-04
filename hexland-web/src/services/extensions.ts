@@ -224,12 +224,10 @@ function updateAdventureMaps(maps: IMapSummary[], changed: IMapSummary): IMapSum
 
 async function editMapTransaction(
   view: IDataView,
-  uid: string,
   profileRef: IDataReference<IProfile>,
   adventureRef: IDataReference<IAdventure>,
   mapRef: IDataReference<IMap>,
-  isNew: boolean,
-  changed: IMapSummary
+  changed: IMap
 ): Promise<void> {
   // Fetch the profile, which we'll want to edit (maybe)
   var profile = await view.get(profileRef);
@@ -240,39 +238,53 @@ async function editMapTransaction(
     throw Error("Adventure not found");
   }
 
+  // Fetch the map as well, mostly so I can check if it exists :)
+  var existingMap = await view.get(mapRef);
+
+  // Don't trust the adventure name in the changed record, update it ourselves
+  changed.adventureName = adventure.name;
+
+  // Create the new map summary, for the benefit of other records
+  const summary = {
+    adventureId: adventureRef.id,
+    id: mapRef.id,
+    name: changed.name,
+    description: changed.description,
+    ty: changed.ty
+  };
+
   // Update the profile to include this map if it didn't already, or
   // alter any existing entry
   if (profile !== undefined) {
-    var latestMaps = updateProfileMaps(profile.latestMaps, changed);
+    var latestMaps = updateProfileMaps(profile.latestMaps, summary);
     if (latestMaps !== undefined) {
       await view.update(profileRef, { latestMaps: latestMaps });
     }
   }
 
   // Update the adventure record to include this map
-  var allMaps = updateAdventureMaps(adventure.maps, changed);
+  var allMaps = updateAdventureMaps(adventure.maps, summary);
   await view.update(adventureRef, { maps: allMaps });
 
   // Update the map record itself
-  if (isNew) {
-    await view.set<IMap>(mapRef, {
-      adventureName: adventure.name,
+  if (existingMap === undefined) {
+    await view.set<IMap>(mapRef, changed);
+  } else {
+    // We can only update some fields after the fact
+    await view.update(mapRef, {
+      adventureName: changed.adventureName,
       name: changed.name,
       description: changed.description,
-      owner: uid,
-      ty: changed.ty,
-      ffa: false
+      ffa: changed.ffa
     });
-  } else {
-    await view.update(mapRef, { name: changed.name, description: changed.description });
   }
 }
 
 export async function editMap(
   dataService: IDataService | undefined,
   adventureId: string,
-  isNew: boolean,
-  changed: IMapSummary
+  mapId: string,
+  changed: IMap
 ): Promise<void> {
   if (dataService === undefined) {
     return;
@@ -280,10 +292,10 @@ export async function editMap(
 
   var profileRef = dataService.getProfileRef();
   var adventureRef = dataService.getAdventureRef(adventureId);
-  var mapRef = dataService.getMapRef(adventureId, changed.id);
+  var mapRef = dataService.getMapRef(adventureId, mapId);
 
   await dataService.runTransaction(view =>
-    editMapTransaction(view, dataService.getUid(), profileRef, adventureRef, mapRef, isNew, changed)
+    editMapTransaction(view, profileRef, adventureRef, mapRef, changed)
   );
 }
 

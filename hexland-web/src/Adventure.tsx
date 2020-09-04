@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState, useMemo } from 'react';
 import './App.css';
 
+import AdventureModal from './components/AdventureModal';
 import { FirebaseContext } from './components/FirebaseContextProvider';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
@@ -8,9 +9,9 @@ import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { UserContext } from './components/UserContextProvider';
 
 import { IAdventure, summariseAdventure } from './data/adventure';
-import { MapType } from './data/map';
+import { IMap } from './data/map';
 import { IIdentified } from './data/identified';
-import { deleteMap, editMap, registerAdventureAsRecent, inviteToAdventure } from './services/extensions';
+import { deleteMap, editMap, registerAdventureAsRecent, inviteToAdventure, editAdventure } from './services/extensions';
 
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
@@ -76,26 +77,54 @@ function Adventure(props: IAdventureProps) {
       .catch(e => console.error("Failed to create invite link for " + props.adventureId, e));
   }
 
-  // Map editing support
-  const mapsEditable = useMemo(
+  // Adventure editing support
+  const canEditAdventure = useMemo(
     () => adventure?.record.owner === userContext.user?.uid,
     [userContext.user, adventure]
   );
-  const maps = useMemo(() => adventure?.record.maps ?? [], [adventure]);
 
-  function setMap(adventureId: string, id: string | undefined, name: string, description: string, ty: MapType) {
-    const isNew = id === undefined;
+  const [showEditAdventure, setShowEditAdventure] = useState(false);
+  const [editAdventureName, setEditAdventureName] = useState("");
+  const [editAdventureDescription, setEditAdventureDescription] = useState("");
+
+  function handleShowEditAdventure() {
+    if (adventure === undefined) {
+      return;
+    }
+
+    setEditAdventureName(adventure.record.name);
+    setEditAdventureDescription(adventure.record.description);
+    setShowEditAdventure(true);
+  }
+
+  function handleEditAdventureSave() {
+    setShowEditAdventure(false);
+    if (adventure === undefined) {
+      return;
+    }
+
     const updated = {
-      adventureId: adventureId,
-      id: id ?? uuidv4(),
-      name: name,
-      description: description,
-      ty: ty
+      ...adventure.record,
+      name: editAdventureName,
+      description: editAdventureDescription
     };
 
-    editMap(userContext.dataService, adventureId, isNew, updated)
-      .then(() => console.log("Map " + updated.id + " successfully updated"))
-      .catch(e => console.error("Error editing map " + updated.id, e));
+    editAdventure(
+      userContext.dataService, false, summariseAdventure(props.adventureId, updated), updated
+    ).then(() => console.log("Adventure " + props.adventureId + " successfully updated"))
+      .catch(e => console.error("Error editing adventure " + props.adventureId, e));
+  }
+
+  // Map editing support
+  // TODO #23 Make this able to create a new map only and consolidate the editing
+  // functionality with the map view
+  const maps = useMemo(() => adventure?.record.maps ?? [], [adventure]);
+
+  function setMap(adventureId: string, id: string | undefined, map: IMap) {
+    id = id ?? uuidv4();
+    editMap(userContext.dataService, adventureId, id, map)
+      .then(() => console.log("Map " + id + " successfully updated"))
+      .catch(e => console.error("Error editing map " + id, e));
   }
 
   function mapDelete(id: string) {
@@ -107,13 +136,17 @@ function Adventure(props: IAdventureProps) {
   return (
     <div>
       <Navigation title={adventure?.record.name} />
-      <Container fluid>
+      <Container>
         {adventure !== undefined ?
           <Row className="mt-4">
             <Col>
               <Card bg="dark" text="white">
-                <Card.Body>
+                <Card.Body className="card-body-spaced">
                   <Card.Text>{adventure.record.description}</Card.Text>
+                  {canEditAdventure === true ?
+                    <Button className="ml-2" variant="primary" onClick={handleShowEditAdventure}>Edit</Button> :
+                    <div></div>
+                  }
                 </Card.Body>
                 <Card.Footer>
                   {inviteLink === undefined ?
@@ -128,7 +161,7 @@ function Adventure(props: IAdventureProps) {
         }
         <Row className="mt-4">
           <Col>
-            <MapCollection editable={mapsEditable}
+            <MapCollection
               showAdventureSelection={false}
               adventures={adventures}
               maps={maps}
@@ -136,6 +169,14 @@ function Adventure(props: IAdventureProps) {
           </Col>
         </Row>
       </Container>
+      <AdventureModal
+        description={editAdventureDescription}
+        name={editAdventureName}
+        show={showEditAdventure}
+        handleClose={() => setShowEditAdventure(false)}
+        handleSave={handleEditAdventureSave}
+        setDescription={setEditAdventureDescription}
+        setName={setEditAdventureName} />
     </div>
   );
 }

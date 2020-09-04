@@ -8,9 +8,7 @@ import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { UserContext } from './components/UserContextProvider';
 
-import { IMapSummary } from './data/adventure';
-import { MapType } from './data/map';
-import { IAdventureSummary } from './data/profile';
+import { IMap } from './data/map';
 import { editAdventure, editMap } from './services/extensions';
 
 import Col from 'react-bootstrap/Col';
@@ -31,45 +29,29 @@ function Home() {
   const adventures = useMemo(() => profile?.adventures ?? [], [profile]);
   const latestMaps = useMemo(() => profile?.latestMaps ?? [], [profile]);
 
-  function setAdventure(id: string | undefined, name: string, description: string) {
+  function createAdventure(name: string, description: string) {
     if (userContext.dataService === undefined) {
       return;
     }
 
-    var isNew = id === undefined;
-    id = id ?? uuidv4();
-    var changed = {
-      id: id,
+    const record = {
+      id: uuidv4(),
       name: name,
       description: description,
       owner: userContext.dataService.getUid(),
       ownerName: profile?.name ?? "Unknown user"
-    } as IAdventureSummary;
+    };
 
-    editAdventure(userContext.dataService, isNew, changed)
-      .then(() => console.log("Adventure " + id + " successfully edited"))
-      .catch(e => console.error("Error editing adventure " + id, e));
+    editAdventure(userContext.dataService, true, record)
+      .then(() => console.log("Adventure " + record.id + " successfully created"))
+      .catch(e => console.error("Error creating adventure " + record.id, e));
   };
 
-  function setMap(adventureId: string, id: string | undefined, name: string, description: string, ty: MapType) {
-    if (userContext.dataService === undefined) {
-      return;
-    }
-
-    if (id !== undefined) { // We don't support editing from here
-      return;
-    }
-
-    var newMap = {
-      adventureId: adventureId,
-      id: uuidv4(),
-      name: name,
-      description: description,
-      ty: ty,
-    } as IMapSummary;
-    editMap(userContext.dataService, adventureId, true, newMap)
-      .then(() => console.log("Map " + newMap.id + " successfully added"))
-      .catch(e => console.error("Error adding map " + newMap.id, e));
+  function setMap(adventureId: string, id: string | undefined, map: IMap) {
+    id = id ?? uuidv4();
+    editMap(userContext.dataService, adventureId, id, map)
+      .then(() => console.log("Map " + id + " successfully updated"))
+      .catch(e => console.error("Error editing map " + id, e));
   }
 
   return (
@@ -79,17 +61,17 @@ function Home() {
         <Row>
           <Col xl>
             <h5 className="mt-4">Latest maps</h5>
-            <MapCollection editable={false}
+            <MapCollection
               showAdventureSelection={true}
               adventures={myAdventures}
               maps={latestMaps}
-              setMap={setMap} deleteMap={undefined} />
+              setMap={setMap} />
           </Col>
           <Col xl>
             <h5 className="mt-4">Latest adventures</h5>
             <AdventureCollection
               uid={userContext.user?.uid}
-              adventures={adventures} setAdventure={setAdventure} />
+              adventures={adventures} createAdventure={createAdventure} />
           </Col>
         </Row>
       </Container>

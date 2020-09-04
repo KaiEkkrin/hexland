@@ -22,7 +22,7 @@ import { trackChanges } from './data/changeTracking';
 import { IToken, ITokenProperties } from './data/feature';
 import { IAdventureIdentified } from './data/identified';
 import { IMap } from './data/map';
-import { registerMapAsRecent, consolidateMapChanges } from './services/extensions';
+import { registerMapAsRecent, consolidateMapChanges, editMap } from './services/extensions';
 
 import { standardColours } from './models/featureColour';
 import { MapStateMachine, createDefaultState } from './models/mapStateMachine';
@@ -187,20 +187,20 @@ function Map(props: IMapPageProps) {
     stateMachine?.setShowMapColourVisualisation(mapColourMode === MapColourVisualisationMode.Connectivity);
   }, [stateMachine, mapColourMode]);
 
-  function handleMapEditorSave(ffa: boolean) {
+  function handleMapEditorSave(adventureId: string, updated: IMap) {
     setShowMapEditor(false);
     if (userContext.dataService !== undefined && map !== undefined) {
       var dataService = userContext.dataService;
-      var mapRef = dataService.getMapRef(map.adventureId, map.id);
 
       // We should always do a consolidate here to avoid accidentally invalidating
       // any recent changes when switching from FFA to non-FFA mode, for example.
       // TODO I should make this update to the map record inside the consolidate transaction,
-      // shouldn't I?
+      // shouldn't I?  (Except, if I turn the consolidate into a Firebase function,
+      // that's not going to fly...  Maybe it's fine.)
       consolidateMapChanges(dataService, firebaseContext.timestampProvider, map.adventureId, map.id, map.record)
-        .then(() => dataService.update(mapRef, { ffa: ffa }))
-        .then(() => console.log("Set FFA to " + ffa))
-        .catch(e => console.error("Failed to set FFA:", e));
+        .then(() => editMap(dataService, map.adventureId, map.id, updated))
+        .then(() => console.log("Updated map"))
+        .catch(e => console.error("Failed to update map:", e));
     }
   }
 
@@ -454,7 +454,7 @@ function Map(props: IMapPageProps) {
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp} />
       </div>
-      <MapEditorModal show={showMapEditor} map={map?.record}
+      <MapEditorModal show={showMapEditor} map={map}
         handleClose={() => setShowMapEditor(false)} handleSave={handleMapEditorSave} />
       <TokenEditorModal selectedColour={selectedColour} show={showTokenEditor}
         token={tokenToEdit}

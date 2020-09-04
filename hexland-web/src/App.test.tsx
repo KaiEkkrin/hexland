@@ -72,6 +72,35 @@ describe('test app', () => {
     return historyWillChange;
   }
 
+  async function fillInNewAdventureModal(findByLabelText: any, findByRole: any, name: string, description: string) {
+    // This should show the adventure creation modal:
+    // - Write something in the input labelled "Name"
+    // - Write something in the input labelled "Description"
+    // - Click the "Save" button
+    // - Both strings should now appear on the page, along with the "New map" button
+    var modalAdventureNameElement = await findByLabelText(/Adventure name/);
+    const modalAdventureDescriptionElement = await findByLabelText(/Adventure description/);
+    const modalAdventureSaveElement = await findByRole('button', { name: /Save adventure/ });
+
+    await act(async () => {
+      await userEvent.type(modalAdventureNameElement, name);
+      await userEvent.type(modalAdventureDescriptionElement, description);
+      userEvent.click(modalAdventureSaveElement);
+    });
+  }
+
+  async function fillInNewMapModal(findByLabelText: any, findByRole: any, name: string, description: string) {
+    var modalMapNameElement = await findByLabelText(/Map name/);
+    const modalMapDescriptionElement = await findByLabelText(/Map description/);
+    const modalMapSaveElement = await findByRole('button', { name: /Save map/ });
+
+    await act(async () => {
+      await userEvent.type(modalMapNameElement, name);
+      await userEvent.type(modalMapDescriptionElement, description);
+      userEvent.click(modalMapSaveElement);
+    });
+  }
+
   async function createAdventureAndMapFromHome(projectId: string, user?: IUser | undefined): Promise<IAdventureAndMapLinks> {
     const { findByLabelText, findByRole, findByText, queryByLabelText, queryByRole } = render(
       <App projectId={projectId} user={user} defaultRoute="/" />
@@ -88,21 +117,7 @@ describe('test app', () => {
     expect(newMapElement).toBeNull();
 
     await act(async () => userEvent.click(newAdventureElement));
-
-    // This should show the adventure creation modal:
-    // - Write something in the input labelled "Name"
-    // - Write something in the input labelled "Description"
-    // - Click the "Save" button
-    // - Both strings should now appear on the page, along with the "New map" button
-    var modalAdventureNameElement = await findByLabelText(/Adventure name/);
-    const modalAdventureDescriptionElement = await findByLabelText(/Adventure description/);
-    const modalAdventureSaveElement = await findByRole('button', { name: /Save adventure/ });
-
-    await act(async () => {
-      await userEvent.type(modalAdventureNameElement, "Test adventure");
-      await userEvent.type(modalAdventureDescriptionElement, "Here be dragons");
-      userEvent.click(modalAdventureSaveElement);
-    });
+    await fillInNewAdventureModal(findByLabelText, findByRole, "Test adventure", "Here be dragons");
 
     // This should now be showing "New map" (and also the adventure we just created)
     newMapElement = await findByRole('button', { name: /New map/i });
@@ -115,22 +130,14 @@ describe('test app', () => {
     expect(adventureDescriptionElement).toBeInTheDocument();
 
     // ...and the adventure modal should be gone
-    modalAdventureNameElement = queryByLabelText(/Adventure name/);
+    const modalAdventureNameElement = queryByLabelText(/Adventure name/);
     expect(modalAdventureNameElement).toBeFalsy();
 
     await act(async () => userEvent.click(newMapElement));
 
     // This should show the map creation modal.  The process will be similar :)
     // TODO Test selecting a different adventure...
-    var modalMapNameElement = await findByLabelText(/Map name/);
-    const modalMapDescriptionElement = await findByLabelText(/Map description/);
-    const modalMapSaveElement = await findByRole('button', { name: /Save map/ });
-
-    await act(async () => {
-      await userEvent.type(modalMapNameElement, "Test map");
-      await userEvent.type(modalMapDescriptionElement, "Dragon's lair");
-      userEvent.click(modalMapSaveElement);
-    });
+    await fillInNewMapModal(findByLabelText, findByRole, "Test map", "Dragon's lair");
 
     // We should now be able to find an "Open map" link and those elements
     const openMapElement = await findByText(/Open map/);
@@ -143,7 +150,7 @@ describe('test app', () => {
     expect(mapDescriptionElement).toBeInTheDocument();
 
     // ...and the map modal should be gone
-    modalMapNameElement = queryByLabelText(/Map name/);
+    const modalMapNameElement = queryByLabelText(/Map name/);
     expect(modalMapNameElement).toBeFalsy();
 
     // Return the link to the adventure
@@ -154,6 +161,87 @@ describe('test app', () => {
     return {
       adventureLink: adventureLinkElement.pathname,
       mapLink: openMapElement.pathname
+    };
+  }
+
+  async function createMapFromAdventure(projectId: string, user: IUser | undefined, pathname: string, adventureName: RegExp, adventureDescription: RegExp): Promise<string> {
+    const { findByLabelText, findByRole, findByText, queryByLabelText, queryByRole } = render(
+      <App projectId={projectId} user={user} defaultRoute={pathname} />
+    );
+
+    // This page should have "New map" and details of our adventure:
+    const newMapElement = await findByRole('button', { name: /New map/i });
+    expect(newMapElement).toBeInTheDocument();
+
+    const adventureNameElement = await findByText(adventureName);
+    expect(adventureNameElement).toBeInTheDocument();
+
+    const adventureDescriptionElement = await findByText(adventureDescription);
+    expect(adventureDescriptionElement).toBeInTheDocument();
+
+    await act(async () => userEvent.click(newMapElement));
+
+    // This should show the map creation modal.  The process will be similar :)
+    await fillInNewMapModal(findByLabelText, findByRole, "Test map", "Dragon's lair");
+
+    // We should now be able to find an "Open map" link and those elements
+    const openMapElement = await findByText(/Open map/);
+    expect(openMapElement).toBeInTheDocument();
+
+    const mapNameElement = await findByText(/Test map/);
+    expect(mapNameElement).toBeInTheDocument();
+
+    const mapDescriptionElement = await findByText(/Dragon\'s lair/);
+    expect(mapDescriptionElement).toBeInTheDocument();
+
+    // ...and the map modal should be gone
+    const modalMapNameElement = queryByLabelText(/Map name/);
+    expect(modalMapNameElement).toBeFalsy();
+
+    // Return the link to the map
+    cleanup();
+    return openMapElement.pathname;
+  }
+
+  async function createAdventureAndMapFromAll(projectId: string, user?: IUser | undefined): Promise<IAdventureAndMapLinks> {
+    const { findByLabelText, findByRole, findByText, queryByLabelText, queryByRole } = render(
+      <App projectId={projectId} user={user} defaultRoute="/all" />
+    );
+
+    const userElement = await findByText(user?.displayName ?? 'Owner');
+    expect(userElement).toBeInTheDocument();
+
+    const newAdventureElement = await findByRole('button', { name: /New adventure/i });
+    expect(newAdventureElement).toBeInTheDocument();
+
+    // There shouldn't be "New map", though -- of course, it's the All (adventures) page!
+    const newMapElement = queryByRole('button', { name: /New map/i });
+    expect(newMapElement).toBeNull();
+
+    await act(async () => userEvent.click(newAdventureElement));
+    await fillInNewAdventureModal(findByLabelText, findByRole, "Test adventure", "Here be dragons");
+
+    // This should now be showing the adventure we just created
+    const adventureNameElement = await findByText(/Test adventure/);
+    expect(adventureNameElement).toBeInTheDocument();
+
+    const adventureDescriptionElement = await findByText(/Here be dragons/);
+    expect(adventureDescriptionElement).toBeInTheDocument();
+
+    // ...and the adventure modal should be gone
+    const modalAdventureNameElement = queryByLabelText(/Adventure name/);
+    expect(modalAdventureNameElement).toBeFalsy();
+
+    // There should be an adventure link we can click
+    const openAdventureElement = await findByText(/Open adventure/);
+    expect(openAdventureElement).toBeInTheDocument();
+
+    // Navigate there to create the map
+    cleanup();
+    const mapLink = await createMapFromAdventure(projectId, user, openAdventureElement.pathname, /Test adventure/, /Here be dragons/);
+    return {
+      adventureLink: openAdventureElement.pathname,
+      mapLink: mapLink
     };
   }
 
@@ -280,6 +368,48 @@ describe('test app', () => {
     cleanup();
   }
 
+  async function shareAdventureAndMap(projectId: string, links: IAdventureAndMapLinks) {
+    // Open the adventure; we should see the map listed, along with "Create invite link"
+    const inviteLink = await createInviteLink(links.adventureLink, projectId);
+    console.log("Invite link: " + inviteLink);
+
+    // Trying to load that link when not logged in (which is what our simulated auth does
+    // if we change users) should get us redirected to the login page
+    const user1 = {
+      displayName: "User One",
+      email: "user1@example.com",
+      uid: "user1"
+    };
+
+    const redirectToLogin = await loadPageExpectingRedirect(inviteLink, projectId, user1);
+    expect(redirectToLogin.verb).toBe('push');
+    expect(redirectToLogin.parameter).toBe('/login');
+
+    // Get user1 logged in
+    const redirectToHome = await logInWithGoogle(projectId, user1);
+    expect(redirectToHome.verb).toBe('replace');
+    expect(redirectToHome.parameter).toBe('/');
+
+    // Accept the invite
+    var redirectToAdventure = await acceptInvite(inviteLink, projectId, user1);
+    expect(redirectToAdventure.verb).toBe('replace');
+    expect(redirectToAdventure.parameter).toBe(links.adventureLink);
+
+    // The user should see the map and adventure on the adventure page
+    // TODO Really I should be reading the map link from here instead!
+    const checks = {
+      textsPresent: [/Here be dragons/, /Dragon\'s lair/]
+    };
+    await checkPage(redirectToAdventure.parameter, checks, projectId, user1);
+
+    // ...and the adventure on the shared and home pages
+    await checkPage('/shared', { textsPresent: [/Here be dragons/] }, projectId, user1);
+    await checkPage('/', { textsPresent: [/Test adventure/] }, projectId, user1);
+
+    // Check the map page.  It should tell us we have no tokens
+    await checkNoTokensOnMap(links.mapLink, projectId, user1);
+  }
+
   // *** TESTS *** 
 
   test('login with Google fails', async () => {
@@ -316,44 +446,22 @@ describe('test app', () => {
     expect(links.adventureLink).toMatch(/^\/adventure\/.*$/);
     console.log("Adventure link: " + links.adventureLink);
 
-    // Open the adventure; we should see the map listed, along with "Create invite link"
-    const inviteLink = await createInviteLink(links.adventureLink, projectId);
-    console.log("Invite link: " + inviteLink);
+    await shareAdventureAndMap(projectId, links);
+  }, 10000);
 
-    // Trying to load that link when not logged in (which is what our simulated auth does
-    // if we change users) should get us redirected to the login page
-    const user1 = {
-      displayName: "User One",
-      email: "user1@example.com",
-      uid: "user1"
-    };
+  test('log in and create and share an adventure and map from the All page', async () => {
+    const projectId = uuidv4();
 
-    const redirectToLogin = await loadPageExpectingRedirect(inviteLink, projectId, user1);
-    expect(redirectToLogin.verb).toBe('push');
-    expect(redirectToLogin.parameter).toBe('/login');
-
-    // Get user1 logged in
-    redirectToHome = await logInWithGoogle(projectId, user1);
+    // Get logged in
+    var redirectToHome = await logInWithGoogle(projectId);
     expect(redirectToHome.verb).toBe('replace');
     expect(redirectToHome.parameter).toBe('/');
 
-    // Accept the invite
-    var redirectToAdventure = await acceptInvite(inviteLink, projectId, user1);
-    expect(redirectToAdventure.verb).toBe('replace');
-    expect(redirectToAdventure.parameter).toBe(links.adventureLink);
+    // Do the adventure and map creation
+    const links = await createAdventureAndMapFromAll(projectId);
+    expect(links.adventureLink).toMatch(/^\/adventure\/.*$/);
+    console.log("Adventure link: " + links.adventureLink);
 
-    // The user should see the map and adventure on the adventure page
-    // TODO Really I should be reading the map link from here instead!
-    const checks = {
-      textsPresent: [/Here be dragons/, /Dragon\'s lair/]
-    };
-    await checkPage(redirectToAdventure.parameter, checks, projectId, user1);
-
-    // ...and the adventure on the shared and home pages
-    await checkPage('/shared', { textsPresent: [/Here be dragons/] }, projectId, user1);
-    await checkPage('/', { textsPresent: [/Test adventure/] }, projectId, user1);
-
-    // Check the map page.  It should tell us we have no tokens
-    await checkNoTokensOnMap(links.mapLink, projectId, user1);
-  }, 10000);
+    await shareAdventureAndMap(projectId, links);
+  });
 });
