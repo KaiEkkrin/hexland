@@ -241,10 +241,7 @@ export class DrawingOrtho implements IDrawing {
   private createLoSSize(width: number, height: number, scaling: THREE.Vector3) {
     // We want the size of LoS faces to remain the same at different magnifications;
     // it can be smaller than the rendered grid (which will improve performance)
-    // TODO Uh oh, this seems to be causing intermittent bugs with the LoS sampling for
-    // some people :-(
-    // return [width * 0.5 / scaling.x, height * 0.5 / scaling.y];
-    return [width, height];
+    return [width * 0.5 / scaling.x, height * 0.5 / scaling.y];
   }
 
   get areas() { return this._areas; }
