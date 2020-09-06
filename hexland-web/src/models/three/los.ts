@@ -253,7 +253,7 @@ export class LoS extends Drawn {
     }
 
     const visibleCount = fluent(enumerateSamplePositions())
-      .map(p => this._composedTargetReader.sample(p[0], p[1], (buf, offset) => buf[offset]))
+      .map(p => this._composedTargetReader.sample(p[0], p[1], (buf, offset) => buf[offset] ?? 0))
       .sum();
     return visibleCount > 0;
   }

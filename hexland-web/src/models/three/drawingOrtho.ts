@@ -241,7 +241,7 @@ export class DrawingOrtho implements IDrawing {
   private createLoSSize(width: number, height: number, scaling: THREE.Vector3) {
     // We want the size of LoS faces to remain the same at different magnifications;
     // it can be smaller than the rendered grid (which will improve performance)
-    return [width * 0.5 / scaling.x, height * 0.5 / scaling.y];
+    return [Math.ceil(width * 0.5 / scaling.x), Math.ceil(height * 0.5 / scaling.y)];
   }
 
   get areas() { return this._areas; }
@@ -351,8 +351,8 @@ export class DrawingOrtho implements IDrawing {
   }
 
   resize(translation: THREE.Vector3, rotation: THREE.Quaternion, scaling: THREE.Vector3) {
-    var width = Math.max(1, Math.floor(window.innerWidth));
-    var height = Math.max(1, Math.floor(window.innerHeight));
+    const width = Math.max(1, Math.floor(window.innerWidth));
+    const height = Math.max(1, Math.floor(window.innerHeight));
 
     this._renderer.setSize(width, height, false);
     this._grid.resize(width, height);
