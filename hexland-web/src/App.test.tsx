@@ -434,6 +434,49 @@ describe('test app', () => {
     expect(failedElement).toBeInTheDocument();
   });
 
+  test('log in and edit profile', async () => {
+    const projectId = uuidv4();
+
+    // Get logged in
+    const user = {
+      displayName: "A User",
+      email: "user@example.com",
+      uid: "userA"
+    };
+    var redirectToHome = await logInWithGoogle(projectId, user);
+    expect(redirectToHome.verb).toBe('replace');
+    expect(redirectToHome.parameter).toBe('/');
+
+    // If I load the home page now, it should have my display name on it
+    const { findByLabelText, findByRole, getByRole, queryByRole } = render(
+      <App projectId={projectId} user={user} defaultRoute="/" />
+    );
+
+    var profileButton = await findByRole('button', { name: /A User/ });
+    expect(profileButton).toBeInTheDocument();
+
+    await act(async () => userEvent.click(profileButton));
+
+    const editNameElement = await findByLabelText(/Display name/i);
+    expect(editNameElement).toBeInTheDocument();
+
+    var saveProfileElement = getByRole('button', { name: /Save profile/i });
+    expect(saveProfileElement).toBeInTheDocument();
+
+    await act(async () => {
+      await userEvent.type(editNameElement, "Fishy McFishFace");
+      userEvent.click(saveProfileElement);
+    });
+
+    // This should rewrite the username button to have the updated name
+    profileButton = await findByRole('button', { name: /Fishy McFishFace/ });
+    expect(profileButton).toBeInTheDocument();
+
+    // ...and the modal should have closed
+    saveProfileElement = queryByRole('button', { name: /Save profile/i });
+    expect(saveProfileElement).toBeNull();
+  });
+
   test('log in and create and share an adventure and map from the home page', async () => {
     const projectId = uuidv4();
 

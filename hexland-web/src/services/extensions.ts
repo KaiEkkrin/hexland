@@ -32,8 +32,6 @@ export async function ensureProfile(dataService: IDataService | undefined, user:
     }
 
     // If we get here, we need to create a new profile
-    // TODO maybe on first login, always display a "new user" screen and
-    // let them customise?
     profile = {
       name: user.displayName ?? "Unknown user",
       adventures: [],
