@@ -4,6 +4,7 @@ import './Map.css';
 
 import { addToast } from './components/extensions';
 import { FirebaseContext } from './components/FirebaseContextProvider';
+import MapContextMenu from './components/MapContextMenu';
 import MapControls, { EditMode, MapColourVisualisationMode } from './components/MapControls';
 import MapAnnotations, { ShowAnnotationFlags } from './components/MapAnnotations';
 import MapEditorModal from './components/MapEditorModal';
@@ -152,6 +153,12 @@ function Map(props: IMapPageProps) {
   const [mapColourMode, setMapColourMode] = useState(MapColourVisualisationMode.Areas);
   const [selectedColour, setSelectedColour] = useState(0);
 
+  const [showContextMenu, setShowContextMenu] = useState(false);
+  const [contextMenuX, setContextMenuX] = useState(0);
+  const [contextMenuY, setContextMenuY] = useState(0);
+  const [contextMenuToken, setContextMenuToken] = useState<IToken | undefined>(undefined);
+  const [contextMenuNote, setContextMenuNote] = useState<IAnnotation | undefined>(undefined);
+
   const [showMapEditor, setShowMapEditor] = useState(false);
   const [showTokenEditor, setShowTokenEditor] = useState(false);
   const [showNoteEditor, setShowNoteEditor] = useState(false);
@@ -239,16 +246,55 @@ function Map(props: IMapPageProps) {
     [showMapEditor, showNoteEditor, showTokenEditor]
   );
 
-  function getClientPosition(e: React.MouseEvent<HTMLDivElement, MouseEvent>): THREE.Vector3 | undefined {
+  const getClientPosition = useCallback((clientX: number, clientY: number) => {
     var bounds = drawingRef.current?.getBoundingClientRect();
     if (bounds === undefined) {
       return undefined;
     }
 
-    var x = e.clientX - bounds.left;
-    var y = e.clientY - bounds.top;
+    var x = clientX - bounds.left;
+    var y = clientY - bounds.top;
     return new THREE.Vector3(x, bounds.height - y - 1, 0);
-  }
+  }, [drawingRef]);
+
+  const editNote = useCallback((cp: THREE.Vector3, note: IAnnotation | undefined) => {
+    setShowNoteEditor(true);
+    setNoteToEdit(note);
+    setNoteToEditPosition(cp);
+  }, [setShowNoteEditor, setNoteToEdit, setNoteToEditPosition]);
+
+  const editToken = useCallback((cp: THREE.Vector3, token: IToken | undefined) => {
+    setShowTokenEditor(true);
+    setTokenToEdit(token);
+    setTokenToEditPosition(cp);
+  }, [setShowTokenEditor, setTokenToEdit, setTokenToEditPosition]);
+
+  const editNoteFromMenu = useCallback(() => {
+    var cp = getClientPosition(contextMenuX, contextMenuY);
+    if (cp !== undefined) {
+      editNote(cp, stateMachine?.getNote(cp));
+    }
+  }, [contextMenuX, contextMenuY, editNote, getClientPosition, stateMachine]);
+
+  const editTokenFromMenu = useCallback(() => {
+    var cp = getClientPosition(contextMenuX, contextMenuY);
+    if (cp !== undefined) {
+      editToken(cp, stateMachine?.getToken(cp));
+    }
+  }, [contextMenuX, contextMenuY, editToken, getClientPosition, stateMachine]);
+
+  const handleContextMenu = useCallback((e: MouseEvent) => {
+    e.preventDefault();
+    setShowContextMenu(true);
+    setContextMenuX(e.clientX);
+    setContextMenuY(e.clientY);
+
+    var cp = getClientPosition(e.clientX, e.clientY);
+    if (cp !== undefined) {
+      setContextMenuToken(stateMachine?.getToken(cp));
+      setContextMenuNote(stateMachine?.getNote(cp));
+    }
+  }, [getClientPosition, setShowContextMenu, setContextMenuX, setContextMenuY, setContextMenuToken, setContextMenuNote, stateMachine]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (stateMachine === undefined || anEditorIsOpen) {
@@ -284,9 +330,11 @@ function Map(props: IMapPageProps) {
       addChanges(stateMachine.setPanningY(0));
       e.preventDefault();
     } else if (e.key === 'Escape') {
-      // This should cancel any drag operation
+      // This should cancel any drag operation, and also return us to
+      // select mode
       stateMachine.clearHighlights(selectedColour);
       stateMachine.clearSelection();
+      setEditMode(EditMode.Select);
     } else if (e.key === 'a' || e.key === 'A') {
       if (canDoAnything) {
         setEditMode(EditMode.Area);
@@ -314,10 +362,11 @@ function Map(props: IMapPageProps) {
         setEditMode(EditMode.Wall);
       }
     }
-  }, [stateMachine, addChanges, anEditorIsOpen, canDoAnything, selectedColour]);
+  }, [stateMachine, addChanges, anEditorIsOpen, canDoAnything, selectedColour, setEditMode]);
 
   function handleMouseDown(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-    var cp = getClientPosition(e);
+    setShowContextMenu(false);
+    var cp = getClientPosition(e.clientX, e.clientY);
     if (cp === undefined || anEditorIsOpen) {
       return;
     }
@@ -332,10 +381,10 @@ function Map(props: IMapPageProps) {
     }
   }
 
-  function handleMouseMove(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-    var cp = getClientPosition(e);
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    var cp = getClientPosition(e.clientX, e.clientY);
     if (cp === undefined || anEditorIsOpen) {
-      return;
+      return undefined;
     }
 
     switch (editMode) {
@@ -347,53 +396,56 @@ function Map(props: IMapPageProps) {
     }
 
     return cp;
-  }
+  }, [anEditorIsOpen, editMode, getClientPosition, selectedColour, stateMachine]);
 
-  function handleMouseUp(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+  const handleMouseUp = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     setIsDraggingView(false);
     var cp = handleMouseMove(e);
     if (cp === undefined || anEditorIsOpen) {
       return;
     }
 
+    var changes: IChange[] | undefined;
     switch (editMode) {
       case EditMode.Select:
-        addChanges(stateMachine?.selectionDragEnd(cp));
+        changes = stateMachine?.selectionDragEnd(cp);
         break;
 
       case EditMode.Token:
         // Show the token dialog now.  We'll create or alter the token upon close of
         // the dialog.
         var token = stateMachine?.getToken(cp);
-        setShowTokenEditor(true);
-        setTokenToEdit(token);
-        setTokenToEditPosition(cp);
+        editToken(cp, token);
         break;
 
       case EditMode.Notes:
         // Show the notes dialog now.  Again, we'll create or alter the note upon
         // close of the dialog.
         var note = stateMachine?.getNote(cp);
-        setShowNoteEditor(true);
-        setNoteToEdit(note);
-        setNoteToEditPosition(cp);
+        editNote(cp, note);
         break;
 
       case EditMode.Area:
-        addChanges(stateMachine?.faceDragEnd(cp, selectedColour));
+        changes = stateMachine?.faceDragEnd(cp, selectedColour);
         break;
 
       case EditMode.Wall:
-        addChanges(stateMachine?.wallDragEnd(cp, selectedColour));
+        changes = stateMachine?.wallDragEnd(cp, selectedColour);
         break;
 
       case EditMode.Room:
-        addChanges(stateMachine?.roomDragEnd(cp, e.shiftKey, selectedColour));
+        changes = stateMachine?.roomDragEnd(cp, e.shiftKey, selectedColour);
         break;
 
       case EditMode.Pan: stateMachine?.panEnd(); break;
     }
-  }
+
+    if (changes !== undefined && changes.length > 0) {
+      // We've done something -- reset the edit mode
+      setEditMode(EditMode.Select);
+    }
+    addChanges(changes);
+  }, [addChanges, anEditorIsOpen, editMode, editNote, editToken, handleMouseMove, selectedColour, setEditMode, setIsDraggingView, stateMachine]);
 
   const handleWheel = useCallback((e: WheelEvent) => {
     if (e.deltaY !== 0 && !anEditorIsOpen) {
@@ -403,19 +455,22 @@ function Map(props: IMapPageProps) {
 
   // We need an event listener for the window resize so that we can update the drawing,
   // and for the keyboard and wheel events so that we can implement UI functionality with them.
+  // We also take over the context menu.
   useEffect(() => {
     const handleWindowResize = (ev: UIEvent) => { stateMachine?.resize(); };
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('resize', handleWindowResize);
     window.addEventListener('wheel', handleWheel);
+    document.addEventListener('contextmenu', handleContextMenu);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('resize', handleWindowResize);
       window.removeEventListener('wheel', handleWheel);
+      document.removeEventListener('contextmenu', handleContextMenu);
     };
-  }, [stateMachine, handleKeyDown, handleKeyUp, handleWheel]);
+  }, [stateMachine, handleContextMenu, handleKeyDown, handleKeyUp, handleWheel]);
 
   const [showAnnotationFlags, setShowAnnotationFlags] = useState(ShowAnnotationFlags.All);
   const [customAnnotationFlags, setCustomAnnotationFlags] = useState(false);
@@ -464,6 +519,17 @@ function Map(props: IMapPageProps) {
         handleDelete={handleNoteEditorDelete} handleSave={handleNoteEditorSave} />
       <MapAnnotations annotations={mapState.annotations} showFlags={showAnnotationFlags} customFlags={customAnnotationFlags}
         setCustomFlags={setCustomAnnotationFlags} suppressAnnotations={isDraggingView} />
+      <MapContextMenu
+        show={showContextMenu}
+        setShow={setShowContextMenu}
+        x={contextMenuX}
+        y={contextMenuY}
+        token={contextMenuToken}
+        note={contextMenuNote}
+        editToken={editTokenFromMenu}
+        editNote={editNoteFromMenu}
+        editMode={editMode}
+        setEditMode={setEditMode} />
     </div>
   );
 }
