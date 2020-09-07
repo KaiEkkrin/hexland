@@ -4,12 +4,11 @@ import { IPlayer } from '../data/adventure';
 import { IGridCoord } from '../data/coord';
 import { IToken } from '../data/feature';
 import { IMap } from '../data/map';
-import { hexColours } from '../models/featureColour';
+import PlayerInfoList from './PlayerInfoList';
 
 import Badge from 'react-bootstrap/Badge';
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
-import ListGroup from 'react-bootstrap/ListGroup';
 import Nav from 'react-bootstrap/Nav';
 
 import { faUsers } from '@fortawesome/free-solid-svg-icons';
@@ -70,66 +69,6 @@ function MapInfoCard(props: IMapInfoCardProps) {
   );
 }
 
-interface IPlayerInfoListItemProps {
-  map: IMap | undefined;
-  player: IPlayer;
-  tokens: IToken[];
-  resetView: (centreOn?: IGridCoord | undefined) => void;
-}
-
-function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
-  const myTokens = useMemo(
-    () => props.tokens.filter(t => t.players.find(p => p === props.player.playerId) !== undefined),
-    [props.player, props.tokens]
-  );
-
-  const isNoTokenHidden = useMemo(
-    () => props.player.playerId === props.map?.owner,
-    [props.map, props.player]
-  );
-
-  const showOwnerBadge = useMemo(
-    () => props.player.playerId === props.map?.owner,
-    [props.map, props.player]
-  );
-
-  return (
-    <ListGroup.Item className="Map-info-list-item">
-      <div title={"Player " + props.player.playerName}
-        style={{ display: "flex", justifyContent: "space-between" }}
-      >{props.player.playerName}
-        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
-          {showOwnerBadge ? (
-            <Badge className="ml-2" variant="warning"
-              title={"Player " + props.player.playerName + " is the map owner"}
-            >Owner</Badge>
-          ) : myTokens.length > 0 ? myTokens.map(t => (
-            <Badge className="ml-2" key={t.id}
-              title={"Player " + props.player.playerName + " has token " + t.text}
-              style={{ backgroundColor: hexColours[t.colour], color: "black", userSelect: "none" }}
-              onClick={() => props.resetView(t.position)}
-            >{t.text}</Badge>
-          )) : (
-            <Badge className="ml-2" hidden={isNoTokenHidden} variant="danger"
-              title={"Player " + props.player.playerName + " has no token"}
-            >No token</Badge>
-          )}
-        </div>
-      </div>
-    </ListGroup.Item>
-  );
-}
-
-function PlayerInfoList(props: IMapInfoProps) {
-  return (
-    <ListGroup variant="flush">
-      {props.players.map(p => (
-        <PlayerInfoListItem key={p.playerId} player={p} {...props} />
-      ))}
-    </ListGroup>
-  );
-}
-
 interface IMapInfoProps {
   map: IMap | undefined;
   players: IPlayer[];
@@ -148,6 +87,8 @@ function MapInfo(props: IMapInfoProps) {
     [numberOfPlayersWithNoTokens]
   );
 
+  const ownerUid = useMemo(() => props.map?.owner, [props.map]);
+
   const playerInfoButton = useMemo(() => (
     <div>
       <FontAwesomeIcon icon={faUsers} color="white" />
@@ -160,7 +101,7 @@ function MapInfo(props: IMapInfoProps) {
   return (
     <div className="Map-info">
       <MapInfoCard title="Players" buttonContent={playerInfoButton}>
-        <PlayerInfoList {...props} />
+        <PlayerInfoList ownerUid={ownerUid} showNoTokenWarning={true} {...props} />
       </MapInfoCard>
     </div>
   );

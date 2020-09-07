@@ -5,17 +5,19 @@ import AdventureModal from './components/AdventureModal';
 import { FirebaseContext } from './components/FirebaseContextProvider';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
+import PlayerInfoList from './components/PlayerInfoList';
 import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { UserContext } from './components/UserContextProvider';
 
-import { IAdventure, summariseAdventure } from './data/adventure';
+import { IAdventure, summariseAdventure, IPlayer } from './data/adventure';
 import { IMap } from './data/map';
 import { IIdentified } from './data/identified';
 import { deleteMap, editMap, registerAdventureAsRecent, inviteToAdventure, editAdventure, deleteAdventure, leaveAdventure } from './services/extensions';
 
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
+import CardColumns from 'react-bootstrap/CardColumns';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Modal from 'react-bootstrap/Modal';
@@ -81,6 +83,20 @@ function Adventure(props: IAdventureProps) {
   }
 
   // Adventure editing support
+  const [players, setPlayers] = useState<IPlayer[]>([]);
+  useEffect(() => {
+    if (userContext.dataService === undefined) {
+      setPlayers([]);
+      return () => {};
+    }
+
+    return userContext.dataService.watchPlayers(
+      props.adventureId,
+      setPlayers,
+      e => console.error("Failed to watch players of adventure " + props.adventureId, e)
+    );
+  }, [userContext.dataService, props.adventureId]);
+
   const canEditAdventure = useMemo(
     () => adventure?.record.owner === userContext.user?.uid,
     [userContext.user, adventure]
@@ -105,6 +121,9 @@ function Adventure(props: IAdventureProps) {
     [userContext.user, adventure]
   );
   const [showLeaveAdventure, setShowLeaveAdventure] = useState(false);
+
+  // Support for the players list
+  const ownerUid = useMemo(() => adventure?.record.owner, [adventure]);
 
   function handleModalClose() {
     setShowEditAdventure(false);
@@ -185,26 +204,32 @@ function Adventure(props: IAdventureProps) {
         {adventure !== undefined ?
           <Row className="mt-4">
             <Col>
-              <Card bg="dark" text="white">
-                <Card.Body className="card-body-spaced">
-                  <Card.Text>{adventure.record.description}</Card.Text>
-                  {canEditAdventure === true ?
-                    <Button className="ml-2" variant="primary" onClick={handleShowEditAdventure}>Edit</Button> :
-                    <div></div>
-                  }
-                </Card.Body>
-                <Card.Footer className="card-footer-spaced">
-                  {inviteLink === undefined ?
-                    <Button variant="primary" onClick={createInviteLink}>Create invite link</Button> :
-                    <Link to={inviteLink}>Send this link to other players to invite them.</Link>
-                  }
-                  {canEditAdventure === true ?
-                    <Button variant="danger" onClick={() => setShowDeleteAdventure(true)}>Delete adventure</Button> :
-                    canLeaveAdventure === true ? <Button variant="warning" onClick={() => setShowLeaveAdventure(true)}>Leave adventure</Button> :
-                    <div></div>
-                  }
-                </Card.Footer>
-              </Card>
+              <CardColumns>
+                <Card bg="dark" text="white">
+                  <Card.Body className="card-body-spaced">
+                    <Card.Text>{adventure.record.description}</Card.Text>
+                    {canEditAdventure === true ?
+                      <Button className="ml-2" variant="primary" onClick={handleShowEditAdventure}>Edit</Button> :
+                      <div></div>
+                    }
+                  </Card.Body>
+                  <Card.Footer className="card-footer-spaced">
+                    {inviteLink === undefined ?
+                      <Button variant="primary" onClick={createInviteLink}>Create invite link</Button> :
+                      <Link to={inviteLink}>Send this link to other players to invite them.</Link>
+                    }
+                    {canEditAdventure === true ?
+                      <Button variant="danger" onClick={() => setShowDeleteAdventure(true)}>Delete adventure</Button> :
+                      canLeaveAdventure === true ? <Button variant="warning" onClick={() => setShowLeaveAdventure(true)}>Leave adventure</Button> :
+                        <div></div>
+                    }
+                  </Card.Footer>
+                </Card>
+                <Card bg="dark" text="white">
+                  <Card.Header>Players</Card.Header>
+                  <PlayerInfoList ownerUid={ownerUid} players={players} tokens={[]} />
+                </Card>
+              </CardColumns>
             </Col>
           </Row>
           : <div></div>
