@@ -14,7 +14,7 @@ interface IMapContextMenuItemProps {
 
 function MapContextMenuItem(props: IMapContextMenuItemProps) {
   return (
-    <ListGroup.Item action onClick={props.onClick}>
+    <ListGroup.Item className="Map-info-list-item" action onClick={props.onClick}>
       {props.children}
     </ListGroup.Item>
   );
@@ -28,6 +28,7 @@ interface IMapContextMenuProps {
   // The window co-ordinates where it was opened (so we can position it.)
   x: number;
   y: number;
+  pageBottom: number;
 
   // What was here in the map (if anything)
   token: IToken | undefined;
@@ -44,6 +45,9 @@ function MapContextMenu(props: IMapContextMenuProps) {
   const hidden = useMemo(() => !props.show, [props.show]);
   const tokenLabel = useMemo(() => props.token === undefined ? "Add token" : "Edit token " + props.token.text, [props.token]);
   const noteLabel = useMemo(() => props.note === undefined ? "Add note" : "Edit note", [props.note]);
+
+  const top = useMemo(() => props.y > props.pageBottom / 2 ? undefined : props.y, [props.y, props.pageBottom]);
+  const bottom = useMemo(() => props.y > props.pageBottom / 2 ? props.pageBottom - props.y : undefined, [props.y, props.pageBottom]);
 
   const handleTokenClick = useCallback(() => {
     props.editToken();
@@ -74,7 +78,8 @@ function MapContextMenu(props: IMapContextMenuProps) {
     <Card bg="dark" text="white" hidden={hidden} style={{
       position: "absolute",
       left: props.x,
-      top: props.y,
+      top: top,
+      bottom: bottom,
       zIndex: 2002
     }}>
       <ListGroup variant="flush">

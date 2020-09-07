@@ -10,17 +10,14 @@ import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import ToggleButton from 'react-bootstrap/ToggleButton';
 import Tooltip from 'react-bootstrap/Tooltip';
 
-import { faDotCircle, faDrawPolygon, faHandPaper, faMousePointer, faPlus, faSquare, IconDefinition, faCog, faSuitcase, faMapMarker, faVectorSquare } from '@fortawesome/free-solid-svg-icons';
+import { faDotCircle, faSquare, IconDefinition, faCog, faSuitcase, faMapMarker } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 export enum EditMode {
   Select = "select",
-  Token = "token",
-  Notes = "notes",
   Area = "area",
   Wall = "wall",
   Room = "room",
-  Pan = "pan",
 }
 
 export enum MapColourVisualisationMode {
@@ -52,8 +49,6 @@ function ModeButton<T>(props: IModeButtonProps<T>) {
 }
 
 interface IMapControlsProps {
-  editMode: EditMode;
-  setEditMode(value: EditMode): void;
   selectedColour: number;
   setSelectedColour(value: number): void;
   resetView(): void;
@@ -66,62 +61,11 @@ interface IMapControlsProps {
 }
 
 function MapControls(props: IMapControlsProps) {
-  const modeButtons = useMemo(() => {
-    var buttons = [
-      <ModeButton key={EditMode.Select} value={EditMode.Select} icon={faMousePointer}
-        mode={props.editMode} setMode={props.setEditMode}
-      >
-        <u>S</u>elect and move tokens
-      </ModeButton>
-    ];
-
-    if (props.canDoAnything) {
-      buttons.push(...[
-        <ModeButton key={EditMode.Token} value={EditMode.Token} icon={faPlus}
-          mode={props.editMode} setMode={props.setEditMode}
-        >
-          Add and edit <u>t</u>okens
-        </ModeButton>,
-        <ModeButton key={EditMode.Notes} value={EditMode.Notes} icon={faMapMarker}
-          mode={props.editMode} setMode={props.setEditMode}
-        >
-          Add and edit map <u>n</u>otes
-        </ModeButton>,
-        <ModeButton key={EditMode.Area} value={EditMode.Area} icon={faSquare}
-          mode={props.editMode} setMode={props.setEditMode}
-        >
-          Paint <u>a</u>reas.  Shift-drag to paint rectangular areas.
-        </ModeButton>,
-        <ModeButton key={EditMode.Wall} value={EditMode.Wall} icon={faDrawPolygon}
-          mode={props.editMode} setMode={props.setEditMode}
-        >
-          Paint <u>w</u>alls.  Shift-drag to paint rectangles of walls.
-        </ModeButton>,
-        <ModeButton key={EditMode.Room} value={EditMode.Room} icon={faVectorSquare}
-          mode={props.editMode} setMode={props.setEditMode}
-        >
-          Paint the union of <u>r</u>ooms.  Shift-drag to paint the difference of rooms.
-        </ModeButton>
-      ]);
-    }
-
-    buttons.push(
-      <ModeButton key={EditMode.Pan} value={EditMode.Pan} icon={faHandPaper}
-        mode={props.editMode} setMode={props.setEditMode}
-      >
-        <u>P</u>an the map view, or Shift-drag to rotate
-      </ModeButton>
-    );
-
-    return buttons;
-  }, [props.canDoAnything, props.editMode, props.setEditMode]);
-
   const hideExtraControls = useMemo(() => !props.canDoAnything, [props.canDoAnything]);
   const isNotOwner = useMemo(() => !props.isOwner, [props.isOwner]);
 
   return (
     <div className="Map-controls">
-      <ButtonGroup className="Map-control" toggle vertical>{modeButtons}</ButtonGroup>
       <ButtonGroup className="Map-control" vertical>
         <OverlayTrigger placement="right" overlay={
           <Tooltip id="reset-tooltip">Reset the map view to <u>o</u>rigin</Tooltip>

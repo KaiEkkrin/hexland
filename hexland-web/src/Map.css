@@ -56,8 +56,12 @@
 }
 
 .Map-info-list-item {
-  background-color: transparent !important;
-  color: #c6c8ca;
+  background-color: rgba(0, 0, 0, 0.1) !important;
+  color: #c6c8ca !important;
+}
+
+.Map-info-list-item:hover {
+  background-color: rgba(0, 0, 0, 0.2) !important;
 }
 
 .Map-nav {

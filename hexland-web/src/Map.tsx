@@ -156,6 +156,7 @@ function Map(props: IMapPageProps) {
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuX, setContextMenuX] = useState(0);
   const [contextMenuY, setContextMenuY] = useState(0);
+  const [contextMenuPageBottom, setContextMenuPageBottom] = useState(0);
   const [contextMenuToken, setContextMenuToken] = useState<IToken | undefined>(undefined);
   const [contextMenuNote, setContextMenuNote] = useState<IAnnotation | undefined>(undefined);
 
@@ -284,17 +285,23 @@ function Map(props: IMapPageProps) {
   }, [contextMenuX, contextMenuY, editToken, getClientPosition, stateMachine]);
 
   const handleContextMenu = useCallback((e: MouseEvent) => {
+    var bounds = drawingRef.current?.getBoundingClientRect();
+    if (bounds === undefined) {
+      return;
+    }
+
     e.preventDefault();
     setShowContextMenu(true);
     setContextMenuX(e.clientX);
     setContextMenuY(e.clientY);
+    setContextMenuPageBottom(bounds.bottom);
 
     var cp = getClientPosition(e.clientX, e.clientY);
     if (cp !== undefined) {
       setContextMenuToken(stateMachine?.getToken(cp));
       setContextMenuNote(stateMachine?.getNote(cp));
     }
-  }, [getClientPosition, setShowContextMenu, setContextMenuX, setContextMenuY, setContextMenuToken, setContextMenuNote, stateMachine]);
+  }, [getClientPosition, setShowContextMenu, setContextMenuX, setContextMenuY, setContextMenuPageBottom, setContextMenuToken, setContextMenuNote, stateMachine]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (stateMachine === undefined || anEditorIsOpen) {
@@ -335,51 +342,45 @@ function Map(props: IMapPageProps) {
       stateMachine.clearHighlights(selectedColour);
       stateMachine.clearSelection();
       setEditMode(EditMode.Select);
+      setShowContextMenu(false);
     } else if (e.key === 'a' || e.key === 'A') {
       if (canDoAnything) {
         setEditMode(EditMode.Area);
       }
-    } else if (e.key === 'n' || e.key === 'N') {
-      if (canDoAnything) {
-        setEditMode(EditMode.Notes);
-      }
     } else if (e.key === 'o' || e.key === 'O') {
       stateMachine.resetView();
-    } else if (e.key === 'p' || e.key === 'P') {
-      setEditMode(EditMode.Pan);
     } else if (e.key === 'r' || e.key === 'R') {
       if (canDoAnything) {
         setEditMode(EditMode.Room);
       }
     } else if (e.key === 's' || e.key === 'S') {
       setEditMode(EditMode.Select);
-    } else if (e.key === 't' || e.key === 'T') {
-      if (canDoAnything) {
-        setEditMode(EditMode.Token);
-      }
     } else if (e.key === 'w' || e.key === 'W') {
       if (canDoAnything) {
         setEditMode(EditMode.Wall);
       }
     }
-  }, [stateMachine, addChanges, anEditorIsOpen, canDoAnything, selectedColour, setEditMode]);
+  }, [stateMachine, addChanges, anEditorIsOpen, canDoAnything, selectedColour, setEditMode, setShowContextMenu]);
 
-  function handleMouseDown(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     setShowContextMenu(false);
     var cp = getClientPosition(e.clientX, e.clientY);
     if (cp === undefined || anEditorIsOpen) {
       return;
     }
 
-    setIsDraggingView(editMode === EditMode.Pan);
-    switch (editMode) {
-      case EditMode.Select: stateMachine?.selectionDragStart(cp, e.shiftKey); break;
-      case EditMode.Area: stateMachine?.faceDragStart(cp, e.shiftKey, selectedColour); break;
-      case EditMode.Wall: stateMachine?.wallDragStart(cp, e.shiftKey, selectedColour); break;
-      case EditMode.Room: stateMachine?.roomDragStart(cp, e.shiftKey, selectedColour); break;
-      case EditMode.Pan: stateMachine?.panStart(cp, e.shiftKey); break;
+    if (e.ctrlKey) {
+      setIsDraggingView(true);
+      stateMachine?.panStart(cp, e.shiftKey);
+    } else {
+      switch (editMode) {
+        case EditMode.Select: stateMachine?.selectionDragStart(cp, e.shiftKey); break;
+        case EditMode.Area: stateMachine?.faceDragStart(cp, e.shiftKey, selectedColour); break;
+        case EditMode.Wall: stateMachine?.wallDragStart(cp, e.shiftKey, selectedColour); break;
+        case EditMode.Room: stateMachine?.roomDragStart(cp, e.shiftKey, selectedColour); break;
+      }
     }
-  }
+  }, [anEditorIsOpen, editMode, getClientPosition, selectedColour, setIsDraggingView, setShowContextMenu, stateMachine]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     var cp = getClientPosition(e.clientX, e.clientY);
@@ -387,57 +388,48 @@ function Map(props: IMapPageProps) {
       return undefined;
     }
 
-    switch (editMode) {
-      case EditMode.Select: stateMachine?.moveSelectionTo(cp); break;
-      case EditMode.Area: stateMachine?.moveFaceHighlightTo(cp, selectedColour); break;
-      case EditMode.Wall: stateMachine?.moveWallHighlightTo(cp, e.shiftKey, selectedColour); break;
-      case EditMode.Room: stateMachine?.moveRoomHighlightTo(cp, e.shiftKey, selectedColour); break;
-      case EditMode.Pan: stateMachine?.panTo(cp); break;
+    if (isDraggingView) {
+      stateMachine?.panTo(cp);
+    } else {
+      switch (editMode) {
+        case EditMode.Select: stateMachine?.moveSelectionTo(cp); break;
+        case EditMode.Area: stateMachine?.moveFaceHighlightTo(cp, selectedColour); break;
+        case EditMode.Wall: stateMachine?.moveWallHighlightTo(cp, e.shiftKey, selectedColour); break;
+        case EditMode.Room: stateMachine?.moveRoomHighlightTo(cp, e.shiftKey, selectedColour); break;
+      }
     }
 
     return cp;
-  }, [anEditorIsOpen, editMode, getClientPosition, selectedColour, stateMachine]);
+  }, [anEditorIsOpen, editMode, getClientPosition, isDraggingView, selectedColour, stateMachine]);
 
   const handleMouseUp = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    setIsDraggingView(false);
     var cp = handleMouseMove(e);
     if (cp === undefined || anEditorIsOpen) {
       return;
     }
 
     var changes: IChange[] | undefined;
-    switch (editMode) {
-      case EditMode.Select:
-        changes = stateMachine?.selectionDragEnd(cp);
-        break;
+    if (isDraggingView) {
+      stateMachine?.panEnd();
+      setIsDraggingView(false);
+    } else {
+      switch (editMode) {
+        case EditMode.Select:
+          changes = stateMachine?.selectionDragEnd(cp);
+          break;
 
-      case EditMode.Token:
-        // Show the token dialog now.  We'll create or alter the token upon close of
-        // the dialog.
-        var token = stateMachine?.getToken(cp);
-        editToken(cp, token);
-        break;
+        case EditMode.Area:
+          changes = stateMachine?.faceDragEnd(cp, selectedColour);
+          break;
 
-      case EditMode.Notes:
-        // Show the notes dialog now.  Again, we'll create or alter the note upon
-        // close of the dialog.
-        var note = stateMachine?.getNote(cp);
-        editNote(cp, note);
-        break;
+        case EditMode.Wall:
+          changes = stateMachine?.wallDragEnd(cp, selectedColour);
+          break;
 
-      case EditMode.Area:
-        changes = stateMachine?.faceDragEnd(cp, selectedColour);
-        break;
-
-      case EditMode.Wall:
-        changes = stateMachine?.wallDragEnd(cp, selectedColour);
-        break;
-
-      case EditMode.Room:
-        changes = stateMachine?.roomDragEnd(cp, e.shiftKey, selectedColour);
-        break;
-
-      case EditMode.Pan: stateMachine?.panEnd(); break;
+        case EditMode.Room:
+          changes = stateMachine?.roomDragEnd(cp, e.shiftKey, selectedColour);
+          break;
+      }
     }
 
     if (changes !== undefined && changes.length > 0) {
@@ -445,7 +437,7 @@ function Map(props: IMapPageProps) {
       setEditMode(EditMode.Select);
     }
     addChanges(changes);
-  }, [addChanges, anEditorIsOpen, editMode, editNote, editToken, handleMouseMove, selectedColour, setEditMode, setIsDraggingView, stateMachine]);
+  }, [addChanges, anEditorIsOpen, editMode, handleMouseMove, isDraggingView, selectedColour, setEditMode, setIsDraggingView, stateMachine]);
 
   const handleWheel = useCallback((e: WheelEvent) => {
     if (e.deltaY !== 0 && !anEditorIsOpen) {
@@ -453,24 +445,32 @@ function Map(props: IMapPageProps) {
     }
   }, [stateMachine, anEditorIsOpen]);
 
+  const handleWindowResize = useCallback((ev: UIEvent) => { stateMachine?.resize(); }, [stateMachine]);
+
   // We need an event listener for the window resize so that we can update the drawing,
   // and for the keyboard and wheel events so that we can implement UI functionality with them.
-  // We also take over the context menu.
   useEffect(() => {
-    const handleWindowResize = (ev: UIEvent) => { stateMachine?.resize(); };
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('resize', handleWindowResize);
     window.addEventListener('wheel', handleWheel);
-    document.addEventListener('contextmenu', handleContextMenu);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('resize', handleWindowResize);
       window.removeEventListener('wheel', handleWheel);
-      document.removeEventListener('contextmenu', handleContextMenu);
     };
-  }, [stateMachine, handleContextMenu, handleKeyDown, handleKeyUp, handleWheel]);
+  }, [handleKeyDown, handleKeyUp, handleWheel, handleWindowResize]);
+
+  // We take over the context menu for map owners only to provide interaction.
+  useEffect(() => {
+    if (canDoAnything) {
+      document.addEventListener('contextmenu', handleContextMenu);
+      return () => {
+        document.removeEventListener('contextmenu', handleContextMenu);
+      };
+    }
+  }, [canDoAnything, handleContextMenu]);
 
   const [showAnnotationFlags, setShowAnnotationFlags] = useState(ShowAnnotationFlags.All);
   const [customAnnotationFlags, setCustomAnnotationFlags] = useState(false);
@@ -489,8 +489,6 @@ function Map(props: IMapPageProps) {
       </div>
       <div className="Map-overlay">
         <MapControls
-          editMode={editMode}
-          setEditMode={setEditMode}
           selectedColour={selectedColour}
           setSelectedColour={setSelectedColour}
           resetView={() => stateMachine?.resetView()}
@@ -524,6 +522,7 @@ function Map(props: IMapPageProps) {
         setShow={setShowContextMenu}
         x={contextMenuX}
         y={contextMenuY}
+        pageBottom={contextMenuPageBottom}
         token={contextMenuToken}
         note={contextMenuNote}
         editToken={editTokenFromMenu}
