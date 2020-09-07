@@ -260,14 +260,13 @@ export class DrawingOrtho implements IDrawing {
 
   get outlinedRectangle() { return this._outlinedRectangle; }
 
-  animate(fn: () => void) {
+  animate(preAnimate?: (() => void) | undefined, postAnimate?: (() => void) | undefined) {
     if (this._disposed) {
       return;
     }
 
-    requestAnimationFrame(() => this.animate(fn));
-
-    fn();
+    requestAnimationFrame(() => this.animate(preAnimate, postAnimate));
+    preAnimate?.();
 
     // Check that we have enough grid.
     // If we don't, we'll fill it in on the next frame:
@@ -305,6 +304,8 @@ export class DrawingOrtho implements IDrawing {
         this._grid.postLoSRender();
       }
     }
+
+    postAnimate?.();
   }
 
   checkLoS(cp: THREE.Vector3) {

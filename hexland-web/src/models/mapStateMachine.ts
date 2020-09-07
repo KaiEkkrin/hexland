@@ -6,6 +6,7 @@ import { IGridGeometry } from './gridGeometry';
 import { HexGridGeometry } from './hexGridGeometry';
 import { IDrawing, IDragRectangle } from './interfaces';
 import { MapChangeTracker } from './mapChangeTracker';
+import { RedrawFlag } from './redrawFlag';
 import { SquareGridGeometry } from './squareGridGeometry';
 import { WallHighlighter, WallRectangleHighlighter, RoomHighlighter } from './wallHighlighter';
 
@@ -75,6 +76,7 @@ export class MapStateMachine {
   private readonly _gridGeometry: IGridGeometry;
   private readonly _mapColouring: MapColouring;
   private readonly _notes: FeatureDictionary<IGridCoord, IAnnotation>;
+  private readonly _notesNeedUpdate = new RedrawFlag();
 
   private readonly _changeTracker: MapChangeTracker;
 
@@ -185,7 +187,7 @@ export class MapStateMachine {
             this.cleanUpSelection();
           }
 
-          this.buildLoS(state); // updates annotations
+          this.buildLoS(state);
           this._drawing.handleChangesApplied(this._mapColouring);
           if (haveTokensChanged) {
             this.updateTokens(state);
@@ -196,7 +198,10 @@ export class MapStateMachine {
     );
 
     this.resize();
-    this._drawing.animate(() => this.onAnimate());
+
+    this.onPostAnimate = this.onPostAnimate.bind(this);
+    this.onPreAnimate = this.onPreAnimate.bind(this);
+    this._drawing.animate(this.onPreAnimate, this.onPostAnimate);
   }
 
   private get seeEverything() { return this._uid === this._map.owner || this._map.ffa === true; }
@@ -204,10 +209,9 @@ export class MapStateMachine {
   private buildLoS(state: IMapState) {
     this._drawing.setLoSPositions(this.getLoSPositions(), this.seeEverything);
 
-    // Annotations depend on the LoS.
-    // TODO This mess of dependencies is getting hard to manage!  React Hooks
-    // could do this for me...
-    this.updateAnnotations(state);
+    // Building the LoS implies that we will need to update annotations
+    // (in the post-animate callback)
+    this._notesNeedUpdate.setNeedsRedraw();
   }
 
   private canDropSelectionAt(position: IGridCoord) {
@@ -309,7 +313,17 @@ export class MapStateMachine {
     }
   }
 
-  private onAnimate() {
+  private onPostAnimate() {
+    // We update annotations after the render because they are dependent on the LoS
+    if (this._notesNeedUpdate.needsRedraw()) {
+      this.withStateChange(getState => {
+        this.updateAnnotations(getState());
+        return true;
+      });
+    }
+  }
+
+  private onPreAnimate() {
     var now = window.performance.now();
 
     // Do the drag-pan if applicable
@@ -747,12 +761,8 @@ export class MapStateMachine {
   resize() {
     this._drawing.resize(this._cameraTranslation, this._cameraRotation, this._cameraScaling);
 
-    // Upon resize, the positions of annotations may have changed and
-    // we should update the UI
-    this.withStateChange(getState => {
-      this.updateAnnotations(getState());
-      return true;
-    });
+    // Some annotations that were off-screen may now be visible, or vice versa
+    this._notesNeedUpdate.setNeedsRedraw();
   }
 
   roomDragEnd(cp: THREE.Vector3, shiftKey: boolean, colour: number): IChange[] {

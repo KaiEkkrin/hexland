@@ -25,8 +25,9 @@ export interface IDrawing {
   outlinedRectangle: IOutlinedRectangle;
 
   // Draws if need be, and requests the next animation frame.
-  // The callback is called at the start of every animate() call.
-  animate(fn: () => void): void;
+  // The callbacks are called at the start and end of every animate() call
+  // respectively.
+  animate(onPreAnimate?: (() => void) | undefined, onPostAnimate?: (() => void) | undefined): void;
 
   // Checks whether the given viewport position (-1..1) is within the current LoS.
   checkLoS(cp: THREE.Vector3): boolean;
