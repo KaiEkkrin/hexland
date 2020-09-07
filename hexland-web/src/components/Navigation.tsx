@@ -3,6 +3,7 @@ import React, { useContext, useMemo, useCallback, useState } from 'react';
 import { FirebaseContext } from './FirebaseContextProvider';
 import { ProfileContext } from './ProfileContextProvider';
 import { UserContext } from './UserContextProvider';
+import { updateProfile } from '../services/extensions';
 
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
@@ -54,11 +55,9 @@ function Navigation(props: INavigationProps) {
     }
 
     // I don't need to ensureProfile() here: it was done by the login component
-    const profileRef = userContext.dataService.getProfileRef();
-    userContext.dataService.update(profileRef, {
-      name: editDisplayName
-    }).then(() => console.log("successfully updated profile"))
-      .catch(e => console.log("error updating profile:", e));
+    updateProfile(userContext.dataService, editDisplayName)
+      .then(() => console.log("successfully updated profile"))
+      .catch(e => console.error("error updating profile:", e));
   }, [editDisplayName, handleModalClose, userContext.dataService]);
 
   const saveProfileDisabled = useMemo(() => editDisplayName.length === 0, [editDisplayName]);

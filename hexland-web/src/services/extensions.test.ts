@@ -1,5 +1,5 @@
 import { DataService } from './dataService';
-import { ensureProfile, editAdventure, editMap, deleteMap, deleteAdventure, inviteToAdventure, joinAdventure, registerAdventureAsRecent, registerMapAsRecent, leaveAdventure } from './extensions';
+import { ensureProfile, editAdventure, editMap, deleteMap, deleteAdventure, inviteToAdventure, joinAdventure, registerAdventureAsRecent, registerMapAsRecent, leaveAdventure, updateProfile } from './extensions';
 import { IUser } from './interfaces';
 import { MapType } from '../data/map';
 
@@ -11,7 +11,7 @@ import { clearFirestoreData, initializeTestApp } from '@firebase/testing';
 import { v4 as uuidv4 } from 'uuid';
 import fluent from 'fluent-iterable';
 
-describe('test extensions as owner', () => {
+describe('test extensions', () => {
   const projectIds: string[] = [];
   const emul: { [uid: string]: firebase.app.App } = {};
 
@@ -318,5 +318,92 @@ describe('test extensions as owner', () => {
       fail("Fetched map in un-joined adventure");
     }
     catch {}
+  });
+
+  test('change my display name', async () => {
+    // As one user, create our profile and an adventure
+    const user1 = {
+      displayName: "User 1",
+      email: 'user1@example.com',
+      uid: 'user1'
+    };
+    const user1Db = initializeEmul(user1).firestore();
+    const user1DataService = new DataService(user1Db, firebase.firestore.FieldValue.serverTimestamp, 'user1');
+    var user1Profile = await ensureProfile(user1DataService, user1);
+
+    // There should be no adventures in the profile now
+    expect(user1Profile?.adventures).toHaveLength(0);
+
+    // Add a new adventure and mnake it one of our latest
+    const a1Id = uuidv4();
+    const a1 = {
+      name: 'Adventure One',
+      description: 'First adventure',
+      owner: 'user1',
+      ownerName: 'User 1',
+    };
+    await editAdventure(user1DataService, true, { id: a1Id, ...a1 }, { maps: [], ...a1 });
+    await registerAdventureAsRecent(user1DataService, a1Id, { maps: [], ...a1 });
+
+    // As another user, also create an adventure
+    const user2 = {
+      displayName: "User 2",
+      email: 'user2@example.com',
+      uid: 'user2'
+    };
+    const user2Db = initializeEmul(user2).firestore();
+    const user2DataService = new DataService(user2Db, firebase.firestore.FieldValue.serverTimestamp, 'user2');
+    var user2Profile = await ensureProfile(user2DataService, user2);
+
+    // There should be no adventures in the profile now
+    expect(user2Profile?.adventures).toHaveLength(0);
+
+    // Add a new adventure
+    const a2Id = uuidv4();
+    const a2 = {
+      name: 'Adventure Two',
+      description: 'Second adventure',
+      owner: 'user2',
+      ownerName: 'User 2',
+    };
+    await editAdventure(user2DataService, true, { id: a2Id, ...a2 }, { maps: [], ...a2 });
+
+    // ...with an invite...
+    const invite = await inviteToAdventure(
+      user2DataService, () => 1, { id: a2Id, ...a2 }
+    );
+    expect(invite).not.toBeUndefined();
+
+    // As user 1, join user 2's adventure and add that as one of our recent adventures too
+    await joinAdventure(user1DataService, user1Profile, a2Id);
+    await registerAdventureAsRecent(user1DataService, a2Id, { maps: [], ...a2 });
+
+    // Now, change our display name
+    await updateProfile(user1DataService, "New Name");
+
+    // We should be renamed in our adventure:
+    const a1Record = await user1DataService.get(user1DataService.getAdventureRef(a1Id));
+    expect(a1Record?.ownerName).toBe("New Name");
+
+    // in our player record in user 2's adventure:
+    const p2Record = await user1DataService.get(user1DataService.getPlayerRef(a2Id, 'user1'));
+    expect(p2Record?.name).toBe("Adventure Two"); // this is the adventure name
+    expect(p2Record?.ownerName).toBe("User 2"); // this is the owner's name
+    expect(p2Record?.playerName).toBe("New Name"); // this is our name
+
+    // ...and in the adventure summary in our profile:
+    user1Profile = await user1DataService.get(user1DataService.getProfileRef());
+    expect(user1Profile?.name).toBe("New Name");
+    expect(user1Profile?.adventures).toHaveLength(2);
+
+    const a1Summary = user1Profile?.adventures?.find(a => a.id === a1Id);
+    expect(a1Summary).not.toBeUndefined();
+    expect(a1Summary?.name).toBe("Adventure One");
+    expect(a1Summary?.ownerName).toBe("New Name");
+
+    const a2Summary = user1Profile?.adventures?.find(a => a.id === a2Id);
+    expect(a2Summary).not.toBeUndefined();
+    expect(a2Summary?.name).toBe("Adventure Two");
+    expect(a2Summary?.ownerName).toBe("User 2");
   });
 });

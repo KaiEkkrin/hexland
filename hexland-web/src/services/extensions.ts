@@ -43,6 +43,68 @@ export async function ensureProfile(dataService: IDataService | undefined, user:
   });
 }
 
+async function updateProfileTransaction(
+  view: IDataView,
+  profileRef: IDataReference<IProfile>,
+  myAdventures: IDataAndReference<IAdventure>[],
+  myPlayerRecords: IDataAndReference<IPlayer>[],
+  name: string
+) {
+  const profile = await view.get(profileRef);
+  if (profile === undefined) {
+    return;
+  }
+
+  if (profile.name === name) {
+    // TODO Still need to commit any other changes, but we can skip the big edits
+    return;
+  }
+
+  // Update my profile so that it has the new name (of course!) and so that my
+  // adventures in the profile are changed
+  await view.update(profileRef, {
+    name: name,
+    adventures: profile.adventures?.map(a => {
+      if (a.owner !== profileRef.id) {
+        return a;
+      }
+
+      return { ...a, ownerName: name };
+    }),
+  });
+
+  // Update all my adventures so they have the new owner name
+  await Promise.all(myAdventures.map(async a => {
+    await view.update(a, { ownerName: name });
+  }));
+
+  // Update all my player records so they have the new player name
+  await Promise.all(myPlayerRecords.map(async p => {
+    await view.update(p, { playerName: name });
+  }));
+}
+
+export async function updateProfile(dataService: IDataService | undefined, name: string): Promise<void> {
+  if (dataService === undefined) {
+    return;
+  }
+
+  // When the user's display name changes we should reflect that
+  // change across their adventures, maps, player records, and of course their own profile.
+  // (Of course it's possible this could race with the same player creating a new record.
+  // I think that's not really something to worry about, though :> )
+  // I'm deliberately not going to go around editing any outstanding invites.  It would
+  // be annoying (they're supposed to be transient things anyway and should expire) and
+  // it would require an extra security rule to allow arbitrarily listing them, which
+  // defeats the point of being invited requiring the identifier.
+  const profileRef = dataService.getProfileRef();
+  const myAdventures = await dataService.getMyAdventures();
+  const myPlayerRecords = await dataService.getMyPlayerRecords();
+  await dataService.runTransaction(view => updateProfileTransaction(
+    view, profileRef, myAdventures, myPlayerRecords, name
+  ));
+}
+
 function updateProfileAdventures(adventures: IAdventureSummary[] | undefined, changed: IAdventureSummary): IAdventureSummary[] | undefined {
   var existingIndex = adventures?.findIndex(a => a.id === changed.id) ?? -1;
   if (adventures !== undefined && existingIndex >= 0) {

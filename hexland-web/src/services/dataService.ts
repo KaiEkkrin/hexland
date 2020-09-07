@@ -148,6 +148,20 @@ export class DataService implements IDataService {
     return s.empty ? undefined : s.docs.map(d => new DataAndReference(d.ref, d.data(), Convert.changesConverter));
   }
 
+  async getMyAdventures(): Promise<IDataAndReference<IAdventure>[]> {
+    const a = await this._db.collection(adventures).where("owner", "==", this._uid).get();
+    return a.docs.map(d => new DataAndReference(
+      d.ref, Convert.adventureConverter.convert(d.data()), Convert.adventureConverter
+    ));
+  }
+
+  async getMyPlayerRecords(): Promise<IDataAndReference<IPlayer>[]> {
+    const p = await this._db.collectionGroup(players).where("playerId", "==", this._uid).get();
+    return p.docs.map(d => new DataAndReference(
+      d.ref, Convert.playerConverter.convert(d.data()), Convert.playerConverter
+    ));
+  }
+
   getPlayerRef(adventureId: string, uid: string): IDataReference<IPlayer> {
     var d = this._db.collection(adventures).doc(adventureId).collection(players).doc(uid);
     return new DataReference<IPlayer>(d, Convert.playerConverter);
@@ -198,7 +212,7 @@ export class DataService implements IDataService {
         s.forEach((d) => {
           var data = d.data();
           if (data !== null) {
-            var adventure = data as IAdventure;
+            var adventure = Convert.adventureConverter.convert(data);
             adventures.push({ id: d.id, record: adventure });
           }
         });
@@ -222,7 +236,7 @@ export class DataService implements IDataService {
           // We're only interested in newly added documents -- these are new
           // changes to the map
           if (d.doc.exists && d.oldIndex === -1) {
-            var chs = d.doc.data() as IChanges;
+            var chs = Convert.changesConverter.convert(d.doc.data());
             onNext(chs);
           }
         });
@@ -236,7 +250,7 @@ export class DataService implements IDataService {
     onCompletion?: (() => void) | undefined
   ) {
     return this._db.collection(adventures).doc(adventureId).collection(players).onSnapshot(s => {
-      onNext(s.docs.map(d => d.data() as IPlayer));
+      onNext(s.docs.map(d => Convert.playerConverter.convert(d.data())));
     }, onError, onCompletion);
   }
 
@@ -246,7 +260,7 @@ export class DataService implements IDataService {
     onCompletion?: (() => void) | undefined
   ) {
     return this._db.collectionGroup(players).where("playerId", "==", this._uid).onSnapshot(s => {
-      onNext(s.docs.map(d => d.data() as IPlayer));
+      onNext(s.docs.map(d => Convert.playerConverter.convert(d.data())));
     }, onError, onCompletion);
   }
 }

@@ -55,6 +55,10 @@ export interface IDataService extends IDataView {
   getMapBaseChangeRef(adventureId: string, id: string): IDataReference<IChanges>;
   getMapChangesRefs(adventureId: string, id: string): Promise<IDataAndReference<IChanges>[] | undefined>;
 
+  // Gets all my adventures, invites, and player records.
+  getMyAdventures(): Promise<IDataAndReference<IAdventure>[]>;
+  getMyPlayerRecords(): Promise<IDataAndReference<IPlayer>[]>;
+
   // Gets a reference to a player record for an adventure.
   getPlayerRef(adventureId: string, uid: string): IDataReference<IPlayer>;
 
