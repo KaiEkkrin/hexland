@@ -472,7 +472,6 @@ async function registerAdventureAsRecentTransaction(
     ownerName: a.ownerName
   });
   if (updated !== undefined) {
-    console.log("updating adventure in profile");
     view.update(profileRef, { adventures: updated });
   }
 }

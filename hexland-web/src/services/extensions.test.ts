@@ -386,7 +386,7 @@ describe('test extensions', () => {
     expect(a1Record?.ownerName).toBe("New Name");
 
     // in our player record in user 2's adventure:
-    const p2Record = await user1DataService.get(user1DataService.getPlayerRef(a2Id, 'user1'));
+    var p2Record = await user1DataService.get(user1DataService.getPlayerRef(a2Id, 'user1'));
     expect(p2Record?.name).toBe("Adventure Two"); // this is the adventure name
     expect(p2Record?.ownerName).toBe("User 2"); // this is the owner's name
     expect(p2Record?.playerName).toBe("New Name"); // this is our name
@@ -396,14 +396,46 @@ describe('test extensions', () => {
     expect(user1Profile?.name).toBe("New Name");
     expect(user1Profile?.adventures).toHaveLength(2);
 
-    const a1Summary = user1Profile?.adventures?.find(a => a.id === a1Id);
+    var a1Summary = user1Profile?.adventures?.find(a => a.id === a1Id);
     expect(a1Summary).not.toBeUndefined();
     expect(a1Summary?.name).toBe("Adventure One");
     expect(a1Summary?.ownerName).toBe("New Name");
 
-    const a2Summary = user1Profile?.adventures?.find(a => a.id === a2Id);
+    var a2Summary = user1Profile?.adventures?.find(a => a.id === a2Id);
     expect(a2Summary).not.toBeUndefined();
     expect(a2Summary?.name).toBe("Adventure Two");
+    expect(a2Summary?.ownerName).toBe("User 2");
+
+    // If user 2 renames their adventure:
+    await editAdventure(user2DataService, false,
+      { id: a2Id, ...a2, name: "Renamed Adventure" },
+      { ...a2, maps: [], name: "Renamed Adventure"}
+    );
+
+    // Then, user 1 should see it has changed in their player record:
+    var p2Record = await user1DataService.get(user1DataService.getPlayerRef(a2Id, 'user1'));
+    expect(p2Record?.name).toBe("Renamed Adventure"); // this is the adventure name
+    expect(p2Record?.ownerName).toBe("User 2"); // this is the owner's name
+    expect(p2Record?.playerName).toBe("New Name"); // this is our name
+
+    // and it will rename itself in their profile if they visit it
+    var a2Record = await user1DataService.get(user1DataService.getAdventureRef(a2Id));
+    expect(a2Record?.name).toBe("Renamed Adventure");
+    if (a2Record === undefined) return; // should have failed already
+    await registerAdventureAsRecent(user1DataService, a2Id, { ...a2Record });
+
+    user1Profile = await user1DataService.get(user1DataService.getProfileRef());
+    expect(user1Profile?.name).toBe("New Name");
+    expect(user1Profile?.adventures).toHaveLength(2);
+
+    a1Summary = user1Profile?.adventures?.find(a => a.id === a1Id);
+    expect(a1Summary).not.toBeUndefined();
+    expect(a1Summary?.name).toBe("Adventure One");
+    expect(a1Summary?.ownerName).toBe("New Name");
+
+    a2Summary = user1Profile?.adventures?.find(a => a.id === a2Id);
+    expect(a2Summary).not.toBeUndefined();
+    expect(a2Summary?.name).toBe("Renamed Adventure");
     expect(a2Summary?.ownerName).toBe("User 2");
   });
 });
