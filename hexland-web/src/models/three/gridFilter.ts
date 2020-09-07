@@ -1,3 +1,4 @@
+import { ShaderFilter } from './shaderFilter';
 import * as THREE from 'three';
 
 const gridShader = {
@@ -40,56 +41,26 @@ const gridShader = {
 // (primarily used to identify what client pixel corresponds to what face.)
 // This lets me draw a grid without relying on lines, which can't be instanced in
 // Three.js unless they are a wireframe (blegh!)
-export class GridFilter {
-  private readonly _bufferGeometry: THREE.BufferGeometry;
-  private readonly _material: THREE.ShaderMaterial;
-  
-  private readonly _mesh: THREE.Mesh;
-
-  private _isDisposed = false;
-
-  constructor(scene: THREE.Scene, toSample: THREE.Texture, z: number) {
-    // Our object is, very simply, a unit square that we will
-    // stretch to fill the canvas (using the uniforms)
-    this._bufferGeometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(-1, -1, z),
-      new THREE.Vector3(1, -1, z),
-      new THREE.Vector3(-1, 1, z),
-      new THREE.Vector3(1, 1, z),
-      new THREE.Vector3(-1, 1, z),
-      new THREE.Vector3(1, -1, z)
-    ]);
-
-    var uniforms = THREE.UniformsUtils.clone(gridShader.uniforms);
-    uniforms["gapColour"].value = new THREE.Vector4(0.0, 0.0, 0.0, 0.0);
-    uniforms["lineColour"].value = new THREE.Vector4(0.4, 0.4, 0.4, 1.0);
-    uniforms["step"].value = new THREE.Vector2();
-    uniforms["tex"].value = toSample;
-    this._material = new THREE.ShaderMaterial({
+export class GridFilter extends ShaderFilter {
+  constructor(toSample: THREE.Texture, z: number) {
+    super(z, {
       blending: THREE.NormalBlending,
       side: THREE.DoubleSide,
       transparent: true,
-      uniforms: uniforms,
+      uniforms: gridShader.uniforms,
       vertexShader: gridShader.vertexShader,
       fragmentShader: gridShader.fragmentShader,
     });
 
-    this._mesh = new THREE.Mesh(this._bufferGeometry, this._material);
-    scene.add(this._mesh);
+    this.uniforms["gapColour"].value = new THREE.Vector4(0.0, 0.0, 0.0, 0.0);
+    this.uniforms["lineColour"].value = new THREE.Vector4(0.4, 0.4, 0.4, 1.0);
+    this.uniforms["step"].value = new THREE.Vector2();
+    this.uniforms["tex"].value = toSample;
   }
 
   resize(width: number, height: number) {
-    this._material.uniforms["step"].value = new THREE.Vector2(
+    this.uniforms["step"].value = new THREE.Vector2(
       1.0 / width, 1.0 / height
     );
-  }
-
-  dispose() {
-    if (this._isDisposed === false) {
-      this._bufferGeometry.dispose();
-      this._material.dispose();
-
-      this._isDisposed = true;
-    }
   }
 }

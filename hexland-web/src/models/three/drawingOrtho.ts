@@ -115,7 +115,7 @@ export class DrawingOrtho implements IDrawing {
 
     // These scenes need to be drawn in sequence to get the blending right and allow us
     // to draw the map itself, then overlay fixed features (the grid), then overlay LoS
-    // to allow it to hide the grid, and finally overlay the UI overlay (drag rectangle).
+    // to allow it to hide the grid, and overlay the UI overlay (drag rectangle).
     this._mapScene = new THREE.Scene();
     this._fixedFilterScene = new THREE.Scene();
     this._filterScene = new THREE.Scene();
@@ -123,7 +123,7 @@ export class DrawingOrtho implements IDrawing {
 
     this._renderer = new THREE.WebGLRenderer();
     this._canvasClearColour = new THREE.Color(0.1, 0.1, 0.1);
-    this._renderer.setClearColor(this._canvasClearColour); // a dark grey background will show up LoS
+    this._renderer.autoClear = false;
     mount.appendChild(this._renderer.domElement);
     this._mount = mount;
 
@@ -138,7 +138,8 @@ export class DrawingOrtho implements IDrawing {
       renderHeight
     );
 
-    this._gridFilter = new GridFilter(this._fixedFilterScene, this._grid.faceCoordRenderTarget.texture, gridZ);
+    this._gridFilter = new GridFilter(this._grid.faceCoordRenderTarget.texture, gridZ);
+    this._gridFilter.addToScene(this._fixedFilterScene);
 
     this._textMaterial = new THREE.MeshBasicMaterial({ color: 0, side: THREE.DoubleSide });
 
@@ -278,15 +279,11 @@ export class DrawingOrtho implements IDrawing {
     // true)
     var needsRedraw = this._needsRedraw.needsRedraw();
     var gridNeedsRedraw = this._gridNeedsRedraw.needsRedraw();
-
     if (gridNeedsRedraw) {
       this._grid.render(this._renderer, this._camera);
     }
 
     if (gridNeedsRedraw || needsRedraw) {
-      this._renderer.setRenderTarget(null);
-      this._renderer.setClearColor(this._canvasClearColour);
-      this._renderer.render(this._mapScene, this._camera);
       if (this._showLoS === true) {
         this._los.render(this._camera, this._fixedCamera, this._renderer);
         this._grid.preLoSRender(this._losParameters);
@@ -294,11 +291,11 @@ export class DrawingOrtho implements IDrawing {
 
       this._renderer.setRenderTarget(null);
       this._renderer.setClearColor(this._canvasClearColour);
-      this._renderer.autoClear = false;
+      this._renderer.clear();
+      this._renderer.render(this._mapScene, this._camera);
       this._renderer.render(this._fixedFilterScene, this._fixedCamera);
       this._renderer.render(this._filterScene, this._camera);
       this._renderer.render(this._overlayScene, this._overlayCamera);
-      this._renderer.autoClear = true;
 
       if (this._showLoS === true) {
         this._grid.postLoSRender();

@@ -221,13 +221,6 @@ export class LoS extends Drawn {
     });
   }
 
-  private withAutoClearSetTo(renderer: THREE.WebGLRenderer, autoClear: boolean, fn: (r: THREE.WebGLRenderer) => void) {
-    const previousValue = renderer.autoClear;
-    renderer.autoClear = autoClear;
-    fn(renderer);
-    renderer.autoClear = previousValue;
-  }
-
   // Accesses the LoS features themselves -- these should be sync'd with the walls,
   // but with only colour 0.
   get features() {
@@ -279,6 +272,7 @@ export class LoS extends Drawn {
 
       renderer.setRenderTarget(this._featureRenderTarget);
       renderer.setClearColor(this._featureClearColour);
+      renderer.clear();
       renderer.render(this._featureScene, camera);
 
       // Compose these into the overall scene.
@@ -287,11 +281,7 @@ export class LoS extends Drawn {
       // I could squash these steps together if I write a shader that samples 4 or so
       // textures simultaneously and combines them into an output.  However, I expect
       // that scenario to be rare, so I won't for now.
-      renderer.setClearColor(this._composeClearColour);
-      this.withAutoClearSetTo(renderer, false, r => {
-        this.composeOne(fixedCamera, r, zOffset);
-      });
-
+      this.composeOne(fixedCamera, renderer, zOffset);
       zOffset += 0.01;
     });
 

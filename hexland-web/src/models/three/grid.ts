@@ -620,9 +620,11 @@ export class Grid extends Drawn {
   render(renderer: THREE.WebGLRenderer, camera: THREE.Camera) {
     renderer.setRenderTarget(this._faceCoordRenderTarget);
     renderer.setClearColor(this._textureClearColour);
+    renderer.clear();
     renderer.render(this._faceCoordScene, camera);
 
     renderer.setRenderTarget(this._vertexCoordRenderTarget);
+    renderer.clear();
     renderer.render(this._vertexCoordScene, camera);
 
     renderer.setRenderTarget(null);
