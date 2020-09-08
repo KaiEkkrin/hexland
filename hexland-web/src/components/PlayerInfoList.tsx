@@ -35,21 +35,22 @@ function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
   return (
     <ListGroup.Item className="Map-info-list-item">
       <div title={"Player " + props.player.playerName}
-        style={{ display: "flex", justifyContent: "space-between" }}
-      >{props.player.playerName}
-        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+        style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between" }}
+      >
+        <div style={{ wordBreak: "break-all", wordWrap: "break-word" }}>{props.player.playerName}</div>
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-end", alignItems: "center" }}>
           {showOwnerBadge ? (
-            <Badge className="ml-2" variant="warning"
+            <Badge className="ml-2 mt-1" variant="warning"
               title={"Player " + props.player.playerName + " is the owner"}
             >Owner</Badge>
           ) : myTokens.length > 0 ? myTokens.map(t => (
-            <Badge className="ml-2" key={t.id}
+            <Badge className="ml-2 mt-1" key={t.id}
               title={"Player " + props.player.playerName + " has token " + t.text}
               style={{ backgroundColor: hexColours[t.colour], color: "black", userSelect: "none" }}
               onClick={() => props.resetView?.(t.position)}
             >{t.text}</Badge>
           )) : props.showNoTokenWarning === true ? (
-            <Badge className="ml-2" hidden={isNoTokenHidden} variant="danger"
+            <Badge className="ml-2 mt-1" hidden={isNoTokenHidden} variant="danger"
               title={"Player " + props.player.playerName + " has no token"}
             >No token</Badge>
           ) : (<div></div>)}

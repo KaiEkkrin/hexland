@@ -39,11 +39,17 @@
   height: 100vh;
 }
 
+.Map-help-card {
+  background-color: transparent !important;
+  color: #c6c8ca;
+}
+
 .Map-info {
   background-color: transparent;
   display: flex;
   flex-direction: column;
   flex-wrap: wrap;
+  align-items: flex-end;
   height: calc(100vh - 8rem);
   min-width: 3rem;
 }
@@ -52,6 +58,7 @@
   background-color: transparent;
   margin-right: 1rem;
   margin-top: 1rem;
+  max-width: calc(25vw + 10rem);
   z-index: 4;
 }
 

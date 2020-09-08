@@ -4,6 +4,7 @@ import { IPlayer } from '../data/adventure';
 import { IGridCoord } from '../data/coord';
 import { IToken } from '../data/feature';
 import { IMap } from '../data/map';
+import PlayerHelp from './PlayerHelp';
 import PlayerInfoList from './PlayerInfoList';
 
 import Badge from 'react-bootstrap/Badge';
@@ -11,7 +12,7 @@ import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
 import Nav from 'react-bootstrap/Nav';
 
-import { faUsers } from '@fortawesome/free-solid-svg-icons';
+import { faUsers, faQuestion } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import fluent from 'fluent-iterable';
@@ -73,6 +74,7 @@ interface IMapInfoProps {
   map: IMap | undefined;
   players: IPlayer[];
   tokens: IToken[];
+  canDoAnything: boolean;
   resetView: (centreOn?: IGridCoord | undefined) => void;
 }
 
@@ -100,6 +102,11 @@ function MapInfo(props: IMapInfoProps) {
 
   return (
     <div className="Map-info">
+      <MapInfoCard title="Help" buttonContent={(
+        <FontAwesomeIcon icon={faQuestion} color="white" />
+      )}>
+        <PlayerHelp canDoAnything={props.canDoAnything} />
+      </MapInfoCard>
       <MapInfoCard title="Players" buttonContent={playerInfoButton}>
         <PlayerInfoList ownerUid={ownerUid} showNoTokenWarning={true} {...props} />
       </MapInfoCard>

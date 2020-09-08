@@ -584,7 +584,7 @@ function Map(props: IMapPageProps) {
           openMapEditor={() => setShowMapEditor(true)}
           setShowAnnotationFlags={cycleShowAnnotationFlags} />
         <MapInfo map={map?.record} players={players} tokens={mapState.tokens}
-          resetView={c => stateMachine?.resetView(c)} />
+          canDoAnything={canDoAnything} resetView={c => stateMachine?.resetView(c)} />
       </div>
       <div className="Map-content">
         <div id="drawingDiv" ref={drawingRef}
