@@ -586,6 +586,15 @@ export class MapStateMachine {
     this._faceHighlighter.dragStart(this._drawing.getGridCoordAt(cp), colour);
   }
 
+  *getSelectedTokens(): Iterable<IToken> {
+    for (var s of this._drawing.selection) {
+      var token = this._drawing.tokens.get(s.position);
+      if (token !== undefined) {
+        yield token;
+      }
+    }
+  }
+
   // For editing
   getToken(cp: THREE.Vector3): IToken | undefined {
     var position = this._drawing.getGridCoordAt(cp);
@@ -858,8 +867,12 @@ export class MapStateMachine {
     this._drawing.setShowMapColourVisualisation(show, this._mapColouring);
   }
 
-  setToken(cp: THREE.Vector3, properties: ITokenProperties | undefined): IChange[] {
+  setToken(cp: THREE.Vector3, properties: ITokenProperties | undefined) {
     var position = this._drawing.getGridCoordAt(cp);
+    return this.setTokenPosition(position, properties);
+  }
+
+  setTokenPosition(position: IGridCoord | undefined, properties: ITokenProperties | undefined) {
     var chs: IChange[] = [];
     if (position !== undefined) {
       var existingToken = this._drawing.tokens.get(position);

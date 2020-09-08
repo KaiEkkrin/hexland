@@ -4,8 +4,8 @@ import { EditMode } from './MapControls'; // TODO remove it from there entirely 
 import { IAnnotation } from '../data/annotation';
 import { IToken } from '../data/feature';
 
+import Card from 'react-bootstrap/Card';
 import ListGroup from 'react-bootstrap/ListGroup';
-import Card from 'react-bootstrap/esm/Card';
 
 interface IMapContextMenuItemProps {
   children: React.ReactNode;

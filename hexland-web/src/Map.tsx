@@ -32,6 +32,7 @@ import { RouteComponentProps } from 'react-router-dom';
 
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
+import TokenDeletionModal from './components/TokenDeletionModal';
 
 function Map(props: IMapPageProps) {
   const firebaseContext = useContext(FirebaseContext);
@@ -163,11 +164,13 @@ function Map(props: IMapPageProps) {
   const [showMapEditor, setShowMapEditor] = useState(false);
   const [showTokenEditor, setShowTokenEditor] = useState(false);
   const [showNoteEditor, setShowNoteEditor] = useState(false);
+  const [showTokenDeletion, setShowTokenDeletion] = useState(false);
 
   const [tokenToEdit, setTokenToEdit] = useState(undefined as IToken | undefined);
   const [tokenToEditPosition, setTokenToEditPosition] = useState(undefined as THREE.Vector3 | undefined);
   const [noteToEdit, setNoteToEdit] = useState(undefined as IAnnotation | undefined);
   const [noteToEditPosition, setNoteToEditPosition] = useState(undefined as THREE.Vector3 | undefined);
+  const [tokensToDelete, setTokensToDelete] = useState<IToken[]>([]);
 
   const [isDraggingView, setIsDraggingView] = useState(false);
 
@@ -238,6 +241,20 @@ function Map(props: IMapPageProps) {
       addChanges(stateMachine?.setNote(noteToEditPosition, id, colour, text, visibleToPlayers));
     }
     setShowNoteEditor(false);
+  }
+
+  function handleTokenDeletion() {
+    var changes: IChange[] = [];
+    for (var t of tokensToDelete) {
+      var chs = stateMachine?.setTokenPosition(t.position, undefined);
+      if (chs !== undefined) {
+        changes.push(...chs);
+      }
+    }
+
+    addChanges(changes);
+    stateMachine?.clearSelection();
+    setShowTokenDeletion(false);
   }
 
   // We want to disable most of the handlers, below, if a modal editor is open, to prevent
@@ -336,6 +353,13 @@ function Map(props: IMapPageProps) {
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       addChanges(stateMachine.setPanningY(0));
       e.preventDefault();
+    } else if (e.key === 'Delete') {
+      // This invokes the token deletion if we've got tokens selected.
+      var tokens = [...stateMachine.getSelectedTokens()];
+      if (canDoAnything && tokens.length > 0) {
+        setShowTokenDeletion(true);
+        setTokensToDelete(tokens);
+      }
     } else if (e.key === 'Escape') {
       // This should cancel any drag operation, and also return us to
       // select mode
@@ -513,6 +537,8 @@ function Map(props: IMapPageProps) {
         token={tokenToEdit}
         players={players} handleClose={() => setShowTokenEditor(false)}
         handleDelete={handleTokenEditorDelete} handleSave={handleTokenEditorSave} />
+      <TokenDeletionModal show={showTokenDeletion} tokens={tokensToDelete}
+        handleClose={() => setShowTokenDeletion(false)} handleDelete={handleTokenDeletion} />
       <NoteEditorModal show={showNoteEditor} note={noteToEdit} handleClose={() => setShowNoteEditor(false)}
         handleDelete={handleNoteEditorDelete} handleSave={handleNoteEditorSave} />
       <MapAnnotations annotations={mapState.annotations} showFlags={showAnnotationFlags} customFlags={customAnnotationFlags}
