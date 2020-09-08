@@ -17,7 +17,7 @@ import { deleteMap, editMap, registerAdventureAsRecent, inviteToAdventure, editA
 
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
-import CardColumns from 'react-bootstrap/CardColumns';
+import CardDeck from 'react-bootstrap/CardDeck';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Modal from 'react-bootstrap/Modal';
@@ -204,7 +204,7 @@ function Adventure(props: IAdventureProps) {
         {adventure !== undefined ?
           <Row className="mt-4">
             <Col>
-              <CardColumns>
+              <CardDeck>
                 <Card bg="dark" text="white">
                   <Card.Body className="card-body-spaced">
                     <Card.Text>{adventure.record.description}</Card.Text>
@@ -214,7 +214,7 @@ function Adventure(props: IAdventureProps) {
                     }
                   </Card.Body>
                   <Card.Footer className="card-footer-spaced">
-                    {inviteLink === undefined ?
+                    {canEditAdventure !== true ? <div></div> : inviteLink === undefined ?
                       <Button variant="primary" onClick={createInviteLink}>Create invite link</Button> :
                       <Link to={inviteLink}>Send this link to other players to invite them.</Link>
                     }
@@ -229,7 +229,7 @@ function Adventure(props: IAdventureProps) {
                   <Card.Header>Players</Card.Header>
                   <PlayerInfoList ownerUid={ownerUid} players={players} tokens={[]} />
                 </Card>
-              </CardColumns>
+              </CardDeck>
             </Col>
           </Row>
           : <div></div>

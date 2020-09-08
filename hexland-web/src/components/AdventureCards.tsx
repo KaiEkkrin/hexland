@@ -17,7 +17,7 @@ function AdventureCards(props: IAdventureCardsProps) {
     <CardDeck>
       {props.newAdventureCard}
       {props.adventures.map((v) =>
-        <Card className="mt-4" style={{ minWidth: '16rem', maxWidth: '16rem' }}
+        <Card className="mt-4" style={{ minWidth: '18rem' }}
           bg="dark" text="white" key={v.id}>
           <Card.Body>
             <Card.Title>{v.name}</Card.Title>

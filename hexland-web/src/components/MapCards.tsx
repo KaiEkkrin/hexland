@@ -24,7 +24,7 @@ function MapCard(props: IMapCardProps) {
   );
 
   return (
-    <Card className="mt-4" style={{ minWidth: '16rem', maxWidth: '16rem' }}
+    <Card className="mt-4" style={{ minWidth: '18rem' }}
       bg="dark" text="white" key={props.map.id}>
       <Card.Body>
         <Card.Title>{props.map.name}</Card.Title>
