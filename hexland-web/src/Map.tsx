@@ -392,12 +392,24 @@ function Map(props: IMapPageProps) {
   }, [stateMachine, addChanges, anEditorIsOpen, mouseDown, setKeysDown]);
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
-    if (stateMachine === undefined || anEditorIsOpen || mouseDown) {
+    if (stateMachine === undefined || anEditorIsOpen) {
       return;
     }
 
     setKeysDown({ key: e.key, down: false });
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    if (e.key === 'Escape') {
+      // This should cancel any drag operation, and also return us to
+      // select mode.  Unlike the other keys, it should operate even
+      // during a mouse drag.
+      stateMachine.clearHighlights(selectedColour);
+      stateMachine.clearSelection();
+      setEditMode(EditMode.Select);
+      setShowContextMenu(false);
+    }
+
+    if (mouseDown) {
+      return;
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       addChanges(stateMachine.setPanningX(0));
       e.preventDefault();
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -410,13 +422,6 @@ function Map(props: IMapPageProps) {
         setShowTokenDeletion(true);
         setTokensToDelete(tokens);
       }
-    } else if (e.key === 'Escape') {
-      // This should cancel any drag operation, and also return us to
-      // select mode
-      stateMachine.clearHighlights(selectedColour);
-      stateMachine.clearSelection();
-      setEditMode(EditMode.Select);
-      setShowContextMenu(false);
     } else if (e.key === 'a' || e.key === 'A') {
       if (canDoAnything) {
         setEditMode(EditMode.Area);
@@ -439,21 +444,25 @@ function Map(props: IMapPageProps) {
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     setShowContextMenu(false);
     var cp = getClientPosition(e.clientX, e.clientY);
-    if (cp === undefined || anEditorIsOpen || e.button !== 0 || movementKeyDown) {
+    if (cp === undefined || anEditorIsOpen || e.button !== 0 || movementKeyDown || stateMachine === undefined) {
       return;
     }
 
     setMouseDown(true);
-    if (e.ctrlKey) {
-      setIsDraggingView(true);
-      stateMachine?.panStart(cp, e.shiftKey);
-    } else {
-      switch (editMode) {
-        case EditMode.Select: stateMachine?.selectionDragStart(cp, e.shiftKey); break;
-        case EditMode.Area: stateMachine?.faceDragStart(cp, e.shiftKey, selectedColour); break;
-        case EditMode.Wall: stateMachine?.wallDragStart(cp, e.shiftKey, selectedColour); break;
-        case EditMode.Room: stateMachine?.roomDragStart(cp, e.shiftKey, selectedColour); break;
-      }
+    switch (editMode) {
+      case EditMode.Select:
+        if (e.shiftKey) {
+          stateMachine.selectionDragStart(cp);
+        } else if (stateMachine.selectToken(cp) !== true) {
+          // There's no token here -- pan or rotate the view instead.
+          setIsDraggingView(true);
+          stateMachine.panStart(cp, e.ctrlKey);
+        }
+        break;
+
+      case EditMode.Area: stateMachine.faceDragStart(cp, e.shiftKey, selectedColour); break;
+      case EditMode.Wall: stateMachine.wallDragStart(cp, e.shiftKey, selectedColour); break;
+      case EditMode.Room: stateMachine.roomDragStart(cp, e.shiftKey, selectedColour); break;
     }
   }, [anEditorIsOpen, editMode, getClientPosition, movementKeyDown, selectedColour, setIsDraggingView, setMouseDown, setShowContextMenu, stateMachine]);
 

@@ -115,8 +115,6 @@ export class MapStateMachine {
   private _isRotating = false;
   private _panLast: THREE.Vector3 | undefined;
 
-  private _dragCumulative = false;
-
   private _tokenMoveDragStart: IGridCoord | undefined;
   private _tokenMoveJog: IGridCoord | undefined;
   private _tokenMoveDragSelectionPosition: IGridCoord | undefined;
@@ -422,10 +420,7 @@ export class MapStateMachine {
   }
 
   private selectTokensInDragRectangle() {
-    if (this._dragCumulative === false) {
-      this._drawing.selection.clear();
-    }
-
+    this._drawing.selection.clear();
     const inDragRectangle = this._dragRectangle.createFilter();
     fluent(this._drawing.tokens)
       .filter(t => this.canSelectToken(t) && inDragRectangle(t.position))
@@ -835,6 +830,25 @@ export class MapStateMachine {
     this._roomHighlighter.dragStart(this._drawing.getGridCoordAt(cp), colour);
   }
 
+  // Selects the token at the client position, if there is one,
+  // and begins a drag move for it.
+  // Returns true if it selected something, else false.
+  selectToken(cp: THREE.Vector3) {
+    const token = this.getToken(cp);
+    if (token === undefined) {
+      return false;
+    }
+
+    const selected = this._drawing.selection.get(token.position);
+    if (selected === undefined) {
+      this.clearSelection();
+      this._drawing.selection.add({ position: token.position, colour: 0 });
+    }
+
+    this.tokenMoveDragStart(token.position);
+    return true;
+  }
+
   selectionDragEnd(cp: THREE.Vector3): IChange[] {
     this.panMarginReset();
     var position = this._drawing.getGridCoordAt(cp);
@@ -861,18 +875,14 @@ export class MapStateMachine {
     return chs;
   }
 
-  selectionDragStart(cp: THREE.Vector3, shiftKey: boolean) {
+  selectionDragStart(cp: THREE.Vector3) {
     var position = this._drawing.getGridCoordAt(cp);
     if (position) {
       if (this._drawing.selection.get(position) !== undefined) {
         this.tokenMoveDragStart(position);
       } else {
-        if (!shiftKey) {
-          this._drawing.selection.clear();
-        }
-
+        this.clearSelection();
         this._dragRectangle.start(cp);
-        this._dragCumulative = shiftKey;
       }
     }
   }
