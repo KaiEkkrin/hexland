@@ -1,8 +1,10 @@
 import React, { useContext, useMemo, useState } from 'react';
 import '../App.css';
 
-import { UserContext } from './UserContextProvider';
+import { CardStyle } from './AdventureCards';
 import MapCards from './MapCards';
+import MapEditorModal from './MapEditorModal';
+import { UserContext } from './UserContextProvider';
 
 import { IMapSummary } from '../data/adventure';
 import { IMap } from '../data/map';
@@ -11,7 +13,6 @@ import { IAdventureSummary } from '../data/profile';
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
 import Modal from 'react-bootstrap/Modal';
-import MapEditorModal from './MapEditorModal';
 
 interface INewMapProps {
   show: boolean;
@@ -24,7 +25,7 @@ function NewMap(props: INewMapProps) {
   }
 
   return (
-    <Card className="mt-4" style={{ minWidth: '16rem', maxWidth: '16rem' }}
+    <Card className="mt-4" style={CardStyle}
       bg="dark" text="white" key="new">
       <Card.Body>
         <Button onClick={props.handleNewMapClick}>New map</Button>

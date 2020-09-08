@@ -1,6 +1,7 @@
 import React, { useContext, useMemo } from 'react';
 import '../App.css';
 
+import { CardStyle } from './AdventureCards';
 import { UserContext } from './UserContextProvider';
 import { IMapSummary } from '../data/adventure';
 import { IAdventureSummary } from '../data/profile';
@@ -24,7 +25,7 @@ function MapCard(props: IMapCardProps) {
   );
 
   return (
-    <Card className="mt-4" style={{ minWidth: '18rem' }}
+    <Card className="mt-4" style={CardStyle}
       bg="dark" text="white" key={props.map.id}>
       <Card.Body>
         <Card.Title>{props.map.name}</Card.Title>

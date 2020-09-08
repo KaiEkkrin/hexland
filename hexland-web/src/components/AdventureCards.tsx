@@ -7,6 +7,10 @@ import Card from 'react-bootstrap/Card';
 import CardDeck from 'react-bootstrap/CardDeck';
 import { LinkContainer } from 'react-router-bootstrap';
 
+export const CardStyle: React.CSSProperties = {
+  minWidth: '16rem', maxWidth: '24rem'
+};
+
 interface IAdventureCardsProps {
   newAdventureCard: JSX.Element | undefined;
   adventures: IAdventureSummary[];
@@ -17,7 +21,7 @@ function AdventureCards(props: IAdventureCardsProps) {
     <CardDeck>
       {props.newAdventureCard}
       {props.adventures.map((v) =>
-        <Card className="mt-4" style={{ minWidth: '18rem' }}
+        <Card className="mt-4" style={CardStyle}
           bg="dark" text="white" key={v.id}>
           <Card.Body>
             <Card.Title>{v.name}</Card.Title>

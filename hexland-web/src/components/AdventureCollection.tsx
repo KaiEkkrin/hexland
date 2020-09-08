@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import '../App.css';
 
-import AdventureCards from './AdventureCards';
+import AdventureCards, { CardStyle } from './AdventureCards';
 import AdventureModal from './AdventureModal';
 
 import { IAdventureSummary } from '../data/profile';
@@ -38,7 +38,7 @@ function AdventureCollection(props: IAdventureCollectionProps) {
       }
 
       return (
-        <Card className="mt-4" style={{ minWidth: '16rem', maxWidth: '16rem' }}
+        <Card className="mt-4" style={CardStyle}
           bg="dark" text="white" key="new">
           <Card.Body>
             <Button onClick={handleNewAdventureClick}>New adventure</Button>
