@@ -359,7 +359,7 @@ describe('test app', () => {
     expect(playersUserElement).toBeInTheDocument();
 
     // We should also be showing suitable badges
-    const playerOwnerIsOwnerElement = await findByTitle("Player Owner is the map owner");
+    const playerOwnerIsOwnerElement = await findByTitle("Player Owner is the owner");
     expect(playerOwnerIsOwnerElement).toBeInTheDocument();
 
     const playerUserHasNoTokenElement = await findByTitle("Player " + user?.displayName + " has no token");
