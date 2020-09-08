@@ -344,7 +344,7 @@ describe('test app', () => {
 
     // TODO find the no players button, click it, and check it expands with
     // the two users' display names and the "no tokens" badge.
-    const playersButton = getByTitle(/players/i);
+    const playersButton = getByTitle(/Players/i);
     expect(playersButton).toBeInTheDocument();
 
     await act(async () => {

@@ -45,7 +45,7 @@ function MapInfoCard(props: IMapInfoCardProps) {
 
   if (isCollapsed) {
     return (
-      <Button className="Map-info-card mb-2" title="Players" variant="dark" onClick={() => setIsCollapsed(false)}>
+      <Button className="Map-info-card mb-2" title={props.title} variant="dark" onClick={() => setIsCollapsed(false)}>
         {props.buttonContent}
       </Button>
     );
