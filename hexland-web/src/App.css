@@ -49,13 +49,14 @@
 .card-body-spaced {
   display: flex;
   flex-direction: row;
+  align-items: flex-start;
   justify-content: space-between;
 }
 
 .card-footer-spaced {
   display: flex;
   flex-direction: row;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
 }
 
