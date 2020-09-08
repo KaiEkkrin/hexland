@@ -118,6 +118,7 @@ export class MapStateMachine {
   private _dragCumulative = false;
 
   private _tokenMoveDragStart: IGridCoord | undefined;
+  private _tokenMoveJog: IGridCoord | undefined;
   private _tokenMoveDragSelectionPosition: IGridCoord | undefined;
 
   private _isDisposed = false;
@@ -215,13 +216,13 @@ export class MapStateMachine {
   }
 
   private canDropSelectionAt(position: IGridCoord) {
-    if (this._tokenMoveDragStart === undefined) {
+    const delta = this.getTokenMoveDelta(position);
+    if (delta === undefined) {
       return false;
     }
 
     // #27: As a non-enforced improvement (just like LoS as a whole), we stop non-owners from
     // dropping tokens outside of the current LoS.
-    const delta = coordSub(position, this._tokenMoveDragStart);
     const worldToViewport = this._drawing.getWorldToViewport(this._scratchMatrix1);
     if (this.seeEverything === false) {
       var withinLoS = fluent(this._drawing.selection).map(f => {
@@ -311,6 +312,16 @@ export class MapStateMachine {
       // Show the LoS of only the selected tokens
       return selectedTokens.map(t => t.position);
     }
+  }
+
+  private getTokenMoveDelta(position: IGridCoord) {
+    if (this._tokenMoveDragStart === undefined || this._tokenMoveJog === undefined) {
+      return undefined;
+    }
+
+    // #60: Having the jog in here as well allows us to apply an extra movement by arrow keys
+    // without perturbing the overall drag process
+    return coordAdd(this._tokenMoveJog, coordSub(position, this._tokenMoveDragStart));
   }
 
   private onPostAnimate() {
@@ -422,14 +433,13 @@ export class MapStateMachine {
   }
 
   private tokenMoveDragEnd(position: IGridCoord, chs: IChange[]) {
-    if (this._tokenMoveDragStart === undefined) {
+    const delta = this.getTokenMoveDelta(position);
+    if (delta === undefined) {
       return;
     }
 
-    var delta = coordSub(position, this._tokenMoveDragStart);
     this._drawing.selectionDrag.clear();
     this._drawing.selectionDragRed.clear();
-
     if (this.canDropSelectionAt(position)) {
       // Create commands that move all the tokens
       for (var s of this._drawing.selection) {
@@ -441,25 +451,62 @@ export class MapStateMachine {
         chs.push(createTokenMove(s.position, coordAdd(s.position, delta), tokenHere.id));
       }
 
-      // Move the selection to the target positions
-      fluent(this._drawing.selection).map(t => this._drawing.selection.remove(t.position))
-        .forEach(f => {
-          if (f !== undefined) {
-            this._drawing.selection.add({ position: coordAdd(f.position, delta), colour: f.colour });
-          }
-        });
+      // Move the selection to the target positions.
+      // Careful, we need to remove all old positions before adding the new ones, otherwise
+      // we can end up not re-selecting some of the tokens
+      const removed = [...fluent(this._drawing.selection).map(t => this._drawing.selection.remove(t.position))];
+      removed.forEach(f => {
+        if (f !== undefined) {
+          this._drawing.selection.add({ position: coordAdd(f.position, delta), colour: f.colour });
+        }
+      });
     }
 
     this._tokenMoveDragStart = undefined;
+    this._tokenMoveJog = undefined;
     this._tokenMoveDragSelectionPosition = undefined;
   }
 
   private tokenMoveDragStart(position: IGridCoord) {
     this._tokenMoveDragStart = position;
+    this._tokenMoveJog = { x: 0, y: 0 };
     this._tokenMoveDragSelectionPosition = position;
     this._drawing.selectionDrag.clear();
     this._drawing.selectionDragRed.clear();
     this._drawing.selection.forEach(f => this._drawing.selectionDrag.add(f));
+  }
+
+  private tokenMoveDragTo(position: IGridCoord | undefined) {
+    if (position === undefined) {
+      return;
+    }
+
+    const delta = this.getTokenMoveDelta(position);
+    if (
+      this._tokenMoveDragStart === undefined ||
+      this._tokenMoveDragSelectionPosition === undefined ||
+      delta === undefined
+    ) {
+      return;
+    }
+
+    const target = coordAdd(this._tokenMoveDragStart, delta);
+    if (coordsEqual(target, this._tokenMoveDragSelectionPosition)) {
+      return;
+    }
+
+    var selectionDrag = this.canDropSelectionAt(position) ? this._drawing.selectionDrag :
+      this._drawing.selectionDragRed;
+
+    this._drawing.selectionDrag.clear();
+    this._drawing.selectionDragRed.clear();
+    this._drawing.selection.forEach(f => {
+      var dragged = { position: coordAdd(f.position, delta), colour: f.colour };
+      // console.log(coordString(f.position) + " -> " + coordString(dragged.position));
+      selectionDrag.add(dragged);
+    });
+
+    this._tokenMoveDragSelectionPosition = position;
   }
 
   private updateAnnotations(state: IMapState) {
@@ -550,6 +597,7 @@ export class MapStateMachine {
     this._dragRectangle.reset();
 
     this._tokenMoveDragStart = undefined;
+    this._tokenMoveJog = undefined;
     this._tokenMoveDragSelectionPosition = undefined;
 
     // The LoS may change as a result of no longer having a specific
@@ -605,6 +653,20 @@ export class MapStateMachine {
     return this._drawing.tokens.get(position);
   }
 
+  // Designed to work in tandem with the panning commands, if we have tokens selected,
+  // we want to jog on a first press and pan on a repeat.
+  // Thus, `jogSelection` starts a token move if we don't have one already, and returns
+  // true if it started one, else false.
+  jogSelection(delta: IGridCoord) {
+    this.onPanningStarted();
+    if (this._tokenMoveJog === undefined) {
+      return false;
+    }
+
+    this._tokenMoveJog = coordAdd(this._tokenMoveJog, delta);
+    return true;
+  }
+
   moveFaceHighlightTo(cp: THREE.Vector3, colour: number) {
     if (this._faceHighlighter.inDrag) {
       this.panIfWithinMargin(cp);
@@ -620,22 +682,7 @@ export class MapStateMachine {
     if (this._tokenMoveDragStart !== undefined && this._tokenMoveDragSelectionPosition !== undefined) {
       this.panIfWithinMargin(cp);
       var position = this._drawing.getGridCoordAt(cp);
-      if (position !== undefined && !coordsEqual(position, this._tokenMoveDragSelectionPosition)) {
-        var selectionDrag = this.canDropSelectionAt(position) ? this._drawing.selectionDrag :
-          this._drawing.selectionDragRed;
-
-        var delta = coordSub(position, this._tokenMoveDragStart);
-        this._drawing.selectionDrag.clear();
-        this._drawing.selectionDragRed.clear();
-        console.log("Moving " + fluent(this._drawing.selection).count() + " selected positions");
-        this._drawing.selection.forEach(f => {
-          var dragged = { position: coordAdd(f.position, delta), colour: f.colour };
-          console.log(coordString(f.position) + " -> " + coordString(dragged.position));
-          selectionDrag.add(dragged);
-        });
-
-        this._tokenMoveDragSelectionPosition = position;
-      }
+      this.tokenMoveDragTo(position);
     } else if (this._dragRectangle.isEnabled()) {
       this.panIfWithinMargin(cp);
       this.selectTokensInDragRectangle();

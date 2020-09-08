@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useContext, useMemo, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useContext, useMemo, useCallback, useReducer } from 'react';
 import './App.css';
 import './Map.css';
 
@@ -33,6 +33,33 @@ import { RouteComponentProps } from 'react-router-dom';
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
 import TokenDeletionModal from './components/TokenDeletionModal';
+
+// This stuff helps me create a reducer that tracks what keys are down.
+type KeysDown = { [key: string]: boolean };
+interface IKeyAction {
+  key: string;
+  down: boolean;
+}
+
+function isKeyDown(state: KeysDown, key: string) {
+  return key in state && state[key] === true;
+}
+
+function keysDownReducer(state: KeysDown, action: IKeyAction): KeysDown {
+  if (isKeyDown(state, action.key) === action.down) {
+    // No change.
+    return state;
+  } else {
+    var newState = { ...state };
+    if (action.down) {
+      newState[action.key] = true;
+    } else {
+      delete newState[action.key];
+    }
+
+    return newState;
+  }
+}
 
 function Map(props: IMapPageProps) {
   const firebaseContext = useContext(FirebaseContext);
@@ -257,6 +284,19 @@ function Map(props: IMapPageProps) {
     setShowTokenDeletion(false);
   }
 
+  // We track what keys are down so that we can disable mouse movement handlers if a movement key
+  // is down (they don't play well together)
+  const [keysDown, setKeysDown] = useReducer(keysDownReducer, {});
+  const movementKeyDown = useMemo(
+    () => isKeyDown(keysDown, 'ArrowLeft') || isKeyDown(keysDown, 'ArrowRight') ||
+      isKeyDown(keysDown, 'ArrowUp') || isKeyDown(keysDown, 'ArrowDown') ||
+      isKeyDown(keysDown, 'O'),
+    [keysDown]
+  );
+
+  // ...and also that the mouse button is down so we can disable movement keys.
+  const [mouseDown, setMouseDown] = useState(false);
+
   // We want to disable most of the handlers, below, if a modal editor is open, to prevent
   // accidents whilst editing
   const anEditorIsOpen = useMemo(
@@ -321,32 +361,42 @@ function Map(props: IMapPageProps) {
   }, [getClientPosition, setShowContextMenu, setContextMenuX, setContextMenuY, setContextMenuPageBottom, setContextMenuToken, setContextMenuNote, stateMachine]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (stateMachine === undefined || anEditorIsOpen) {
+    if (stateMachine === undefined || anEditorIsOpen || mouseDown) {
       return;
     }
 
     // See https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values
     // for a reference of key values.
+    setKeysDown({ key: e.key, down: true });
     if (e.key === 'ArrowLeft') {
-      addChanges(stateMachine.setPanningX(-1));
+      if (e.repeat || !stateMachine.jogSelection({ x: -1, y: 0 })) {
+        addChanges(stateMachine.setPanningX(-1));
+      }
       e.preventDefault();
     } else if (e.key === 'ArrowRight') {
-      addChanges(stateMachine.setPanningX(1));
+      if (e.repeat || !stateMachine.jogSelection({ x: 1, y: 0 })) {
+        addChanges(stateMachine.setPanningX(1));
+      }
       e.preventDefault();
     } else if (e.key === 'ArrowDown') {
-      addChanges(stateMachine.setPanningY(1));
+      if (e.repeat || !stateMachine.jogSelection({ x: 0, y: 1 })) {
+        addChanges(stateMachine.setPanningY(1));
+      }
       e.preventDefault();
     } else if (e.key === 'ArrowUp') {
-      addChanges(stateMachine.setPanningY(-1));
+      if (e.repeat || !stateMachine.jogSelection({ x: 0, y: -1 })) {
+        addChanges(stateMachine.setPanningY(-1));
+      }
       e.preventDefault();
     }
-  }, [stateMachine, addChanges, anEditorIsOpen]);
+  }, [stateMachine, addChanges, anEditorIsOpen, mouseDown, setKeysDown]);
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
-    if (stateMachine === undefined || anEditorIsOpen) {
+    if (stateMachine === undefined || anEditorIsOpen || mouseDown) {
       return;
     }
 
+    setKeysDown({ key: e.key, down: false });
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       addChanges(stateMachine.setPanningX(0));
       e.preventDefault();
@@ -384,15 +434,16 @@ function Map(props: IMapPageProps) {
         setEditMode(EditMode.Wall);
       }
     }
-  }, [stateMachine, addChanges, anEditorIsOpen, canDoAnything, selectedColour, setEditMode, setShowContextMenu]);
+  }, [stateMachine, addChanges, anEditorIsOpen, canDoAnything, mouseDown, selectedColour, setEditMode, setKeysDown, setShowContextMenu]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     setShowContextMenu(false);
     var cp = getClientPosition(e.clientX, e.clientY);
-    if (cp === undefined || anEditorIsOpen) {
+    if (cp === undefined || anEditorIsOpen || e.button !== 0 || movementKeyDown) {
       return;
     }
 
+    setMouseDown(true);
     if (e.ctrlKey) {
       setIsDraggingView(true);
       stateMachine?.panStart(cp, e.shiftKey);
@@ -404,11 +455,11 @@ function Map(props: IMapPageProps) {
         case EditMode.Room: stateMachine?.roomDragStart(cp, e.shiftKey, selectedColour); break;
       }
     }
-  }, [anEditorIsOpen, editMode, getClientPosition, selectedColour, setIsDraggingView, setShowContextMenu, stateMachine]);
+  }, [anEditorIsOpen, editMode, getClientPosition, movementKeyDown, selectedColour, setIsDraggingView, setMouseDown, setShowContextMenu, stateMachine]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     var cp = getClientPosition(e.clientX, e.clientY);
-    if (cp === undefined || anEditorIsOpen) {
+    if (cp === undefined || anEditorIsOpen || movementKeyDown) {
       return undefined;
     }
 
@@ -424,14 +475,15 @@ function Map(props: IMapPageProps) {
     }
 
     return cp;
-  }, [anEditorIsOpen, editMode, getClientPosition, isDraggingView, selectedColour, stateMachine]);
+  }, [anEditorIsOpen, editMode, getClientPosition, isDraggingView, movementKeyDown, selectedColour, stateMachine]);
 
   const handleMouseUp = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     var cp = handleMouseMove(e);
-    if (cp === undefined || anEditorIsOpen) {
+    if (cp === undefined || anEditorIsOpen || e.button !== 0 || movementKeyDown) {
       return;
     }
 
+    setMouseDown(false);
     var changes: IChange[] | undefined;
     if (isDraggingView) {
       stateMachine?.panEnd();
@@ -461,7 +513,7 @@ function Map(props: IMapPageProps) {
       setEditMode(EditMode.Select);
     }
     addChanges(changes);
-  }, [addChanges, anEditorIsOpen, editMode, handleMouseMove, isDraggingView, selectedColour, setEditMode, setIsDraggingView, stateMachine]);
+  }, [addChanges, anEditorIsOpen, editMode, handleMouseMove, isDraggingView, movementKeyDown, selectedColour, setEditMode, setIsDraggingView, setMouseDown, stateMachine]);
 
   const handleWheel = useCallback((e: WheelEvent) => {
     if (e.deltaY !== 0 && !anEditorIsOpen) {
