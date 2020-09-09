@@ -456,6 +456,7 @@ function Map(props: IMapPageProps) {
         } else if (stateMachine.selectToken(cp) !== true) {
           // There's no token here -- pan or rotate the view instead.
           setIsDraggingView(true);
+          stateMachine.clearSelection();
           stateMachine.panStart(cp, e.ctrlKey);
         }
         break;
