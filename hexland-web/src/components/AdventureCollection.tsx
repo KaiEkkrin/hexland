@@ -1,13 +1,10 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import '../App.css';
 
-import AdventureCards, { CardStyle } from './AdventureCards';
+import AdventureCards from './AdventureCards';
 import AdventureModal from './AdventureModal';
 
 import { IAdventureSummary } from '../data/profile';
-
-import Button from 'react-bootstrap/Button';
-import Card from 'react-bootstrap/Card';
 
 interface IAdventureCollectionProps {
   uid: string | undefined;
@@ -31,25 +28,10 @@ function AdventureCollection(props: IAdventureCollectionProps) {
     setShowEditAdventure(false);
   }
 
-  const newAdventureCard = useMemo(
-    () => {
-      if (props.createAdventure === undefined) {
-        return undefined;
-      }
-
-      return (
-        <Card className="mt-4" style={CardStyle}
-          bg="dark" text="white" key="new">
-          <Card.Body>
-            <Button onClick={handleNewAdventureClick}>New adventure</Button>
-          </Card.Body>
-        </Card>
-      );
-    }, [props.createAdventure, handleNewAdventureClick]);
-
   return (
     <div>
-      <AdventureCards newAdventureCard={newAdventureCard} adventures={props.adventures} />
+      <AdventureCards handleCreate={handleNewAdventureClick} adventures={props.adventures}
+        showNewAdventureCard={props.createAdventure !== undefined} />
       <AdventureModal description={editDescription}
         name={editName}
         show={showEditAdventure}

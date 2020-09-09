@@ -1,7 +1,6 @@
 import React, { useContext, useMemo, useState } from 'react';
 import '../App.css';
 
-import { CardStyle } from './AdventureCards';
 import MapCards from './MapCards';
 import MapEditorModal from './MapEditorModal';
 import { UserContext } from './UserContextProvider';
@@ -11,28 +10,7 @@ import { IMap } from '../data/map';
 import { IAdventureSummary } from '../data/profile';
 
 import Button from 'react-bootstrap/Button';
-import Card from 'react-bootstrap/Card';
 import Modal from 'react-bootstrap/Modal';
-
-interface INewMapProps {
-  show: boolean;
-  handleNewMapClick: () => void;
-}
-
-function NewMap(props: INewMapProps) {
-  if (props.show === false) {
-    return null;
-  }
-
-  return (
-    <Card className="mt-4" style={CardStyle}
-      bg="dark" text="white" key="new">
-      <Card.Body>
-        <Button onClick={props.handleNewMapClick}>New map</Button>
-      </Card.Body>
-    </Card>
-  );
-}
 
 interface IMapCollectionProps {
   adventures: IAdventureSummary[];
@@ -94,7 +72,7 @@ function MapCollection(props: IMapCollectionProps) {
 
   return (
     <div>
-      <MapCards newMapCard={<NewMap show={showNewMapCard} handleNewMapClick={handleNewMapClick} />}
+      <MapCards showNewMapCard={showNewMapCard} createMap={handleNewMapClick}
         adventures={props.adventures} maps={props.maps}
         deleteMap={canDeleteMap ? handleDeleteMapClick : undefined} />
       <MapEditorModal show={showEditMap} adventures={newMapAdventures} map={undefined}
