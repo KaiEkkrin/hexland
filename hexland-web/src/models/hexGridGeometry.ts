@@ -118,32 +118,26 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     yield offset;
     yield offset + 2;
     yield offset + 1;
-    yield -1;
 
     yield offset;
     yield offset + 3;
     yield offset + 2;
-    yield -1;
 
     yield offset;
     yield offset + 4;
     yield offset + 3;
-    yield -1;
 
     yield offset;
     yield offset + 5;
     yield offset + 4;
-    yield -1;
 
     yield offset;
     yield offset + 6;
     yield offset + 5;
-    yield -1;
 
     yield offset;
     yield offset + 1;
     yield offset + 6;
-    yield -1;
   }
 
   private vertexIndexOf(x: number, y: number, v: number) {

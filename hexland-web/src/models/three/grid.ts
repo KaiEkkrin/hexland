@@ -45,13 +45,13 @@ const gridColouredShader = {
     "}",
 
     "float packXYSignAndEdge(const in vec2 c, const in float edge) {",
-    "  float packed = (",
+    "  float packedValue = (",
     "    (c.x < 0.0 ? 1.0 : 0.0) +",
     "    (c.y < 0.0 ? 2.0 : 0.0) +",
     "    4.0 * edge +",
     "    4.0 * maxEdge",
     "  );",
-    "  return epsilon + packed / (8.0 * maxEdge);",
+    "  return epsilon + packedValue / (8.0 * maxEdge);",
     "}",
 
     "void main() {",

@@ -300,8 +300,8 @@ export abstract class BaseGeometry {
   createLoSIndices() {
     // You need to disable back-face culling to use these :)
     return [
-      0, 1, 2, -1,
-      1, 2, 3, -1
+      0, 1, 2,
+      1, 2, 3
     ];
   }
 
@@ -331,7 +331,6 @@ export abstract class BaseGeometry {
             yield baseIndex;
             yield baseIndex + 1 + (t + 1) % vertexRimCount;
             yield baseIndex + 1 + t;
-            yield -1;
           }
 
           // There are (vertexRimCount + 1) vertices for each object --

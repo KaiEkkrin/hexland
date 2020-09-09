@@ -183,7 +183,7 @@ export class LoS extends Drawn {
       new THREE.Vector3(1, 1, 0)
     ]);
     this._composeGeometry.setIndex([
-      0, 1, 2, -1, 1, 2, 3, -1
+      0, 1, 2, 1, 2, 3
     ]);
 
     // Yes, having the UVs specified is mandatory :P

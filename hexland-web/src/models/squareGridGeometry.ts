@@ -94,12 +94,10 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     yield baseIndex;
     yield baseIndex + 1;
     yield baseIndex + 2;
-    yield -1;
 
     yield baseIndex + 1;
     yield baseIndex + 3;
     yield baseIndex + 2;
-    yield -1;
   }
 
   createEdgeOcclusion(coord: IGridCoord, edge: IGridEdge, z: number): EdgeOcclusion {
