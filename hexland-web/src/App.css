@@ -31,6 +31,7 @@
 }
 
 .App-introduction-image {
+  border-radius: 1rem;
   float: left;
   margin-right: 2rem;
   width: 24rem;
