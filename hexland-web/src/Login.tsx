@@ -90,6 +90,7 @@ function Login() {
         </Button>
         <LoginFailedMessage isVisible={loginFailedVisible} />
         <LoginSuccessfulMessage isVisible={loginSuccessfulVisible} />
+        <div className="App-login-text">Your account is used only to create a unique player identifier for you.</div>
       </header>
     </div>
   );

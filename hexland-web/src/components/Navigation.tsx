@@ -96,7 +96,7 @@ function Navigation(props: INavigationProps) {
           <Navbar.Collapse className="justify-content-end">
             <Nav>
               <LinkContainer to="/login">
-                <Nav.Link>Login</Nav.Link>
+                <Nav.Link>Sign up/Login</Nav.Link>
               </LinkContainer>
             </Nav>
           </Navbar.Collapse >

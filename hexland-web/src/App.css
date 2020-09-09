@@ -22,8 +22,22 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
   color: white;
+  line-height: 200%;
+}
+
+.App-introduction {
+  margin-left: 2rem;
+}
+
+.App-introduction-image {
+  float: left;
+  margin-right: 2rem;
+  width: 24rem;
+}
+
+.App-login-text {
+  margin-top: 2rem;
 }
 
 .App-link {
