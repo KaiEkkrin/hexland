@@ -7,6 +7,9 @@ import { IToken } from '../data/feature';
 import Card from 'react-bootstrap/Card';
 import ListGroup from 'react-bootstrap/ListGroup';
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPlus, faMapMarker, faSquare, faDrawPolygon, faVectorSquare } from '@fortawesome/free-solid-svg-icons';
+
 interface IMapContextMenuItemProps {
   children: React.ReactNode;
   onClick: (e: React.MouseEvent<Element, MouseEvent>) => void;
@@ -88,16 +91,20 @@ function MapContextMenu(props: IMapContextMenuProps) {
       zIndex: 2002
     }}>
       <ListGroup variant="flush">
-        <MapContextMenuItem onClick={handleTokenClick}>{tokenLabel}</MapContextMenuItem>
-        <MapContextMenuItem onClick={handleNoteClick}>{noteLabel}</MapContextMenuItem>
+        <MapContextMenuItem onClick={handleTokenClick}>
+          <FontAwesomeIcon className="mr-1" icon={faPlus} color="white" />{tokenLabel}
+        </MapContextMenuItem>
+        <MapContextMenuItem onClick={handleNoteClick}>
+          <FontAwesomeIcon className="mr-1" icon={faMapMarker} color="white" />{noteLabel}
+        </MapContextMenuItem>
         <MapContextMenuItem onClick={setAreaMode}>
-          Paint <u>a</u>rea
+          <FontAwesomeIcon className="mr-1" icon={faSquare} color="white" />Paint <u>a</u>rea
         </MapContextMenuItem>
         <MapContextMenuItem onClick={setWallMode}>
-          Paint <u>w</u>all
+          <FontAwesomeIcon className="mr-1" icon={faDrawPolygon} color="white" />Paint <u>w</u>all
         </MapContextMenuItem>
         <MapContextMenuItem onClick={setRoomMode}>
-          Paint <u>r</u>oom
+          <FontAwesomeIcon className="mr-1" icon={faVectorSquare} color="white" />Paint <u>r</u>oom
         </MapContextMenuItem>
       </ListGroup>
     </Card>

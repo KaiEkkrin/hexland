@@ -47,8 +47,7 @@ function Introduction() {
       </dl>
       <h5>And finally</h5>
       <p>
-        Hexland should run well on any modern desktop (or laptop) web browser.
-        It is not yet touch-enabled, so mobile devices running Android or iOS are not supported for now.
+        Hexland should run well in any reasonably modern browser with WebGL support.
       </p>
       <p>This web application was made possible by many free and open source projects, including Bootstrap, Font Awesome, Node, React, Three.js and TypeScript.</p>
       <p>Happy gaming!</p>

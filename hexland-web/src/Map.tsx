@@ -201,7 +201,7 @@ function Map(props: IMapPageProps) {
     stateMachine?.setShowMapColourVisualisation(mapColourMode === MapColourVisualisationMode.Connectivity);
   }, [stateMachine, mapColourMode]);
 
-  function handleMapEditorSave(adventureId: string, updated: IMap) {
+  const handleMapEditorSave = useCallback((adventureId: string, updated: IMap) => {
     setShowMapEditor(false);
     if (userContext.dataService !== undefined && map !== undefined) {
       var dataService = userContext.dataService;
@@ -216,37 +216,45 @@ function Map(props: IMapPageProps) {
         .then(() => console.log("Updated map"))
         .catch(e => console.error("Failed to update map:", e));
     }
-  }
+  }, [firebaseContext.timestampProvider, map, setShowMapEditor, userContext.dataService]);
 
-  function handleTokenEditorDelete() {
+  const handleModalClose = useCallback(() => {
+    setShowMapEditor(false);
+    setShowTokenDeletion(false);
+    setShowTokenEditor(false);
+    setShowNoteEditor(false);
+    setEditMode(EditMode.Select);
+  }, [setEditMode, setShowMapEditor, setShowTokenDeletion, setShowTokenEditor, setShowNoteEditor]);
+
+  const handleTokenEditorDelete = useCallback(() => {
     if (tokenToEditPosition !== undefined) {
       addChanges(stateMachine?.setToken(tokenToEditPosition, undefined));
     }
-    setShowTokenEditor(false);
-  }
+    handleModalClose();
+  }, [addChanges, handleModalClose, stateMachine, tokenToEditPosition]);
 
-  function handleTokenEditorSave(properties: ITokenProperties) {
+  const handleTokenEditorSave = useCallback((properties: ITokenProperties) => {
     if (tokenToEditPosition !== undefined) {
       addChanges(stateMachine?.setToken(tokenToEditPosition, properties));
     }
-    setShowTokenEditor(false);
-  }
+    handleModalClose();
+  }, [addChanges, handleModalClose, stateMachine, tokenToEditPosition]);
 
-  function handleNoteEditorDelete() {
+  const handleNoteEditorDelete = useCallback(() => {
     if (noteToEditPosition !== undefined) {
       addChanges(stateMachine?.setNote(noteToEditPosition, "", -1, "", false));
     }
-    setShowNoteEditor(false);
-  }
+    handleModalClose();
+  }, [addChanges, handleModalClose, noteToEditPosition, stateMachine]);
 
-  function handleNoteEditorSave(id: string, colour: number, text: string, visibleToPlayers: boolean) {
+  const handleNoteEditorSave = useCallback((id: string, colour: number, text: string, visibleToPlayers: boolean) => {
     if (noteToEditPosition !== undefined) {
       addChanges(stateMachine?.setNote(noteToEditPosition, id, colour, text, visibleToPlayers));
     }
-    setShowNoteEditor(false);
-  }
+    handleModalClose();
+  }, [addChanges, handleModalClose, noteToEditPosition, stateMachine]);
 
-  function handleTokenDeletion() {
+  const handleTokenDeletion = useCallback(() => {
     var changes: IChange[] = [];
     for (var t of tokensToDelete) {
       var chs = stateMachine?.setTokenPosition(t.position, undefined);
@@ -257,8 +265,8 @@ function Map(props: IMapPageProps) {
 
     addChanges(changes);
     stateMachine?.clearSelection();
-    setShowTokenDeletion(false);
-  }
+    handleModalClose();
+  }, [addChanges, handleModalClose, stateMachine, tokensToDelete]);
 
   // We track what keys are down so that we can disable mouse movement handlers if a movement key
   // is down (they don't play well together)
@@ -434,6 +442,14 @@ function Map(props: IMapPageProps) {
           changes = stateMachine?.selectionDragEnd(cp);
           break;
 
+        case EditMode.Token:
+          editToken(cp, stateMachine?.getToken(cp));
+          break;
+
+        case EditMode.Notes:
+          editNote(cp, stateMachine?.getNote(cp));
+          break;
+
         case EditMode.Area:
           changes = stateMachine?.faceDragEnd(cp, selectedColour);
           break;
@@ -453,7 +469,7 @@ function Map(props: IMapPageProps) {
       setEditMode(EditMode.Select);
     }
     addChanges(changes);
-  }, [addChanges, editMode, isDraggingView, setEditMode, setIsDraggingView, selectedColour, stateMachine]);
+  }, [addChanges, editMode, editNote, editToken, isDraggingView, setEditMode, setIsDraggingView, selectedColour, stateMachine]);
 
   const handleInteractionMove = useCallback((cp: THREE.Vector3, shiftKey: boolean) => {
     if (isDraggingView) {
@@ -609,12 +625,12 @@ function Map(props: IMapPageProps) {
   const [showAnnotationFlags, setShowAnnotationFlags] = useState(ShowAnnotationFlags.All);
   const [customAnnotationFlags, setCustomAnnotationFlags] = useState(false);
 
-  function cycleShowAnnotationFlags(flags: ShowAnnotationFlags) {
+  const cycleShowAnnotationFlags = useCallback((flags: ShowAnnotationFlags) => {
     // Doing this causes the map annotations to notice if they should override
     // any customisations
     setCustomAnnotationFlags(false);
     setShowAnnotationFlags(flags);
-  }
+  }, [setCustomAnnotationFlags, setShowAnnotationFlags]);
 
   return (
     <div className="Map-container">
@@ -623,6 +639,8 @@ function Map(props: IMapPageProps) {
       </div>
       <div className="Map-overlay">
         <MapControls
+          editMode={editMode}
+          setEditMode={setEditMode}
           selectedColour={selectedColour}
           setSelectedColour={setSelectedColour}
           resetView={() => stateMachine?.resetView()}
@@ -649,11 +667,11 @@ function Map(props: IMapPageProps) {
         handleClose={() => setShowMapEditor(false)} handleSave={handleMapEditorSave} />
       <TokenEditorModal selectedColour={selectedColour} show={showTokenEditor}
         token={tokenToEdit}
-        players={players} handleClose={() => setShowTokenEditor(false)}
+        players={players} handleClose={handleModalClose}
         handleDelete={handleTokenEditorDelete} handleSave={handleTokenEditorSave} />
       <TokenDeletionModal show={showTokenDeletion} tokens={tokensToDelete}
-        handleClose={() => setShowTokenDeletion(false)} handleDelete={handleTokenDeletion} />
-      <NoteEditorModal show={showNoteEditor} note={noteToEdit} handleClose={() => setShowNoteEditor(false)}
+        handleClose={handleModalClose} handleDelete={handleTokenDeletion} />
+      <NoteEditorModal show={showNoteEditor} note={noteToEdit} handleClose={handleModalClose}
         handleDelete={handleNoteEditorDelete} handleSave={handleNoteEditorSave} />
       <MapAnnotations annotations={mapState.annotations} showFlags={showAnnotationFlags} customFlags={customAnnotationFlags}
         setCustomFlags={setCustomAnnotationFlags} suppressAnnotations={isDraggingView} />
