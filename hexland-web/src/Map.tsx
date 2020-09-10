@@ -27,6 +27,7 @@ import { IMap } from './data/map';
 import { registerMapAsRecent, consolidateMapChanges, editMap } from './services/extensions';
 
 import { standardColours } from './models/featureColour';
+import * as Keys from './models/keys';
 import { MapStateMachine, createDefaultState } from './models/mapStateMachine';
 
 import { RouteComponentProps } from 'react-router-dom';
@@ -34,33 +35,7 @@ import { RouteComponentProps } from 'react-router-dom';
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
 
-// This stuff helps me create a reducer that tracks what keys are down.
-type KeysDown = { [key: string]: boolean };
-interface IKeyAction {
-  key: string;
-  down: boolean;
-}
-
-function isKeyDown(state: KeysDown, key: string) {
-  return key in state && state[key] === true;
-}
-
-function keysDownReducer(state: KeysDown, action: IKeyAction): KeysDown {
-  if (isKeyDown(state, action.key) === action.down) {
-    // No change.
-    return state;
-  } else {
-    var newState = { ...state };
-    if (action.down) {
-      newState[action.key] = true;
-    } else {
-      delete newState[action.key];
-    }
-
-    return newState;
-  }
-}
-
+// The map component is rather large because of all the state that got pulled into it...
 function Map(props: IMapPageProps) {
   const firebaseContext = useContext(FirebaseContext);
   const userContext = useContext(UserContext);
@@ -287,16 +262,19 @@ function Map(props: IMapPageProps) {
 
   // We track what keys are down so that we can disable mouse movement handlers if a movement key
   // is down (they don't play well together)
-  const [keysDown, setKeysDown] = useReducer(keysDownReducer, {});
+  const [keysDown, setKeysDown] = useReducer(Keys.keysDownReducer, {});
   const movementKeyDown = useMemo(
-    () => isKeyDown(keysDown, 'ArrowLeft') || isKeyDown(keysDown, 'ArrowRight') ||
-      isKeyDown(keysDown, 'ArrowUp') || isKeyDown(keysDown, 'ArrowDown') ||
-      isKeyDown(keysDown, 'O'),
+    () => Keys.isKeyDown(keysDown, 'ArrowLeft') || Keys.isKeyDown(keysDown, 'ArrowRight') ||
+      Keys.isKeyDown(keysDown, 'ArrowUp') || Keys.isKeyDown(keysDown, 'ArrowDown') ||
+      Keys.isKeyDown(keysDown, 'O'),
     [keysDown]
   );
 
-  // ...and also that the mouse button is down so we can disable movement keys.
+  // ...and also that the mouse button is down so we can disable movement keys
   const [mouseDown, setMouseDown] = useState(false);
+
+  // ...and also whether a touch is active (and its identifier.)
+  const [touch, setTouch] = useState<number | undefined>(undefined);
 
   // We want to disable most of the handlers, below, if a modal editor is open, to prevent
   // accidents whilst editing
@@ -443,59 +421,9 @@ function Map(props: IMapPageProps) {
     }
   }, [stateMachine, addChanges, anEditorIsOpen, canDoAnything, mouseDown, selectedColour, setEditMode, setKeysDown, setShowContextMenu]);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    setShowContextMenu(false);
-    var cp = getClientPosition(e.clientX, e.clientY);
-    if (cp === undefined || anEditorIsOpen || e.button !== 0 || movementKeyDown || stateMachine === undefined) {
-      return;
-    }
+  // *** Handler helpers to cover the common functionality between mouse and touch ***
 
-    setMouseDown(true);
-    switch (editMode) {
-      case EditMode.Select:
-        if (e.shiftKey) {
-          stateMachine.selectionDragStart(cp);
-        } else if (stateMachine.selectToken(cp) !== true) {
-          // There's no token here -- pan or rotate the view instead.
-          setIsDraggingView(true);
-          stateMachine.clearSelection();
-          stateMachine.panStart(cp, e.ctrlKey);
-        }
-        break;
-
-      case EditMode.Area: stateMachine.faceDragStart(cp, e.shiftKey, selectedColour); break;
-      case EditMode.Wall: stateMachine.wallDragStart(cp, e.shiftKey, selectedColour); break;
-      case EditMode.Room: stateMachine.roomDragStart(cp, e.shiftKey, selectedColour); break;
-    }
-  }, [anEditorIsOpen, editMode, getClientPosition, movementKeyDown, selectedColour, setIsDraggingView, setMouseDown, setShowContextMenu, stateMachine]);
-
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    var cp = getClientPosition(e.clientX, e.clientY);
-    if (cp === undefined || anEditorIsOpen || movementKeyDown) {
-      return undefined;
-    }
-
-    if (isDraggingView) {
-      stateMachine?.panTo(cp);
-    } else {
-      switch (editMode) {
-        case EditMode.Select: stateMachine?.moveSelectionTo(cp); break;
-        case EditMode.Area: stateMachine?.moveFaceHighlightTo(cp, selectedColour); break;
-        case EditMode.Wall: stateMachine?.moveWallHighlightTo(cp, e.shiftKey, selectedColour); break;
-        case EditMode.Room: stateMachine?.moveRoomHighlightTo(cp, e.shiftKey, selectedColour); break;
-      }
-    }
-
-    return cp;
-  }, [anEditorIsOpen, editMode, getClientPosition, isDraggingView, movementKeyDown, selectedColour, stateMachine]);
-
-  const handleMouseUp = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    var cp = handleMouseMove(e);
-    if (cp === undefined || anEditorIsOpen || e.button !== 0 || movementKeyDown) {
-      return;
-    }
-
-    setMouseDown(false);
+  const handleInteractionEnd = useCallback((cp: THREE.Vector3, shiftKey: boolean) => {
     var changes: IChange[] | undefined;
     if (isDraggingView) {
       stateMachine?.panEnd();
@@ -515,7 +443,7 @@ function Map(props: IMapPageProps) {
           break;
 
         case EditMode.Room:
-          changes = stateMachine?.roomDragEnd(cp, e.shiftKey, selectedColour);
+          changes = stateMachine?.roomDragEnd(cp, shiftKey, selectedColour);
           break;
       }
     }
@@ -525,7 +453,125 @@ function Map(props: IMapPageProps) {
       setEditMode(EditMode.Select);
     }
     addChanges(changes);
-  }, [addChanges, anEditorIsOpen, editMode, handleMouseMove, isDraggingView, movementKeyDown, selectedColour, setEditMode, setIsDraggingView, setMouseDown, stateMachine]);
+  }, [addChanges, editMode, isDraggingView, setEditMode, setIsDraggingView, selectedColour, stateMachine]);
+
+  const handleInteractionMove = useCallback((cp: THREE.Vector3, shiftKey: boolean) => {
+    if (isDraggingView) {
+      stateMachine?.panTo(cp);
+    } else {
+      switch (editMode) {
+        case EditMode.Select: stateMachine?.moveSelectionTo(cp); break;
+        case EditMode.Area: stateMachine?.moveFaceHighlightTo(cp, selectedColour); break;
+        case EditMode.Wall: stateMachine?.moveWallHighlightTo(cp, shiftKey, selectedColour); break;
+        case EditMode.Room: stateMachine?.moveRoomHighlightTo(cp, shiftKey, selectedColour); break;
+      }
+    }
+
+    return cp;
+  }, [editMode, isDraggingView, selectedColour, stateMachine]);
+
+  const handleInteractionStart = useCallback((cp: THREE.Vector3, shiftKey: boolean, ctrlKey: boolean) => {
+    switch (editMode) {
+      case EditMode.Select:
+        if (shiftKey) {
+          stateMachine?.selectionDragStart(cp);
+        } else if (stateMachine?.selectToken(cp) !== true) {
+          // There's no token here -- pan or rotate the view instead.
+          setIsDraggingView(true);
+          stateMachine?.clearSelection();
+          stateMachine?.panStart(cp, ctrlKey);
+        }
+        break;
+
+      case EditMode.Area: stateMachine?.faceDragStart(cp, shiftKey, selectedColour); break;
+      case EditMode.Wall: stateMachine?.wallDragStart(cp, shiftKey, selectedColour); break;
+      case EditMode.Room: stateMachine?.roomDragStart(cp, shiftKey, selectedColour); break;
+    }
+  }, [editMode, setIsDraggingView, selectedColour, stateMachine]);
+
+  // *** Mouse and touch specific handlers ***
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    setShowContextMenu(false);
+    var cp = getClientPosition(e.clientX, e.clientY);
+    if (cp === undefined || anEditorIsOpen || e.button !== 0 || movementKeyDown) {
+      return;
+    }
+
+    setMouseDown(true);
+    handleInteractionStart(cp, e.shiftKey, e.ctrlKey);
+  }, [anEditorIsOpen, getClientPosition, handleInteractionStart, movementKeyDown, setMouseDown, setShowContextMenu]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    var cp = getClientPosition(e.clientX, e.clientY);
+    if (cp === undefined || anEditorIsOpen || movementKeyDown) {
+      return undefined;
+    }
+
+    return handleInteractionMove(cp, e.shiftKey);
+  }, [anEditorIsOpen, getClientPosition, handleInteractionMove, movementKeyDown]);
+
+  const handleMouseUp = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    var cp = handleMouseMove(e);
+    if (cp === undefined || anEditorIsOpen || e.button !== 0 || movementKeyDown) {
+      return;
+    }
+
+    setMouseDown(false);
+    handleInteractionEnd(cp, e.shiftKey);
+  }, [anEditorIsOpen, handleInteractionEnd, handleMouseMove, movementKeyDown, setMouseDown]);
+
+  const isTrackingTouch = useCallback((e: React.TouchEvent) => {
+    for (var i = 0; i < e.changedTouches.length; ++i) {
+      if (e.changedTouches[i].identifier === touch) {
+        return e.changedTouches[i];
+      }
+    }
+
+    return undefined;
+  }, [touch]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    // This only takes effect if the touch we're tracking has changed
+    var t = isTrackingTouch(e);
+    if (t === undefined) {
+      return undefined;
+    }
+
+    var cp = getClientPosition(t.clientX, t.clientY);
+    if (cp === undefined || anEditorIsOpen || movementKeyDown) {
+      return undefined;
+    }
+
+    cp = handleInteractionMove(cp, false);
+    return { touch: t, cp: cp };
+  }, [anEditorIsOpen, getClientPosition, handleInteractionMove, isTrackingTouch, movementKeyDown]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    var x = handleTouchMove(e);
+    if (x === undefined || anEditorIsOpen || movementKeyDown) {
+      return;
+    }
+
+    setTouch(undefined);
+    handleInteractionEnd(x.cp, false);
+  }, [anEditorIsOpen, handleInteractionEnd, handleTouchMove, movementKeyDown, setTouch]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (touch !== undefined || e.changedTouches.length === 0) {
+      return;
+    }
+
+    var t = e.changedTouches[0];
+    setShowContextMenu(false);
+    var cp = getClientPosition(t.clientX, t.clientY);
+    if (cp === undefined || anEditorIsOpen || movementKeyDown) {
+      return;
+    }
+
+    setTouch(t.identifier);
+    handleInteractionStart(cp, false, false);
+  }, [anEditorIsOpen, getClientPosition, handleInteractionStart, movementKeyDown, setTouch, touch]);
 
   const handleWheel = useCallback((e: WheelEvent) => {
     if (e.deltaY !== 0 && !anEditorIsOpen) {
@@ -593,7 +639,11 @@ function Map(props: IMapPageProps) {
         <div id="drawingDiv" ref={drawingRef}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp} />
+          onMouseUp={handleMouseUp}
+          onTouchCancel={handleTouchEnd}
+          onTouchEnd={handleTouchEnd}
+          onTouchMove={handleTouchMove}
+          onTouchStart={handleTouchStart} />
       </div>
       <MapEditorModal show={showMapEditor} map={map}
         handleClose={() => setShowMapEditor(false)} handleSave={handleMapEditorSave} />
