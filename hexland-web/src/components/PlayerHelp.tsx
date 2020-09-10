@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 
 import ExpansionToggle from './ExpansionToggle';
 
@@ -39,62 +39,65 @@ function ExpandingHelpItem(props: IExpandingHelpItemProps) {
   );
 }
 
+const playerHelpTitle = (
+  <div><b>Drag</b> a token to move it, or an empty space to move the view.</div>
+);
+
+const playerHelpBody = (
+  <div>
+    <b>Shift-drag</b> to select one or more tokens.<br />
+    <b>Arrow keys</b> move the currently selected token(s).<br />
+    <b>Ctrl-drag</b> an empty space to rotate the map.<br />
+    <b>O</b> to move to the currently selected token or map origin.<br />
+    <b>Esc</b> to cancel.<br />
+      Double-click a note marker <FontAwesomeIcon icon={faMapMarker} color="white" /> to toggle it on or off.
+  </div>
+);
+
+const basicPlayerHelp = (
+  <HelpItem key="p1">
+    {playerHelpTitle}
+    {playerHelpBody}
+  </HelpItem>
+);
+
+const ownerHelp = [
+  (<ExpandingHelpItem key="p1" eventKey="0" summary={playerHelpTitle}>
+    {playerHelpBody}
+  </ExpandingHelpItem>),
+  (<ExpandingHelpItem key="o1" eventKey="1" summary={(<div><b>Right-click</b> to bring up the context menu.</div>)}>
+    The context menu enables you to create and edit tokens and notes, and also switch to one of the paint modes.
+    Edit a token to assign it to a player.
+  </ExpandingHelpItem>),
+  (<ExpandingHelpItem key="o2" eventKey="2" summary={(<div><b>A</b> to start painting an area.</div>)}>
+    Paints an area in the currently selected colour.
+    While in this mode, <b>drag</b> to paint freehand, or <b>Shift-drag</b> to paint a rectangle.
+  </ExpandingHelpItem>),
+  (<ExpandingHelpItem key="o3" eventKey="3" summary={(<div><b>W</b> to start painting a wall.</div>)}>
+    Paints a wall in the currently selected colour.
+    While in this mode, <b>drag</b> to paint freehand, or <b>Shift-drag</b> to paint a wall enclosing a rectangle.
+    Players cannot move their tokens through walls.
+  </ExpandingHelpItem>),
+  (<ExpandingHelpItem key="o4" eventKey="4" summary={(<div><b>R</b> to start painting a room.</div>)}>
+    Paints an enclosed room with walls in the currently selected colour.
+    While in this mode, <b>drag</b> to combine it with any other room you drag over, or <b>Shift-drag</b> to
+    take the area you drag over away from any other existing room.
+  </ExpandingHelpItem>),
+  (<HelpItem key="o5">
+    <b>Del</b> to delete the currently selected token(s).
+  </HelpItem>),
+];
+
 interface IPlayerHelpProps {
   canDoAnything: boolean;
 }
 
 function PlayerHelp(props: IPlayerHelpProps) {
-  const playerHelp = [
-    (<ExpandingHelpItem key="p1" eventKey="0" summary={(<div><b>Drag</b> a token to move it, or an empty space to move the view.</div>)}>
-      <b>Shift-drag</b> to select one or more tokens.<br />
-      <b>Arrow keys</b> move the currently selected token(s).<br />
-      <b>Ctrl-drag</b> an empty space to rotate the map.
-    </ExpandingHelpItem>),
-    (<HelpItem key="p3">
-      <b>O</b> to move to the currently selected token or map origin.
-    </HelpItem>),
-    (<HelpItem key="p4">
-      <b>Esc</b> to cancel.
-    </HelpItem>),
-    (<HelpItem key="p5">
-      Double-click a note marker <FontAwesomeIcon icon={faMapMarker} color="white" /> to toggle it on or off.
-    </HelpItem>),
-  ];
-
-  const ownerHelp = [
-    (<ExpandingHelpItem key="o1" eventKey="1" summary={(<div><b>Right-click</b> to bring up the context menu.</div>)}>
-      The context menu enables you to create and edit tokens and notes, and also switch to one of the paint modes.
-      Edit a token to assign it to a player.
-    </ExpandingHelpItem>),
-    (<ExpandingHelpItem key="o2" eventKey="2" summary={(<div><b>A</b> to start painting an area.</div>)}>
-      Paints an area in the currently selected colour.
-      While in this mode, <b>drag</b> to paint freehand, or <b>Shift-drag</b> to paint a rectangle.
-    </ExpandingHelpItem>),
-    (<ExpandingHelpItem key="o3" eventKey="3" summary={(<div><b>W</b> to start painting a wall.</div>)}>
-      Paints a wall in the currently selected colour.
-      While in this mode, <b>drag</b> to paint freehand, or <b>Shift-drag</b> to paint a wall enclosing a rectangle.
-      Players cannot move their tokens through walls.
-    </ExpandingHelpItem>),
-    (<ExpandingHelpItem key="o4" eventKey="4" summary={(<div><b>R</b> to start painting a room.</div>)}>
-      Paints an enclosed room with walls in the currently selected colour.
-      While in this mode, <b>drag</b> to combine it with any other room you drag over, or <b>Shift-drag</b>
-      to take the area you drag over away from any other existing room.
-    </ExpandingHelpItem>),
-    (<HelpItem key="o5">
-      <b>Del</b> to delete the currently selected token(s).
-    </HelpItem>),
-  ];
-
-  const help = useMemo(
-    () => props.canDoAnything ? [...playerHelp, ...ownerHelp] : [...playerHelp],
-    [props.canDoAnything, playerHelp, ownerHelp]
-  );
-
-  return (
-    <Accordion>
-      {help}
+  return props.canDoAnything ? (
+    <Accordion defaultActiveKey="0">
+      {ownerHelp}
     </Accordion>
-  );
+  ) : basicPlayerHelp;
 }
 
 export default PlayerHelp;
