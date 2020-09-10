@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 // This component shows the introductory blurb on the home page.
 function Introduction() {
   return (
-    <div className="App-introduction">
+    <div>
       <img className="App-introduction-image" alt="Orc with chest" src="/orc_with_chest.png" />
       <h5 className="mt-4">Welcome to Hexland.</h5>
       <p>

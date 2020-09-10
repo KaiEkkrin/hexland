@@ -13,11 +13,29 @@ import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import { LinkContainer } from 'react-router-bootstrap';
 
-interface INavigationProps {
-  title: string | undefined;
+function NavPageLinks() {
+  const userContext = useContext(UserContext);
+  const loggedInItemsHidden = useMemo(
+    () => userContext.user === null || userContext.user === undefined,
+    [userContext.user]
+  );
+
+  return (
+    <Nav className="mr-auto">
+      <LinkContainer to="/">
+        <Nav.Link>Home</Nav.Link>
+      </LinkContainer>
+      <LinkContainer to="/all" hidden={loggedInItemsHidden}>
+        <Nav.Link>My adventures</Nav.Link>
+      </LinkContainer>
+      <LinkContainer to="/shared" hidden={loggedInItemsHidden}>
+        <Nav.Link>Shared with me</Nav.Link>
+      </LinkContainer>
+    </Nav>
+  );
 }
 
-function Navigation(props: INavigationProps) {
+function NavLogin() {
   const firebaseContext = useContext(FirebaseContext);
   const userContext = useContext(UserContext);
   const profile = useContext(ProfileContext);
@@ -25,11 +43,6 @@ function Navigation(props: INavigationProps) {
   const displayName = useMemo(
     () => profile?.name ?? userContext.user?.displayName ?? "",
     [profile, userContext.user]
-  );
-  
-  const loggedInItemsHidden = useMemo(
-    () => userContext.user === null || userContext.user === undefined,
-    [userContext.user]
   );
 
   const handleSignOut = useCallback(() => {
@@ -62,45 +75,14 @@ function Navigation(props: INavigationProps) {
 
   const saveProfileDisabled = useMemo(() => editDisplayName.length === 0, [editDisplayName]);
 
-  return (
-    <Navbar bg="dark" variant="dark" sticky="top">
-      <LinkContainer to="/">
-        <Navbar.Brand>hexland</Navbar.Brand>
-      </LinkContainer>
-      <Navbar.Collapse>
-        <Nav className="mr-auto">
-          <LinkContainer to="/">
-            <Nav.Link>Home</Nav.Link>
-          </LinkContainer>
-          <LinkContainer to="/all" hidden={loggedInItemsHidden}>
-            <Nav.Link>My adventures</Nav.Link>
-          </LinkContainer>
-          <LinkContainer to="/shared" hidden={loggedInItemsHidden}>
-            <Nav.Link>Shared with me</Nav.Link>
-          </LinkContainer>
-        </Nav>
-      </Navbar.Collapse>
-      <Navbar.Collapse className="justify-content-center">
-        <Navbar.Text className="mr-2">{props.title ?? ""}</Navbar.Text>
-      </Navbar.Collapse>
-      {userContext.user ? (
-        <Navbar.Collapse className="justify-content-end">
-          <Form inline>
-            <ButtonGroup>
-              <Button variant="primary" onClick={handleEditProfile}>{displayName}</Button>
-              <Button variant="outline-primary" onClick={handleSignOut}>Log out</Button>
-            </ButtonGroup>
-          </Form>
-        </Navbar.Collapse>
-      ) : (
-          <Navbar.Collapse className="justify-content-end">
-            <Nav>
-              <LinkContainer to="/login">
-                <Nav.Link>Sign up/Login</Nav.Link>
-              </LinkContainer>
-            </Nav>
-          </Navbar.Collapse >
-        )}
+  return userContext.user ? (
+    <div>
+      <Form inline>
+        <ButtonGroup>
+          <Button variant="primary" onClick={handleEditProfile}>{displayName}</Button>
+          <Button variant="outline-primary" onClick={handleSignOut}>Log out</Button>
+        </ButtonGroup>
+      </Form>
       <Modal show={showEditProfile}>
         <Modal.Header closeButton>
           <Modal.Title>User profile settings</Modal.Title>
@@ -119,6 +101,36 @@ function Navigation(props: INavigationProps) {
           <Button variant="primary" disabled={saveProfileDisabled} onClick={handleSaveProfile}>Save profile</Button>
         </Modal.Footer>
       </Modal>
+    </div>
+  ) : (
+    <LinkContainer to="/login">
+      <Nav.Link>Sign up/Login</Nav.Link>
+    </LinkContainer>
+  );
+}
+
+interface INavigationProps {
+  title: string | undefined;
+}
+
+function Navigation(props: INavigationProps) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <Navbar bg="dark" expand="md" variant="dark" sticky="top" onToggle={setExpanded}>
+      <LinkContainer to="/">
+        <Navbar.Brand>hexland</Navbar.Brand>
+      </LinkContainer>
+      <Navbar.Toggle aria-controls="basic-navbar-nav" />
+      <Navbar.Collapse id="basic-navbar-nav">
+        <NavPageLinks />
+      </Navbar.Collapse>
+      <Navbar.Collapse id="basic-navbar-nav" className="justify-content-center" hidden={expanded}>
+        <Navbar.Text className="mr-2">{props.title ?? ""}</Navbar.Text>
+      </Navbar.Collapse>
+      <Navbar.Collapse id="basic-navbar-nav" className="justify-content-end">
+        <NavLogin />
+      </Navbar.Collapse>
     </Navbar>
   );
 }
