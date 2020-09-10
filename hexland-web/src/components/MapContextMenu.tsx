@@ -28,6 +28,7 @@ interface IMapContextMenuProps {
   // The window co-ordinates where it was opened (so we can position it.)
   x: number;
   y: number;
+  pageRight: number;
   pageBottom: number;
 
   // What was here in the map (if anything)
@@ -45,6 +46,9 @@ function MapContextMenu(props: IMapContextMenuProps) {
   const hidden = useMemo(() => !props.show, [props.show]);
   const tokenLabel = useMemo(() => props.token === undefined ? "Add token" : "Edit token " + props.token.text, [props.token]);
   const noteLabel = useMemo(() => props.note === undefined ? "Add note" : "Edit note", [props.note]);
+
+  const left = useMemo(() => props.x > props.pageRight / 2 ? undefined : props.x, [props.x, props.pageRight]);
+  const right = useMemo(() => props.x > props.pageRight / 2 ? props.pageRight - props.x : undefined, [props.x, props.pageRight]);
 
   const top = useMemo(() => props.y > props.pageBottom / 2 ? undefined : props.y, [props.y, props.pageBottom]);
   const bottom = useMemo(() => props.y > props.pageBottom / 2 ? props.pageBottom - props.y : undefined, [props.y, props.pageBottom]);
@@ -77,7 +81,8 @@ function MapContextMenu(props: IMapContextMenuProps) {
   return (
     <Card bg="dark" text="white" hidden={hidden} style={{
       position: "absolute",
-      left: props.x,
+      left: left,
+      right: right,
       top: top,
       bottom: bottom,
       zIndex: 2002

@@ -13,6 +13,7 @@ import Navigation from './components/Navigation';
 import NoteEditorModal from './components/NoteEditorModal';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { StatusContext } from './components/StatusContextProvider';
+import TokenDeletionModal from './components/TokenDeletionModal';
 import TokenEditorModal from './components/TokenEditorModal';
 import { UserContext } from './components/UserContextProvider';
 
@@ -32,7 +33,6 @@ import { RouteComponentProps } from 'react-router-dom';
 
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
-import TokenDeletionModal from './components/TokenDeletionModal';
 
 // This stuff helps me create a reducer that tracks what keys are down.
 type KeysDown = { [key: string]: boolean };
@@ -184,6 +184,7 @@ function Map(props: IMapPageProps) {
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuX, setContextMenuX] = useState(0);
   const [contextMenuY, setContextMenuY] = useState(0);
+  const [contextMenuPageRight, setContextMenuPageRight] = useState(0);
   const [contextMenuPageBottom, setContextMenuPageBottom] = useState(0);
   const [contextMenuToken, setContextMenuToken] = useState<IToken | undefined>(undefined);
   const [contextMenuNote, setContextMenuNote] = useState<IAnnotation | undefined>(undefined);
@@ -351,6 +352,7 @@ function Map(props: IMapPageProps) {
     setShowContextMenu(true);
     setContextMenuX(e.clientX);
     setContextMenuY(e.clientY);
+    setContextMenuPageRight(bounds.right);
     setContextMenuPageBottom(bounds.bottom);
 
     var cp = getClientPosition(e.clientX, e.clientY);
@@ -610,6 +612,7 @@ function Map(props: IMapPageProps) {
         setShow={setShowContextMenu}
         x={contextMenuX}
         y={contextMenuY}
+        pageRight={contextMenuPageRight}
         pageBottom={contextMenuPageBottom}
         token={contextMenuToken}
         note={contextMenuNote}
