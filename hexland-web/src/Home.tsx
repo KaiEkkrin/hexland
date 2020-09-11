@@ -2,6 +2,7 @@ import React, { useContext, useMemo } from 'react';
 import './App.css';
 
 import AdventureCollection from './components/AdventureCollection';
+import { AnalyticsContext } from './components/AnalyticsContextProvider';
 import Introduction from './components/Introduction';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
@@ -20,6 +21,7 @@ import { v4 as uuidv4 } from 'uuid';
 function LatestColumn() {
   const userContext = useContext(UserContext);
   const profile = useContext(ProfileContext);
+  const analyticsContext = useContext(AnalyticsContext);
 
   const myAdventures = useMemo(
     () => profile?.adventures?.filter(a => a.owner === userContext.user?.uid) ?? [],
@@ -44,14 +46,14 @@ function LatestColumn() {
 
     editAdventure(userContext.dataService, true, record)
       .then(() => console.log("Adventure " + record.id + " successfully created"))
-      .catch(e => console.error("Error creating adventure " + record.id, e));
+      .catch(e => analyticsContext.logError("Error creating adventure " + record.id, e));
   };
 
   function setMap(adventureId: string, id: string | undefined, map: IMap) {
     id = id ?? uuidv4();
     editMap(userContext.dataService, adventureId, id, map)
       .then(() => console.log("Map " + id + " successfully updated"))
-      .catch(e => console.error("Error editing map " + id, e));
+      .catch(e => analyticsContext.logError("Error editing map " + id, e));
   }
 
   return (

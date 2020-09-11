@@ -2,8 +2,10 @@ import React, { useContext, useState, useEffect, useMemo } from 'react';
 import './App.css';
 
 import AdventureCollection from './components/AdventureCollection';
+import { AnalyticsContext } from './components/AnalyticsContextProvider';
 import Navigation from './components/Navigation';
 import { ProfileContext } from './components/ProfileContextProvider';
+import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { UserContext } from './components/UserContextProvider';
 
 import { IAdventure, summariseAdventure } from './data/adventure';
@@ -15,11 +17,11 @@ import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 
 import { v4 as uuidv4 } from 'uuid';
-import { RequireLoggedIn } from './components/RequireLoggedIn';
 
 function All() {
   const userContext = useContext(UserContext);
   const profile = useContext(ProfileContext);
+  const analyticsContext = useContext(AnalyticsContext);
 
   const [adventures, setAdventures] = useState<IIdentified<IAdventure>[]>([]);
 
@@ -53,7 +55,7 @@ function All() {
 
     editAdventure(userContext.dataService, true, record)
       .then(() => console.log("Adventure " + record.id + " successfully created"))
-      .catch(e => console.error("Error creating adventure " + record.id, e));
+      .catch(e => analyticsContext.logError("Error creating adventure " + record.id, e));
   }
 
   return (

@@ -79,7 +79,7 @@ function Login() {
             history.replace("/");
           }
         })
-        .catch(e => console.error("Login failed:", e));
+        .catch(e => analyticsContext.logError("Login failed:", e));
     }
   }
 

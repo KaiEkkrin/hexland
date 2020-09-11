@@ -5,11 +5,15 @@ import { IAnalyticsContext, IContextProviderProps } from '../interfaces';
 export const AnalyticsContext = React.createContext<IAnalyticsContext>({
   analytics: undefined,
   enabled: false,
-  setEnabled: (enabled: boolean) => {}
+  setEnabled: (enabled: boolean) => {},
+  logError: (message: string, e: any, fatal?: boolean | undefined) => {}
 });
 
 // Our mock analytics provider will use this flag:
-var isAnalyticsEnabled = false;
+export var isAnalyticsEnabled = false;
+
+// We expose an error mock
+export const logError = jest.fn();
 
 function AnalyticsContextProvider(props: IContextProviderProps) {
   const [enabled, setEnabled] = useState(false);
@@ -18,7 +22,8 @@ function AnalyticsContextProvider(props: IContextProviderProps) {
   const analyticsContext = useMemo(() => ({
     analytics: undefined,
     enabled: enabled,
-    setEnabled: setEnabled
+    setEnabled: setEnabled,
+    logError: logError
   }), [enabled, setEnabled]);
 
   // On load, fetch the global value

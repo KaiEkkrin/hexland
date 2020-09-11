@@ -1,5 +1,6 @@
 import React, { useContext, useMemo, useCallback, useState } from 'react';
 
+import { AnalyticsContext } from './AnalyticsContextProvider';
 import { FirebaseContext } from './FirebaseContextProvider';
 import { ProfileContext } from './ProfileContextProvider';
 import { UserContext } from './UserContextProvider';
@@ -39,6 +40,7 @@ function NavLogin() {
   const firebaseContext = useContext(FirebaseContext);
   const userContext = useContext(UserContext);
   const profile = useContext(ProfileContext);
+  const analyticsContext = useContext(AnalyticsContext);
 
   const displayName = useMemo(
     () => profile?.name ?? userContext.user?.displayName ?? "",
@@ -47,8 +49,8 @@ function NavLogin() {
 
   const handleSignOut = useCallback(() => {
     firebaseContext.auth?.signOut()
-      .catch(e => console.error("Error signing out: ", e));
-  }, [firebaseContext.auth]);
+      .catch(e => analyticsContext.logError("Error signing out: ", e));
+  }, [firebaseContext.auth, analyticsContext]);
 
   // The profile editor:
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -70,8 +72,8 @@ function NavLogin() {
     // I don't need to ensureProfile() here: it was done by the login component
     updateProfile(userContext.dataService, editDisplayName)
       .then(() => console.log("successfully updated profile"))
-      .catch(e => console.error("error updating profile:", e));
-  }, [editDisplayName, handleModalClose, userContext.dataService]);
+      .catch(e => analyticsContext.logError("error updating profile:", e));
+  }, [editDisplayName, handleModalClose, userContext.dataService, analyticsContext]);
 
   const saveProfileDisabled = useMemo(() => editDisplayName.length === 0, [editDisplayName]);
 

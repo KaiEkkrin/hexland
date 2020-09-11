@@ -26,9 +26,9 @@ function Invite(props: IInvitePageProps) {
       var inviteRef = userContext.dataService.getInviteRef(props.adventureId, props.inviteId);
       userContext.dataService.get(inviteRef)
         .then(i => setInvite(i))
-        .catch(e => console.error("Failed to fetch invite " + props.inviteId, e));
+        .catch(e => analyticsContext.logError("Failed to fetch invite " + props.inviteId, e));
     }
-  }, [userContext.dataService, props.adventureId, props.inviteId]);
+  }, [userContext.dataService, analyticsContext, props.adventureId, props.inviteId]);
 
   const inviteDescription = useMemo(() =>
     invite === undefined ? "(no such invite)" : invite.adventureName + " by " + invite.ownerName,
@@ -38,7 +38,7 @@ function Invite(props: IInvitePageProps) {
     analyticsContext.analytics?.logEvent("join_group", { "group_id": props.adventureId });
     joinAdventure(userContext.dataService, profile, props.adventureId)
       .then(() => history.replace("/adventure/" + props.adventureId))
-      .catch(e => console.error("Failed to join adventure " + props.adventureId, e));
+      .catch(e => analyticsContext.logError("Failed to join adventure " + props.adventureId, e));
   }
 
   return (

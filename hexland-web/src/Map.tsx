@@ -93,9 +93,9 @@ function Map(props: IMapPageProps) {
     }
 
     registerMapAsRecent(userContext.dataService, map.adventureId, map.id, map.record)
-      .catch(e => console.error("Error registering map as recent", e));
+      .catch(e => analyticsContext.logError("Error registering map as recent", e));
     consolidateMapChanges(userContext.dataService, firebaseContext.timestampProvider, map.adventureId, map.id, map.record)
-      .catch(e => console.error("Error consolidating map changes", e));
+      .catch(e => analyticsContext.logError("Error consolidating map changes", e));
 
     var sm = new MapStateMachine(
       map.record, userContext.dataService.getUid(), standardColours, drawingRef.current, setMapState
@@ -105,13 +105,13 @@ function Map(props: IMapPageProps) {
     console.log("Watching changes to map " + map.id);
     var stopWatchingChanges = userContext.dataService.watchChanges(map.adventureId, map.id,
       chs => trackChanges(map.record, sm.changeTracker, chs.chs, chs.user),
-      e => console.error("Error watching map changes", e));
+      e => analyticsContext.logError("Error watching map changes", e));
     
     return () => {
       stopWatchingChanges();
       sm.dispose();
     };
-  }, [userContext.dataService, firebaseContext.timestampProvider, map]);
+  }, [userContext.dataService, firebaseContext.timestampProvider, analyticsContext, map]);
 
   // If we can't see anything, notify the user
   const canSeeAnything = useMemo(() => {
@@ -153,8 +153,8 @@ function Map(props: IMapPageProps) {
 
     userContext.dataService.addChanges(props.adventureId, props.mapId, changes)
       .then(() => console.log("Added " + changes.length + " changes"))
-      .catch(e => console.error("Error adding " + changes.length + " changes", e));
-  }, [userContext.dataService, props.adventureId, props.mapId]);
+      .catch(e => analyticsContext.logError("Error adding " + changes.length + " changes", e));
+  }, [userContext.dataService, analyticsContext, props.adventureId, props.mapId]);
 
   // == UI STUFF ==
 
@@ -221,9 +221,9 @@ function Map(props: IMapPageProps) {
       consolidateMapChanges(dataService, firebaseContext.timestampProvider, map.adventureId, map.id, map.record)
         .then(() => editMap(dataService, map.adventureId, map.id, updated))
         .then(() => console.log("Updated map"))
-        .catch(e => console.error("Failed to update map:", e));
+        .catch(e => analyticsContext.logError("Failed to update map:", e));
     }
-  }, [firebaseContext.timestampProvider, map, setShowMapEditor, userContext.dataService]);
+  }, [firebaseContext.timestampProvider, analyticsContext, map, setShowMapEditor, userContext.dataService]);
 
   const handleModalClose = useCallback(() => {
     setShowMapEditor(false);

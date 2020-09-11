@@ -7,7 +7,8 @@ import { IAnalytics } from '../services/interfaces';
 export const AnalyticsContext = React.createContext<IAnalyticsContext>({
   analytics: undefined,
   enabled: false,
-  setEnabled: (enabled: boolean) => {}
+  setEnabled: (enabled: boolean) => {},
+  logError: (message: string, e: any, fatal?: boolean | undefined) => {}
 });
 
 const enabledKey = "analyticsEnabled";
@@ -23,7 +24,11 @@ function AnalyticsContextProvider(props: IContextProviderProps) {
   const analyticsContext = useMemo(() => ({
     analytics: analytics,
     enabled: enabled,
-    setEnabled: setEnabled
+    setEnabled: setEnabled,
+    logError: (message: string, e: any, fatal?: boolean | undefined) => {
+      console.error(message, e);
+      analytics?.logEvent("exception", { "exDescription": message, "exFatal": fatal !== false });
+    }
   }), [analytics, enabled, setEnabled]);
 
   // On load, fetch any current enabled value from local storage

@@ -27,6 +27,7 @@ export interface IAnalyticsContext {
   analytics: IAnalytics | undefined;
   enabled: boolean; // Residing in local storage, this signals consent.
   setEnabled: (enabled: boolean) => void;
+  logError: (message: string, e: any, fatal?: boolean | undefined) => void; // Use this error helper to track errors in GA where possible.
 }
 
 export interface IToast {

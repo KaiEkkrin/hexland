@@ -62,8 +62,8 @@ function Adventure(props: IAdventureProps) {
 
     registerAdventureAsRecent(userContext.dataService, adventure.id, adventure.record)
       .then(() => console.log("registered adventure " + adventure.id + " as recent"))
-      .catch(e => console.error("Failed to register adventure " + adventure.id + " as recent", e));
-  }, [userContext.dataService, adventure]);
+      .catch(e => analyticsContext.logError("Failed to register adventure " + adventure.id + " as recent", e));
+  }, [analyticsContext, userContext.dataService, adventure]);
 
   // Derive the adventures list for the map collection
   const adventures = useMemo(
@@ -86,7 +86,7 @@ function Adventure(props: IAdventureProps) {
       summariseAdventure(adventure.id, adventure.record)
     )
       .then(l => setInviteLink(props.adventureId + "/invite/" + l))
-      .catch(e => console.error("Failed to create invite link for " + props.adventureId, e));
+      .catch(e => analyticsContext.logError("Failed to create invite link for " + props.adventureId, e));
   }
 
   // Adventure editing support
@@ -163,7 +163,7 @@ function Adventure(props: IAdventureProps) {
     editAdventure(
       userContext.dataService, false, summariseAdventure(props.adventureId, updated), updated
     ).then(() => console.log("Adventure " + props.adventureId + " successfully updated"))
-      .catch(e => console.error("Error editing adventure " + props.adventureId, e));
+      .catch(e => analyticsContext.logError("Error editing adventure " + props.adventureId, e));
   }
 
   function handleDeleteAdventureSave() {
@@ -173,7 +173,7 @@ function Adventure(props: IAdventureProps) {
         console.log("Adventure " + props.adventureId + " successfully deleted");
         history.replace("/");
       })
-      .catch(e => console.error("Error deleting adventure " + props.adventureId, e));
+      .catch(e => analyticsContext.logError("Error deleting adventure " + props.adventureId, e));
   }
 
   function handleLeaveAdventureSave() {
@@ -183,7 +183,7 @@ function Adventure(props: IAdventureProps) {
         console.log("Successfully left adventure " + props.adventureId);
         history.replace("/");
       })
-      .catch(e => console.error("Error leaving adventure " + props.adventureId, e));
+      .catch(e => analyticsContext.logError("Error leaving adventure " + props.adventureId, e));
   }
 
   // Map editing support
@@ -195,13 +195,13 @@ function Adventure(props: IAdventureProps) {
     id = id ?? uuidv4();
     editMap(userContext.dataService, adventureId, id, map)
       .then(() => console.log("Map " + id + " successfully updated"))
-      .catch(e => console.error("Error editing map " + id, e));
+      .catch(e => analyticsContext.logError("Error editing map " + id, e));
   }
 
   function mapDelete(id: string) {
     deleteMap(userContext.dataService, props.adventureId, id)
       .then(() => console.log("Map " + id + " successfully deleted"))
-      .catch(e => console.error("Error deleting map " + id, e));
+      .catch(e => analyticsContext.logError("Error deleting map " + id, e));
   }
 
   return (
