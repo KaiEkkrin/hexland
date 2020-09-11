@@ -52,7 +52,7 @@ function MapCard(props: IMapCardProps) {
 
   return props.collapsing ? (
     <Card bg="dark" text="white" key={props.map.id}>
-      <ExpansionToggle eventKey={props.map.id}>{props.map.name}</ExpansionToggle>
+      <ExpansionToggle direction="down" eventKey={props.map.id}>{props.map.name}</ExpansionToggle>
       <Accordion.Collapse eventKey={props.map.id}>
         <Card.Body>
           <Card.Subtitle className="text-muted">{props.map.ty as string} map</Card.Subtitle>

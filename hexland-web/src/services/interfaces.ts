@@ -24,7 +24,13 @@ export interface IAuthProvider {}
 export interface IUser {
   displayName: string | null;
   email: string | null;
+  providerId: string;
   uid: string;
+}
+
+// The analytics service.
+export interface IAnalytics {
+  logEvent(event: string, parameters: any): void;
 }
 
 // A reference to stored data.

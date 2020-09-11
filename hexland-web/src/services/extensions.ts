@@ -5,7 +5,7 @@ import { trackChanges } from '../data/changeTracking';
 import { FeatureDictionary, IToken, IFeature } from '../data/feature';
 import { IMap, MapType } from '../data/map';
 import { IAdventureSummary, IProfile } from '../data/profile';
-import { IDataService, IDataView, IDataReference, IDataAndReference, IUser } from './interfaces';
+import { IDataService, IDataView, IDataReference, IDataAndReference, IUser, IAnalytics } from './interfaces';
 
 import { MapChangeTracker } from '../models/mapChangeTracker';
 import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
@@ -19,7 +19,11 @@ import { v4 as uuidv4 } from 'uuid';
 
 const maxProfileEntries = 7;
 
-export async function ensureProfile(dataService: IDataService | undefined, user: IUser | undefined): Promise<IProfile | undefined> {
+export async function ensureProfile(
+  dataService: IDataService | undefined,
+  user: IUser | undefined,
+  analytics: IAnalytics | undefined
+): Promise<IProfile | undefined> {
   if (dataService === undefined || user === undefined) {
     return undefined;
   }
@@ -28,6 +32,7 @@ export async function ensureProfile(dataService: IDataService | undefined, user:
   return await dataService.runTransaction(async view => {
     var profile = await view.get(profileRef);
     if (profile !== undefined) {
+      analytics?.logEvent("login", { "method": user.providerId });
       return profile;
     }
 
@@ -38,6 +43,7 @@ export async function ensureProfile(dataService: IDataService | undefined, user:
       latestMaps: []
     };
 
+    analytics?.logEvent("sign_up", { "method": user.providerId });
     await view.set(profileRef, profile);
     return profile;
   });

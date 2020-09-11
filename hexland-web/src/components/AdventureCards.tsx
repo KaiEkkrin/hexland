@@ -20,7 +20,7 @@ function AdventureCardsCollapsing(props: IAdventureCardsProps) {
   const cards = useMemo(() => {
     const cardList = [...props.adventures.map(v => (
       <Card key={v.id} bg="dark" text="white">
-        <ExpansionToggle eventKey={v.id}>{v.name}</ExpansionToggle>
+        <ExpansionToggle direction="down" eventKey={v.id}>{v.name}</ExpansionToggle>
         <Accordion.Collapse eventKey={v.id}>
           <Card.Body>
             <Card.Subtitle>By {v.ownerName}</Card.Subtitle>

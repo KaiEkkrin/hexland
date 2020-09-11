@@ -9,6 +9,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 interface IExpansionToggleProps {
   children: React.ReactNode;
+  direction: "up" | "down";
   eventKey: string;
   callback?: any;
 }
@@ -22,8 +23,10 @@ function ExpansionToggle(props: IExpansionToggleProps) {
   );
 
   const icon = useMemo(
-    () => currentEventKey === props.eventKey ? faChevronUp : faChevronDown,
-    [currentEventKey, props.eventKey]
+    () => currentEventKey === props.eventKey ?
+      (props.direction === "up" ? faChevronDown : faChevronUp) :
+      (props.direction === "up" ? faChevronUp : faChevronDown),
+    [currentEventKey, props.direction, props.eventKey]
   );
 
   return (

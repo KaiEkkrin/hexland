@@ -1,6 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import './App.css';
 
+import { AnalyticsContext } from './components/AnalyticsContextProvider';
 import { FirebaseContext } from './components/FirebaseContextProvider';
 import Navigation from './components/Navigation';
 import { ProfileContext } from './components/ProfileContextProvider';
@@ -27,6 +28,7 @@ function LoginSuccessfulMessage(props: ILoginMessageProps) {
 function Login() {
   const firebaseContext = useContext(FirebaseContext);
   const profileContext = useContext(ProfileContext);
+  const analyticsContext = useContext(AnalyticsContext);
   const history = useHistory();
 
   const [loginFailedVisible, setLoginFailedVisible] = useState(false);
@@ -63,7 +65,7 @@ function Login() {
       user.uid
     );
 
-    await ensureProfile(dataService, user);
+    await ensureProfile(dataService, user, analyticsContext.analytics);
     setLoginSuccessfulVisible(true);
   }
 

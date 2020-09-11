@@ -31,7 +31,7 @@ interface IExpandingHelpItemProps extends IHelpItemProps {
 function ExpandingHelpItem(props: IExpandingHelpItemProps) {
   return (
     <Card className="Map-help-card">
-      <ExpansionToggle eventKey={props.eventKey}>{props.summary}</ExpansionToggle>
+      <ExpansionToggle direction="down" eventKey={props.eventKey}>{props.summary}</ExpansionToggle>
       <Accordion.Collapse eventKey={props.eventKey}>
         <Card.Body>{props.children}</Card.Body>
       </Accordion.Collapse>

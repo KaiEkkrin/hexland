@@ -30,6 +30,7 @@ export class FirebaseAuth implements IAuth {
       onNext(u === null ? null : {
         displayName: u.displayName,
         email: u.email,
+        providerId: u.providerId,
         uid: u.uid
       });
     }, e => onError?.(new Error(e.message)));
@@ -49,6 +50,7 @@ export class GoogleAuthProviderWrapper extends FirebaseAuthProviderWrapper {
   }
 
   signInWithPopup(auth: firebase.auth.Auth) {
-    return auth.signInWithPopup(this._provider);
+    const credential = auth.signInWithPopup(this._provider);
+    return credential;
   }
 }

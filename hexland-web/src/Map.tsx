@@ -3,6 +3,7 @@ import './App.css';
 import './Map.css';
 
 import { addToast } from './components/extensions';
+import { AnalyticsContext } from './components/AnalyticsContextProvider';
 import { FirebaseContext } from './components/FirebaseContextProvider';
 import MapContextMenu from './components/MapContextMenu';
 import MapControls, { EditMode, MapColourVisualisationMode } from './components/MapControls';
@@ -39,6 +40,7 @@ import fluent from 'fluent-iterable';
 function Map(props: IMapPageProps) {
   const firebaseContext = useContext(FirebaseContext);
   const userContext = useContext(UserContext);
+  const analyticsContext = useContext(AnalyticsContext);
   const statusContext = useContext(StatusContext);
 
   const drawingRef = useRef<HTMLDivElement>(null);
@@ -62,6 +64,11 @@ function Map(props: IMapPageProps) {
       return;
     }
 
+    analyticsContext.analytics?.logEvent("select_content", {
+      "content_type": "map",
+      "item_id": props.mapId
+    });
+
     // TODO remove debug after confirming we don't multiple-watch things
     console.log("Watching adventure " + props.adventureId + ", map " + props.mapId);
     var mapRef = userContext.dataService.getMapRef(props.adventureId, props.mapId);
@@ -73,7 +80,7 @@ function Map(props: IMapPageProps) {
       }),
       e => console.error("Error watching map " + props.mapId, e)
     );
-  }, [userContext.dataService, props.adventureId, props.mapId]);
+  }, [userContext.dataService, analyticsContext.analytics, props.adventureId, props.mapId]);
 
   // Track changes to the map
   useEffect(() => {

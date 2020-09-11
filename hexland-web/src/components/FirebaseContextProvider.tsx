@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import * as firebase from 'firebase/app';
+import 'firebase/analytics';
 import 'firebase/auth';
 import 'firebase/firestore';
 
@@ -11,7 +12,8 @@ export const FirebaseContext = React.createContext<IFirebaseContext>({
   auth: undefined,
   db: undefined,
   googleAuthProvider: undefined,
-  timestampProvider: undefined
+  timestampProvider: undefined,
+  createAnalytics: undefined
 });
 
 // This provides the Firebase context, and should be replaced to unit test with the
@@ -21,7 +23,8 @@ function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) 
     auth: undefined,
     db: undefined,
     googleAuthProvider: undefined,
-    timestampProvider: undefined
+    timestampProvider: undefined,
+    createAnalytics: undefined
   });
 
   // On load, fetch our Firebase config and initialize
@@ -32,7 +35,8 @@ function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) 
       auth: new FirebaseAuth(app.auth()),
       db: app.firestore(),
       googleAuthProvider: new GoogleAuthProviderWrapper(),
-      timestampProvider: firebase.firestore.FieldValue.serverTimestamp
+      timestampProvider: firebase.firestore.FieldValue.serverTimestamp,
+      createAnalytics: () => app.analytics()
     });
   }
 

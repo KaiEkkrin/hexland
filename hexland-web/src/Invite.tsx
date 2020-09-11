@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import './App.css';
 
+import { AnalyticsContext } from './components/AnalyticsContextProvider';
 import Navigation from './components/Navigation';
 import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
@@ -16,6 +17,7 @@ import { RouteComponentProps, useHistory } from 'react-router-dom';
 function Invite(props: IInvitePageProps) {
   const userContext = useContext(UserContext);
   const profile = useContext(ProfileContext);
+  const analyticsContext = useContext(AnalyticsContext);
   const history = useHistory();
 
   const [invite, setInvite] = useState(undefined as IInvite | undefined);
@@ -33,6 +35,7 @@ function Invite(props: IInvitePageProps) {
     [invite]);
 
   function handleJoin() {
+    analyticsContext.analytics?.logEvent("join_group", { "group_id": props.adventureId });
     joinAdventure(userContext.dataService, profile, props.adventureId)
       .then(() => history.replace("/adventure/" + props.adventureId))
       .catch(e => console.error("Failed to join adventure " + props.adventureId, e));

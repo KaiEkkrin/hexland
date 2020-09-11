@@ -1,6 +1,6 @@
 import { Subject } from 'rxjs';
 import { IIdentified } from '../data/identified';
-import { IDataService, IUser, IAuth, IAuthProvider } from '../services/interfaces';
+import { IDataService, IUser, IAuth, IAuthProvider, IAnalytics } from '../services/interfaces';
 
 export interface IContextProviderProps {
   children: React.ReactNode;
@@ -12,6 +12,8 @@ export interface IFirebaseContext {
   googleAuthProvider: IAuthProvider | undefined;
   // Return a numeric value in testing where the server timestamp isn't accessible
   timestampProvider: (() => firebase.firestore.FieldValue | number) | undefined;
+  // Creates an Analytics provider
+  createAnalytics: (() => IAnalytics) | undefined;
 }
 
 export interface IUserContext {
@@ -22,6 +24,7 @@ export interface IUserContext {
 }
 
 export interface IAnalyticsContext {
+  analytics: IAnalytics | undefined;
   enabled: boolean; // Residing in local storage, this signals consent.
   setEnabled: (enabled: boolean) => void;
 }

@@ -25,7 +25,7 @@ function Consent() {
   return (
     <Accordion className="App-consent-container" defaultActiveKey="-1" hidden={analyticsContext.enabled}>
       <Card className="App-consent-card">
-        <ExpansionToggle eventKey="0">
+        <ExpansionToggle direction="up" eventKey="0">
           <div>
             <FontAwesomeIcon className="mr-1" icon={faCookie} color="white" />
             Hexland wishes to use Google Analytics to help improve.

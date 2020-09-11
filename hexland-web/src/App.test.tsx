@@ -16,6 +16,7 @@ import { v4 as uuidv4 } from 'uuid';
 // this running somewhere:
 // `firebase emulators:start --only firestore`
 
+jest.mock('./components/AnalyticsContextProvider');
 jest.mock('./components/FirebaseContextProvider');
 jest.mock('./components/Routing');
 jest.mock('./models/three/drawing.ts');
@@ -378,6 +379,7 @@ describe('test app', () => {
     const user1 = {
       displayName: "User One",
       email: "user1@example.com",
+      providerId: "google.com",
       uid: "user1"
     };
 
@@ -441,6 +443,7 @@ describe('test app', () => {
     const user = {
       displayName: "A User",
       email: "user@example.com",
+      providerId: "google.com",
       uid: "userA"
     };
     var redirectToHome = await logInWithGoogle(projectId, user);

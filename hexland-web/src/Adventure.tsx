@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useState, useMemo } from 'react';
 import './App.css';
 
 import AdventureModal from './components/AdventureModal';
+import { AnalyticsContext } from './components/AnalyticsContextProvider';
 import { FirebaseContext } from './components/FirebaseContextProvider';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
@@ -35,6 +36,7 @@ function Adventure(props: IAdventureProps) {
   const firebaseContext = useContext(FirebaseContext);
   const userContext = useContext(UserContext);
   const profileContext = useContext(ProfileContext);
+  const analyticsContext = useContext(AnalyticsContext);
 
   const [adventure, setAdventure] = useState<IIdentified<IAdventure> | undefined>(undefined);
   useEffect(() => {
@@ -43,10 +45,14 @@ function Adventure(props: IAdventureProps) {
       return;
     }
 
+    analyticsContext.analytics?.logEvent("select_content", {
+      "content_type": "adventure",
+      "item_id": props.adventureId
+    });
     return userContext.dataService?.watch(d,
       a => setAdventure(a === undefined ? undefined : { id: props.adventureId, record: a }),
       e => console.error("Error watching adventure " + props.adventureId + ": ", e));
-  }, [userContext.dataService, props.adventureId]);
+  }, [userContext.dataService, analyticsContext.analytics, props.adventureId]);
 
   // Track changes to the adventure
   useEffect(() => {
@@ -73,6 +79,7 @@ function Adventure(props: IAdventureProps) {
       return;
     }
 
+    analyticsContext.analytics?.logEvent("share", { "content_type": "adventure", "item_id": props.adventureId });
     inviteToAdventure(
       userContext.dataService,
       firebaseContext.timestampProvider,

@@ -15,7 +15,8 @@ export const FirebaseContext = React.createContext<IFirebaseContext>({
   auth: undefined,
   db: undefined,
   googleAuthProvider: undefined,
-  timestampProvider: undefined
+  timestampProvider: undefined,
+  createAnalytics: undefined
 });
 
 // This module provides a Firebase context provider that uses the simulator.
@@ -48,6 +49,7 @@ function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) 
   const user = useMemo(() => (props.user !== undefined ? props.user : {
     displayName: 'Owner',
     email: 'owner@example.com',
+    providerId: 'unknown',
     uid: 'owner'
   }), [props.user]);
 
@@ -55,7 +57,8 @@ function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) 
     auth: undefined,
     db: undefined,
     googleAuthProvider: undefined,
-    timestampProvider: undefined
+    timestampProvider: undefined,
+    createAnalytics: undefined
   });
 
   useEffect(() => {
@@ -73,7 +76,8 @@ function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) 
       auth: simulatedAuth,
       db: emul.firestore(),
       googleAuthProvider: {},
-      timestampProvider: () => timestamp++
+      timestampProvider: () => timestamp++,
+      createAnalytics: undefined
     });
 
     return () => { emulsToDelete.push(emul); };
