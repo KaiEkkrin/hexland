@@ -50,3 +50,10 @@ export interface IRoutingProps {
   // For testing only -- ignored by the real routing.
   defaultRoute?: string | undefined;
 }
+
+export interface IAnalyticsProps {
+  // These two optional functions can be set in testing to override the
+  // use of local storage.
+  getItem?: ((key: string) => string | null) | undefined;
+  setItem?: ((key: string, value: string) => void) | undefined;
+}

@@ -3,7 +3,7 @@ import './App.css';
 
 import AdventurePage from './Adventure';
 import All from './All';
-import AnalyticsContextProvider from './components/AnalyticsContextProvider';
+import { AnalyticsContextProvider } from './components/AnalyticsContextProvider';
 import Consent from './components/Consent';
 import FirebaseContextProvider from './components/FirebaseContextProvider';
 import Home from './Home';
@@ -12,7 +12,7 @@ import Login from './Login';
 import MapPage from './Map';
 import ProfileContextProvider from './components/ProfileContextProvider';
 import Routing from './components/Routing';
-import { IRoutingProps, IFirebaseProps } from './components/interfaces';
+import { IRoutingProps, IFirebaseProps, IAnalyticsProps } from './components/interfaces';
 import Shared from './Shared';
 import Status from './components/Status';
 import StatusContextProvider from './components/StatusContextProvider';
@@ -21,13 +21,13 @@ import UserContextProvider from './components/UserContextProvider';
 
 import { Route, Switch } from 'react-router-dom';
 
-function App(props: IFirebaseProps & IRoutingProps) {
+function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
   return (
     <div className="App">
       <FirebaseContextProvider {...props}>
         <UserContextProvider>
           <ProfileContextProvider>
-            <AnalyticsContextProvider>
+            <AnalyticsContextProvider {...props}>
               <StatusContextProvider>
                 <Routing {...props}>
                   <Switch>

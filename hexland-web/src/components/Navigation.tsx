@@ -9,6 +9,7 @@ import { updateProfile } from '../services/extensions';
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import Form from 'react-bootstrap/Form';
+import FormCheck from 'react-bootstrap/FormCheck';
 import Modal from 'react-bootstrap/Modal';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
@@ -55,16 +56,24 @@ function NavLogin() {
   // The profile editor:
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [editDisplayName, setEditDisplayName] = useState("");
+  const [editAnalyticsEnabled, setEditAnalyticsEnabled] = useState(false);
 
   const handleEditProfile = useCallback(() => {
     setEditDisplayName(displayName);
+    setEditAnalyticsEnabled(analyticsContext.enabled);
     setShowEditProfile(true);
-  }, [displayName, setEditDisplayName, setShowEditProfile]);
+  }, [analyticsContext, displayName, setEditDisplayName, setShowEditProfile]);
 
   const handleModalClose = useCallback(() => setShowEditProfile(false), [setShowEditProfile]);
 
+  const handleEditAnalyticsEnabledChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => setEditAnalyticsEnabled(e.currentTarget.checked),
+    [setEditAnalyticsEnabled]
+  );
+
   const handleSaveProfile = useCallback(() => {
     handleModalClose();
+    analyticsContext.setEnabled(editAnalyticsEnabled);
     if (userContext.dataService === undefined) {
       return;
     }
@@ -73,7 +82,7 @@ function NavLogin() {
     updateProfile(userContext.dataService, editDisplayName)
       .then(() => console.log("successfully updated profile"))
       .catch(e => analyticsContext.logError("error updating profile:", e));
-  }, [editDisplayName, handleModalClose, userContext.dataService, analyticsContext]);
+  }, [analyticsContext, editAnalyticsEnabled, editDisplayName, handleModalClose, userContext.dataService]);
 
   const saveProfileDisabled = useMemo(() => editDisplayName.length === 0, [editDisplayName]);
 
@@ -95,6 +104,16 @@ function NavLogin() {
               <Form.Label htmlFor="nameInput">Display name</Form.Label>
               <Form.Control id="nameInput" type="text" maxLength={30} value={editDisplayName}
                 onChange={e => setEditDisplayName(e.target.value)} />
+            </Form.Group>
+            <Form.Group>
+              <FormCheck inline>
+                <FormCheck.Input id="allowAnalytics" type="checkbox" checked={editAnalyticsEnabled}
+                  onChange={handleEditAnalyticsEnabledChange} />
+                <FormCheck.Label htmlFor="allowAnalytics">Allow Google Analytics</FormCheck.Label>
+              </FormCheck>
+              <Form.Text className="text-muted">
+                Check this box to allow Hexland to use Google Analytics to measure usage and identify errors, and accept the data collection and cookies required.
+              </Form.Text>
             </Form.Group>
           </Form>
         </Modal.Body>

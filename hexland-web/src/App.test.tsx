@@ -15,11 +15,11 @@ import { v4 as uuidv4 } from 'uuid';
 // Note that to successfully run tests that use the Firebase emulator you need to have
 // this running somewhere:
 // `firebase emulators:start --only firestore`
-
-jest.mock('./components/AnalyticsContextProvider');
 jest.mock('./components/FirebaseContextProvider');
 jest.mock('./components/Routing');
 jest.mock('./models/three/drawing.ts');
+
+// We mock `useHistory` providing this way to wait for changes:
 
 interface IHistoryChange {
   verb: string; // 'goBack', 'replace', 'push'
@@ -38,6 +38,22 @@ jest.mock('react-router-dom', () => ({
   useHistory: () => mockHistory,
 }));
 
+// These helpers let us mock up the local storage and track analysis context changes:
+interface IStorageChange {
+  key: string;
+  value: string;
+}
+
+const mockStorageSubject = new Subject<IStorageChange>();
+const mockStorage: { [key: string]: string } = {};
+
+const mockGetItem = jest.fn((key: string) => mockStorage[key]);
+const mockSetItem = jest.fn((key: string, value: string) => {
+  mockStorage[key] = value;
+  mockStorageSubject.next({ key: key, value: value });
+});
+
+// Some return types from our test helper functions.
 interface IAdventureAndMapLinks {
   adventureLink: string;
   mapLink: string;
@@ -50,7 +66,7 @@ interface IPageCheck {
 
 describe('test app', () => {
   // This helper function verifies it can log in with Google and returns the redirect.
-  async function logInWithGoogle(projectId: string, user?: IUser | undefined) {
+  async function logInWithGoogle(projectId: string, user?: IUser | undefined): Promise<IHistoryChange | undefined> {
     const { findByText, getByRole, queryByText } = render(
       <App projectId={projectId} user={user} defaultRoute="/login" />
     );
@@ -60,17 +76,21 @@ describe('test app', () => {
     expect(userElement).toBeNull();
 
     // Find the login button and click it
-    const historyWillChange = historySubject.pipe(first()).toPromise();
     const buttonElement = getByRole('button', { name: /Sign in with Google/i });
     expect(buttonElement).toBeInTheDocument();
 
-    await act(async () => { userEvent.click(buttonElement); });
+    var historyChange: IHistoryChange[] = [];
+    await act(async () => {
+      const historyWillChange = historySubject.pipe(first()).toPromise();
+      userEvent.click(buttonElement);
+      historyChange.push(await historyWillChange);
+    });
 
     userElement = await findByText(user?.displayName ?? 'Owner');
     expect(userElement).toBeInTheDocument();
 
     cleanup();
-    return historyWillChange;
+    return historyChange[0];
   }
 
   async function fillInNewAdventureModal(findByLabelText: any, findByRole: any, name: string, description: string) {
@@ -389,8 +409,8 @@ describe('test app', () => {
 
     // Get user1 logged in
     const redirectToHome = await logInWithGoogle(projectId, user1);
-    expect(redirectToHome.verb).toBe('replace');
-    expect(redirectToHome.parameter).toBe('/');
+    expect(redirectToHome?.verb).toBe('replace');
+    expect(redirectToHome?.parameter).toBe('/');
 
     // Accept the invite
     var redirectToAdventure = await acceptInvite(inviteLink, projectId, user1);
@@ -447,8 +467,8 @@ describe('test app', () => {
       uid: "userA"
     };
     var redirectToHome = await logInWithGoogle(projectId, user);
-    expect(redirectToHome.verb).toBe('replace');
-    expect(redirectToHome.parameter).toBe('/');
+    expect(redirectToHome?.verb).toBe('replace');
+    expect(redirectToHome?.parameter).toBe('/');
 
     // If I load the home page now, it should have my display name on it
     const { findByLabelText, findByRole, getByRole, queryByRole } = render(
@@ -485,8 +505,8 @@ describe('test app', () => {
 
     // Get logged in
     var redirectToHome = await logInWithGoogle(projectId);
-    expect(redirectToHome.verb).toBe('replace');
-    expect(redirectToHome.parameter).toBe('/');
+    expect(redirectToHome?.verb).toBe('replace');
+    expect(redirectToHome?.parameter).toBe('/');
 
     // If I load the home page now, it should let me create a new adventure and
     // it should still be showing the profile name
@@ -502,8 +522,8 @@ describe('test app', () => {
 
     // Get logged in
     var redirectToHome = await logInWithGoogle(projectId);
-    expect(redirectToHome.verb).toBe('replace');
-    expect(redirectToHome.parameter).toBe('/');
+    expect(redirectToHome?.verb).toBe('replace');
+    expect(redirectToHome?.parameter).toBe('/');
 
     // Do the adventure and map creation
     const links = await createAdventureAndMapFromAll(projectId);
@@ -511,5 +531,64 @@ describe('test app', () => {
     console.log("Adventure link: " + links.adventureLink);
 
     await shareAdventureAndMap(projectId, links);
+  });
+
+  test('log in and twiddle the analytics setting', async () => {
+    const projectId = uuidv4();
+
+    // Get logged in
+    var redirectToHome = await logInWithGoogle(projectId);
+    expect(redirectToHome?.verb).toBe('replace');
+    expect(redirectToHome?.parameter).toBe('/');
+
+    // Load the home page.  We expect analytics to be disabled and the GA acceptance
+    // thingummy to be there.
+    const { findByLabelText, findByRole, getByRole, queryByRole } = render(
+      <App projectId={projectId} user={undefined} getItem={mockGetItem} setItem={mockSetItem} defaultRoute="/" />
+    );
+
+    var acceptElement = await findByRole('button', { name: /Accept/i });
+    expect(acceptElement).toBeInTheDocument();
+
+    const ownerElement = await findByRole('button', { name: /Owner/ });
+    expect(ownerElement).toBeInTheDocument();
+
+    // Click that accept button
+    await act(async () => {
+      const waitForEnabled = mockStorageSubject.pipe(first()).toPromise();
+      userEvent.click(acceptElement);
+      await waitForEnabled;
+    });
+
+    // That should set the analytics enabled flag...
+    expect(mockStorage["analyticsEnabled"]).toBe("true");
+
+    // That analytics check box should be popping up too
+    await act(async () => userEvent.click(ownerElement));
+    const checkboxElement = await findByLabelText(/Allow Google Analytics/i);
+    expect(checkboxElement).toBeInTheDocument();
+    expect(checkboxElement).toBeChecked();
+
+    const saveElement = getByRole('button', { name: /Save profile/i });
+    expect(saveElement).toBeInTheDocument();
+
+    // And that analytics toast should be gone
+    acceptElement = queryByRole('button', { name: /Accept/i });
+    expect(acceptElement).toBeNull();
+
+    // Un-check the box and save and we should find that analytics is disabled again
+    const waitForDisabled = mockStorageSubject.pipe(first()).toPromise();
+    await act(async () => userEvent.click(checkboxElement)); // this must be in a separate `act()` or it hasn't propagated before the `handleSaveProfile` is called!
+    await act(async () => {
+      userEvent.click(saveElement);
+      await waitForDisabled;
+    });
+
+    // The analytics enabled flag should now be off again
+    expect(mockStorage["analyticsEnabled"]).toBe("false");
+
+    // And, the accept element should have come back
+    acceptElement = await findByRole('button', { name: /Accept/i });
+    expect(acceptElement).toBeInTheDocument();
   });
 });
