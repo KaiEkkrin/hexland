@@ -15,6 +15,19 @@
   }
 }
 
+.App-consent-card {
+  background-color: darkslateblue !important;
+  color: white !important;
+  z-index: 202;
+}
+
+.App-consent-container {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+}
+
 .App-header {
   background-color: #282c34;
   min-height: 100vh;

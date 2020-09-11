@@ -3,6 +3,8 @@ import './App.css';
 
 import AdventurePage from './Adventure';
 import All from './All';
+import AnalyticsContextProvider from './components/AnalyticsContextProvider';
+import Consent from './components/Consent';
 import FirebaseContextProvider from './components/FirebaseContextProvider';
 import Home from './Home';
 import InvitePage from './Invite';
@@ -25,21 +27,24 @@ function App(props: IFirebaseProps & IRoutingProps) {
       <FirebaseContextProvider {...props}>
         <UserContextProvider>
           <ProfileContextProvider>
-            <StatusContextProvider>
-              <Routing {...props}>
-                <Switch>
-                  <Route exact path="/" component={Home} />
-                  <Route exact path="/all" component={All} />
-                  <Route exact path="/adventure/:adventureId" component={AdventurePage} />
-                  <Route exact path="/adventure/:adventureId/invite/:inviteId" component={InvitePage} />
-                  <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
-                  <Route exact path="/login" component={Login} />
-                  <Route exact page="/shared" component={Shared} />
-                </Switch>
-              </Routing>
-              <Status />
-              <ToastCollection />
-            </StatusContextProvider>
+            <AnalyticsContextProvider>
+              <StatusContextProvider>
+                <Routing {...props}>
+                  <Switch>
+                    <Route exact path="/" component={Home} />
+                    <Route exact path="/all" component={All} />
+                    <Route exact path="/adventure/:adventureId" component={AdventurePage} />
+                    <Route exact path="/adventure/:adventureId/invite/:inviteId" component={InvitePage} />
+                    <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
+                    <Route exact path="/login" component={Login} />
+                    <Route exact page="/shared" component={Shared} />
+                  </Switch>
+                </Routing>
+                <Consent />
+                <Status />
+                <ToastCollection />
+              </StatusContextProvider>
+            </AnalyticsContextProvider>
           </ProfileContextProvider>
         </UserContextProvider>
       </FirebaseContextProvider>

@@ -21,6 +21,11 @@ export interface IUserContext {
   dataService: IDataService | undefined;
 }
 
+export interface IAnalyticsContext {
+  enabled: boolean; // Residing in local storage, this signals consent.
+  setEnabled: (enabled: boolean) => void;
+}
+
 export interface IToast {
   title: string;
   message: string;
