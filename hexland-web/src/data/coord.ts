@@ -1,4 +1,4 @@
-import { modFloor } from '../models/extraMath';
+import { modFloor } from './extraMath';
 import * as THREE from 'three';
 
 // This is the co-ordinate of a face (hex or square) inside the grid.
