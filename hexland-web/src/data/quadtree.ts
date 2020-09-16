@@ -174,10 +174,7 @@ export class QuadtreeColouringDictionary<F extends IFeature<IQuadtreeCoord>> {
         return;
       }
 
-      if (this._features.remove(q2) !== undefined) {
-        continue; // not a node -- definitely no features below it
-      }
-
+      this._features.remove(q2);
       const node = this._nodes.remove(q2);
       if (node !== undefined) {
         stack.push(...this._quadtree.descend(q2));
@@ -294,6 +291,27 @@ export class QuadtreeColouringDictionary<F extends IFeature<IQuadtreeCoord>> {
     this.clearInternal();
   }
 
+  // Changes the feature at the exact coord indicated by the parameter's position.
+  // Doesn't change the topology of the quadtree.  The size must be 1.
+  // Returns the changed feature, or undefined for no change.
+  fill(f: F) {
+    if (f.position.size !== 1 || this.isOutsideBounds(f.position)) {
+      throw RangeError("Invalid fill position: " + this._quadtree.toString(f.position));
+    }
+
+    const sample = this.sample(f.position) ?? this._createDefaultFeature(f.position);
+    if (this._featuresEqualIgnoringPosition(sample, f)) {
+      return undefined;
+    } else {
+      this._features.remove(sample.position);
+      const newFeature = { ...f, position: sample.position };
+      if (!this._sparse || !this._isDefaultFeature(f)) {
+        this._features.add(newFeature);
+      }
+      return newFeature;
+    }
+  }
+
   forEach(fn: (f: F) => void) {
     this._features.forEach(fn);
   }
@@ -336,9 +354,9 @@ export class QuadtreeColouringDictionary<F extends IFeature<IQuadtreeCoord>> {
   // currently exists.
   // Note that setting a feature at size>1 will destroy any more granular features that
   // might have been present.
-  // Note that this same feature object will not be stored -- it will be copied in.
-  // Returns the final changed quadtree feature if there was any change, else undefined.
+  // Returns the final feature after merging, or undefined for no change.
   set(f: F) {
+    // TODO #58 I made this very slow, and I don't understand why.
     if (!this._quadtree.isValid(f.position)) {
       throw RangeError("Invalid position: " + this._quadtree.toString(f.position));
     }
@@ -347,9 +365,7 @@ export class QuadtreeColouringDictionary<F extends IFeature<IQuadtreeCoord>> {
       this.expandBounds();
     }
 
-    var newFeature = { ...f };
-    const dontAdd = this._sparse && this._isDefaultFeature(newFeature);
-    for (var size of this._sizes) { // TODO is it actually valid to iterate like this or should I not?
+    for (var size of this._sizes) {
       var q = this._quadtree.ascend(f.position, size);
       if (this._nodes.get(q) !== undefined) {
         if (size === f.position.size) {
@@ -361,30 +377,30 @@ export class QuadtreeColouringDictionary<F extends IFeature<IQuadtreeCoord>> {
         }
       }
 
-      // Pull out the existing feature so we can decide what to do with it
-      var maybeHere = this._features.remove(q);
-      var here = maybeHere ?? this._createDefaultFeature(q);
-      newFeature.position = q;
-      if (this._featuresEqualIgnoringPosition(here, newFeature)) {
-        // Adding this feature at a higher granularity would cause no change -- just put it back and exit
+      var maybeHere = this._features.remove(q); // should only be undefined for a sparse tree
+      if (size > f.position.size) {
+        // Replicate what is here into a node
+        if (!this._nodes.add({ position: q, colour: 0 })) {
+          throw Error("Unexpected node at " + this._quadtree.toString(q));
+        }
+
         if (maybeHere !== undefined) {
-          this._features.add(here);
+          for (var q2 of this._quadtree.descend(q)) {
+            if (!this._features.add({ ...maybeHere, position: q2 })) {
+              throw Error("Unexpected feature at " + this._quadtree.toString(q2));
+            }
+          }
         }
-        return undefined;
-      }
-
-      if (size === f.position.size) {
-        // We can simply add ours in its place.
-        var added = dontAdd ? (maybeHere !== undefined) : this._features.add(newFeature);
-        return added ? this.mergeEqual(newFeature, dontAdd) : undefined;
-      }
-
-      // Split this leaf into a node, and continue to the next granularity
-      this._nodes.add({ position: q, colour: 0 });
-      if (maybeHere !== undefined) {
-        for (var d of this._quadtree.descend(q)) {
-          this._features.add({ ...here, position: d });
+      } else {
+        // Set the value here
+        var here = maybeHere ?? this._createDefaultFeature(q);
+        var dontAdd = this._sparse && this._isDefaultFeature(f);
+        if (!dontAdd) {
+          this._features.add(f);
         }
+
+        var merged = this.mergeEqual(f, dontAdd);
+        return this._featuresEqualIgnoringPosition(here, f) ? undefined : merged;
       }
     }
 
