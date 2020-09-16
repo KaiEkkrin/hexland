@@ -192,7 +192,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     }
 
     // Right
-    for (var y = q.y; y < q.y + q.size; ++y) {
+    for (y = q.y; y < q.y + q.size; ++y) {
       fn(
         { x: q.x + q.size, y: y },
         { x: q.x + q.size, y: y, edge: 0 }
@@ -200,7 +200,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     }
 
     // Bottom
-    for (var x = q.x + q.size - 1; x >= q.x; --x) {
+    for (x = q.x + q.size - 1; x >= q.x; --x) {
       fn(
         { x: x, y: q.y + q.size },
         { x: x, y: q.y + q.size, edge: 1 }

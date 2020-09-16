@@ -259,7 +259,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     }
 
     // Bottom
-    for (var y = q.y; y < q.y + q.size; ++y) {
+    for (y = q.y; y < q.y + q.size; ++y) {
       fn(
         { x: q.x + q.size, y: y - 1 },
         { x: q.x + q.size - 1, y: y, edge: 2 }
@@ -271,7 +271,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     }
 
     // Right
-    for (var x = q.x + q.size - 1; x >= q.x; --x) {
+    for (x = q.x + q.size - 1; x >= q.x; --x) {
       fn(
         { x: x, y: q.y + q.size },
         { x: x, y: q.y + q.size, edge: 1 }

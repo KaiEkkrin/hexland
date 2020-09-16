@@ -1,5 +1,3 @@
-import { ENGINE_METHOD_DIGESTS } from 'constants';
-import { runInThisContext } from 'vm';
 import { coordString, IGridCoord } from './coord';
 import { modFloor } from './extraMath';
 import { FeatureDictionary, IFeature, IFeatureDictionary } from './feature';
@@ -264,7 +262,7 @@ export class QuadtreeColouringDictionary<F extends IFeature<IQuadtreeCoord>> {
       }
 
       // If we got here, do the merge and continue upwards:
-      for (var d of this._quadtree.descend(larger)) {
+      for (d of this._quadtree.descend(larger)) {
         this._features.remove(d);
       }
 
