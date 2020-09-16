@@ -1,10 +1,10 @@
 import { IGridCoord, coordString } from '../../data/coord';
 import { IFeature } from '../../data/feature';
 import { createPaletteColouredAreaObject } from './areas';
-import { MapColouring } from '../colouring';
 import { FeatureColour } from '../featureColour';
 import { IGridGeometry } from '../gridGeometry';
 import { InstancedFeatures } from './instancedFeatures';
+import { IMapColouring } from '../interfaces';
 import { PaletteColouredFeatureObject } from './paletteColouredFeatureObject';
 import { RedrawFlag } from '../redrawFlag';
 
@@ -35,7 +35,7 @@ export class MapColourVisualisation extends InstancedFeatures<IGridCoord, IFeatu
     );
   }
 
-  visualise(scene: THREE.Scene, colouring: MapColouring) {
+  visualise(scene: THREE.Scene, colouring: IMapColouring) {
     colouring.visualise(this, (position: IGridCoord, mapColour: number, mapColourCount: number) => {
       // If our scene has changed or the number of map colours has changed, we need to re-colour
       // our objects:

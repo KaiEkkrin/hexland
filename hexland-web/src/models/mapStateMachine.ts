@@ -4,7 +4,7 @@ import { DragRectangle } from './dragRectangle';
 import { FeatureColour } from './featureColour';
 import { IGridGeometry } from './gridGeometry';
 import { HexGridGeometry } from './hexGridGeometry';
-import { IDrawing, IDragRectangle } from './interfaces';
+import { IDrawing, IDragRectangle, IMapColouring } from './interfaces';
 import { MapChangeTracker } from './mapChangeTracker';
 import { RedrawFlag } from './redrawFlag';
 import { SquareGridGeometry } from './squareGridGeometry';
@@ -74,7 +74,7 @@ export class MapStateMachine {
 
   private readonly _drawing: IDrawing;
   private readonly _gridGeometry: IGridGeometry;
-  private readonly _mapColouring: MapColouring;
+  private readonly _mapColouring: IMapColouring;
   private readonly _notes: FeatureDictionary<IGridCoord, IAnnotation>;
   private readonly _notesNeedUpdate = new RedrawFlag();
 

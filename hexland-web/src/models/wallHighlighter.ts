@@ -3,10 +3,9 @@ import { IGridVertex, IGridEdge, verticesEqual, IGridCoord, coordsEqual } from "
 import { IFeature, IFeatureDictionary } from "../data/feature";
 import { EdgeHighlighter, FaceHighlighter } from "./dragHighlighter";
 import { IGridGeometry } from "./gridGeometry";
-import { IDragRectangle } from "./interfaces";
+import { IDragRectangle, IMapColouring } from "./interfaces";
 
 import * as THREE from 'three';
-import { MapColouring } from "./colouring";
 
 // Given two vertices, plots a straight-line (more or less) wall between them including the
 // intermediate vertices.
@@ -59,7 +58,7 @@ export function drawWallAround(
 // the faces in the face dictionary, adding and removing walls as appropriate.
 export function drawWallUnion(
   geometry: IGridGeometry,
-  colouring: MapColouring,
+  colouring: IMapColouring,
   outerColour: number,
   faceDictionary: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
   addWall: (position: IGridEdge) => void,
@@ -86,7 +85,7 @@ export function drawWallUnion(
 // face dictionary, adding and removing walls as appropriate.
 export function drawWallDifference(
   geometry: IGridGeometry,
-  colouring: MapColouring,
+  colouring: IMapColouring,
   innerColour: number,
   faceDictionary: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
   addWall: (position: IGridEdge) => void,
@@ -264,14 +263,14 @@ export class WallRectangleHighlighter {
 // intersecting rooms.
 // TODO Consider shapes other than rectangles, e.g. circles, standard splat shapes...?
 export class RoomHighlighter extends WallRectangleHighlighter {
-  private readonly _colouring: MapColouring;
+  private readonly _colouring: IMapColouring;
 
   private _firstDragPosition: IGridCoord | undefined;
   private _difference = false;
 
   constructor(
     geometry: IGridGeometry,
-    colouring: MapColouring,
+    colouring: IMapColouring,
     faces: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
     walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
     wallHighlights: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,

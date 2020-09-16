@@ -1,8 +1,7 @@
 import { IGridCoord, IGridVertex } from '../../data/coord';
-import { MapColouring } from '../colouring';
 import { FeatureColour } from '../featureColour';
 import { IGridGeometry } from '../gridGeometry';
-import { IDrawing } from '../interfaces';
+import { IDrawing, IMapColouring } from '../interfaces';
 import { RedrawFlag } from '../redrawFlag';
 
 import { Areas, createPaletteColouredAreaObject, createAreas, createSelectionColouredAreaObject } from './areas';
@@ -341,7 +340,7 @@ export class DrawingOrtho implements IDrawing {
     );
   }
 
-  handleChangesApplied(mapColouring: MapColouring) {
+  handleChangesApplied(mapColouring: IMapColouring) {
     if (this._showMapColourVisualisation === true) {
       this._mapColourVisualisation.clear(); // TODO try to do it incrementally? (requires checking for colour count changes...)
       this._mapColourVisualisation.visualise(this._mapScene, mapColouring);
@@ -396,7 +395,7 @@ export class DrawingOrtho implements IDrawing {
     this._losParameters.fullyHidden = seeEverything ? 0.25 : 0.0;
   }
 
-  setShowMapColourVisualisation(show: boolean, mapColouring: MapColouring) {
+  setShowMapColourVisualisation(show: boolean, mapColouring: IMapColouring) {
     if (show === this._showMapColourVisualisation) {
       return;
     }

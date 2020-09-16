@@ -1,4 +1,4 @@
-import { MapColouring } from "./colouring";
+import { IMapColouring } from "./interfaces";
 import { IAnnotation } from "../data/annotation";
 import { SimpleChangeTracker } from "../data/changeTracking";
 import { IGridCoord, IGridEdge } from "../data/coord";
@@ -9,7 +9,7 @@ import { IMap } from "../data/map";
 // The handleChangesApplied function receives true if there were any token changes
 // or false if not -- to help expose the current token list to the React UI.
 export class MapChangeTracker extends SimpleChangeTracker {
-  private readonly _colouring: MapColouring;
+  private readonly _colouring: IMapColouring;
   private readonly _handleChangesApplied: ((haveTokensChanged: boolean) => void) | undefined;
   private readonly _handleChangesAborted: (() => void) | undefined;
 
@@ -20,7 +20,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
     tokens: IFeatureDictionary<IGridCoord, IToken>,
     walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
     notes: IFeatureDictionary<IGridCoord, IAnnotation>,
-    colouring: MapColouring,
+    colouring: IMapColouring,
     handleChangesApplied?: ((haveTokensChanged: boolean) => void) | undefined,
     handleChangesAborted?: (() => void) | undefined
   ) {

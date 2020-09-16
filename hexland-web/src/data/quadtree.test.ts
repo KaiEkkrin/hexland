@@ -4,6 +4,7 @@ import { FeatureDictionary, IFeature } from './feature';
 import { IQuadtreeCoord, Quadtree, QuadtreeColouringDictionary } from './quadtree';
 
 import * as seedrandom from 'seedrandom';
+import fluent from 'fluent-iterable';
 
 test('various coords are invalid', () => {
   const coords = [
@@ -68,7 +69,7 @@ test('coords of size 1 can be ascended and descended suitably', () => {
 test('add and sample quadtree dictionary', () => {
   const quadtree = new Quadtree();
   const d = new QuadtreeColouringDictionary<IFeature<IQuadtreeCoord>>(
-    quadtree, (a, b) => a.colour === b.colour, { position: { x: 0, y: 0, size: 1 }, colour: 0 }
+    quadtree, c => ({ position: c, colour: 0 }), (a, b) => a.colour === b.colour, f => f.colour === 0, false
   );
 
   // Test some default samples:
@@ -320,55 +321,100 @@ test('add and sample quadtree dictionary', () => {
 
 test('quadtree dictionary matches behaviour of flat dictionary under random adds', () => {
   const fDict = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
-  const qDict = new QuadtreeColouringDictionary<IFeature<IQuadtreeCoord>>(
+  const denseQDict = new QuadtreeColouringDictionary<IFeature<IQuadtreeCoord>>(
     new Quadtree(),
+    c => ({ position: c, colour: 0 }),
     (a, b) => a.colour === b.colour,
-    { position: { x: 0, y: 0, size: 1 }, colour: 0 }
+    f => f.colour === 0,
+    false
   );
 
-  // I need to fill the flat dictionary up to my bounds.  The quadtree dictionary will
-  // auto-size itself if I add a single entry:
-  const size = 32;
-  for (var y = -size; y < size; ++y) {
-    for (var x = -size; x < size; ++x) {
-      fDict.add({ position: { x: x, y: y }, colour: 0 });
-    }
-  }
+  const sparseQDict = new QuadtreeColouringDictionary<IFeature<IQuadtreeCoord>>(
+    new Quadtree(),
+    c => ({ position: c, colour: 0 }),
+    (a, b) => a.colour === b.colour,
+    f => f.colour === 0,
+    true
+  );
 
-  qDict.set({ position: { x: -size, y: -size, size: 1 }, colour: 0 });
-
-  // Do some random sets
-  const rng = seedrandom.default("e93ebdae-39c9-43cf-a7d2-3a4b45d1feb1");
-  for (var i = 0; i < size * size; ++i) {
-    var random = rng.int32();
-    var x = modFloor(random, size * 2) - size;
-    var y = modFloor(Math.floor(random / (size * 2)), size * 2) - size;
-    var colour = Math.floor(Math.abs(random) / (size * size * 4)) % 2;
-    var position = { x: x, y: y, size: 1 };
-
-    expect(fDict.remove(position)).not.toBeUndefined();
-    expect(fDict.add({ position: position, colour: colour })).toBeTruthy();
-
-    // can't assign any expectations to this right now... :)
-    qDict.set({ position: position, colour: colour });
-  }
-
-  // The two should come out equal:
-  var valueString = "";
-  for (var y = -size; y < size; ++y) {
-    for (var x = -size; x < size; ++x) {
-      var coord = { x: x, y: y, size: 1 };
-      var value = fDict.get(coord);
-      expect(value).not.toBeUndefined();
-      valueString += value?.colour;
-
-      var qValue = qDict.sample(coord);
-      expect(qValue).not.toBeUndefined();
-      expect(qValue?.colour).toBe(value?.colour);
+  for (var qDict of [denseQDict, sparseQDict]) {
+    fDict.clear();
+    // I need to fill the flat dictionary up to my bounds.  The quadtree dictionary will
+    // auto-size itself if I add a single entry:
+    const size = 32;
+    for (var y = -size; y < size; ++y) {
+      for (var x = -size; x < size; ++x) {
+        fDict.add({ position: { x: x, y: y }, colour: 0 });
+      }
     }
 
-    valueString += "\n";
+    qDict.set({ position: { x: -size, y: -size, size: 1 }, colour: 0 });
+
+    // Do some random sets, for a few iterations (on subsequent iterations,
+    // some stuff should be randomly un-set as well)
+    const rng = seedrandom.default("e93ebdae-39c9-43cf-a7d2-3a4b45d1feb1");
+    for (var j = 0; j < 3; ++j) {
+      var features: IFeature<IQuadtreeCoord>[] = [];
+      for (var i = 0; i < size * size; ++i) {
+        var random = rng.int32();
+        var x = modFloor(random, size * 2) - size;
+        var y = modFloor(Math.floor(random / (size * 2)), size * 2) - size;
+        var colour = Math.floor(Math.abs(random) / (size * size * 4)) % 2;
+        features.push({ position: { x: x, y: y, size: 1 }, colour: colour });
+      }
+
+      var fStart = performance.now();
+      // for (var f of features) {
+      //   expect(fDict.remove(f.position)).not.toBeUndefined();
+      //   expect(fDict.add(f)).toBeTruthy();
+      // }
+      // We want to verify that these succeeded, without taking up significant time
+      // e.g. by having the `expect` calls in the loop:
+      var fOk = features.map(f2 => {
+        if (fDict.remove(f2.position)) {
+          return fDict.add(f2);
+        } else {
+          return false;
+        }
+      });
+      var fEnd = performance.now();
+      console.log("added " + features.length + " features to fDict in " + (fEnd - fStart) + " millis");
+      expect(fOk.reduce((a, b) => a && b)).toBeTruthy();
+
+      var qStart = performance.now();
+      for (var f of features) {
+        // can't assign any expectations to this right now... :)
+        qDict.set(f);
+      }
+      var qEnd = performance.now();
+      console.log("added " + features.length + " features to qDict in " + (qEnd - qStart) + " millis");
+
+      // The two should come out equal:
+      var valueString = "";
+      for (var y = -size; y < size; ++y) {
+        for (var x = -size; x < size; ++x) {
+          var coord = { x: x, y: y, size: 1 };
+          var value = fDict.get(coord);
+          expect(value).not.toBeUndefined();
+          valueString += value?.colour;
+
+          var qValue = qDict.sample(coord);
+          expect(qValue).not.toBeUndefined();
+          expect(qValue?.colour).toBe(value?.colour);
+        }
+
+        valueString += "\n";
+      }
+
+      console.log(valueString);
+    }
+
+    console.log("***");
   }
 
-  console.log(valueString);
+  // We expect the dense dictionary to contain everything when enumerated, but the
+  // sparse one to contain only the ones and not the zeroes:
+  const oneCount = fluent(denseQDict).filter(f => f.colour === 1).count();
+  const sparseCount = fluent(sparseQDict).count();
+  expect(sparseCount).toBe(oneCount);
 });

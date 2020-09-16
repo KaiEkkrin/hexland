@@ -1,4 +1,3 @@
-import { MapColouring } from "./colouring";
 import { IGridCoord, IGridEdge, IGridVertex } from "../data/coord";
 import { IFeature, IToken, IFeatureDictionary } from "../data/feature";
 
@@ -46,7 +45,7 @@ export interface IDrawing {
   getWorldToViewport(target: THREE.Matrix4): THREE.Matrix4;
 
   // Handles the completion of a set of changes by the change tracker.
-  handleChangesApplied(mapColouring: MapColouring): void;
+  handleChangesApplied(mapColouring: IMapColouring): void;
 
   // Alters the view.
   resize(translation: THREE.Vector3, rotation: THREE.Quaternion, scaling: THREE.Vector3): void;
@@ -55,7 +54,7 @@ export interface IDrawing {
   setLoSPositions(positions: IGridCoord[] | undefined, seeEverything: boolean): void;
 
   // Sets whether or not to show the map colour visualisation.
-  setShowMapColourVisualisation(show: boolean, mapColouring: MapColouring): void;
+  setShowMapColourVisualisation(show: boolean, mapColouring: IMapColouring): void;
 
   // Cleans up and releases all resources.
   dispose(): void;
@@ -95,6 +94,32 @@ export interface IGridBounds {
   maxS: number,
   maxT: number
 };
+
+// Describes how the map colouring is done.
+export interface IMapColouring {
+  // Gets the colouring of this coord.
+  colourOf(coord: IGridCoord): number;
+
+  // Gets the colouring of the outer (non-enclosed) part of the map.
+  getOuterColour(): number;
+
+  // Gets the wall present at this part of the colouring, if any.
+  getWall(edge: IGridEdge): IFeature<IGridEdge> | undefined;
+
+  // Sets a wall to be present or absent in the colouring.  (After calling this
+  // a bunch of times, you need to call `recalculate` before the colouring is updated.)
+  setWall(edge: IGridEdge, present: boolean): void;
+
+  // Recalculates the colouring from the updated wall positions.
+  recalculate(): void;
+
+  // Creates a visualisation of the current colouring into another feature dictionary (of areas):
+  // TODO #58 make this an extension method?
+  visualise<F extends IFeature<IGridCoord>>(
+    target: IFeatureDictionary<IGridCoord, F>,
+    createFeature: (position: IGridCoord, mapColour: number, mapColourCount: number) => F
+  ): void;
+}
 
 // Describes an outlined rectangle that can be used as a selection box.
 export interface IOutlinedRectangle {

@@ -1,4 +1,5 @@
 import { IGridCoord, IGridEdge, createGridCoord, createGridEdge, coordMultiplyScalar, createGridVertex, IGridVertex } from '../data/coord';
+import { IQuadtreeCoord } from '../data/quadtree';
 import { EdgeOcclusion } from './occlusion';
 import * as THREE from 'three';
 
@@ -86,7 +87,10 @@ export interface IGridGeometry {
   // Evaluates the function for each face adjacent to the given one.
   forEachAdjacentFace(coord: IGridCoord, fn: (face: IGridCoord, edge: IGridEdge) => void): void;
 
-  // Gets the faces adjacent to the given edge. (TODO adjacent edges too?)
+  // Evaluates the function for each face adjacent to the given quadtree coord.
+  forEachQuadtreeAdjacentFace(q: IQuadtreeCoord, fn: (face: IGridCoord, edge: IGridEdge) => void): void;
+
+  // Gets the faces adjacent to the given edge.
   getEdgeFaceAdjacency(edge: IGridEdge): IGridCoord[];
 
   // Gets the vertices adjacent to the given edge.

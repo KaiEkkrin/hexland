@@ -1,4 +1,5 @@
 import { IGridCoord, IGridEdge, coordAdd, IGridVertex } from '../data/coord';
+import { IQuadtreeCoord } from '../data/quadtree';
 import { EdgeOcclusion } from './occlusion';
 import { BaseGeometry, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
@@ -171,6 +172,40 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
       { x: coord.x, y: coord.y + 1 },
       { x: coord.x, y: coord.y + 1, edge: 1 }
     );
+  }
+
+  forEachQuadtreeAdjacentFace(q: IQuadtreeCoord, fn: (face: IGridCoord, edge: IGridEdge) => void) {
+    // Left
+    for (var y = q.y + q.size - 1; y >= q.y; --y) {
+      fn(
+        { x: q.x - 1, y: y },
+        { x: q.x, y: y, edge: 0 }
+      );
+    }
+
+    // Top
+    for (var x = q.x; x < q.x + q.size; ++x) {
+      fn(
+        { x: x, y: q.y - 1 },
+        { x: x, y: q.y, edge: 1 }
+      );
+    }
+
+    // Right
+    for (var y = q.y; y < q.y + q.size; ++y) {
+      fn(
+        { x: q.x + q.size, y: y },
+        { x: q.x + q.size, y: y, edge: 0 }
+      );
+    }
+
+    // Bottom
+    for (var x = q.x + q.size - 1; x >= q.x; --x) {
+      fn(
+        { x: x, y: q.y + q.size },
+        { x: x, y: q.y + q.size, edge: 1 }
+      );
+    }
   }
 
   getEdgeFaceAdjacency(edge: IGridEdge): IGridCoord[] {
