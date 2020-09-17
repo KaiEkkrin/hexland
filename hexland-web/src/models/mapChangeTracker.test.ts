@@ -10,6 +10,7 @@ import { IAnnotation } from '../data/annotation';
 
 const ownerUid = "owner";
 const uid1 = "uid1";
+const uid2 = "uid2";
 const map = {
   adventureName: "Test Adventure",
   name: "Test Map",
@@ -47,6 +48,106 @@ function buildWallsOfThreeHexes(changeTracker: IChangeTracker) {
 
   return trackChanges(map, changeTracker, changes, ownerUid);
 }
+
+test('Unprivileged users cannot move other users\' tokens', () => {
+  const areas = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
+  const tokens = new FeatureDictionary<IGridCoord, IToken>(coordString);
+  const walls = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
+  const notes = new FeatureDictionary<IGridCoord, IAnnotation>(coordString);
+
+  const handleChangesApplied = jest.fn();
+  const handleChangesAborted = jest.fn();
+  var changeTracker = new MapChangeTracker(areas, tokens, walls, notes, undefined,
+    handleChangesApplied, handleChangesAborted);
+
+  // The walls should be irrelevant here :)
+  var ok = buildWallsOfThreeHexes(changeTracker);
+  expect(ok).toBeTruthy();
+  expect(handleChangesApplied.mock.calls.length).toBe(1);
+  expect(handleChangesApplied.mock.calls[0][0]).toBe(false); // no tokens changed
+  expect(handleChangesAborted.mock.calls.length).toBe(0);
+
+  var addTokens = [
+    { position: { x: 0, y: 0 }, colour: 0, players: [uid1], text: "Zero" },
+    { position: { x: 0, y: 1 }, colour: 0, players: [uid2], text: "Inner2" },
+  ].map(t => {
+    return {
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Token,
+      feature: t
+    };
+  });
+
+  ok = trackChanges(map, changeTracker, addTokens, ownerUid);
+  expect(ok).toBeTruthy();
+  expect(handleChangesApplied.mock.calls.length).toBe(2);
+  expect(handleChangesApplied.mock.calls[1][0]).toBe(true); // this time token changes were made
+  expect(handleChangesAborted.mock.calls.length).toBe(0);
+
+  const moveWithinInner = {
+    ty: ChangeType.Move,
+    cat: ChangeCategory.Token,
+    newPosition: { x: 1, y: 0 },
+    oldPosition: { x: 0, y: 1 }
+  };
+
+  // uid1 can't move uid2's token
+  ok = trackChanges(map, changeTracker, [moveWithinInner], uid1);
+  expect(ok).toBeFalsy();
+  expect(handleChangesApplied.mock.calls.length).toBe(2);
+  expect(handleChangesAborted.mock.calls.length).toBe(1); // this call failed
+
+  // uid2 can, however :)
+  ok = trackChanges(map, changeTracker, [moveWithinInner], uid2);
+  expect(ok).toBeTruthy();
+  expect(handleChangesApplied.mock.calls.length).toBe(3);
+  expect(handleChangesApplied.mock.calls[2][0]).toBe(true); // this time token changes were made
+  expect(handleChangesAborted.mock.calls.length).toBe(1);
+
+  // neither of them can move both by swapping their positions:
+  const moveSwap = [{
+    ty: ChangeType.Move,
+    cat: ChangeCategory.Token,
+    newPosition: { x: 0, y: 0 },
+    oldPosition: { x: 1, y: 0 }
+  }, {
+    ty: ChangeType.Move,
+    cat: ChangeCategory.Token,
+    newPosition: { x: 1, y: 0 },
+    oldPosition: { x: 0, y: 0 }
+  }];
+
+  ok = trackChanges(map, changeTracker, moveSwap, uid1);
+  expect(ok).toBeFalsy();
+  expect(handleChangesApplied.mock.calls.length).toBe(3);
+  expect(handleChangesAborted.mock.calls.length).toBe(2);
+
+  ok = trackChanges(map, changeTracker, moveSwap, uid2);
+  expect(ok).toBeFalsy();
+  expect(handleChangesApplied.mock.calls.length).toBe(3);
+  expect(handleChangesAborted.mock.calls.length).toBe(3);
+
+  ok = trackChanges(map, changeTracker, moveSwap, ownerUid);
+  expect(ok).toBeTruthy();
+  expect(handleChangesApplied.mock.calls.length).toBe(4);
+  expect(handleChangesApplied.mock.calls[3][0]).toBe(true); // this time token changes were made
+  expect(handleChangesAborted.mock.calls.length).toBe(3);
+
+  // ...and after that, uid2 can still move their token back to its
+  // now-vacant original position
+  const moveBack = {
+    ty: ChangeType.Move,
+    cat: ChangeCategory.Token,
+    newPosition: { x: 0, y: 1 },
+    oldPosition: { x: 0, y: 0 }
+  };
+
+  ok = trackChanges(map, changeTracker, [moveBack], uid2);
+  expect(ok).toBeTruthy();
+  expect(handleChangesApplied.mock.calls.length).toBe(5);
+  expect(handleChangesApplied.mock.calls[4][0]).toBe(true); // this time token changes were made
+  expect(handleChangesAborted.mock.calls.length).toBe(3);
+});
 
 test('Unprivileged tokens cannot escape from bounded areas', () => {
   const areas = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);

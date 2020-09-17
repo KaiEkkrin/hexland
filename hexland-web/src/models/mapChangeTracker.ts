@@ -9,7 +9,7 @@ import { IMap } from "../data/map";
 // The handleChangesApplied function receives true if there were any token changes
 // or false if not -- to help expose the current token list to the React UI.
 export class MapChangeTracker extends SimpleChangeTracker {
-  private readonly _colouring: MapColouring;
+  private readonly _colouring: MapColouring | undefined;
   private readonly _handleChangesApplied: ((haveTokensChanged: boolean) => void) | undefined;
   private readonly _handleChangesAborted: (() => void) | undefined;
 
@@ -20,7 +20,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
     tokens: IFeatureDictionary<IGridCoord, IToken>,
     walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
     notes: IFeatureDictionary<IGridCoord, IAnnotation>,
-    colouring: MapColouring,
+    colouring?: MapColouring | undefined,
     handleChangesApplied?: ((haveTokensChanged: boolean) => void) | undefined,
     handleChangesAborted?: (() => void) | undefined
   ) {
@@ -37,7 +37,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
     // map colour of the new)
     if (
       map.ffa === false && user !== map.owner && oldPosition !== undefined &&
-      this._colouring.colourOf(feature.position) !== this._colouring.colourOf(oldPosition)
+      this._colouring?.colourOf(feature.position) !== this._colouring?.colourOf(oldPosition)
     ) {
       return false;
     }
@@ -62,7 +62,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
   wallAdd(feature: IFeature<IGridEdge>) {
     var added = super.wallAdd(feature);
     if (added) {
-      this._colouring.setWall(feature.position, true);
+      this._colouring?.setWall(feature.position, true);
     }
 
     return added;
@@ -71,7 +71,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
   wallRemove(position: IGridEdge) {
     var removed = super.wallRemove(position);
     if (removed !== undefined) {
-      this._colouring.setWall(position, false);
+      this._colouring?.setWall(position, false);
     }
 
     return removed;
@@ -79,7 +79,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
 
   changesApplied() {
     super.changesApplied();
-    this._colouring.recalculate();
+    this._colouring?.recalculate();
     this._handleChangesApplied?.(this._haveTokensChanged);
     this._haveTokensChanged = false;
   }

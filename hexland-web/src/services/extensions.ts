@@ -3,15 +3,12 @@ import { IAnnotation } from '../data/annotation';
 import { IChange, IChanges } from '../data/change';
 import { trackChanges } from '../data/changeTracking';
 import { FeatureDictionary, IToken, IFeature } from '../data/feature';
-import { IMap, MapType } from '../data/map';
+import { IMap } from '../data/map';
 import { IAdventureSummary, IProfile } from '../data/profile';
 import { IDataService, IDataView, IDataReference, IDataAndReference, IUser, IAnalytics } from './interfaces';
 
 import { MapChangeTracker } from '../models/mapChangeTracker';
 import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
-import { MapColouring } from '../models/colouring';
-import { HexGridGeometry } from '../models/hexGridGeometry';
-import { SquareGridGeometry } from '../models/squareGridGeometry';
 
 import * as firebase from 'firebase/app';
 
@@ -612,15 +609,16 @@ export async function consolidateMapChanges(
     return;
   }
 
-  // Consolidate all of that
+  // Consolidate all of that.
+  // #64: I'm no longer including a map colouring here.  It's a bit unsafe (a player could
+  // technically cheat and non-owners would believe them), but it will save huge amounts of
+  // CPU time (especially valuable if this is going to be called in a Firebase Function.)
   var tracker = new MapChangeTracker(
     new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
     new FeatureDictionary<IGridCoord, IToken>(coordString),
     new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
     new FeatureDictionary<IGridCoord, IAnnotation>(coordString),
-    // TODO I know the geometry parameters don't matter in this specific case right now
-    // but really, they should be stored in the Map record
-    new MapColouring(m.ty === MapType.Hex ? new HexGridGeometry(1, 1) : new SquareGridGeometry(1, 1))
+    // new MapColouring(m.ty === MapType.Hex ? new HexGridGeometry(1, 1) : new SquareGridGeometry(1, 1))
   );
   changes.forEach(c => trackChanges(m, tracker, c.data.chs, c.data.user));
   var consolidated = tracker.getConsolidated();
