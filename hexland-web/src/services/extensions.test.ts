@@ -6,7 +6,7 @@ import { MapType } from '../data/map';
 import * as firebase from 'firebase/app';
 import 'firebase/firestore';
 
-import { clearFirestoreData, initializeTestApp } from '@firebase/testing';
+import { clearFirestoreData, initializeTestApp } from '@firebase/rules-unit-testing';
 
 import { v4 as uuidv4 } from 'uuid';
 import fluent from 'fluent-iterable';
@@ -39,6 +39,7 @@ describe('test extensions', () => {
     initializeEmul({
       displayName: 'Owner',
       email: 'owner@example.com',
+      providerId: 'google.com',
       uid: 'owner'
     });
   });
@@ -65,8 +66,9 @@ describe('test extensions', () => {
     const profile = await ensureProfile(dataService, {
       displayName: 'Owner',
       email: 'owner@example.com',
+      providerId: 'google.com',
       uid: 'owner'
-    });
+    }, undefined);
 
     expect(profile?.name).toBe('Owner');
 
@@ -75,8 +77,9 @@ describe('test extensions', () => {
     const profile2 = await ensureProfile(dataService, {
       displayName: 'fish',
       email: 'owner@example.com',
+      providerId: 'google.com',
       uid: 'owner'
-    });
+    }, undefined);
 
     expect(profile2?.name).toBe('Owner');
   });
@@ -87,8 +90,9 @@ describe('test extensions', () => {
     var profile = await ensureProfile(dataService, {
       displayName: 'Owner',
       email: 'owner@example.com',
+      providerId: 'google.com',
       uid: 'owner'
-    });
+    }, undefined);
 
     // There should be no adventures in the profile now
     expect(profile?.adventures).toHaveLength(0);
@@ -221,8 +225,9 @@ describe('test extensions', () => {
     var profile = await ensureProfile(dataService, {
       displayName: 'Owner',
       email: 'owner@example.com',
+      providerId: 'google.com',
       uid: 'owner'
-    });
+    }, undefined);
 
     // There should be no adventures in the profile now
     expect(profile?.adventures).toHaveLength(0);
@@ -259,11 +264,12 @@ describe('test extensions', () => {
     const user = {
       displayName: "User 1",
       email: 'user1@example.com',
+      providerId: 'google.com',
       uid: 'user1'
     };
     const userDb = initializeEmul(user).firestore();
     const userDataService = new DataService(userDb, firebase.firestore.FieldValue.serverTimestamp, 'user1');
-    var userProfile = await ensureProfile(userDataService, user);
+    var userProfile = await ensureProfile(userDataService, user, undefined);
 
     // There should be no adventures in that profile
     expect(userProfile?.adventures).toHaveLength(0);
@@ -325,11 +331,12 @@ describe('test extensions', () => {
     const user1 = {
       displayName: "User 1",
       email: 'user1@example.com',
+      providerId: 'google.com',
       uid: 'user1'
     };
     const user1Db = initializeEmul(user1).firestore();
     const user1DataService = new DataService(user1Db, firebase.firestore.FieldValue.serverTimestamp, 'user1');
-    var user1Profile = await ensureProfile(user1DataService, user1);
+    var user1Profile = await ensureProfile(user1DataService, user1, undefined);
 
     // There should be no adventures in the profile now
     expect(user1Profile?.adventures).toHaveLength(0);
@@ -349,11 +356,12 @@ describe('test extensions', () => {
     const user2 = {
       displayName: "User 2",
       email: 'user2@example.com',
+      providerId: 'google.com',
       uid: 'user2'
     };
     const user2Db = initializeEmul(user2).firestore();
     const user2DataService = new DataService(user2Db, firebase.firestore.FieldValue.serverTimestamp, 'user2');
-    var user2Profile = await ensureProfile(user2DataService, user2);
+    var user2Profile = await ensureProfile(user2DataService, user2, undefined);
 
     // There should be no adventures in the profile now
     expect(user2Profile?.adventures).toHaveLength(0);

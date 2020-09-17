@@ -4,7 +4,7 @@ import * as firebase from 'firebase/app';
 import 'firebase/auth';
 import 'firebase/firestore';
 
-import { clearFirestoreData, initializeTestApp } from '@firebase/testing';
+import { clearFirestoreData, initializeTestApp } from '@firebase/rules-unit-testing';
 
 import { IContextProviderProps, IFirebaseContext, IFirebaseProps } from '../interfaces';
 import { IAuth, IUser, IAuthProvider } from '../../services/interfaces';
