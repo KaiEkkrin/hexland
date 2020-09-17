@@ -58,7 +58,7 @@ describe('test extensions', () => {
 
   afterAll(async () => {
     await Promise.all(projectIds.map(id => clearFirestoreData({ projectId: id })));
-  })
+  });
 
   test('create a new profile entry', async () => {
     const db = emul['owner'].firestore();
