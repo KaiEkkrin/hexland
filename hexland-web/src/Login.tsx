@@ -61,8 +61,7 @@ function Login() {
 
     const dataService = new DataService(
       firebaseContext.db,
-      firebaseContext.timestampProvider,
-      user.uid
+      firebaseContext.timestampProvider
     );
 
     await ensureProfile(dataService, user, analyticsContext.analytics);

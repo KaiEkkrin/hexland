@@ -1,4 +1,4 @@
-import React, { useContext, useMemo } from 'react';
+import React, { useCallback, useContext, useMemo } from 'react';
 import './App.css';
 
 import AdventureCollection from './components/AdventureCollection';
@@ -31,8 +31,9 @@ function LatestColumn() {
   const adventures = useMemo(() => profile?.adventures ?? [], [profile]);
   const latestMaps = useMemo(() => profile?.latestMaps ?? [], [profile]);
 
-  function createAdventure(name: string, description: string) {
-    if (userContext.dataService === undefined) {
+  const createAdventure = useCallback((name: string, description: string) => {
+    const uid = userContext.user?.uid;
+    if (userContext.dataService === undefined || uid === undefined) {
       return;
     }
 
@@ -40,21 +41,21 @@ function LatestColumn() {
       id: uuidv4(),
       name: name,
       description: description,
-      owner: userContext.dataService.getUid(),
+      owner: uid,
       ownerName: profile?.name ?? "Unknown user"
     };
 
-    editAdventure(userContext.dataService, true, record)
+    editAdventure(userContext.dataService, uid, true, record)
       .then(() => console.log("Adventure " + record.id + " successfully created"))
       .catch(e => analyticsContext.logError("Error creating adventure " + record.id, e));
-  };
+  }, [userContext, profile, analyticsContext]);
 
-  function setMap(adventureId: string, id: string | undefined, map: IMap) {
+  const setMap = useCallback((adventureId: string, id: string | undefined, map: IMap) => {
     id = id ?? uuidv4();
     editMap(userContext.dataService, adventureId, id, map)
       .then(() => console.log("Map " + id + " successfully updated"))
       .catch(e => analyticsContext.logError("Error editing map " + id, e));
-  }
+  }, [userContext.dataService, analyticsContext]);
 
   return (
     <div>

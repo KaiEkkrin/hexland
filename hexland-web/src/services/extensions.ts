@@ -25,7 +25,7 @@ export async function ensureProfile(
     return undefined;
   }
 
-  const profileRef = dataService.getProfileRef();
+  const profileRef = dataService.getProfileRef(user.uid);
   return await dataService.runTransaction(async view => {
     var profile = await view.get(profileRef);
     if (profile !== undefined) {
@@ -87,8 +87,8 @@ async function updateProfileTransaction(
   }));
 }
 
-export async function updateProfile(dataService: IDataService | undefined, name: string): Promise<void> {
-  if (dataService === undefined) {
+export async function updateProfile(dataService: IDataService | undefined, uid: string | undefined, name: string): Promise<void> {
+  if (dataService === undefined || uid === undefined) {
     return;
   }
 
@@ -100,9 +100,9 @@ export async function updateProfile(dataService: IDataService | undefined, name:
   // be annoying (they're supposed to be transient things anyway and should expire) and
   // it would require an extra security rule to allow arbitrarily listing them, which
   // defeats the point of being invited requiring the identifier.
-  const profileRef = dataService.getProfileRef();
-  const myAdventures = await dataService.getMyAdventures();
-  const myPlayerRecords = await dataService.getMyPlayerRecords();
+  const profileRef = dataService.getProfileRef(uid);
+  const myAdventures = await dataService.getMyAdventures(uid);
+  const myPlayerRecords = await dataService.getMyPlayerRecords(uid);
   await dataService.runTransaction(view => updateProfileTransaction(
     view, profileRef, myAdventures, myPlayerRecords, name
   ));
@@ -206,19 +206,19 @@ async function editAdventureTransaction(
 
 export async function editAdventure(
   dataService: IDataService | undefined,
+  uid: string | undefined,
   isNew: boolean,
   changed: IAdventureSummary,
   rec?: IAdventure | undefined
 ): Promise<void> {
-  if (dataService === undefined) {
+  if (dataService === undefined || uid === undefined) {
     return;
   }
   
   // Get the references to all the relevant stuff.
   // There's a chance this could be slightly out of sync, but it's low, so I'll
   // go with it.
-  var uid = dataService.getUid();
-  var profileRef = dataService.getProfileRef();
+  var profileRef = dataService.getProfileRef(uid);
   var adventureRef = dataService.getAdventureRef(changed.id);
   var mapRefs: IDataReference<IMap>[] = [];
   var playerRefs: IDataAndReference<IPlayer>[] = [];
@@ -276,12 +276,12 @@ async function deleteAdventureTransaction(
   await view.delete(adventureRef);
 }
 
-export async function deleteAdventure(dataService: IDataService | undefined, adventureId: string) {
-  if (dataService === undefined) {
+export async function deleteAdventure(dataService: IDataService | undefined, uid: string | undefined, adventureId: string) {
+  if (dataService === undefined || uid === undefined) {
     return;
   }
 
-  const profileRef = dataService.getProfileRef();
+  const profileRef = dataService.getProfileRef(uid);
   const adventureRef = dataService.getAdventureRef(adventureId);
   const playerRefs = await dataService.getPlayerRefs(adventureId);
   await dataService.runTransaction(view =>
@@ -395,7 +395,7 @@ export async function editMap(
     return;
   }
 
-  var profileRef = dataService.getProfileRef();
+  var profileRef = dataService.getProfileRef(changed.owner);
   var adventureRef = dataService.getAdventureRef(adventureId);
   var mapRef = dataService.getMapRef(adventureId, mapId);
 
@@ -440,14 +440,15 @@ async function deleteMapTransaction(
 
 export async function deleteMap(
   dataService: IDataService | undefined,
+  uid: string | undefined,
   adventureId: string,
   mapId: string
 ): Promise<void> {
-  if (dataService === undefined) {
+  if (dataService === undefined || uid === undefined) {
     return;
   }
 
-  var profileRef = dataService.getProfileRef();
+  var profileRef = dataService.getProfileRef(uid);
   var adventureRef = dataService.getAdventureRef(adventureId);
   var mapRef = dataService.getMapRef(adventureId, mapId);
 
@@ -481,6 +482,7 @@ async function registerAdventureAsRecentTransaction(
 
 export async function registerAdventureAsRecent(
   dataService: IDataService | undefined,
+  uid: string,
   id: string,
   a: IAdventure
 ) {
@@ -488,7 +490,7 @@ export async function registerAdventureAsRecent(
     return;
   }
 
-  var profileRef = dataService.getProfileRef();
+  var profileRef = dataService.getProfileRef(uid);
   await dataService.runTransaction(
     view => registerAdventureAsRecentTransaction(view, profileRef, id, a)
   );
@@ -520,6 +522,7 @@ async function registerMapAsRecentTransaction(
 
 export async function registerMapAsRecent(
   dataService: IDataService | undefined,
+  uid: string,
   adventureId: string,
   id: string,
   m: IMap
@@ -528,7 +531,7 @@ export async function registerMapAsRecent(
     return;
   }
 
-  var profileRef = dataService.getProfileRef();
+  var profileRef = dataService.getProfileRef(uid);
   await dataService.runTransaction(view =>
     registerMapAsRecentTransaction(view, profileRef, adventureId, id, m)
   );
@@ -597,11 +600,6 @@ export async function consolidateMapChanges(
     return;
   }
 
-  // Don't try to consolidate if we're not the map owner
-  if (dataService.getUid() !== m.owner) {
-    return;
-  }
-
   // Fetch all the current changes for this map, along with their refs
   var baseChangeRef = await dataService.getMapBaseChangeRef(adventureId, mapId);
   var changes = await dataService.getMapChangesRefs(adventureId, mapId);
@@ -625,7 +623,7 @@ export async function consolidateMapChanges(
 
   // Apply it
   await dataService.runTransaction(view =>
-    consolidateMapChangesTransaction(view, timestampProvider, baseChangeRef, changes ?? [], consolidated, dataService.getUid())
+    consolidateMapChangesTransaction(view, timestampProvider, baseChangeRef, changes ?? [], consolidated, m.owner)
   );
 }
 
@@ -698,16 +696,17 @@ async function joinAdventureTransaction(
 export async function joinAdventure(
   dataService: IDataService | undefined,
   profile: IProfile | undefined,
+  uid: string | undefined,
   adventureId: string
 ): Promise<void> {
   // TODO Verify that this is a valid invite before allowing join.
   // (Really a rules thing for the most part.)
-  if (dataService === undefined || profile === undefined) {
+  if (dataService === undefined || profile === undefined || uid === undefined) {
     return undefined;
   }
 
   var adventureRef = dataService.getAdventureRef(adventureId);
-  var playerRef = dataService.getPlayerRef(adventureId, dataService.getUid());
+  var playerRef = dataService.getPlayerRef(adventureId, uid);
   await dataService.runTransaction(tr => joinAdventureTransaction(tr, adventureRef, playerRef, profile.name));
 }
 
@@ -745,15 +744,15 @@ async function leaveAdventureTransaction(
 
 export async function leaveAdventure(
   dataService: IDataService | undefined,
-  profile: IProfile | undefined,
+  uid: string | undefined,
   adventureId: string
 ) {
-  if (dataService === undefined || profile === undefined) {
+  if (dataService === undefined || uid === undefined) {
     return undefined;
   }
 
-  var profileRef = dataService.getProfileRef();
+  var profileRef = dataService.getProfileRef(uid);
   var adventureRef = dataService.getAdventureRef(adventureId);
-  var playerRef = dataService.getPlayerRef(adventureId, dataService.getUid());
+  var playerRef = dataService.getPlayerRef(adventureId, uid);
   await dataService.runTransaction(tr => leaveAdventureTransaction(tr, profileRef, adventureRef, playerRef));
 }

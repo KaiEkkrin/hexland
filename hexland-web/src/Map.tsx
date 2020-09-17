@@ -84,21 +84,25 @@ function Map(props: IMapPageProps) {
 
   // Track changes to the map
   useEffect(() => {
+    const uid = userContext.user?.uid;
     if (
       userContext.dataService === undefined || map === undefined ||
+      uid === undefined ||
       drawingRef?.current === null
     ) {
       setStateMachine(undefined);
       return;
     }
 
-    registerMapAsRecent(userContext.dataService, map.adventureId, map.id, map.record)
+    registerMapAsRecent(userContext.dataService, uid, map.adventureId, map.id, map.record)
       .catch(e => analyticsContext.logError("Error registering map as recent", e));
-    consolidateMapChanges(userContext.dataService, firebaseContext.timestampProvider, map.adventureId, map.id, map.record)
-      .catch(e => analyticsContext.logError("Error consolidating map changes", e));
+    if (userContext.user?.uid === map.record.owner) {
+      consolidateMapChanges(userContext.dataService, firebaseContext.timestampProvider, map.adventureId, map.id, map.record)
+        .catch(e => analyticsContext.logError("Error consolidating map changes", e));
+    }
 
     var sm = new MapStateMachine(
-      map.record, userContext.dataService.getUid(), standardColours, drawingRef.current, setMapState
+      map.record, uid, standardColours, drawingRef.current, setMapState
     );
     setStateMachine(sm);
 
@@ -111,7 +115,7 @@ function Map(props: IMapPageProps) {
       stopWatchingChanges();
       sm.dispose();
     };
-  }, [userContext.dataService, firebaseContext.timestampProvider, analyticsContext, map]);
+  }, [userContext.dataService, userContext.user, firebaseContext.timestampProvider, analyticsContext, map]);
 
   // If we can't see anything, notify the user
   const canSeeAnything = useMemo(() => {
@@ -147,14 +151,18 @@ function Map(props: IMapPageProps) {
 
   // How to create and share the map changes we make
   const addChanges = useCallback((changes: IChange[] | undefined) => {
-    if (changes === undefined || changes.length === 0 || userContext.dataService === undefined) {
+    const uid = userContext.user?.uid;
+    if (
+      changes === undefined || changes.length === 0 || userContext.dataService === undefined ||
+      uid === undefined
+    ) {
       return;
     }
 
-    userContext.dataService.addChanges(props.adventureId, props.mapId, changes)
+    userContext.dataService.addChanges(props.adventureId, uid, props.mapId, changes)
       .then(() => console.log("Added " + changes.length + " changes"))
       .catch(e => analyticsContext.logError("Error adding " + changes.length + " changes", e));
-  }, [userContext.dataService, analyticsContext, props.adventureId, props.mapId]);
+  }, [userContext.dataService, userContext.user, analyticsContext, props.adventureId, props.mapId]);
 
   // == UI STUFF ==
 
@@ -185,12 +193,12 @@ function Map(props: IMapPageProps) {
   const [isDraggingView, setIsDraggingView] = useState(false);
 
   useEffect(() => {
-    setCanDoAnything(map?.record.ffa === true || userContext.dataService?.getUid() === map?.record.owner);
-  }, [userContext.dataService, map]);
+    setCanDoAnything(map?.record.ffa === true || userContext.user?.uid === map?.record.owner);
+  }, [userContext.user, map]);
 
   useEffect(() => {
-    setIsOwner(userContext.dataService?.getUid() === map?.record.owner);
-  }, [userContext.dataService, map]);
+    setIsOwner(userContext.user?.uid === map?.record.owner);
+  }, [userContext.user, map]);
 
   // When the edit mode changes at all, reset any margin panning.
   // When the edit mode changes away from Select, we should clear any selection.

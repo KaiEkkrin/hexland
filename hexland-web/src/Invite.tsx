@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useMemo } from 'react';
+import React, { useState, useEffect, useContext, useMemo, useCallback } from 'react';
 import './App.css';
 
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
@@ -34,12 +34,12 @@ function Invite(props: IInvitePageProps) {
     invite === undefined ? "(no such invite)" : invite.adventureName + " by " + invite.ownerName,
     [invite]);
 
-  function handleJoin() {
+  const handleJoin = useCallback(() => {
     analyticsContext.analytics?.logEvent("join_group", { "group_id": props.adventureId });
-    joinAdventure(userContext.dataService, profile, props.adventureId)
+    joinAdventure(userContext.dataService, profile, userContext.user?.uid, props.adventureId)
       .then(() => history.replace("/adventure/" + props.adventureId))
       .catch(e => analyticsContext.logError("Failed to join adventure " + props.adventureId, e));
-  }
+  }, [analyticsContext, userContext, props.adventureId, profile, history]);
 
   return (
     <div>

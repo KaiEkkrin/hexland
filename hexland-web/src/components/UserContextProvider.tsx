@@ -23,7 +23,7 @@ function UserContextProvider(props: IContextProviderProps) {
       setUserContext({
         user: u,
         dataService: (firebaseContext.db === undefined || firebaseContext.timestampProvider === undefined || u === null || u === undefined) ?
-          undefined : new DataService(firebaseContext.db, firebaseContext.timestampProvider, u.uid)
+          undefined : new DataService(firebaseContext.db, firebaseContext.timestampProvider)
       });
     }, e => console.error("Authentication state error: ", e));
   }, [firebaseContext.auth, firebaseContext.db, firebaseContext.timestampProvider]);

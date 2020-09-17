@@ -47,7 +47,7 @@ export interface IDataAndReference<T> extends IDataReference<T> {
 // This service is for datastore-related operations.
 export interface IDataService extends IDataView {
   // Adds incremental changes to a map.
-  addChanges(adventureId: string, mapId: string, changes: IChange[]): Promise<void>;
+  addChanges(adventureId: string, uid: string, mapId: string, changes: IChange[]): Promise<void>;
 
   // Gets an adventure.
   getAdventureRef(id: string): IDataReference<IAdventure>;
@@ -62,8 +62,8 @@ export interface IDataService extends IDataView {
   getMapChangesRefs(adventureId: string, id: string): Promise<IDataAndReference<IChanges>[] | undefined>;
 
   // Gets all my adventures, invites, and player records.
-  getMyAdventures(): Promise<IDataAndReference<IAdventure>[]>;
-  getMyPlayerRecords(): Promise<IDataAndReference<IPlayer>[]>;
+  getMyAdventures(uid: string): Promise<IDataAndReference<IAdventure>[]>;
+  getMyPlayerRecords(uid: string): Promise<IDataAndReference<IPlayer>[]>;
 
   // Gets a reference to a player record for an adventure.
   getPlayerRef(adventureId: string, uid: string): IDataReference<IPlayer>;
@@ -72,10 +72,7 @@ export interface IDataService extends IDataView {
   getPlayerRefs(adventureId: string): Promise<IDataAndReference<IPlayer>[]>;
 
   // Gets the user's profile.
-  getProfileRef(): IDataReference<IProfile>;
-
-  // Gets the current user id.
-  getUid(): string;
+  getProfileRef(uid: string): IDataReference<IProfile>;
 
   // Runs a transaction. The `dataView` parameter accepted by the
   // transaction function does things in the transaction's context.
@@ -91,6 +88,7 @@ export interface IDataService extends IDataView {
 
   // Watches all the user's adventures.  Call the returned function to stop.
   watchAdventures(
+    uid: string,
     onNext: (adventures: IIdentified<IAdventure>[]) => void,
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
@@ -115,6 +113,7 @@ export interface IDataService extends IDataView {
 
   // Watches all adventures shared with this user.
   watchSharedAdventures(
+    uid: string,
     onNext: (adventures: IPlayer[]) => void,
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined

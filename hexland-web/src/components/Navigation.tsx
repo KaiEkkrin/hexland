@@ -79,10 +79,10 @@ function NavLogin() {
     }
 
     // I don't need to ensureProfile() here: it was done by the login component
-    updateProfile(userContext.dataService, editDisplayName)
+    updateProfile(userContext.dataService, userContext.user?.uid, editDisplayName)
       .then(() => console.log("successfully updated profile"))
       .catch(e => analyticsContext.logError("error updating profile:", e));
-  }, [analyticsContext, editAnalyticsEnabled, editDisplayName, handleModalClose, userContext.dataService]);
+  }, [analyticsContext, editAnalyticsEnabled, editDisplayName, handleModalClose, userContext]);
 
   const saveProfileDisabled = useMemo(() => editDisplayName.length === 0, [editDisplayName]);
 

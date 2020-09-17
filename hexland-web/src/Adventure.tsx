@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState, useMemo } from 'react';
+import React, { useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import './App.css';
 
 import AdventureModal from './components/AdventureModal';
@@ -7,7 +7,6 @@ import { FirebaseContext } from './components/FirebaseContextProvider';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
 import PlayerInfoList from './components/PlayerInfoList';
-import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { UserContext } from './components/UserContextProvider';
 
@@ -35,7 +34,6 @@ interface IAdventureProps {
 function Adventure(props: IAdventureProps) {
   const firebaseContext = useContext(FirebaseContext);
   const userContext = useContext(UserContext);
-  const profileContext = useContext(ProfileContext);
   const analyticsContext = useContext(AnalyticsContext);
 
   const [adventure, setAdventure] = useState<IIdentified<IAdventure> | undefined>(undefined);
@@ -56,14 +54,18 @@ function Adventure(props: IAdventureProps) {
 
   // Track changes to the adventure
   useEffect(() => {
-    if (userContext.dataService === undefined || adventure === undefined) {
+    const uid = userContext.user?.uid;
+    if (
+      userContext.dataService === undefined || adventure === undefined ||
+      uid === undefined
+    ) {
       return;
     }
 
-    registerAdventureAsRecent(userContext.dataService, adventure.id, adventure.record)
+    registerAdventureAsRecent(userContext.dataService, uid, adventure.id, adventure.record)
       .then(() => console.log("registered adventure " + adventure.id + " as recent"))
       .catch(e => analyticsContext.logError("Failed to register adventure " + adventure.id + " as recent", e));
-  }, [analyticsContext, userContext.dataService, adventure]);
+  }, [analyticsContext, userContext, adventure]);
 
   // Derive the adventures list for the map collection
   const adventures = useMemo(
@@ -132,13 +134,13 @@ function Adventure(props: IAdventureProps) {
   // Support for the players list
   const ownerUid = useMemo(() => adventure?.record.owner, [adventure]);
 
-  function handleModalClose() {
+  const handleModalClose = useCallback(() => {
     setShowEditAdventure(false);
     setShowDeleteAdventure(false);
     setShowLeaveAdventure(false);
-  }
+  }, [setShowEditAdventure, setShowDeleteAdventure, setShowLeaveAdventure]);
 
-  function handleShowEditAdventure() {
+  const handleShowEditAdventure = useCallback(() => {
     if (adventure === undefined) {
       return;
     }
@@ -146,9 +148,9 @@ function Adventure(props: IAdventureProps) {
     setEditAdventureName(adventure.record.name);
     setEditAdventureDescription(adventure.record.description);
     setShowEditAdventure(true);
-  }
+  }, [adventure, setEditAdventureName, setEditAdventureDescription, setShowEditAdventure]);
 
-  function handleEditAdventureSave() {
+  const handleEditAdventureSave = useCallback(() => {
     handleModalClose();
     if (adventure === undefined) {
       return;
@@ -161,48 +163,48 @@ function Adventure(props: IAdventureProps) {
     };
 
     editAdventure(
-      userContext.dataService, false, summariseAdventure(props.adventureId, updated), updated
+      userContext.dataService, userContext.user?.uid, false, summariseAdventure(props.adventureId, updated), updated
     ).then(() => console.log("Adventure " + props.adventureId + " successfully updated"))
       .catch(e => analyticsContext.logError("Error editing adventure " + props.adventureId, e));
-  }
+  }, [userContext, props.adventureId, analyticsContext, adventure, editAdventureName, editAdventureDescription, handleModalClose]);
 
-  function handleDeleteAdventureSave() {
+  const handleDeleteAdventureSave = useCallback(() => {
     handleModalClose();
-    deleteAdventure(userContext.dataService, props.adventureId)
+    deleteAdventure(userContext.dataService, userContext.user?.uid, props.adventureId)
       .then(() => {
         console.log("Adventure " + props.adventureId + " successfully deleted");
         history.replace("/");
       })
       .catch(e => analyticsContext.logError("Error deleting adventure " + props.adventureId, e));
-  }
+  }, [userContext, props.adventureId, history, handleModalClose, analyticsContext]);
 
-  function handleLeaveAdventureSave() {
+  const handleLeaveAdventureSave = useCallback(() => {
     handleModalClose();
-    leaveAdventure(userContext.dataService, profileContext, props.adventureId)
+    leaveAdventure(userContext.dataService, userContext.user?.uid, props.adventureId)
       .then(() => {
         console.log("Successfully left adventure " + props.adventureId);
         history.replace("/");
       })
       .catch(e => analyticsContext.logError("Error leaving adventure " + props.adventureId, e));
-  }
+  }, [userContext, analyticsContext, props.adventureId, handleModalClose, history]);
 
   // Map editing support
   // TODO #23 Make this able to create a new map only and consolidate the editing
   // functionality with the map view
   const maps = useMemo(() => adventure?.record.maps ?? [], [adventure]);
 
-  function setMap(adventureId: string, id: string | undefined, map: IMap) {
+  const setMap = useCallback((adventureId: string, id: string | undefined, map: IMap) => {
     id = id ?? uuidv4();
     editMap(userContext.dataService, adventureId, id, map)
       .then(() => console.log("Map " + id + " successfully updated"))
       .catch(e => analyticsContext.logError("Error editing map " + id, e));
-  }
+  }, [userContext.dataService, analyticsContext]);
 
-  function mapDelete(id: string) {
-    deleteMap(userContext.dataService, props.adventureId, id)
+  const mapDelete = useCallback((id: string) => {
+    deleteMap(userContext.dataService, userContext.user?.uid, props.adventureId, id)
       .then(() => console.log("Map " + id + " successfully deleted"))
       .catch(e => analyticsContext.logError("Error deleting map " + id, e));
-  }
+  }, [userContext, props.adventureId, analyticsContext]);
 
   return (
     <div>

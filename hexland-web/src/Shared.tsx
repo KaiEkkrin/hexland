@@ -17,14 +17,20 @@ function Shared() {
   const [adventures, setAdventures] = useState<IPlayer[]>([]);
 
   useEffect(() => {
+    const uid = userContext.user?.uid;
+    if (uid === undefined) {
+      return undefined;
+    }
+
     return userContext.dataService?.watchSharedAdventures(
+      uid,
       a => {
         console.log("Received " + a.length + " shared adventures");
         setAdventures(a.filter(a2 => a2.playerId !== a2.owner));
       },
       e => console.error("Error watching shared adventures: ", e)
     );
-  }, [userContext.dataService]);
+  }, [userContext]);
 
   return (
     <RequireLoggedIn>

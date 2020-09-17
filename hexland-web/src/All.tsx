@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useMemo } from 'react';
+import React, { useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import './App.css';
 
 import AdventureCollection from './components/AdventureCollection';
@@ -27,11 +27,17 @@ function All() {
 
   // Watch all adventures
   useEffect(() => {
+    const uid = userContext.user?.uid;
+    if (uid === undefined) {
+      return () => {};
+    }
+
     return userContext.dataService?.watchAdventures(
+      uid,
       a => setAdventures(a),
       e => console.error("Error watching adventures: ", e)
     );
-  }, [userContext.dataService]);
+  }, [userContext]);
 
   // Keep summaries of them
   const adventureSummaries = useMemo(
@@ -39,7 +45,7 @@ function All() {
     [adventures]
   );
 
-  function createAdventure(name: string, description: string) {
+  const createAdventure = useCallback((name: string, description: string) => {
     const uid = userContext.user?.uid;
     if (uid === undefined) {
       return;
@@ -53,10 +59,10 @@ function All() {
       ownerName: profile?.name ?? "Unknown user"
     };
 
-    editAdventure(userContext.dataService, true, record)
+    editAdventure(userContext.dataService, uid, true, record)
       .then(() => console.log("Adventure " + record.id + " successfully created"))
       .catch(e => analyticsContext.logError("Error creating adventure " + record.id, e));
-  }
+  }, [userContext, profile, analyticsContext]);
 
   return (
     <RequireLoggedIn>
