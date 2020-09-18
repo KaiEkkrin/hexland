@@ -224,7 +224,7 @@ export class MapStateMachine {
     // dropping tokens outside of the current LoS.
     const worldToViewport = this._drawing.getWorldToViewport(this._scratchMatrix1);
     if (this.seeEverything === false) {
-      let withinLoS = fluent(this._drawing.selection).map(f => {
+      const withinLoS = fluent(this._drawing.selection).map(f => {
         this._gridGeometry.createCoordCentre(this._scratchVector1, coordAdd(f.position, delta), 0);
         this._scratchVector1.applyMatrix4(worldToViewport);
         return this._drawing.checkLoS(this._scratchVector1);
@@ -239,9 +239,9 @@ export class MapStateMachine {
     // be rejected by the change tracker, and so we create our own change tracker to do this.
     // It's safe for us to use our current areas, walls and map colouring because those won't
     // change, but we need to clone our tokens into a scratch dictionary.
-    let changes: IChange[] = [];
-    for (let s of this._drawing.selection) {
-      let tokenHere = this._drawing.tokens.get(s.position);
+    const changes: IChange[] = [];
+    for (const s of this._drawing.selection) {
+      const tokenHere = this._drawing.tokens.get(s.position);
       if (tokenHere === undefined) {
         continue;
       }
@@ -249,7 +249,7 @@ export class MapStateMachine {
       changes.push(createTokenMove(s.position, coordAdd(s.position, delta), tokenHere.id));
     }
 
-    let changeTracker = new MapChangeTracker(
+    const changeTracker = new MapChangeTracker(
       this._drawing.areas, this._drawing.tokens.clone(), this._drawing.walls, this._notes, this._mapColouring
     );
     return trackChanges(this._map.record, changeTracker, changes, this._uid);
@@ -429,17 +429,13 @@ export class MapStateMachine {
   }
 
   private tokenMoveDragEnd(position: IGridCoord, chs: IChange[]) {
-    const delta = this.getTokenMoveDelta(position);
-    if (delta === undefined) {
-      return;
-    }
-
     this._drawing.selectionDrag.clear();
     this._drawing.selectionDragRed.clear();
-    if (this.canDropSelectionAt(position)) {
+    const delta = this.getTokenMoveDelta(position);
+    if (delta !== undefined && !coordsEqual(delta, { x: 0, y: 0 }) && this.canDropSelectionAt(position)) {
       // Create commands that move all the tokens
-      for (let s of this._drawing.selection) {
-        let tokenHere = this._drawing.tokens.get(s.position);
+      for (const s of this._drawing.selection) {
+        const tokenHere = this._drawing.tokens.get(s.position);
         if (tokenHere === undefined) {
           continue;
         }

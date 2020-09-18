@@ -39,8 +39,8 @@ class RecursingConverter<T> extends ShallowConverter<T> {
 
   convert(rawData: any): T {
     let converted = super.convert(rawData);
-    for (let c in this._specialCases) {
-      let raw = c in rawData ? rawData[c] : {};
+    for (const c in this._specialCases) {
+      const raw = c in rawData ? rawData[c] : {};
       converted = this._specialCases[c](converted, raw);
     }
 
@@ -92,7 +92,7 @@ class ChangeConverter extends ShallowConverter<IChange> {
   }
 
   convert(rawData: any): IChange {
-    let converted = super.convert(rawData);
+    const converted = super.convert(rawData);
     switch (converted.cat) {
       case ChangeCategory.Area: return this.convertArea(converted, rawData);
       case ChangeCategory.Note: return this.convertNote(converted, rawData);

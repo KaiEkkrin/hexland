@@ -17,7 +17,7 @@ export interface IAuth {
   ): () => void;
 }
 
-export interface IAuthProvider {}
+export type IAuthProvider = {};
 
 // A user.  (Exposes the things we want from `firebase.User` -- may need extending;
 // but needs to be hidden behind this interface to facilitate unit testing.)

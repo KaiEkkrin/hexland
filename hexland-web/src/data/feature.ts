@@ -93,13 +93,13 @@ export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> impl
   }
 
   clone() {
-    let clonedValues: { [index: string]: F } = {};
+    const clonedValues: { [index: string]: F } = {};
     Object.assign(clonedValues, this._values);
     return new FeatureDictionary<K, F>(this._toIndex, clonedValues);
   }
 
   forEach(fn: (f: F) => void) {
-    for (let i in this._values) {
+    for (const i in this._values) {
       fn(this._values[i]);
     }
   }
@@ -110,7 +110,7 @@ export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> impl
   }
 
   *iterate() {
-    for (let i in this._values) {
+    for (const i in this._values) {
       yield this._values[i];
     }
   }
