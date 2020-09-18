@@ -846,6 +846,10 @@ export class MapStateMachine {
     if (selected === undefined) {
       this.clearSelection();
       this._drawing.selection.add({ position: token.position, colour: 0 });
+      this.withStateChange(getState => {
+        this.buildLoS(getState());
+        return true;
+      });
     }
 
     this.tokenMoveDragStart(token.position);
@@ -866,7 +870,12 @@ export class MapStateMachine {
         if (token !== undefined && this.canSelectToken(token)) {
           this._drawing.selection.add({ position: position, colour: 0 });
         }
+      }
 
+      // If there were no changes, we won't be prodded into rebuilding the LoS
+      // when they come back via the watcher, and so we should do so now.
+      // (Not always, because that can cause LoS flicker)
+      if (chs.length === 0) {
         this.withStateChange(getState => {
           this.buildLoS(getState());
           return true;
