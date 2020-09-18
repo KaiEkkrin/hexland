@@ -65,7 +65,7 @@ async function tryConsolidateMapChanges(
   const baseChangeRef = await dataService.getMapBaseChangeRef(adventureId, mapId);
   const baseChange = await dataService.get(baseChangeRef); // undefined in case of the first consolidate
   const incrementalChanges = await dataService.getMapIncrementalChangesRefs(adventureId, mapId, 499);
-  if (incrementalChanges === undefined) {
+  if (incrementalChanges === undefined || incrementalChanges.length === 0) {
     // No changes to consolidate
     return true;
   }

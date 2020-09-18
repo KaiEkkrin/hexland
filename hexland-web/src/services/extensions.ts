@@ -1,12 +1,8 @@
 import { IAdventure, IMapSummary, IPlayer } from '../data/adventure';
-import { IAnnotation } from '../data/annotation';
-import { IChange, IChanges } from '../data/change';
-import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
-import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
-import { FeatureDictionary, IToken, IFeature } from '../data/feature';
+import { IChanges } from '../data/change';
 import { IMap } from '../data/map';
 import { IAdventureSummary, IProfile } from '../data/profile';
-import { IDataService, IDataView, IDataReference, IDataAndReference, IUser, IAnalytics, ILogger } from './interfaces';
+import { IDataService, IDataView, IDataReference, IDataAndReference, IUser, IAnalytics, IFunctionsService } from './interfaces';
 
 import * as firebase from 'firebase/app';
 import { v4 as uuidv4 } from 'uuid';
@@ -562,124 +558,42 @@ export async function getAllMapChanges(
   return changes;
 }
 
-async function consolidateMapChangesTransaction(
-  view: IDataView,
-  logger: ILogger,
-  timestampProvider: () => firebase.firestore.FieldValue | number,
-  baseChange: IChanges | undefined,
-  baseChangeRef: IDataReference<IChanges>,
-  incrementalChanges: IDataAndReference<IChanges>[],
-  consolidated: IChange[],
-  uid: string
-) {
-  // Check that the base change hasn't changed since we did the query.
-  // If it has, we'll simply abort -- someone else has done this recently
-  let latestBaseChange = await view.get(baseChangeRef);
-  if (baseChange !== undefined && latestBaseChange !== undefined) {
-    if (
-      typeof(latestBaseChange.timestamp) !== 'number' ||
-      typeof(baseChange.timestamp) !== 'number'
-    ) {
-      // This should be fine, because they shouldn't be mixed within one application;
-      // real application always uses the firestore field value, tests always use number
-      const latestTimestamp = latestBaseChange.timestamp as firebase.firestore.FieldValue;
-      const baseTimestamp = baseChange.timestamp as firebase.firestore.FieldValue;
-      if (!latestTimestamp.isEqual(baseTimestamp)) {
-        logger.logWarning("Map changes for " + baseChangeRef.id + " have already been consolidated");
-        return;
-      }
-    } else {
-      if (latestBaseChange.timestamp !== baseChange.timestamp) {
-        logger.logWarning("Map changes for " + baseChangeRef.id + " have already been consolidated");
-        return;
-      }
-    }
-  }
-
-  // Update the base change
-  await view.set<IChanges>(baseChangeRef, {
-    chs: consolidated,
-    timestamp: timestampProvider(),
-    incremental: false,
-    user: uid
-  });
-
-  // Delete all the others
-  await Promise.all(incrementalChanges.map(c => view.delete(c)));
-}
-
-// Returns true if finished, false to continue trying (e.g. more to be done.)
-async function tryConsolidateMapChanges(
-  dataService: IDataService,
-  logger: ILogger,
-  timestampProvider: () => firebase.firestore.FieldValue | number,
-  adventureId: string,
-  mapId: string,
-  m: IMap
-) {
-  // Fetch all the current changes for this map, along with their refs
-  let baseChangeRef = await dataService.getMapBaseChangeRef(adventureId, mapId);
-  let baseChange = await dataService.get(baseChangeRef); // undefined in case of the first consolidate
-  let incrementalChanges = await dataService.getMapIncrementalChangesRefs(adventureId, mapId, 499);
-  if (incrementalChanges === undefined) {
-    // No changes to consolidate
-    return true;
-  }
-
-  // Consolidate all of that.
-  // #64: I'm no longer including a map colouring here.  It's a bit unsafe (a player could
-  // technically cheat and non-owners would believe them), but it will save huge amounts of
-  // CPU time (especially valuable if this is going to be called in a Firebase Function.)
-  let tracker = new SimpleChangeTracker(
-    new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
-    new FeatureDictionary<IGridCoord, IToken>(coordString),
-    new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
-    new FeatureDictionary<IGridCoord, IAnnotation>(coordString),
-    // new MapColouring(m.ty === MapType.Hex ? new HexGridGeometry(1, 1) : new SquareGridGeometry(1, 1))
-  );
-  if (baseChange !== undefined) {
-    trackChanges(m, tracker, baseChange.chs, baseChange.user);
-  }
-  incrementalChanges.forEach(c => trackChanges(m, tracker, c.data.chs, c.data.user));
-  let consolidated = tracker.getConsolidated();
-
-  // Apply it
-  await dataService.runTransaction(async view => {
-    await consolidateMapChangesTransaction(
-      view, logger, timestampProvider, baseChange, baseChangeRef, incrementalChanges ?? [], consolidated, m.owner
-    );
-  });
-  
-  // There may be more
-  return false;
-}
-
-// TODO So that things are consolidated more regularly, pick a suitable
-// count and run this as a Firebase Function when that many changes are
-// added to the map?
-// Doing lots of deletes from a Web client is not recommended:
-// https://firebase.google.com/docs/firestore/manage-data/delete-data
-export async function consolidateMapChanges(
+// Watches map changes and automatically consolidates at a suitable interval.
+export function watchChangesAndConsolidate(
   dataService: IDataService | undefined,
-  logger: ILogger,
-  timestampProvider: (() => firebase.firestore.FieldValue | number) | undefined,
+  functionsService: IFunctionsService | undefined,
   adventureId: string,
   mapId: string,
-  m: IMap
-): Promise<void> {
-  if (dataService === undefined || timestampProvider === undefined) {
-    return;
+  onNext: (chs: IChanges) => void,
+  onError?: ((error: Error) => void) | undefined
+) {
+  if (dataService === undefined || functionsService === undefined) {
+    return undefined;
   }
 
-  // Because we can consolidate at most 499 changes in one go due to the write limit,
-  // we do this in a loop until we can't find any more:
-  while (true) {
-    if (await tryConsolidateMapChanges(
-      dataService, logger, timestampProvider, adventureId, mapId, m
-    )) {
-      break;
-    }
+  function createConsolidateInterval() {
+    // We want to consolidate before 500 incremental changes (so it can all
+    // be done in one transaction), and randomly, so that clients don't all
+    // try to consolidate at once
+    const i = Math.floor(100 + Math.random() * 350);
+    console.log("next consolidate after " + i + " changes");
+    return i;
   }
+
+  const interval = [createConsolidateInterval()];
+  return dataService.watchChanges(
+    adventureId, mapId,
+    (chs: IChanges) => {
+      onNext(chs);
+      if (--interval[0] <= 0) {
+        console.log("consolidating map changes");
+        interval[0] = createConsolidateInterval();
+        functionsService.consolidateMapChanges(adventureId, mapId)
+          .catch(onError);
+      }
+    },
+    onError
+  );
 }
 
 // Either creates an invite record for an adventure and returns it, or returns

@@ -25,7 +25,7 @@ import { trackChanges } from './data/changeTracking';
 import { IToken, ITokenProperties } from './data/feature';
 import { IAdventureIdentified } from './data/identified';
 import { IMap } from './data/map';
-import { registerMapAsRecent, editMap } from './services/extensions';
+import { registerMapAsRecent, editMap, watchChangesAndConsolidate } from './services/extensions';
 import { IDataService, IFunctionsService } from './services/interfaces';
 
 import { standardColours } from './models/featureColour';
@@ -104,6 +104,7 @@ function Map(props: IMapPageProps) {
     }
 
     try {
+      console.log("consolidating map changes");
       functionsService.consolidateMapChanges(map.adventureId, map.id);
     } catch (e) {
       analyticsContext.logError("Error consolidating map " + map.adventureId + "/" + map.id + " changes", e);
@@ -131,11 +132,12 @@ function Map(props: IMapPageProps) {
 
   useEffect(() => {
     if (stateMachine === undefined) {
-      return;
+      return undefined;
     }
 
     console.log("Watching changes to map " + stateMachine.map.id);
-    return userContext.dataService?.watchChanges(
+    return watchChangesAndConsolidate(
+      userContext.dataService, userContext.functionsService,
       stateMachine.map.adventureId, stateMachine.map.id,
       chs => trackChanges(stateMachine.map.record, stateMachine.changeTracker, chs.chs, chs.user),
       e => analyticsContext.logError("Error watching map changes", e));
@@ -251,6 +253,7 @@ function Map(props: IMapPageProps) {
         // We should do a consolidate first, otherwise we might be invalidating the
         // backlog of non-owner moves.
         try {
+          console.log("consolidating map changes");
           await userContext.functionsService?.consolidateMapChanges(map.adventureId, map.id);
         } catch (e) {
           analyticsContext.logError("Error consolidating map " + map.adventureId + "/" + map.id + " changes", e);
