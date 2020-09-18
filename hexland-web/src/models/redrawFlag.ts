@@ -6,7 +6,7 @@ export class RedrawFlag {
   }
 
   needsRedraw(): boolean {
-    var value = this._needsRedraw;
+    let value = this._needsRedraw;
     this._needsRedraw = false;
     return value;
   }

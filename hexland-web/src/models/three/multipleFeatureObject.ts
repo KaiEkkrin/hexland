@@ -46,7 +46,7 @@ export class MultipleFeatureObject<K extends IGridCoord, F extends IFeature<K>> 
     }
 
     this._scene = scene;
-    for (var i in this._featureObjs) {
+    for (let i in this._featureObjs) {
       this._featureObjs[i].addToScene(scene);
     }
   }
@@ -57,7 +57,7 @@ export class MultipleFeatureObject<K extends IGridCoord, F extends IFeature<K>> 
     }
 
     this._scene = undefined;
-    for (var i in this._featureObjs) {
+    for (let i in this._featureObjs) {
       this._featureObjs[i].removeFromScene(scene);
     }
   }
@@ -67,7 +67,7 @@ export class MultipleFeatureObject<K extends IGridCoord, F extends IFeature<K>> 
   }
 
   clear() {
-    for (var i in this._featureObjs) {
+    for (let i in this._featureObjs) {
       this._featureObjs[i].clear();
     }
   }
@@ -77,7 +77,7 @@ export class MultipleFeatureObject<K extends IGridCoord, F extends IFeature<K>> 
   }
 
   dispose() {
-    for (var i in this._featureObjs) {
+    for (let i in this._featureObjs) {
       this._featureObjs[i].dispose();
     }
   }

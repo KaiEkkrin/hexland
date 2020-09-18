@@ -97,8 +97,8 @@ export class CoordDictionary<K, T> {
   }
 
   get keys(): K[] {
-    var keys = [];
-    for (var index in this._coords) {
+    let keys = [];
+    for (let index in this._coords) {
       keys.push(this._coords[index]);
     }
 
@@ -106,7 +106,7 @@ export class CoordDictionary<K, T> {
   }
 
   add(k: K, v: T): boolean {
-    var index = this._toIndex(k);
+    let index = this._toIndex(k);
     if (index in this._values) {
       return false;
     }
@@ -122,13 +122,13 @@ export class CoordDictionary<K, T> {
   }
 
   foreach(fn: (k: K, v: T) => void) {
-    for (var index in this._coords) {
+    for (let index in this._coords) {
       fn(this._coords[index], this._values[index]);
     }
   }
 
   get(k: K): T | undefined {
-    var index = this._toIndex(k);
+    let index = this._toIndex(k);
     if (index in this._values) {
       return this._values[index];
     } else {
@@ -137,8 +137,8 @@ export class CoordDictionary<K, T> {
   }
 
   remove(k: K): T | undefined {
-    var value: T | undefined = undefined;
-    var index = this._toIndex(k);
+    let value: T | undefined = undefined;
+    let index = this._toIndex(k);
     if (index in this._coords) {
       delete this._coords[index];
     }
@@ -152,7 +152,7 @@ export class CoordDictionary<K, T> {
   }
 
   set(k: K, v: T) {
-    var index = this._toIndex(k);
+    let index = this._toIndex(k);
     this._coords[index] = k;
     this._values[index] = v;
   }

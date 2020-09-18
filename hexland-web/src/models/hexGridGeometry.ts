@@ -90,8 +90,8 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   protected createEdgeGeometry(coord: IGridEdge, alpha: number, z: number): EdgeGeometry {
-    var centre = this.createCoordCentre(new THREE.Vector3(), coord, z);
-    var otherCentre = this.createCoordCentre(
+    let centre = this.createCoordCentre(new THREE.Vector3(), coord, z);
+    let otherCentre = this.createCoordCentre(
       new THREE.Vector3(),
       coord.edge === 0 ? coordAdd(coord, { x: -1, y: 0 }) :
       coord.edge === 1 ? coordAdd(coord, { x: 0, y: -1 }) :
@@ -99,7 +99,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
       z
     );
 
-    var [tip1, tip2] = [new THREE.Vector3(), new THREE.Vector3()];
+    let [tip1, tip2] = [new THREE.Vector3(), new THREE.Vector3()];
     this.createEdgeVertices(tip1, tip2, centre, coord.edge);
     return new EdgeGeometry(tip1, tip2, centre, otherCentre, alpha);
   }
@@ -140,14 +140,10 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     yield offset + 6;
   }
 
-  private vertexIndexOf(x: number, y: number, v: number) {
-    return (y + 1) * (this.tileDim + 1) * 2 + x * 2 + v;
-  }
-
   createEdgeOcclusion(coord: IGridCoord, edge: IGridEdge, z: number): EdgeOcclusion {
-    var [edgeA, edgeB] = [new THREE.Vector3(), new THREE.Vector3()];
+    let [edgeA, edgeB] = [new THREE.Vector3(), new THREE.Vector3()];
 
-    var centre = this.createCentre(new THREE.Vector3(), edge.x, edge.y, z);
+    let centre = this.createCentre(new THREE.Vector3(), edge.x, edge.y, z);
     this.createEdgeVertices(edgeA, edgeB, centre, edge.edge);
 
     this.createCoordCentre(centre, coord, z);
@@ -155,7 +151,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   *createOcclusionTestVertices(coord: IGridCoord, z: number, alpha: number): Iterable<THREE.Vector3> {
-    var centre = new THREE.Vector3();
+    let centre = new THREE.Vector3();
     yield this.createCoordCentre(centre, coord, z);
 
     const invAlpha = 1 - alpha * 0.5;
@@ -169,9 +165,9 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
 
   *createSolidVertices(tile: THREE.Vector2, alpha: number, z: number): Iterable<THREE.Vector3> {
     const invAlpha = 1 - alpha;
-    for (var y = 0; y < this.tileDim; ++y) {
-      for (var x = 0; x < this.tileDim; ++x) {
-        var centre = new THREE.Vector3();
+    for (let y = 0; y < this.tileDim; ++y) {
+      for (let x = 0; x < this.tileDim; ++x) {
+        let centre = new THREE.Vector3();
         yield this.createCentre(centre, tile.x * this.tileDim + x, tile.y * this.tileDim + y, z);
         yield this.createLeft(new THREE.Vector3(), centre).lerp(centre, invAlpha);
         yield this.createTopLeft(new THREE.Vector3(), centre).lerp(centre, invAlpha);
@@ -184,9 +180,9 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   *createSolidMeshIndices() {
-    for (var y = 0; y < this.tileDim; ++y) {
-      for (var x = 0; x < this.tileDim; ++x) {
-        var baseIndex = y * this.tileDim * 7 + x * 7;
+    for (let y = 0; y < this.tileDim; ++y) {
+      for (let x = 0; x < this.tileDim; ++x) {
+        let baseIndex = y * this.tileDim * 7 + x * 7;
         yield* this.getHexIndices(baseIndex);
       }
     }
@@ -279,7 +275,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   transformToEdge(o: THREE.Object3D, coord: IGridEdge): void {
-    var centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
+    let centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
     o.translateX(centre.x);
     o.translateY(centre.y);
     if (coord.edge === 1) {
@@ -290,7 +286,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   transformToVertex(o: THREE.Object3D, coord: IGridVertex): void {
-    var centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
+    let centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
     o.translateX(centre.x);
     o.translateY(centre.y);
     if (coord.vertex === 1) {

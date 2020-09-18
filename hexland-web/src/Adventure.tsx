@@ -38,7 +38,7 @@ function Adventure(props: IAdventureProps) {
 
   const [adventure, setAdventure] = useState<IIdentified<IAdventure> | undefined>(undefined);
   useEffect(() => {
-    var d = userContext.dataService?.getAdventureRef(props.adventureId);
+    let d = userContext.dataService?.getAdventureRef(props.adventureId);
     if (d === undefined) {
       return;
     }

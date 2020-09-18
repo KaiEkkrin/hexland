@@ -95,7 +95,7 @@ export class Tokens extends InstancedFeatures<IGridCoord, IInstancedToken> {
   }
 
   remove(oldPosition: IGridCoord): IInstancedToken | undefined {
-    var f = super.remove(oldPosition);
+    let f = super.remove(oldPosition);
     if (f === undefined) {
       return undefined;
     }

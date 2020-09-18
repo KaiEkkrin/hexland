@@ -271,7 +271,7 @@ class GridLoSFeatureObject extends GridColouredFeatureObject<IGridCoord, IFeatur
 
 class GridLoS extends InstancedFeatures<IGridCoord, IFeature<IGridCoord>> {
   postRender() {
-    for (var o of this.featureObjects) {
+    for (let o of this.featureObjects) {
       if (o instanceof GridLoSFeatureObject) {
         o.postRender();
       }
@@ -279,7 +279,7 @@ class GridLoS extends InstancedFeatures<IGridCoord, IFeature<IGridCoord>> {
   }
 
   preRender(params: IGridLoSPreRenderParameters) {
-    for (var o of this.featureObjects) {
+    for (let o of this.featureObjects) {
       if (o instanceof GridLoSFeatureObject) {
         o.preRender(params);
       }
@@ -430,10 +430,10 @@ export class Grid extends Drawn {
   // Extends the grid across the given range of tiles.
   // Returns the number of new tiles added.
   private extendAcrossRange(bounds: IGridBounds) {
-    var count = 0;
-    for (var t = bounds.minT; t <= bounds.maxT; ++t) {
-      for (var s = bounds.minS; s <= bounds.maxS; ++s) {
-        var position = { x: s * this.geometry.tileDim, y: t * this.geometry.tileDim };
+    let count = 0;
+    for (let t = bounds.minT; t <= bounds.maxT; ++t) {
+      for (let s = bounds.minS; s <= bounds.maxS; ++s) {
+        let position = { x: s * this.geometry.tileDim, y: t * this.geometry.tileDim };
         if (this._faces.get(position) === undefined) {
           this._faces.add({ position: position, colour: 0 });
           ++count;
@@ -443,7 +443,7 @@ export class Grid extends Drawn {
           this._losFaces.add({ position: position, colour: 0 });
         }
 
-        var vertexPosition = { x: position.x, y: position.y, vertex: 0 };
+        let vertexPosition = { x: position.x, y: position.y, vertex: 0 };
         if (this._vertices.get(vertexPosition) === undefined) {
           this._vertices.add({ position: vertexPosition, colour: 0 });
         }
@@ -460,8 +460,8 @@ export class Grid extends Drawn {
   private extendGridAround(s: number, t: number) {
     // We extend the grid around the given tile until we added something,
     // effectively making it at most 1 tile bigger than it previously was.
-    var countAdded = 0;
-    for (var expand = 1; countAdded === 0; ++expand) {
+    let countAdded = 0;
+    for (let expand = 1; countAdded === 0; ++expand) {
       countAdded = this.extendAcrossRange({
         minS: s - expand,
         minT: t - expand,
@@ -474,7 +474,7 @@ export class Grid extends Drawn {
   }
 
   private *getGridSamples(width: number, height: number) {
-    var cp = new THREE.Vector3(Math.floor(width * 0.5), Math.floor(height * 0.5), 0);
+    let cp = new THREE.Vector3(Math.floor(width * 0.5), Math.floor(height * 0.5), 0);
     yield this.getGridCoordAt(cp);
 
     cp.set(0, 0, 0);
@@ -496,9 +496,9 @@ export class Grid extends Drawn {
 
     // Fill the temp dictionary with entries for every tile we want to keep
     this._temp.clear();
-    for (var t = bounds.minT; t <= bounds.maxT; ++t) {
-      for (var s = bounds.minS; s <= bounds.maxS; ++s) {
-        var position = { x: s * this.geometry.tileDim, y: t * this.geometry.tileDim };
+    for (let t = bounds.minT; t <= bounds.maxT; ++t) {
+      for (let s = bounds.minS; s <= bounds.maxS; ++s) {
+        let position = { x: s * this.geometry.tileDim, y: t * this.geometry.tileDim };
         this._temp.add({ position: position, colour: 0 });
       }
     }
@@ -506,7 +506,7 @@ export class Grid extends Drawn {
     // Remove everything outside the range.  Assume the faces and vertices are matching
     // (they should be!)
     const toDelete: IGridCoord[] = [];
-    for (var face of this._faces) {
+    for (let face of this._faces) {
       if (this._temp.get(face.position) === undefined) {
         toDelete.push(face.position);
       }
@@ -530,8 +530,8 @@ export class Grid extends Drawn {
     // We pick a tile origin in the middle of the tiles we're rendering to
     // maximise the limited amount of precision available to us in the
     // texture colours:
-    var [tileCount, tileXSum, tileYSum] = [0, 0, 0];
-    for (var t of this._faces) {
+    let [tileCount, tileXSum, tileYSum] = [0, 0, 0];
+    for (let t of this._faces) {
       ++tileCount;
       tileXSum += Math.floor(t.position.x / this.geometry.tileDim);
       tileYSum += Math.floor(t.position.y / this.geometry.tileDim);
@@ -559,7 +559,7 @@ export class Grid extends Drawn {
     })];
 
     const undefinedCount = fluent(samples).count(s => s === undefined);
-    var countChanged = 0;
+    let countChanged = 0;
     if (undefinedCount === samples.length) {
       // This shouldn't happen unless we only just loaded the map.  Extend the grid around the origin.
       countChanged = this.extendGridAround(0, 0);

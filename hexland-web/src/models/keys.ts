@@ -14,7 +14,7 @@ export function keysDownReducer(state: KeysDown, action: IKeyAction): KeysDown {
     // No change.
     return state;
   } else {
-    var newState = { ...state };
+    let newState = { ...state };
     if (action.down) {
       newState[action.key] = true;
     } else {

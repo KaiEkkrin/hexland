@@ -51,11 +51,11 @@ describe('test functions', () => {
 
   afterAll(async () => {
     const toDelete: string[] = [];
-    for (var uid in emul) {
+    for (let uid in emul) {
       toDelete.push(uid);
     }
 
-    for (var uid of toDelete) {
+    for (let uid of toDelete) {
       await emul[uid].app.delete();
       delete emul[uid];
     }
@@ -157,14 +157,14 @@ describe('test functions', () => {
     };
 
     await dataService.addChanges(a1Id, 'owner', m1Id, [addToken1]);
-    for (var i = 0; i < moveCount; ++i) {
+    for (let i = 0; i < moveCount; ++i) {
       await dataService.addChanges(a1Id, 'owner', m1Id, [createMoveToken1(i)]);
     }
 
     await dataService.addChanges(a1Id, 'owner', m1Id, [addWall1]);
 
     // Check that the changes went in successfully and we can read them back:
-    var changes = await getAllMapChanges(dataService, a1Id, m1Id, 2 + moveCount);
+    let changes = await getAllMapChanges(dataService, a1Id, m1Id, 2 + moveCount);
     expect(changes).toHaveLength(2 + moveCount);
 
     // Call the consolidate function:
@@ -172,7 +172,7 @@ describe('test functions', () => {
 
     // After doing that, we should have only one changes record, thus:
     async function verifyBaseChangesRecord(expectedX: number) {
-      var changes = await getAllMapChanges(dataService, a1Id, m1Id, 499);
+      let changes = await getAllMapChanges(dataService, a1Id, m1Id, 499);
       expect(changes).toHaveLength(1);
       expect(changes?.[0].user).toBe('owner');
 
@@ -195,7 +195,7 @@ describe('test functions', () => {
 
     // Now that I've consolidated once, I should be able to make some more changes and
     // consolidate again (which is different, because there is now a base change:)
-    for (i = moveCount; i < moveCount * 2; ++i) {
+    for (let i = moveCount; i < moveCount * 2; ++i) {
       await dataService.addChanges(a1Id, 'owner', m1Id, [createMoveToken1(i)]);
     }
 

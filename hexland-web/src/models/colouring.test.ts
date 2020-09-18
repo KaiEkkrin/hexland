@@ -9,7 +9,7 @@ import { IGridCoord, coordString } from '../data/coord';
 // visualisation mode, enabled if you're the map owner.
 
 test('Surround one square on a square grid', () => {
-  var colouring = new MapColouring(new SquareGridGeometry(100, 8));
+  let colouring = new MapColouring(new SquareGridGeometry(100, 8));
 
   // At the beginning we should just have colour 0 everywhere
   const surrounded = { x: 0, y: 0 };
@@ -32,7 +32,7 @@ test('Surround one square on a square grid', () => {
   colouring.setWall({ x: 1, y: 0, edge: 0 }, true);
   colouring.recalculate();
 
-  var colour = colouring.colourOf(surrounded);
+  let colour = colouring.colourOf(surrounded);
   notSurrounded.forEach(c => expect(colouring.colourOf(c)).toBe(colour));
 
   // Add the final one and (0, 0) should be entirely surrounded, and
@@ -40,8 +40,8 @@ test('Surround one square on a square grid', () => {
   colouring.setWall({ x: 0, y: 1, edge: 1 }, true);
   colouring.recalculate();
 
-  var colourInside = colouring.colourOf(surrounded);
-  var colourOutside = colouring.colourOf(notSurrounded[0]);
+  let colourInside = colouring.colourOf(surrounded);
+  let colourOutside = colouring.colourOf(notSurrounded[0]);
   expect(colourOutside).not.toBe(colourInside);
   notSurrounded.slice(1).forEach(c => expect(colouring.colourOf(c)).toBe(colourOutside));
 
@@ -55,7 +55,7 @@ test('Surround one square on a square grid', () => {
 });
 
 test('Surround three hexes on a hex grid', () => {
-  var colouring = new MapColouring(new HexGridGeometry(100, 8));
+  let colouring = new MapColouring(new HexGridGeometry(100, 8));
 
   // We'll surround these three, and then "zero" by itself
   const zero = { x: 0, y: 0 };
@@ -104,7 +104,7 @@ test('Surround three hexes on a hex grid', () => {
   colouring.recalculate();
 
   // Everything should still be the same colour after that
-  var colour = colouring.colourOf(zero);
+  let colour = colouring.colourOf(zero);
   inner.forEach(c => expect(colouring.colourOf(c)).toBe(colour));
   outer.forEach(c => expect(colouring.colourOf(c)).toBe(colour));
   further.forEach(c => expect(colouring.colourOf(c)).toBe(colour));
@@ -117,8 +117,8 @@ test('Surround three hexes on a hex grid', () => {
   ].forEach(w => colouring.setWall(w, true));
   colouring.recalculate();
 
-  var innerColour = colouring.colourOf(zero);
-  var outerColour = colouring.colourOf(outer[0]);
+  let innerColour = colouring.colourOf(zero);
+  let outerColour = colouring.colourOf(outer[0]);
   expect(innerColour).not.toBe(outerColour);
 
   inner.forEach(c => expect(colouring.colourOf(c)).toBe(innerColour));
@@ -132,7 +132,7 @@ test('Surround three hexes on a hex grid', () => {
   ].forEach(w => colouring.setWall(w, true));
   colouring.recalculate();
 
-  var zeroColour = colouring.colourOf(zero);
+  let zeroColour = colouring.colourOf(zero);
   innerColour = colouring.colourOf(inner[0]);
   outerColour = colouring.colourOf(outer[0]);
   
@@ -146,12 +146,12 @@ test('Surround three hexes on a hex grid', () => {
 
   // The same should hold for the visualisation, except we can't expect the further-away
   // hexes to be visualised
-  var vis = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
+  let vis = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
   colouring.visualise(vis, (p, c, cc) => { return { position: p, colour: c / cc }; });
 
-  var zeroVisColour = vis.get(zero)?.colour ?? -1;
-  var innerVisColour = vis.get(inner[0])?.colour ?? -1;
-  var outerVisColour = vis.get(outer[0])?.colour ?? -1;
+  let zeroVisColour = vis.get(zero)?.colour ?? -1;
+  let innerVisColour = vis.get(inner[0])?.colour ?? -1;
+  let outerVisColour = vis.get(outer[0])?.colour ?? -1;
 
   expect(zeroVisColour).not.toBe(innerVisColour);
   expect(zeroVisColour).not.toBe(outerVisColour);
@@ -170,7 +170,7 @@ test('Surround three hexes on a hex grid', () => {
   colouring.setWall({ x: 1, y: 0, edge: 1 }, false);
   colouring.recalculate();
 
-  var zeroColour = colouring.colourOf(zero);
+  zeroColour = colouring.colourOf(zero);
   outerColour = colouring.colourOf(outer[0]);
   
   expect(zeroColour).not.toBe(outerColour);
@@ -182,8 +182,8 @@ test('Surround three hexes on a hex grid', () => {
 
 // We export these functions so that the LoS test can use them too
 export function *enumerateSquares(radius: number, step: number) {
-  for (var j = -radius; j < radius; j += step) {
-    for (var i = -radius; i < radius; i += step) {
+  for (let j = -radius; j < radius; j += step) {
+    for (let i = -radius; i < radius; i += step) {
       yield { x: i, y: j };
     }
   }
@@ -218,30 +218,30 @@ test('Surround lots of 3-square rooms on a square grid', () => {
   // exercise the performance of the colouring algorithm.
   const radius = 100;
   const step = 6;
-  var colouring = new MapColouring(new SquareGridGeometry(75, 12));
+  let colouring = new MapColouring(new SquareGridGeometry(75, 12));
 
-  for (var sq of enumerateSquares(radius, step)) {
+  for (let sq of enumerateSquares(radius, step)) {
     walledSquare(sq.x, sq.y).forEach(w => colouring.setWall(w, true));
   }
   colouring.recalculate();
 
   // Each of the faces at offset (0, 0) and (1, 2) should be in the same colour
   // as each other and different to all the other ones
-  var innerColours: { [c: number]: number } = {};
-  for (var sq of enumerateSquares(radius, step)) {
-    var atZero = colouring.colourOf(sq);
+  let innerColours: { [c: number]: number } = {};
+  for (let sq of enumerateSquares(radius, step)) {
+    let atZero = colouring.colourOf(sq);
     expect(atZero in innerColours).toBeFalsy();
     innerColours[atZero] = 0;
 
-    var atOneTwo = colouring.colourOf({ x: sq.x + 1, y: sq.y + 2 });
+    let atOneTwo = colouring.colourOf({ x: sq.x + 1, y: sq.y + 2 });
     expect(atOneTwo).toBe(atZero);
   }
 
   // Each of the faces at offset (3, 3) should be in the outside colour, which is
   // different again
-  var outsideColour: number | undefined = undefined;
-  for (var sq of enumerateSquares(radius, step)) {
-    var atThree = colouring.colourOf({ x: sq.x + 3, y: sq.y + 3 });
+  let outsideColour: number | undefined = undefined;
+  for (let sq of enumerateSquares(radius, step)) {
+    let atThree = colouring.colourOf({ x: sq.x + 3, y: sq.y + 3 });
     if (outsideColour === undefined) {
       outsideColour = atThree;
     } else {

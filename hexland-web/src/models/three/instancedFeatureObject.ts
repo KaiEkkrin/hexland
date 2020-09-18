@@ -56,7 +56,7 @@ export abstract class InstancedFeatureObject<K extends IGridCoord, F extends IFe
   // filling in other instanced attributes.
   protected addFeature(f: F, instanceIndex: number) {
     // All features have a position, which we create now
-    var o = new THREE.Object3D();
+    let o = new THREE.Object3D();
     this._transformTo(o, f.position);
     o.updateMatrix();
     this.mesh.setMatrixAt(instanceIndex, o.matrix);
@@ -68,7 +68,7 @@ export abstract class InstancedFeatureObject<K extends IGridCoord, F extends IFe
     // We find the position of its matrix transform in the instance array.
     // Rather than trying to erase it (awkward), we instead set it to a matrix
     // that will make it appear off-screen, and add the index to the re-use list.
-    var o = new THREE.Object3D();
+    let o = new THREE.Object3D();
     o.translateZ(-1000);
     o.updateMatrix();
     this.mesh.setMatrixAt(instanceIndex, o.matrix);
@@ -85,7 +85,7 @@ export abstract class InstancedFeatureObject<K extends IGridCoord, F extends IFe
 
   add(f: F) {
     // Re-use an existing index if we can.   Otherwise, extend the instance list.
-    var instanceIndex = this._clearIndices.pop();
+    let instanceIndex = this._clearIndices.pop();
     if (instanceIndex === undefined) {
       if (this.mesh.count === this._maxInstances) {
         // We've run out.
@@ -108,7 +108,7 @@ export abstract class InstancedFeatureObject<K extends IGridCoord, F extends IFe
   }
 
   remove(f: F) {
-    var instanceIndex = this._indexes.remove(f.position);
+    let instanceIndex = this._indexes.remove(f.position);
     if (instanceIndex === undefined) {
       return false;
     }

@@ -4,7 +4,7 @@ export class TextCreator {
   private _font: THREE.Font | undefined;
 
   constructor() {
-    var loader = new THREE.FontLoader();
+    let loader = new THREE.FontLoader();
     loader.load('/fonts/helvetiker_bold.typeface.json', (f: THREE.Font) => this._font = f);
   }
 
@@ -21,13 +21,13 @@ export class TextCreator {
       return undefined;
     }
 
-    var shapes = this._font.generateShapes(text, size);
-    var geometry = new THREE.ShapeBufferGeometry(shapes);
+    let shapes = this._font.generateShapes(text, size);
+    let geometry = new THREE.ShapeBufferGeometry(shapes);
     geometry.scale(1, -1, 1); // for some reason, the text is being created upside down!
     geometry.computeBoundingBox();
 
-    var mesh = new THREE.Mesh(geometry, material);
-    var target = this.createTargetPosition(position, geometry.boundingBox);
+    let mesh = new THREE.Mesh(geometry, material);
+    let target = this.createTargetPosition(position, geometry.boundingBox);
     if (target !== undefined) {
       mesh.translateX(target.x);
       mesh.translateY(-target.y);

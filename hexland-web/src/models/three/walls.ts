@@ -82,7 +82,7 @@ export class Walls extends InstancedFeatures<IGridEdge, IFeature<IGridEdge>> {
   }
 
   remove(oldPosition: IGridEdge) {
-    var feature = super.remove(oldPosition);
+    let feature = super.remove(oldPosition);
     if (feature !== undefined) {
       this._losFeatures?.remove(oldPosition);
     }

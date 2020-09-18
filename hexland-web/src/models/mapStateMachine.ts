@@ -182,7 +182,7 @@ export class MapStateMachine {
       this._mapColouring,
       (haveTokensChanged: boolean) => {
         this.withStateChange(getState => {
-          var state = getState();
+          let state = getState();
           if (haveTokensChanged) {
             this.cleanUpSelection();
           }
@@ -224,7 +224,7 @@ export class MapStateMachine {
     // dropping tokens outside of the current LoS.
     const worldToViewport = this._drawing.getWorldToViewport(this._scratchMatrix1);
     if (this.seeEverything === false) {
-      var withinLoS = fluent(this._drawing.selection).map(f => {
+      let withinLoS = fluent(this._drawing.selection).map(f => {
         this._gridGeometry.createCoordCentre(this._scratchVector1, coordAdd(f.position, delta), 0);
         this._scratchVector1.applyMatrix4(worldToViewport);
         return this._drawing.checkLoS(this._scratchVector1);
@@ -239,9 +239,9 @@ export class MapStateMachine {
     // be rejected by the change tracker, and so we create our own change tracker to do this.
     // It's safe for us to use our current areas, walls and map colouring because those won't
     // change, but we need to clone our tokens into a scratch dictionary.
-    var changes: IChange[] = [];
-    for (var s of this._drawing.selection) {
-      var tokenHere = this._drawing.tokens.get(s.position);
+    let changes: IChange[] = [];
+    for (let s of this._drawing.selection) {
+      let tokenHere = this._drawing.tokens.get(s.position);
       if (tokenHere === undefined) {
         continue;
       }
@@ -249,7 +249,7 @@ export class MapStateMachine {
       changes.push(createTokenMove(s.position, coordAdd(s.position, delta), tokenHere.id));
     }
 
-    var changeTracker = new MapChangeTracker(
+    let changeTracker = new MapChangeTracker(
       this._drawing.areas, this._drawing.tokens.clone(), this._drawing.walls, this._notes, this._mapColouring
     );
     return trackChanges(this._map.record, changeTracker, changes, this._uid);
@@ -262,15 +262,15 @@ export class MapStateMachine {
   private cleanUpSelection() {
     // This function makes sure that the selection doesn't contain anything we
     // couldn't have selected -- call this after changes are applied.
-    var toDelete: IGridCoord[] = [];
-    for (var s of this._drawing.selection) {
-      var token = this._drawing.tokens.get(s.position);
+    let toDelete: IGridCoord[] = [];
+    for (let s of this._drawing.selection) {
+      let token = this._drawing.tokens.get(s.position);
       if (token === undefined || !this.canSelectToken(token)) {
         toDelete.push(s.position);
       }
     }
 
-    for (var c of toDelete) {
+    for (let c of toDelete) {
       this._drawing.selection.remove(c);
     }
   }
@@ -278,11 +278,11 @@ export class MapStateMachine {
   private *enumerateAnnotations() {
     // Here we enumerate all the relevant annotations that could be displayed --
     // which means both the map notes, and the token-attached notes.
-    for (var n of this._notes) {
+    for (let n of this._notes) {
       yield n;
     }
 
-    for (var t of this._drawing.tokens) {
+    for (let t of this._drawing.tokens) {
       if (t.note?.length > 0) {
         yield {
           id: "Token " + t.text + " " + coordString(t.position),
@@ -297,8 +297,8 @@ export class MapStateMachine {
 
   private getLoSPositions() {
     // These are the positions we should be projecting line-of-sight from.
-    var myTokens = Array.from(this._drawing.tokens).filter(t => this.canSelectToken(t));
-    var selectedTokens = myTokens.filter(t => this._drawing.selection.get(t.position) !== undefined);
+    let myTokens = Array.from(this._drawing.tokens).filter(t => this.canSelectToken(t));
+    let selectedTokens = myTokens.filter(t => this._drawing.selection.get(t.position) !== undefined);
     if (selectedTokens.length === 0) {
       if (this.seeEverything) {
         // Render no LoS at all
@@ -334,11 +334,11 @@ export class MapStateMachine {
   }
 
   private onPreAnimate() {
-    var now = window.performance.now();
+    let now = window.performance.now();
 
     // Do the drag-pan if applicable
-    var panningX = this._panningX !== 0 ? this._panningX : this._marginPanningX;
-    var panningY = this._panningY !== 0 ? this._panningY : this._marginPanningY;
+    let panningX = this._panningX !== 0 ? this._panningX : this._marginPanningX;
+    let panningY = this._panningY !== 0 ? this._panningY : this._marginPanningY;
     if ((panningX !== 0 || panningY !== 0) && this._lastAnimationTime !== undefined) {
       this._cameraTranslation.add(
         this._scratchTranslation.set(
@@ -374,7 +374,7 @@ export class MapStateMachine {
   }
 
   private onPanningEnded() {
-    var chs: IChange[] = [];
+    let chs: IChange[] = [];
     if (fluent(this._drawing.selection).any()) {
       const position = this._drawing.getGridCoordAt(panningPosition);
       if (position !== undefined) {
@@ -438,8 +438,8 @@ export class MapStateMachine {
     this._drawing.selectionDragRed.clear();
     if (this.canDropSelectionAt(position)) {
       // Create commands that move all the tokens
-      for (var s of this._drawing.selection) {
-        var tokenHere = this._drawing.tokens.get(s.position);
+      for (let s of this._drawing.selection) {
+        let tokenHere = this._drawing.tokens.get(s.position);
         if (tokenHere === undefined) {
           continue;
         }
@@ -491,13 +491,13 @@ export class MapStateMachine {
       return;
     }
 
-    var selectionDrag = this.canDropSelectionAt(position) ? this._drawing.selectionDrag :
+    let selectionDrag = this.canDropSelectionAt(position) ? this._drawing.selectionDrag :
       this._drawing.selectionDragRed;
 
     this._drawing.selectionDrag.clear();
     this._drawing.selectionDragRed.clear();
     this._drawing.selection.forEach(f => {
-      var dragged = { position: coordAdd(f.position, delta), colour: f.colour };
+      let dragged = { position: coordAdd(f.position, delta), colour: f.colour };
       // console.log(coordString(f.position) + " -> " + coordString(dragged.position));
       selectionDrag.add(dragged);
     });
@@ -506,10 +506,10 @@ export class MapStateMachine {
   }
 
   private updateAnnotations(state: IMapState) {
-    var positioned: IPositionedAnnotation[] = [];
-    var [target, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
-    var worldToViewport = this._drawing.getWorldToViewport(this._scratchMatrix1);
-    for (var n of this.enumerateAnnotations()) {
+    let positioned: IPositionedAnnotation[] = [];
+    let [target, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+    let worldToViewport = this._drawing.getWorldToViewport(this._scratchMatrix1);
+    for (let n of this.enumerateAnnotations()) {
       // Skip notes not marked as player-visible
       if (!this.seeEverything && n.visibleToPlayers === false) {
         continue;
@@ -550,8 +550,8 @@ export class MapStateMachine {
   private withStateChange(
     fn: (getState: () => IMapState) => boolean
   ) {
-    var initial = this._state;
-    var updated: IMapState[] = [];
+    let initial = this._state;
+    let updated: IMapState[] = [];
     function getState() {
       if (updated.length === 0) {
         updated.push({ ...initial });
@@ -609,7 +609,7 @@ export class MapStateMachine {
 
   // For editing
   getNote(cp: THREE.Vector3): IAnnotation | undefined {
-    var position = this._drawing.getGridCoordAt(cp);
+    let position = this._drawing.getGridCoordAt(cp);
     if (position === undefined) {
       return undefined;
     }
@@ -619,7 +619,7 @@ export class MapStateMachine {
 
   faceDragEnd(cp: THREE.Vector3, colour: number): IChange[] {
     this.panMarginReset();
-    var result = this._faceHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour);
+    let result = this._faceHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour);
     this._dragRectangle.reset();
     return result;
   }
@@ -632,8 +632,8 @@ export class MapStateMachine {
   }
 
   *getSelectedTokens(): Iterable<IToken> {
-    for (var s of this._drawing.selection) {
-      var token = this._drawing.tokens.get(s.position);
+    for (let s of this._drawing.selection) {
+      let token = this._drawing.tokens.get(s.position);
       if (token !== undefined) {
         yield token;
       }
@@ -642,7 +642,7 @@ export class MapStateMachine {
 
   // For editing
   getToken(cp: THREE.Vector3): IToken | undefined {
-    var position = this._drawing.getGridCoordAt(cp);
+    let position = this._drawing.getGridCoordAt(cp);
     if (position === undefined) {
       return undefined;
     }
@@ -678,7 +678,7 @@ export class MapStateMachine {
 
     if (this._tokenMoveDragStart !== undefined && this._tokenMoveDragSelectionPosition !== undefined) {
       this.panIfWithinMargin(cp);
-      var position = this._drawing.getGridCoordAt(cp);
+      let position = this._drawing.getGridCoordAt(cp);
       this.tokenMoveDragTo(position);
     } else if (this._dragRectangle.isEnabled()) {
       this.panIfWithinMargin(cp);
@@ -746,7 +746,7 @@ export class MapStateMachine {
         .sub(this._scratchVector3);
       this._scratchVector2.set(cp.x, cp.y, 0).sub(this._scratchVector3);
 
-      var angle = this._scratchVector1.angleTo(this._scratchVector2);
+      let angle = this._scratchVector1.angleTo(this._scratchVector2);
 
       // deal with THREE being weird about angle direction :/
       if (this._scratchVector1.cross(this._scratchVector2).z < 0) {
@@ -821,7 +821,7 @@ export class MapStateMachine {
   roomDragEnd(cp: THREE.Vector3, shiftKey: boolean, colour: number): IChange[] {
     this.panMarginReset();
     this._roomHighlighter.difference = shiftKey;
-    var result = this._roomHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour);
+    let result = this._roomHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour);
     this._dragRectangle.reset();
     return result;
   }
@@ -853,15 +853,15 @@ export class MapStateMachine {
 
   selectionDragEnd(cp: THREE.Vector3): IChange[] {
     this.panMarginReset();
-    var position = this._drawing.getGridCoordAt(cp);
-    var chs: IChange[] = [];
+    let position = this._drawing.getGridCoordAt(cp);
+    let chs: IChange[] = [];
     if (position) {
       if (this._tokenMoveDragStart !== undefined) {
         this.tokenMoveDragEnd(position, chs);
       } else {
         // Always add the token at this position
         // (This is needed if the drag rectangle is very small)
-        var token = this._drawing.tokens.get(position);
+        let token = this._drawing.tokens.get(position);
         if (token !== undefined && this.canSelectToken(token)) {
           this._drawing.selection.add({ position: position, colour: 0 });
         }
@@ -878,7 +878,7 @@ export class MapStateMachine {
   }
 
   selectionDragStart(cp: THREE.Vector3) {
-    var position = this._drawing.getGridCoordAt(cp);
+    let position = this._drawing.getGridCoordAt(cp);
     if (position) {
       if (this._drawing.selection.get(position) !== undefined) {
         this.tokenMoveDragStart(position);
@@ -890,8 +890,8 @@ export class MapStateMachine {
   }
 
   setNote(cp: THREE.Vector3, id: string, colour: number, text: string, visibleToPlayers: boolean): IChange[] {
-    var position = this._drawing.getGridCoordAt(cp);
-    var chs: IChange[] = [];
+    let position = this._drawing.getGridCoordAt(cp);
+    let chs: IChange[] = [];
     if (position !== undefined) {
       if (this._notes.get(position) !== undefined) {
         // Replace the existing note
@@ -927,14 +927,14 @@ export class MapStateMachine {
   }
 
   setToken(cp: THREE.Vector3, properties: ITokenProperties | undefined) {
-    var position = this._drawing.getGridCoordAt(cp);
+    let position = this._drawing.getGridCoordAt(cp);
     return this.setTokenPosition(position, properties);
   }
 
   setTokenPosition(position: IGridCoord | undefined, properties: ITokenProperties | undefined) {
-    var chs: IChange[] = [];
+    let chs: IChange[] = [];
     if (position !== undefined) {
-      var existingToken = this._drawing.tokens.get(position);
+      let existingToken = this._drawing.tokens.get(position);
       if (existingToken !== undefined) {
         // Replace the existing token
         chs.push(createTokenRemove(position, existingToken.id));
@@ -950,7 +950,7 @@ export class MapStateMachine {
 
   wallDragEnd(cp: THREE.Vector3, colour: number): IChange[] {
     this.panMarginReset();
-    var result = this._dragRectangle.isEnabled() ?
+    let result = this._dragRectangle.isEnabled() ?
       this._wallRectangleHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour) :
       this._wallHighlighter.dragEnd(this._drawing.getGridVertexAt(cp), colour);
     this._dragRectangle.reset();

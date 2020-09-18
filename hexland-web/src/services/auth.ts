@@ -14,7 +14,7 @@ export class FirebaseAuth implements IAuth {
 
   async signInWithPopup(provider: IAuthProvider | undefined) {
     if (provider instanceof FirebaseAuthProviderWrapper) {
-      var credential = await provider.signInWithPopup(this._auth);
+      let credential = await provider.signInWithPopup(this._auth);
       return credential.user;
     }
 

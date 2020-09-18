@@ -4,20 +4,20 @@ import { FeatureDictionary, IFeature } from './feature';
 // Equivalent feature dictionary tests to the coord dictionary tests:
 
 test('grid coord dictionary entries', () => {
-  var dict = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
-  var a = { x: 0, y: 0 };
-  var b = { x: 0, y: 1 };
-  var c = { x: -8, y: 1 };
-  var d = { x: -2, y: 66 };
-  var e = { x: -2, y: 83 };
+  let dict = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
+  let a = { x: 0, y: 0 };
+  let b = { x: 0, y: 1 };
+  let c = { x: -8, y: 1 };
+  let d = { x: -2, y: 66 };
+  let e = { x: -2, y: 83 };
 
-  var b2 = { x: 0, y: 1 };
+  let b2 = { x: 0, y: 1 };
 
   // At the start everything should be empty
   expect(dict.get(a)).toBeUndefined();
 
-  var allKeys: IGridCoord[] = [];
-  var allValues: number[] = [];
+  let allKeys: IGridCoord[] = [];
+  let allValues: number[] = [];
   dict.forEach(f => {
     allKeys.push(f.position);
     allValues.push(f.colour);
@@ -33,7 +33,7 @@ test('grid coord dictionary entries', () => {
   dict.add({ position: d, colour: 64 });
 
   // Change something
-  var removed = dict.remove(b2);
+  let removed = dict.remove(b2);
   expect(removed?.colour).toBe(62);
   dict.add({ position: b, colour: 66 });
 
@@ -65,13 +65,13 @@ test('grid coord dictionary entries', () => {
 });
 
 test('grid edge dictionary entries', () => {
-  var dict = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
-  var a = { x: 0, y: 0, edge: 0 };
-  var b = { x: 0, y: 1, edge: 0 };
-  var c = { x: 0, y: 0, edge: 1 };
-  var d = { x: 0, y: 1, edge: 1 };
+  let dict = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
+  let a = { x: 0, y: 0, edge: 0 };
+  let b = { x: 0, y: 1, edge: 0 };
+  let c = { x: 0, y: 0, edge: 1 };
+  let d = { x: 0, y: 1, edge: 1 };
   
-  var c2 = { x: 0, y: 0, edge: 1 };
+  let c2 = { x: 0, y: 0, edge: 1 };
 
   dict.add({ position: a, colour: 61 });
   dict.add({ position: b, colour: 62 });
@@ -82,8 +82,8 @@ test('grid edge dictionary entries', () => {
   expect(dict.get(c2)?.colour).toBe(63);
   expect(dict.get(d)?.colour).toBeUndefined();
 
-  var allKeys: IGridEdge[] = [];
-  var allValues: number[] = [];
+  let allKeys: IGridEdge[] = [];
+  let allValues: number[] = [];
   dict.forEach(f => {
     allKeys.push(f.position);
     allValues.push(f.colour);

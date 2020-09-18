@@ -64,7 +64,7 @@ export class RectangleOcclusion {
   // (If you use a number of points other than four it will do weird stuff...)
   constructor(epsilon: number, points: THREE.Vector3[]) {
     this._planes = points.map((p, i) => {
-      var next = points[(i + 1) % points.length];
+      let next = points[(i + 1) % points.length];
       return new PlanarOcclusion(
         next.clone().sub(p).normalize(),
         p,
@@ -74,7 +74,7 @@ export class RectangleOcclusion {
   }
 
   test(point: THREE.Vector3) {
-    for (var p of this._planes) {
+    for (let p of this._planes) {
       if (!p.test(point)) {
         return false;
       }
@@ -118,7 +118,7 @@ export class TestVertexCollection {
     this._geometry = geometry;
     this._z = z;
 
-    for (var v of geometry.createOcclusionTestVertices(
+    for (let v of geometry.createOcclusionTestVertices(
       { x: 0, y: 0 }, z, alpha
     )) {
       this._atZero.push(v);
@@ -134,7 +134,7 @@ export class TestVertexCollection {
   // The memory yielded will be valid until another enumeration is done.
   *enumerate(coord: IGridCoord) {
     this._geometry.createCoordCentre(this._scratch, coord, this._z * 2).sub(this._atOrigin);
-    for (var i = 0; i < this._vertices.length; ++i) {
+    for (let i = 0; i < this._vertices.length; ++i) {
       this._vertices[i].copy(this._atZero[i]).add(this._scratch);
       yield this._vertices[i];
     }

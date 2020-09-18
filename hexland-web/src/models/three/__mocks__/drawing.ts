@@ -22,7 +22,7 @@ export function createDrawing(
   mount: HTMLDivElement,
   seeEverything: boolean
 ): IDrawing {
-  var mockDrawing = {
+  let mockDrawing = {
     gridGeometry: gridGeometry,
     colours: colours,
     mount: mount,

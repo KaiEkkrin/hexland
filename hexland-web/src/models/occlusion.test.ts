@@ -2,7 +2,7 @@ import { RectangleOcclusion } from './occlusion';
 import * as THREE from 'three';
 
 test('rectangle occlusion includes only points within', () => {
-  var occ = new RectangleOcclusion(0, [
+  let occ = new RectangleOcclusion(0, [
     new THREE.Vector3(0, 0, 0),
     new THREE.Vector3(0, 1, 0),
     new THREE.Vector3(1, 1, 0),
@@ -21,7 +21,7 @@ test('rectangle occlusion includes only points within', () => {
 });
 
 test('rectangle occlusion includes only points within (negative)', () => {
-  var occ = new RectangleOcclusion(0, [
+  let occ = new RectangleOcclusion(0, [
     new THREE.Vector3(0, 0, 0),
     new THREE.Vector3(0, -1, 0),
     new THREE.Vector3(-1, -1, 0),
@@ -40,7 +40,7 @@ test('rectangle occlusion includes only points within (negative)', () => {
 });
 
 test('rectangle occlusion includes only points within (angled)', () => {
-  var occ = new RectangleOcclusion(0, [
+  let occ = new RectangleOcclusion(0, [
     new THREE.Vector3(-3, -4, 0),
     new THREE.Vector3(4, -3, 0),
     new THREE.Vector3(3, 4, 0),

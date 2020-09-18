@@ -66,7 +66,7 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
       return [];
     }
 
-    var changes: IChange[] = [];
+    let changes: IChange[] = [];
     this._highlights.forEach(h => {
       if (this._features.get(h.position) !== undefined) {
         changes.push(this.createFeatureRemove(h.position));
@@ -141,16 +141,6 @@ export class FaceHighlighter extends DragHighlighter<IGridCoord, IFeature<IGridC
     this._dragRectangle = dragRectangle;
   }
 
-  private *enumerateCoordsBetween(a: IGridCoord, b: IGridCoord) {
-    const minCoord = { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y) };
-    const maxCoord = { x: Math.max(a.x, b.x), y: Math.max(a.y, b.y) };
-    for (var y = minCoord.y; y <= maxCoord.y; ++y) {
-      for (var x = minCoord.x; x <= maxCoord.x; ++x) {
-        yield { x: x, y: y };
-      }
-    }
-  }
-
   protected keysEqual(a: IGridCoord, b: IGridCoord | undefined) {
     return coordsEqual(a, b);
   }
@@ -178,7 +168,7 @@ export class FaceHighlighter extends DragHighlighter<IGridCoord, IFeature<IGridC
       // required because the drag rectangle might not be axis-aligned and the
       // grid might have non-orthogonal axes
       this.clearHighlights();
-      for (var c of this._dragRectangle.enumerateCoords()) {
+      for (let c of this._dragRectangle.enumerateCoords()) {
         this.addHighlightAt(c, subtract);
       }
     } else {
@@ -197,7 +187,7 @@ export class FaceHighlighter extends DragHighlighter<IGridCoord, IFeature<IGridC
   }
 
   dragEnd(position: IGridCoord | undefined, colour: number) {
-    var result = super.dragEnd(position, colour);
+    let result = super.dragEnd(position, colour);
     this._startPosition = undefined;
     return result;
   }

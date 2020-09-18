@@ -66,7 +66,7 @@ interface IMapControlsProps {
 
 function MapControls(props: IMapControlsProps) {
   const modeButtons = useMemo(() => {
-    var buttons = [
+    let buttons = [
       <ModeButton key={EditMode.Select} value={EditMode.Select} icon={faMousePointer}
         mode={props.editMode} setMode={props.setEditMode}
       >

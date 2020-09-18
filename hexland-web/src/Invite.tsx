@@ -23,7 +23,7 @@ function Invite(props: IInvitePageProps) {
   const [invite, setInvite] = useState(undefined as IInvite | undefined);
   useEffect(() => {
     if (userContext.dataService !== undefined) {
-      var inviteRef = userContext.dataService.getInviteRef(props.adventureId, props.inviteId);
+      let inviteRef = userContext.dataService.getInviteRef(props.adventureId, props.inviteId);
       userContext.dataService.get(inviteRef)
         .then(i => setInvite(i))
         .catch(e => analyticsContext.logError("Failed to fetch invite " + props.inviteId, e));

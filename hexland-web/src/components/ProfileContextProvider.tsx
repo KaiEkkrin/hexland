@@ -16,7 +16,7 @@ function ProfileContextProvider(props: IContextProviderProps) {
   // Watch the user's profile:
   useEffect(() => {
     const uid = userContext.user?.uid;
-    var d = uid === undefined ? undefined : userContext.dataService?.getProfileRef(uid);
+    let d = uid === undefined ? undefined : userContext.dataService?.getProfileRef(uid);
     if (d !== undefined) {
       return userContext.dataService?.watch(d,
         p => setProfile(p),
@@ -24,6 +24,7 @@ function ProfileContextProvider(props: IContextProviderProps) {
       );
     } else {
       setProfile(undefined);
+      return undefined;
     }
   }, [userContext]);
 

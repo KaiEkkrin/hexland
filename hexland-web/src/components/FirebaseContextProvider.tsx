@@ -4,6 +4,7 @@ import * as firebase from 'firebase/app';
 import 'firebase/analytics';
 import 'firebase/auth';
 import 'firebase/firestore';
+import 'firebase/functions';
 
 import { IContextProviderProps, IFirebaseContext, IFirebaseProps } from './interfaces';
 import { FirebaseAuth, GoogleAuthProviderWrapper } from '../services/auth';
@@ -13,8 +14,8 @@ const region = 'europe-west2';
 export const FirebaseContext = React.createContext<IFirebaseContext>({});
 
 async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => void) {
-  var response = await fetch('/__/firebase/init.json');
-  var app = firebase.initializeApp(await response.json());
+  let response = await fetch('/__/firebase/init.json');
+  let app = firebase.initializeApp(await response.json());
   setFirebaseContext({
     auth: new FirebaseAuth(app.auth()),
     db: app.firestore(),

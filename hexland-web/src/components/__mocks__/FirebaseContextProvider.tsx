@@ -23,11 +23,11 @@ const idsToClear: { [id: string]: boolean } = {};
 
 // The Firebase emulator doesn't appear to provide server timestamps, so instead
 // we increment this global:
-var timestamp = 0;
+let timestamp = 0;
 
 afterEach(async () => {
   while (true) {
-    var emul = emulsToDelete.pop();
+    let emul = emulsToDelete.pop();
     if (emul === undefined) {
       break;
     }
@@ -36,7 +36,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-  for (var id in idsToClear) {
+  for (let id in idsToClear) {
     await clearFirestoreData({ projectId: id });
   }
 });
@@ -93,7 +93,7 @@ class SimulatedAuth implements IAuth {
   private signOutSync() {
     if (this._isLoggedIn !== false) {
       this._isLoggedIn = false;
-      for (var id in this._userHandlers) {
+      for (let id in this._userHandlers) {
         this._userHandlers[id](null);
       }
     }
@@ -111,7 +111,7 @@ class SimulatedAuth implements IAuth {
   signInWithPopup(provider: IAuthProvider | undefined) {
     if (this._isLoggedIn !== true) {
       this._isLoggedIn = true;
-      for (var id in this._userHandlers) {
+      for (let id in this._userHandlers) {
         this._userHandlers[id](this._user);
       }
     }
@@ -126,7 +126,7 @@ class SimulatedAuth implements IAuth {
   onAuthStateChanged(onNext: (user: IUser | null) => void, onError?: ((e: Error) => void) | undefined) {
     onNext(this._isLoggedIn ? this._user : null);
 
-    var id = uuidv4();
+    let id = uuidv4();
     this._userHandlers[id] = onNext;
     return () => {
       delete this._userHandlers[id];

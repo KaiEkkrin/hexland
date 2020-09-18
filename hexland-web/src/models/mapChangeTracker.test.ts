@@ -23,7 +23,7 @@ const map = {
 // This function builds the same walls around three hexes, with the 0,0 hex
 // closed from the other two inner ones, done by a test in colouring.tests
 function buildWallsOfThreeHexes(changeTracker: IChangeTracker) {
-  var changes = [
+  let changes = [
     { x: 1, y: 0, edge: 1 },
     { x: 0, y: 0, edge: 2 },
     { x: 0, y: 0, edge: 1 },
@@ -57,17 +57,17 @@ test('Unprivileged users cannot move other users\' tokens', () => {
 
   const handleChangesApplied = jest.fn();
   const handleChangesAborted = jest.fn();
-  var changeTracker = new MapChangeTracker(areas, tokens, walls, notes, undefined,
+  let changeTracker = new MapChangeTracker(areas, tokens, walls, notes, undefined,
     handleChangesApplied, handleChangesAborted);
 
   // The walls should be irrelevant here :)
-  var ok = buildWallsOfThreeHexes(changeTracker);
+  let ok = buildWallsOfThreeHexes(changeTracker);
   expect(ok).toBeTruthy();
   expect(handleChangesApplied.mock.calls.length).toBe(1);
   expect(handleChangesApplied.mock.calls[0][0]).toBe(false); // no tokens changed
   expect(handleChangesAborted.mock.calls.length).toBe(0);
 
-  var addTokens = [
+  let addTokens = [
     { position: { x: 0, y: 0 }, colour: 0, players: [uid1], text: "Zero" },
     { position: { x: 0, y: 1 }, colour: 0, players: [uid2], text: "Inner2" },
   ].map(t => {
@@ -158,10 +158,10 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
 
   const handleChangesApplied = jest.fn();
   const handleChangesAborted = jest.fn();
-  var changeTracker = new MapChangeTracker(areas, tokens, walls, notes, colouring,
+  let changeTracker = new MapChangeTracker(areas, tokens, walls, notes, colouring,
     handleChangesApplied, handleChangesAborted);
 
-  var ok = buildWallsOfThreeHexes(changeTracker);
+  let ok = buildWallsOfThreeHexes(changeTracker);
   expect(ok).toBeTruthy();
   expect(handleChangesApplied.mock.calls.length).toBe(1);
   expect(handleChangesApplied.mock.calls[0][0]).toBe(false); // no tokens changed
@@ -171,7 +171,7 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
   // console.log("inner colour: " + colouring.colourOf({ x: 0, y: 1 }));
   // console.log("outer colour: " + colouring.colourOf({ x: 1, y: -1 }));
 
-  var addTokens = [
+  let addTokens = [
     { position: { x: 0, y: 0 }, colour: 0, players: [uid1], text: "Zero" },
     { position: { x: 0, y: 1 }, colour: 0, players: [uid1], text: "Inner" },
     { position: { x: -2, y: 2 }, colour: 0, players: [uid1], text: "Outer" }

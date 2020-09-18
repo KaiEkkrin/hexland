@@ -15,9 +15,9 @@ function TokenPlayerSelection(props: ITokenPlayerSelectionProps) {
   // I need to hack the type here to coerce it into something usable
   // See https://github.com/DefinitelyTyped/DefinitelyTyped/issues/16208
   function handleChange(e: React.FormEvent<HTMLSelectElement>) {
-    var selectedIds: string[] = [];
-    for (var i = 0; i < e.currentTarget.selectedOptions.length; ++i) {
-      var option = e.currentTarget.selectedOptions[i];
+    let selectedIds: string[] = [];
+    for (let i = 0; i < e.currentTarget.selectedOptions.length; ++i) {
+      let option = e.currentTarget.selectedOptions[i];
       selectedIds.push(option.value);
     }
 

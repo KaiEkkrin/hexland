@@ -66,15 +66,15 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   protected createEdgeGeometry(coord: IGridEdge, alpha: number, z: number): EdgeGeometry {
-    var centre = this.createCoordCentre(new THREE.Vector3(), coord, z);
-    var otherCentre = this.createCoordCentre(
+    let centre = this.createCoordCentre(new THREE.Vector3(), coord, z);
+    let otherCentre = this.createCoordCentre(
       new THREE.Vector3(),
       coord.edge === 0 ? coordAdd(coord, { x: -1, y: 0 }) :
       coordAdd(coord, { x: 0, y: -1 }),
       z
     );
 
-    var [tip1, tip2] = [new THREE.Vector3(), new THREE.Vector3()];
+    let [tip1, tip2] = [new THREE.Vector3(), new THREE.Vector3()];
     this.createEdgeVertices(tip1, tip2, centre, coord.edge);
     return new EdgeGeometry(tip1, tip2, centre, otherCentre, alpha);
   }
@@ -101,9 +101,9 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   createEdgeOcclusion(coord: IGridCoord, edge: IGridEdge, z: number): EdgeOcclusion {
-    var [edgeA, edgeB] = [new THREE.Vector3(), new THREE.Vector3()];
+    let [edgeA, edgeB] = [new THREE.Vector3(), new THREE.Vector3()];
 
-    var centre = this.createCentre(new THREE.Vector3(), edge.x, edge.y, z);
+    let centre = this.createCentre(new THREE.Vector3(), edge.x, edge.y, z);
     this.createEdgeVertices(edgeA, edgeB, centre, edge.edge);
 
     this.createCoordCentre(centre, coord, z);
@@ -111,7 +111,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   *createOcclusionTestVertices(coord: IGridCoord, z: number, alpha: number): Iterable<THREE.Vector3> {
-    var centre = new THREE.Vector3();
+    let centre = new THREE.Vector3();
     yield this.createCoordCentre(centre, coord, z);
 
     const invAlpha = 1 - alpha;
@@ -122,10 +122,10 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   *createSolidVertices(tile: THREE.Vector2, alpha: number, z: number): Iterable<THREE.Vector3> {
-    var centre = new THREE.Vector3();
+    let centre = new THREE.Vector3();
     const invAlpha = 1 - alpha;
-    for (var y = 0; y < this.tileDim; ++y) {
-      for (var x = 0; x < this.tileDim; ++x) {
+    for (let y = 0; y < this.tileDim; ++y) {
+      for (let x = 0; x < this.tileDim; ++x) {
         this.createCentre(centre, tile.x * this.tileDim + x, tile.y * this.tileDim + y, z);
         yield this.createTopLeft(new THREE.Vector3(), centre).lerp(centre, invAlpha);
         yield this.createBottomLeft(new THREE.Vector3(), centre).lerp(centre, invAlpha);
@@ -138,10 +138,10 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   // Creates a buffer of indices into the output of `createSolidVertices`
   // suitable for drawing a solid mesh of the grid.
   *createSolidMeshIndices() {
-    for (var y = 0; y < this.tileDim; ++y) {
-      for (var x = 0; x < this.tileDim; ++x) {
+    for (let y = 0; y < this.tileDim; ++y) {
+      for (let x = 0; x < this.tileDim; ++x) {
         // For some reason Three.js uses triangles rather than triangle strips, grr
-        var baseIndex = y * this.tileDim * 4 + x * 4;
+        let baseIndex = y * this.tileDim * 4 + x * 4;
         yield* this.getSquareIndices(baseIndex);
       }
     }
@@ -207,7 +207,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   transformToEdge(o: THREE.Object3D, coord: IGridEdge): void {
-    var centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
+    let centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
     o.translateX(centre.x);
     o.translateY(centre.y);
     if (coord.edge === 1) {
@@ -216,7 +216,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   transformToVertex(o: THREE.Object3D, coord: IGridVertex): void {
-    var centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
+    let centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
     o.translateX(centre.x);
     o.translateY(centre.y);
   }

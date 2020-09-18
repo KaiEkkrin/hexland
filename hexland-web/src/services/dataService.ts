@@ -76,23 +76,23 @@ export class DataService implements IDataService {
   // IDataView implementation
 
   delete<T>(r: IDataReference<T>): Promise<void> {
-    var dref = (r as DataReference<T>).dref;
+    let dref = (r as DataReference<T>).dref;
     return dref.delete();
   }
 
   async get<T>(r: IDataReference<T>): Promise<T | undefined> {
-    var dref = (r as DataReference<T>).dref;
-    var result = await dref.get();
+    let dref = (r as DataReference<T>).dref;
+    let result = await dref.get();
     return result.exists ? r.convert(result.data()) : undefined;
   }
 
   set<T>(r: IDataReference<T>, value: T): Promise<void> {
-    var dref = (r as DataReference<T>).dref;
+    let dref = (r as DataReference<T>).dref;
     return dref.set(value);
   }
 
   update<T>(r: IDataReference<T>, changes: any): Promise<void> {
-    var dref = (r as DataReference<T>).dref;
+    let dref = (r as DataReference<T>).dref;
     return dref.update(changes);
   }
 
@@ -108,17 +108,17 @@ export class DataService implements IDataService {
   }
 
   getAdventureRef(id: string): IDataReference<IAdventure> {
-    var d = this._db.collection(adventures).doc(id);
+    let d = this._db.collection(adventures).doc(id);
     return new DataReference<IAdventure>(d, Convert.adventureConverter);
   }
 
   getInviteRef(adventureId: string, id: string): IDataReference<IInvite> {
-    var d = this._db.collection(adventures).doc(adventureId).collection(invites).doc(id);
+    let d = this._db.collection(adventures).doc(adventureId).collection(invites).doc(id);
     return new DataReference<IInvite>(d, Convert.inviteConverter);
   }
 
   async getLatestInviteRef(adventureId: string): Promise<IDataAndReference<IInvite> | undefined> {
-    var s = await this._db.collection(adventures).doc(adventureId).collection(invites)
+    let s = await this._db.collection(adventures).doc(adventureId).collection(invites)
       .orderBy("timestamp", "desc")
       .limit(1)
       .get();
@@ -127,18 +127,18 @@ export class DataService implements IDataService {
   }
 
   getMapRef(adventureId: string, id: string): IDataReference<IMap> {
-    var d = this._db.collection(adventures).doc(adventureId).collection(maps).doc(id);
+    let d = this._db.collection(adventures).doc(adventureId).collection(maps).doc(id);
     return new DataReference<IMap>(d, Convert.mapConverter);
   }
 
   getMapBaseChangeRef(adventureId: string, id: string): IDataReference<IChanges> {
-    var d = this._db.collection(adventures).doc(adventureId)
+    let d = this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(id).collection(changes).doc(baseChange);
     return new DataReference<IChanges>(d, Convert.changesConverter);
   }
 
   async getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number): Promise<IDataAndReference<IChanges>[] | undefined> {
-    var s = await this._db.collection(adventures).doc(adventureId)
+    let s = await this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(id).collection(changes)
       .where("incremental", "==", true)
       .orderBy("timestamp")
@@ -162,24 +162,24 @@ export class DataService implements IDataService {
   }
 
   getPlayerRef(adventureId: string, uid: string): IDataReference<IPlayer> {
-    var d = this._db.collection(adventures).doc(adventureId).collection(players).doc(uid);
+    let d = this._db.collection(adventures).doc(adventureId).collection(players).doc(uid);
     return new DataReference<IPlayer>(d, Convert.playerConverter);
   }
 
   async getPlayerRefs(adventureId: string): Promise<IDataAndReference<IPlayer>[]> {
-    var s = await this._db.collection(adventures).doc(adventureId).collection(players).get();
+    let s = await this._db.collection(adventures).doc(adventureId).collection(players).get();
     return s.docs.map(d => new DataAndReference(
       d.ref, Convert.playerConverter.convert(d.data()), Convert.playerConverter));
   }
 
   getProfileRef(uid: string): IDataReference<IProfile> {
-    var d = this._db.collection(profiles).doc(uid);
+    let d = this._db.collection(profiles).doc(uid);
     return new DataReference<IProfile>(d, Convert.profileConverter);
   }
 
   runTransaction<T>(fn: (dataView: IDataView) => Promise<T>): Promise<T> {
     return this._db.runTransaction(tr => {
-      var tdv = new TransactionalDataView(tr);
+      let tdv = new TransactionalDataView(tr);
       return fn(tdv);
     });
   }
@@ -204,11 +204,11 @@ export class DataService implements IDataService {
     return this._db.collection(adventures).where("owner", "==", uid)
       .orderBy("name")
       .onSnapshot(s => {
-        var adventures: IIdentified<IAdventure>[] = [];
+        let adventures: IIdentified<IAdventure>[] = [];
         s.forEach((d) => {
-          var data = d.data();
+          let data = d.data();
           if (data !== null) {
-            var adventure = Convert.adventureConverter.convert(data);
+            let adventure = Convert.adventureConverter.convert(data);
             adventures.push({ id: d.id, record: adventure });
           }
         });
@@ -232,7 +232,7 @@ export class DataService implements IDataService {
           // We're only interested in newly added documents -- these are new
           // changes to the map
           if (d.doc.exists && d.oldIndex === -1) {
-            var chs = Convert.changesConverter.convert(d.doc.data());
+            let chs = Convert.changesConverter.convert(d.doc.data());
             onNext(chs);
           }
         });
@@ -270,23 +270,23 @@ class TransactionalDataView implements IDataView {
   }
 
   async delete<T>(r: IDataReference<T>): Promise<void> {
-    var dref = (r as DataReference<T>).dref;
+    let dref = (r as DataReference<T>).dref;
     this._tr = this._tr.delete(dref);
   }
 
   async get<T>(r: IDataReference<T>): Promise<T | undefined> {
-    var dref = (r as DataReference<T>).dref;
-    var result = await this._tr.get(dref);
+    let dref = (r as DataReference<T>).dref;
+    let result = await this._tr.get(dref);
     return result.exists ? r.convert(result.data()) : undefined;
   }
 
   async set<T>(r: IDataReference<T>, value: T): Promise<void> {
-    var dref = (r as DataReference<T>).dref;
+    let dref = (r as DataReference<T>).dref;
     this._tr = this._tr.set(dref, value);
   }
 
   async update<T>(r: IDataReference<T>, changes: any): Promise<void> {
-    var dref = (r as DataReference<T>).dref;
+    let dref = (r as DataReference<T>).dref;
     this._tr = this._tr.update(dref, changes);
   }
 }

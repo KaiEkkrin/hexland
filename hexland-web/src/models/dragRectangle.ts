@@ -50,8 +50,8 @@ export class DragRectangle implements IDragRectangle {
   private *enumerateCoordsInDragRectangle(scratch: THREE.Vector3) {
     const coordMin = { x: Number.MAX_SAFE_INTEGER, y: Number.MAX_SAFE_INTEGER };
     const coordMax = { x: Number.MIN_SAFE_INTEGER, y: Number.MIN_SAFE_INTEGER };
-    for (var p of this.enumerateCanvasDragRectanglePoints(scratch)) {
-      var coord = this._getGridCoordAt(p);
+    for (let p of this.enumerateCanvasDragRectanglePoints(scratch)) {
+      let coord = this._getGridCoordAt(p);
       if (coord === undefined) {
         continue;
       }
@@ -61,8 +61,8 @@ export class DragRectangle implements IDragRectangle {
       coordMax.y = Math.max(coordMax.y, coord.y);
     }
 
-    for (var y = coordMin.y; y <= coordMax.y; ++y) {
-      for (var x = coordMin.x; x <= coordMax.x; ++x) {
+    for (let y = coordMin.y; y <= coordMax.y; ++y) {
+      for (let x = coordMin.x; x <= coordMax.x; ++x) {
         yield { x: x, y: y };
       }
     }
@@ -76,8 +76,8 @@ export class DragRectangle implements IDragRectangle {
 
     // To achieve this, I need to get the drag rectangle into world co-ordinates,
     // which are centred at (0, 0).
-    var scale = new THREE.Vector3(2 / window.innerWidth, 2 / window.innerHeight, 1);
-    var translation = new THREE.Vector3(-1, -1, 0);
+    let scale = new THREE.Vector3(2 / window.innerWidth, 2 / window.innerHeight, 1);
+    let translation = new THREE.Vector3(-1, -1, 0);
     const viewportToWorld = this._getViewportToWorld(new THREE.Matrix4());
     const rectanglePoints =
       [...this.enumerateCanvasDragRectanglePoints(new THREE.Vector3())]
@@ -87,7 +87,7 @@ export class DragRectangle implements IDragRectangle {
     // as required
     const rectangleOcclusion = new RectangleOcclusion(0, [...rectanglePoints]);
     return (c: IGridCoord) => {
-      for (var v of this._testVertexCollection.enumerate(c)) {
+      for (let v of this._testVertexCollection.enumerate(c)) {
         if (rectangleOcclusion.test(v) === true) {
           return true;
         }

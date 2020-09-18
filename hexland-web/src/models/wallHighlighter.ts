@@ -11,11 +11,11 @@ import { MapColouring } from "./colouring";
 // Given two vertices, plots a straight-line (more or less) wall between them including the
 // intermediate vertices.
 export function *drawWallBetween(geometry: IGridGeometry, a: IGridVertex, b: IGridVertex) {
-  var bCentre = geometry.createVertexCentre(new THREE.Vector3(), b, 0);
-  var [eCentre, vCentre, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  let bCentre = geometry.createVertexCentre(new THREE.Vector3(), b, 0);
+  let [eCentre, vCentre, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
   while (verticesEqual(a, b) === false) {
     // Out of all the adjacent edges, find the one closest to b, and yield it
-    var closestEdge = geometry.getVertexEdgeAdjacency(a).map(e => {
+    let closestEdge = geometry.getVertexEdgeAdjacency(a).map(e => {
       return { edge: e, dSq: geometry.createEdgeCentre(eCentre, scratch1, scratch2, e, 0).distanceToSquared(bCentre) };
     }).reduce((e, f) => {
       return e.dSq < f.dSq ? e : f;
@@ -24,7 +24,7 @@ export function *drawWallBetween(geometry: IGridGeometry, a: IGridVertex, b: IGr
     yield closestEdge.edge;
 
     // Out of all the adjacent vertices, find the one closest to b and continue
-    var closestVertex = geometry.getEdgeVertexAdjacency(closestEdge.edge).map(v => {
+    let closestVertex = geometry.getEdgeVertexAdjacency(closestEdge.edge).map(v => {
       return { vertex: v, dSq: geometry.createVertexCentre(vCentre, v, 0).distanceToSquared(bCentre) };
     }).reduce((v, w) => {
       return v.dSq < w.dSq ? v : w;
@@ -44,7 +44,7 @@ export function drawWallAround(
   faceDictionary: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
   addWall: (position: IGridEdge) => void
 ) {
-  for (var f of faceDictionary) {
+  for (let f of faceDictionary) {
     geometry.forEachAdjacentFace(f.position, (adj, edge) => {
       if (faceDictionary.get(adj) === undefined) {
         // This is an exterior face -- add the wall
@@ -65,8 +65,8 @@ export function drawWallUnion(
   addWall: (position: IGridEdge) => void,
   removeWall: (position: IGridEdge) => void
 ) {
-  var changeCount = [0];
-  for (var f of faceDictionary) {
+  let changeCount = [0];
+  for (let f of faceDictionary) {
     geometry.forEachAdjacentFace(f.position, (adj, edge) => {
       if (faceDictionary.get(adj) === undefined && colouring.colourOf(adj) === outerColour) {
         // This is an exterior face -- add the wall
@@ -92,8 +92,8 @@ export function drawWallDifference(
   addWall: (position: IGridEdge) => void,
   removeWall: (position: IGridEdge) => void
 ) {
-  var changeCount = [0];
-  for (var f of faceDictionary) {
+  let changeCount = [0];
+  for (let f of faceDictionary) {
     geometry.forEachAdjacentFace(f.position, (adj, edge) => {
       if (faceDictionary.get(adj) === undefined && colouring.colourOf(adj) !== innerColour) {
         // This is an exterior face -- add the wall
@@ -171,7 +171,7 @@ export class WallHighlighter {
         this._lastHoverPosition !== undefined &&
         !verticesEqual(position, this._lastHoverPosition)
       ) {
-        for (var wall of drawWallBetween(this._geometry, this._lastHoverPosition, position)) {
+        for (let wall of drawWallBetween(this._geometry, this._lastHoverPosition, position)) {
           this._edgeHighlighter.moveHighlight(wall, colour);
         }
       }

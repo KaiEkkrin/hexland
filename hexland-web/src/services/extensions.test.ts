@@ -46,11 +46,11 @@ describe('test extensions', () => {
 
   afterEach(async () => {
     const toDelete: string[] = [];
-    for (var uid in emul) {
+    for (let uid in emul) {
       toDelete.push(uid);
     }
 
-    for (var uid of toDelete) {
+    for (let uid of toDelete) {
       await emul[uid].delete();
       delete emul[uid];
     }
@@ -87,7 +87,7 @@ describe('test extensions', () => {
   test('create and edit adventures and maps', async () => {
     const db = emul['owner'].firestore();
     const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
-    var profile = await ensureProfile(dataService, {
+    let profile = await ensureProfile(dataService, {
       displayName: 'Owner',
       email: 'owner@example.com',
       providerId: 'google.com',
@@ -122,10 +122,10 @@ describe('test extensions', () => {
     await editAdventure(dataService, 'owner', false, { id: a1Id, ...a1 }, undefined);
 
     // If we fetch the adventure records the descriptions should be as expected
-    var a1Record = await dataService.get(dataService.getAdventureRef(a1Id));
+    let a1Record = await dataService.get(dataService.getAdventureRef(a1Id));
     expect(a1Record?.description).toBe("Edited adventure");
 
-    var a2Record = await dataService.get(dataService.getAdventureRef(a2Id));
+    let a2Record = await dataService.get(dataService.getAdventureRef(a2Id));
     expect(a2Record?.description).toBe("Second adventure");
 
     // And they should both appear in the user's profile
@@ -163,13 +163,13 @@ describe('test extensions', () => {
     await editMap(dataService, a2Id, m2Id, m2);
 
     // We should be able to fetch the map records
-    var m1Record = await dataService.get(dataService.getMapRef(a1Id, m1Id));
+    let m1Record = await dataService.get(dataService.getMapRef(a1Id, m1Id));
     expect(m1Record?.name).toBe('Map One');
     expect(m1Record?.adventureName).toBe('Adventure One');
     expect(m1Record?.ty).toBe(MapType.Square);
     expect(m1Record?.ffa).toBe(false);
 
-    var m2Record = await dataService.get(dataService.getMapRef(a2Id, m2Id));
+    let m2Record = await dataService.get(dataService.getMapRef(a2Id, m2Id));
     expect(m2Record?.name).toBe('Map Two');
     expect(m2Record?.adventureName).toBe('Adventure Two');
     expect(m2Record?.ty).toBe(MapType.Hex);
@@ -222,7 +222,7 @@ describe('test extensions', () => {
     // As the owner, create an adventure and a map
     const db = emul['owner'].firestore();
     const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
-    var profile = await ensureProfile(dataService, {
+    let profile = await ensureProfile(dataService, {
       displayName: 'Owner',
       email: 'owner@example.com',
       providerId: 'google.com',
@@ -269,7 +269,7 @@ describe('test extensions', () => {
     };
     const userDb = initializeEmul(user).firestore();
     const userDataService = new DataService(userDb, firebase.firestore.FieldValue.serverTimestamp);
-    var userProfile = await ensureProfile(userDataService, user, undefined);
+    let userProfile = await ensureProfile(userDataService, user, undefined);
 
     // There should be no adventures in that profile
     expect(userProfile?.adventures).toHaveLength(0);
@@ -336,7 +336,7 @@ describe('test extensions', () => {
     };
     const user1Db = initializeEmul(user1).firestore();
     const user1DataService = new DataService(user1Db, firebase.firestore.FieldValue.serverTimestamp);
-    var user1Profile = await ensureProfile(user1DataService, user1, undefined);
+    let user1Profile = await ensureProfile(user1DataService, user1, undefined);
 
     // There should be no adventures in the profile now
     expect(user1Profile?.adventures).toHaveLength(0);
@@ -361,7 +361,7 @@ describe('test extensions', () => {
     };
     const user2Db = initializeEmul(user2).firestore();
     const user2DataService = new DataService(user2Db, firebase.firestore.FieldValue.serverTimestamp);
-    var user2Profile = await ensureProfile(user2DataService, user2, undefined);
+    let user2Profile = await ensureProfile(user2DataService, user2, undefined);
 
     // There should be no adventures in the profile now
     expect(user2Profile?.adventures).toHaveLength(0);
@@ -394,7 +394,7 @@ describe('test extensions', () => {
     expect(a1Record?.ownerName).toBe("New Name");
 
     // in our player record in user 2's adventure:
-    var p2Record = await user1DataService.get(user1DataService.getPlayerRef(a2Id, 'user1'));
+    let p2Record = await user1DataService.get(user1DataService.getPlayerRef(a2Id, 'user1'));
     expect(p2Record?.name).toBe("Adventure Two"); // this is the adventure name
     expect(p2Record?.ownerName).toBe("User 2"); // this is the owner's name
     expect(p2Record?.playerName).toBe("New Name"); // this is our name
@@ -404,12 +404,12 @@ describe('test extensions', () => {
     expect(user1Profile?.name).toBe("New Name");
     expect(user1Profile?.adventures).toHaveLength(2);
 
-    var a1Summary = user1Profile?.adventures?.find(a => a.id === a1Id);
+    let a1Summary = user1Profile?.adventures?.find(a => a.id === a1Id);
     expect(a1Summary).not.toBeUndefined();
     expect(a1Summary?.name).toBe("Adventure One");
     expect(a1Summary?.ownerName).toBe("New Name");
 
-    var a2Summary = user1Profile?.adventures?.find(a => a.id === a2Id);
+    let a2Summary = user1Profile?.adventures?.find(a => a.id === a2Id);
     expect(a2Summary).not.toBeUndefined();
     expect(a2Summary?.name).toBe("Adventure Two");
     expect(a2Summary?.ownerName).toBe("User 2");
@@ -421,13 +421,13 @@ describe('test extensions', () => {
     );
 
     // Then, user 1 should see it has changed in their player record:
-    var p2Record = await user1DataService.get(user1DataService.getPlayerRef(a2Id, 'user1'));
+    p2Record = await user1DataService.get(user1DataService.getPlayerRef(a2Id, 'user1'));
     expect(p2Record?.name).toBe("Renamed Adventure"); // this is the adventure name
     expect(p2Record?.ownerName).toBe("User 2"); // this is the owner's name
     expect(p2Record?.playerName).toBe("New Name"); // this is our name
 
     // and it will rename itself in their profile if they visit it
-    var a2Record = await user1DataService.get(user1DataService.getAdventureRef(a2Id));
+    let a2Record = await user1DataService.get(user1DataService.getAdventureRef(a2Id));
     expect(a2Record?.name).toBe("Renamed Adventure");
     if (a2Record === undefined) return; // should have failed already
     await registerAdventureAsRecent(user1DataService, 'user1', a2Id, { ...a2Record });

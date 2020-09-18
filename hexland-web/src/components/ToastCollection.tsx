@@ -35,7 +35,7 @@ function ToastCollection() {
       if (t.record === undefined) {
         setToasts(ts => ts.filter(t2 => t2.id !== t.id));
       } else {
-        var newToast = { id: t.id, record: t.record };
+        let newToast = { id: t.id, record: t.record };
         setToasts(ts => [newToast, ...ts]);
       }
     });

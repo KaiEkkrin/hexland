@@ -37,7 +37,7 @@ export class InstancedFeatures<K extends IGridCoord, F extends IFeature<K>> exte
   }
 
   private pushFeatureObject() {
-    var c = this._createFeatureObject(this._maxInstances);
+    let c = this._createFeatureObject(this._maxInstances);
     this._featureObjects.push(c);
 
     if (this._scene !== undefined) {
@@ -63,7 +63,7 @@ export class InstancedFeatures<K extends IGridCoord, F extends IFeature<K>> exte
 
   removeFromScene() {
     if (this._scene !== undefined) {
-      var scene = this._scene;
+      let scene = this._scene;
       this._featureObjects.forEach(c => c.removeFromScene(scene));
       this._scene = undefined;
       this.setNeedsRedraw();
@@ -75,7 +75,7 @@ export class InstancedFeatures<K extends IGridCoord, F extends IFeature<K>> exte
   }
 
   add(f: F): boolean {
-    var done = this._features.add(f);
+    let done = this._features.add(f);
     if (done === false) {
       // This position is already occupied.
       return false;
@@ -83,8 +83,8 @@ export class InstancedFeatures<K extends IGridCoord, F extends IFeature<K>> exte
 
     // Use the first mesh collection with a free space, or add a new one if we've
     // run out entirely
-    var usedExistingCollection = false;
-    for (var c of this._featureObjects) {
+    let usedExistingCollection = false;
+    for (let c of this._featureObjects) {
       if (c.add(f)) {
         usedExistingCollection = true;
         break;
@@ -123,12 +123,12 @@ export class InstancedFeatures<K extends IGridCoord, F extends IFeature<K>> exte
   }
 
   remove(oldPosition: K): F | undefined {
-    var feature = this._features.remove(oldPosition);
+    let feature = this._features.remove(oldPosition);
     if (feature === undefined) {
       return undefined;
     }
 
-    for (var c of this._featureObjects) {
+    for (let c of this._featureObjects) {
       if (c.remove(feature)) {
         break;
       }

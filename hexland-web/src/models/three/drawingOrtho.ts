@@ -277,8 +277,8 @@ export class DrawingOrtho implements IDrawing {
     // (Careful -- don't chain these method calls up with ||, it's important
     // I actually call each one and don't skip later ones if an early one returned
     // true)
-    var needsRedraw = this._needsRedraw.needsRedraw();
-    var gridNeedsRedraw = this._gridNeedsRedraw.needsRedraw();
+    let needsRedraw = this._needsRedraw.needsRedraw();
+    let gridNeedsRedraw = this._gridNeedsRedraw.needsRedraw();
     if (gridNeedsRedraw) {
       this._grid.render(this._renderer, this._camera);
     }

@@ -73,14 +73,14 @@ describe('test app', () => {
     );
 
     // It should not be showing our username ("Owner")
-    var userElement = queryByText(user?.displayName ?? 'Owner');
+    let userElement = queryByText(user?.displayName ?? 'Owner');
     expect(userElement).toBeNull();
 
     // Find the login button and click it
     const buttonElement = getByRole('button', { name: /Sign in with Google/i });
     expect(buttonElement).toBeInTheDocument();
 
-    var historyChange: IHistoryChange[] = [];
+    let historyChange: IHistoryChange[] = [];
     await act(async () => {
       const historyWillChange = historySubject.pipe(first()).toPromise();
       userEvent.click(buttonElement);
@@ -100,7 +100,7 @@ describe('test app', () => {
     // - Write something in the input labelled "Description"
     // - Click the "Save" button
     // - Both strings should now appear on the page, along with the "New map" button
-    var modalAdventureNameElement = await findByLabelText(/Adventure name/);
+    let modalAdventureNameElement = await findByLabelText(/Adventure name/);
     const modalAdventureDescriptionElement = await findByLabelText(/Adventure description/);
     const modalAdventureSaveElement = await findByRole('button', { name: /Save adventure/ });
 
@@ -112,7 +112,7 @@ describe('test app', () => {
   }
 
   async function fillInNewMapModal(findByLabelText: any, findByRole: any, name: string, description: string) {
-    var modalMapNameElement = await findByLabelText(/Map name/);
+    let modalMapNameElement = await findByLabelText(/Map name/);
     const modalMapDescriptionElement = await findByLabelText(/Map description/);
     const modalMapSaveElement = await findByRole('button', { name: /Save map/ });
 
@@ -135,7 +135,7 @@ describe('test app', () => {
     expect(newAdventureElement).toBeInTheDocument();
 
     // There shouldn't be "New map", though, because there's no adventure to create it in
-    var newMapElement = queryByRole('button', { name: /New map/i });
+    let newMapElement = queryByRole('button', { name: /New map/i });
     expect(newMapElement).toBeNull();
 
     await act(async () => userEvent.click(newAdventureElement));
@@ -274,14 +274,14 @@ describe('test app', () => {
       <App projectId={projectId} user={user} defaultRoute={location ?? '/'} />
     );
 
-    for (var text of check.textsPresent) {
-      var found = await findByText(text);
+    for (let text of check.textsPresent) {
+      let found = await findByText(text);
       expect(found).toBeInTheDocument();
     }
 
     if (check.textsAbsent !== undefined) {
-      for (var text of check.textsAbsent) {
-        var found = queryByText(text);
+      for (let text of check.textsAbsent) {
+        let found = queryByText(text);
         expect(found).toBeFalsy();
       }
     }
@@ -414,7 +414,7 @@ describe('test app', () => {
     expect(redirectToHome?.parameter).toBe('/');
 
     // Accept the invite
-    var redirectToAdventure = await acceptInvite(inviteLink, projectId, user1);
+    let redirectToAdventure = await acceptInvite(inviteLink, projectId, user1);
     expect(redirectToAdventure.verb).toBe('replace');
     expect(redirectToAdventure.parameter).toBe(links.adventureLink);
 
@@ -444,7 +444,7 @@ describe('test app', () => {
     );
 
     // It should not start out showing "login failed"
-    var failedElement = queryByText(/Login failed/i);
+    let failedElement = queryByText(/Login failed/i);
     expect(failedElement).toBeNull();
 
     // Find the login button and click it
@@ -467,7 +467,7 @@ describe('test app', () => {
       providerId: "google.com",
       uid: "userA"
     };
-    var redirectToHome = await logInWithGoogle(projectId, user);
+    let redirectToHome = await logInWithGoogle(projectId, user);
     expect(redirectToHome?.verb).toBe('replace');
     expect(redirectToHome?.parameter).toBe('/');
 
@@ -476,7 +476,7 @@ describe('test app', () => {
       <App projectId={projectId} user={user} defaultRoute="/" />
     );
 
-    var profileButton = await findByRole('button', { name: /A User/ });
+    let profileButton = await findByRole('button', { name: /A User/ });
     expect(profileButton).toBeInTheDocument();
 
     await act(async () => userEvent.click(profileButton));
@@ -484,7 +484,7 @@ describe('test app', () => {
     const editNameElement = await findByLabelText(/Display name/i);
     expect(editNameElement).toBeInTheDocument();
 
-    var saveProfileElement = getByRole('button', { name: /Save profile/i });
+    let saveProfileElement = getByRole('button', { name: /Save profile/i });
     expect(saveProfileElement).toBeInTheDocument();
 
     await act(async () => {
@@ -505,7 +505,7 @@ describe('test app', () => {
     const projectId = uuidv4();
 
     // Get logged in
-    var redirectToHome = await logInWithGoogle(projectId);
+    let redirectToHome = await logInWithGoogle(projectId);
     expect(redirectToHome?.verb).toBe('replace');
     expect(redirectToHome?.parameter).toBe('/');
 
@@ -522,7 +522,7 @@ describe('test app', () => {
     const projectId = uuidv4();
 
     // Get logged in
-    var redirectToHome = await logInWithGoogle(projectId);
+    let redirectToHome = await logInWithGoogle(projectId);
     expect(redirectToHome?.verb).toBe('replace');
     expect(redirectToHome?.parameter).toBe('/');
 
@@ -538,7 +538,7 @@ describe('test app', () => {
     const projectId = uuidv4();
 
     // Get logged in
-    var redirectToHome = await logInWithGoogle(projectId);
+    let redirectToHome = await logInWithGoogle(projectId);
     expect(redirectToHome?.verb).toBe('replace');
     expect(redirectToHome?.parameter).toBe('/');
 
@@ -548,7 +548,7 @@ describe('test app', () => {
       <App projectId={projectId} user={undefined} getItem={mockGetItem} setItem={mockSetItem} defaultRoute="/" />
     );
 
-    var acceptElement = await findByRole('button', { name: /Accept/i });
+    let acceptElement = await findByRole('button', { name: /Accept/i });
     expect(acceptElement).toBeInTheDocument();
 
     const ownerElement = await findByRole('button', { name: /Owner/ });

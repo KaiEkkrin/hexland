@@ -58,7 +58,7 @@ export class SimpleChangeTracker implements IChangeTracker {
   }
 
   tokenRemove(map: IMap, user: string, position: IGridCoord, tokenId: string | undefined) {
-    var removed = this._tokens.remove(position);
+    const removed = this._tokens.remove(position);
     if (removed !== undefined && removed.id !== tokenId) {
       // Oops, ID mismatch, put it back!
       this._tokens.add(removed);
@@ -85,13 +85,15 @@ export class SimpleChangeTracker implements IChangeTracker {
   }
 
   changesApplied() {
+    return;
   }
 
   changesAborted() {
+    return;
   }
 
   getConsolidated(): IChange[] {
-    var all: IChange[] = [];
+    const all: IChange[] = [];
     this._areas.forEach(f => all.push(createAreaAdd(f)));
     
     this._tokens.forEach(f => {
@@ -113,9 +115,9 @@ export class SimpleChangeTracker implements IChangeTracker {
 // Handles a whole collection of (ordered) changes in one go, either applying or rejecting all.
 export function trackChanges(map: IMap, tracker: IChangeTracker, chs: Iterable<IChange>, user: string): boolean {
   // Begin applying each change (in practice, this does all the removes.)
-  var applications: (IChangeApplication[]) = [];
-  for (var c of chs) {
-    var a = trackChange(map, tracker, c, user);
+  const applications: (IChangeApplication[]) = [];
+  for (const c of chs) {
+    const a = trackChange(map, tracker, c, user);
     if (a === undefined) {
       // Changes failed -- revert any previously applied and return with an error
       revertChanges(applications);
@@ -140,9 +142,9 @@ export function trackChanges(map: IMap, tracker: IChangeTracker, chs: Iterable<I
 }
 
 function continueApplications(applications: IChangeApplication[]): boolean {
-  var revertFunctions: IRevert[] = [];
-  for (var i = 0; i < applications.length; ++i) {
-    var revert = applications[i].continue();
+  const revertFunctions: IRevert[] = [];
+  for (const a of applications) {
+    const revert = a.continue();
     if (revert === undefined) {
       // Changes failed -- revert any previously applied
       revertChanges(revertFunctions);
@@ -157,7 +159,7 @@ function continueApplications(applications: IChangeApplication[]): boolean {
 
 function revertChanges(revertFunctions: IRevert[]) {
   while (revertFunctions.length > 0) {
-    var r = revertFunctions.pop();
+    const r = revertFunctions.pop();
     r?.revert();
   }
 }
@@ -174,7 +176,7 @@ interface IRevert {
 }
 
 const doNothing: IRevert = {
-  revert() {}
+  revert: () => undefined
 }
 
 // True for the map owner, or if the map is in free-for-all mode
@@ -199,11 +201,11 @@ function trackChange(map: IMap, tracker: IChangeTracker, ch: IChange, user: stri
 function trackAreaChange(tracker: IChangeTracker, ch: IChange): IChangeApplication | undefined {
   switch (ch.ty) {
     case ChangeType.Add:
-      var chAdd = ch as IAreaAdd;
+      const chAdd = ch as IAreaAdd;
       return {
-        revert: function () { },
+        revert: () => undefined,
         continue: function () {
-          var added = tracker.areaAdd(chAdd.feature);
+          const added = tracker.areaAdd(chAdd.feature);
           return added ? {
             revert: function () {
               tracker.areaRemove(chAdd.feature.position);
@@ -213,8 +215,8 @@ function trackAreaChange(tracker: IChangeTracker, ch: IChange): IChangeApplicati
       };
 
     case ChangeType.Remove:
-      var chRemove = ch as IAreaRemove;
-      var removed = tracker.areaRemove(chRemove.position);
+      const chRemove = ch as IAreaRemove;
+      const removed = tracker.areaRemove(chRemove.position);
       return removed === undefined ? undefined : {
         revert: function () {
           if (removed !== undefined) { tracker.areaAdd(removed); }
@@ -229,11 +231,11 @@ function trackAreaChange(tracker: IChangeTracker, ch: IChange): IChangeApplicati
 function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: IChange, user: string): IChangeApplication | undefined {
   switch (ch.ty) {
     case ChangeType.Add:
-      var chAdd = ch as ITokenAdd;
+      const chAdd = ch as ITokenAdd;
       return canDoAnything(map, user) ? {
-        revert: function () {},
+        revert: () => undefined,
         continue: function () {
-          var added = tracker.tokenAdd(map, user, chAdd.feature, undefined);
+          const added = tracker.tokenAdd(map, user, chAdd.feature, undefined);
           return added ? {
             revert: function () {
               tracker.tokenRemove(map, user, chAdd.feature.position, chAdd.feature.id);
@@ -246,8 +248,8 @@ function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: IChange, user:
       if (!canDoAnything(map, user)) {
         return undefined;
       }
-      var chRemove = ch as ITokenRemove;
-      var removed = tracker.tokenRemove(map, user, chRemove.position, chRemove.tokenId);
+      const chRemove = ch as ITokenRemove;
+      const removed = tracker.tokenRemove(map, user, chRemove.position, chRemove.tokenId);
       return removed === undefined ? undefined : {
         revert: function () {
           if (removed !== undefined) { tracker.tokenAdd(map, user, removed, undefined); }
@@ -256,8 +258,8 @@ function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: IChange, user:
       }
 
     case ChangeType.Move:
-      var chMove = ch as ITokenMove;
-      var moved = tracker.tokenRemove(map, user, chMove.oldPosition, chMove.tokenId);
+      const chMove = ch as ITokenMove;
+      const moved = tracker.tokenRemove(map, user, chMove.oldPosition, chMove.tokenId);
       return moved === undefined ? undefined : {
         revert: function () {
           if (moved !== undefined) { tracker.tokenAdd(map, user, moved, undefined); }
@@ -268,12 +270,8 @@ function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: IChange, user:
             return undefined;
           }
 
-          // The Object.assign() jiggle here should ensure we retain any extra properties
-          // of the existing object as we create the moved one
-          var toAdd = {};
-          Object.assign(toAdd, moved);
-          (toAdd as IToken).position = chMove.newPosition;
-          var added = tracker.tokenAdd(map, user, toAdd as IToken, chMove.oldPosition);
+          const toAdd = { ...moved, position: chMove.newPosition };
+          const added = tracker.tokenAdd(map, user, toAdd as IToken, chMove.oldPosition);
           return added ? {
             revert: function revert() {
               tracker.tokenRemove(map, user, chMove.newPosition, chMove.tokenId);
@@ -289,11 +287,11 @@ function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: IChange, user:
 function trackWallChange(tracker: IChangeTracker, ch: IChange): IChangeApplication | undefined {
   switch (ch.ty) {
     case ChangeType.Add:
-      var chAdd = ch as IWallAdd;
+      const chAdd = ch as IWallAdd;
       return {
-        revert: function () {},
+        revert: () => undefined,
         continue: function () {
-          var added = tracker.wallAdd(chAdd.feature);
+          const added = tracker.wallAdd(chAdd.feature);
           return added ? {
             revert: function () {
               tracker.wallRemove(chAdd.feature.position);
@@ -303,8 +301,8 @@ function trackWallChange(tracker: IChangeTracker, ch: IChange): IChangeApplicati
       }
 
     case ChangeType.Remove:
-      var chRemove = ch as IWallRemove;
-      var removed = tracker.wallRemove(chRemove.position);
+      const chRemove = ch as IWallRemove;
+      const removed = tracker.wallRemove(chRemove.position);
       return removed === undefined ? undefined : {
         revert: function () {
           if (removed !== undefined) { tracker.wallAdd(removed); }
@@ -319,11 +317,11 @@ function trackWallChange(tracker: IChangeTracker, ch: IChange): IChangeApplicati
 function trackNoteChange(tracker: IChangeTracker, ch: IChange): IChangeApplication | undefined {
   switch (ch.ty) {
     case ChangeType.Add:
-      var chAdd = ch as INoteAdd;
+      const chAdd = ch as INoteAdd;
       return {
-        revert: function () {},
+        revert: () => undefined,
         continue: function () {
-          var added = tracker.noteAdd(chAdd.feature);
+          const added = tracker.noteAdd(chAdd.feature);
           return added ? {
             revert: function () {
               tracker.noteRemove(chAdd.feature.position);
@@ -333,8 +331,8 @@ function trackNoteChange(tracker: IChangeTracker, ch: IChange): IChangeApplicati
       }
 
     case ChangeType.Remove:
-      var chRemove = ch as INoteRemove;
-      var removed = tracker.noteRemove(chRemove.position);
+      const chRemove = ch as INoteRemove;
+      const removed = tracker.noteRemove(chRemove.position);
       return removed === undefined ? undefined : {
         revert: function () {
           if (removed !== undefined) { tracker.noteAdd(removed); }

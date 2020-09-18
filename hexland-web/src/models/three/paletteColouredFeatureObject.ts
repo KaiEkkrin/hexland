@@ -93,7 +93,7 @@ export class PaletteColouredFeatureObject<K extends IGridCoord, F extends IFeatu
       this._defaultColour = defaultColour;
     }
 
-    for (var i = 0; i < this._colours.length; ++i) {
+    for (let i = 0; i < this._colours.length; ++i) {
       this.applyColour(this._colours[i], i);
     }
   }

@@ -45,7 +45,7 @@ class FaceDictionary extends FeatureDictionary<IGridCoord, IFeature<IGridCoord>>
   get upperBounds() { return this._upperBounds; }
 
   add(f: IFeature<IGridCoord>): boolean {
-    var wasAdded = super.add(f);
+    let wasAdded = super.add(f);
     if (wasAdded) {
       this.updateBounds(f.position);
     }
@@ -67,17 +67,10 @@ class FaceDictionary extends FeatureDictionary<IGridCoord, IFeature<IGridCoord>>
     return super.get(this._clampedCoord);
   }
 
-  remove(coord: IGridCoord): IFeature<IGridCoord> | undefined {
-    var removed = super.remove(coord);
-    if (removed === undefined) {
-      return undefined;
-    }
-  }
-
   // Assigns a new colour to the co-ordinate, returning the old colour or
   // undefined if there wasn't one (ignoring bounds.)
   replace(f: IFeature<IGridCoord>): IFeature<IGridCoord> | undefined {
-    var oldFeature = super.remove(f.position); // skip the bounds re-calculate
+    let oldFeature = super.remove(f.position); // skip the bounds re-calculate
     if (oldFeature !== undefined) {
       super.add(f); // can skip this bounds re-calculate too
     } else {
@@ -99,7 +92,7 @@ class FaceDictionary extends FeatureDictionary<IGridCoord, IFeature<IGridCoord>>
         f.position.x < newLowerBounds.x || f.position.x > newUpperBounds.x ||
         f.position.y < newLowerBounds.y || f.position.y > newUpperBounds.y
       )];
-      for (var f of toDelete) {
+      for (let f of toDelete) {
         this.remove(f.position);
       }
     }
@@ -165,8 +158,8 @@ export class MapColouring {
   private calculateWallBounds(lowerBounds: THREE.Vector2, upperBounds: THREE.Vector2) {
     lowerBounds.set(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
     upperBounds.set(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER);
-    for (var w of this._walls) {
-      for (var adj of this._geometry.getEdgeFaceAdjacency(w.position)) {
+    for (let w of this._walls) {
+      for (let adj of this._geometry.getEdgeFaceAdjacency(w.position)) {
         lowerBounds.x = Math.min(lowerBounds.x, adj.x);
         lowerBounds.y = Math.min(lowerBounds.y, adj.y);
         upperBounds.x = Math.max(upperBounds.x, adj.x);
@@ -178,7 +171,7 @@ export class MapColouring {
   }
 
   colourOf(coord: IGridCoord): number {
-    var f = this._faces.get(coord);
+    let f = this._faces.get(coord);
     //assert(f?.colour !== -1);
     return f?.colour ?? 0;
   }
@@ -200,7 +193,7 @@ export class MapColouring {
 
   // Gets a dictionary of all the walls adjacent to a particular map colour.
   getWallsOfColour(colour: number) {
-    var walls = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
+    let walls = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
     this._walls.forEach(w => {
       this._geometry.getEdgeFaceAdjacency(w.position).forEach(f => {
         if (this.colourOf(f) === colour) {
@@ -224,9 +217,9 @@ export class MapColouring {
     //console.log("Filling " + maybeColour + " from " + coordString(startCoord) + " with bounds " + lowerBounds.toArray() + ", " + upperBounds.toArray());
 
     const colour = maybeFeature.colour;
-    var stack = [startCoord];
+    let stack = [startCoord];
     while (true) {
-      var coord = stack.pop();
+      let coord = stack.pop();
       if (coord === undefined) {
         break;
       }
@@ -242,7 +235,7 @@ export class MapColouring {
           return;
         }
 
-        var oldFeature = this._faces.replace({ position: face, colour: colour });
+        let oldFeature = this._faces.replace({ position: face, colour: colour });
         if (oldFeature?.colour !== colour) {
           stack.push(face);
         }
@@ -256,14 +249,14 @@ export class MapColouring {
 
   recalculate() {
     this._toFill.clear();
-    var newColours: { [colour: number]: boolean } = {};
+    let newColours: { [colour: number]: boolean } = {};
 
     // Make all the wall edits, and populate our dictionary of things to fill
-    var addedLowerWallBounds = new THREE.Vector2(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
-    var addedUpperWallBounds = new THREE.Vector2(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER);
-    var removedCount = 0;
+    let addedLowerWallBounds = new THREE.Vector2(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
+    let addedUpperWallBounds = new THREE.Vector2(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER);
+    let removedCount = 0;
     this._pending.forEach(pw => {
-      var adjacentFaces = this._geometry.getEdgeFaceAdjacency(pw.position);
+      let adjacentFaces = this._geometry.getEdgeFaceAdjacency(pw.position);
       if (pw.present === false) {
         if (this._walls.remove(pw.position) === undefined) {
           return;
@@ -283,7 +276,7 @@ export class MapColouring {
 
         // We assign a fresh colour to each side of the wall
         adjacentFaces.forEach(a => {
-          var newColour = this._nextColour++;
+          let newColour = this._nextColour++;
           this._toFill.set({ position: a, colour: newColour });
           newColours[newColour] = true;
 
@@ -330,7 +323,7 @@ export class MapColouring {
       // (This may or may not be redundant but it's a bit hard to determine)
       // We can safely use the zero colour for the outside; that's all it can ever
       // have been.
-      var boundsPosition = { x: this._lowerWallBounds.x, y: this._upperWallBounds.y };
+      let boundsPosition = { x: this._lowerWallBounds.x, y: this._upperWallBounds.y };
       this._faces.replace({ position: boundsPosition, colour: 0 });
       this.fill(boundsPosition, this._lowerWallBounds, this._upperWallBounds);
     }
@@ -343,15 +336,15 @@ export class MapColouring {
   ) {
     // Count the number of unique map colours
     // TODO would it be better to be maintaining this dictionary as we go?
-    var colourUsage: { [colour: number]: number } = {};
+    let colourUsage: { [colour: number]: number } = {};
     this._faces.forEach(f => {
       colourUsage[f.colour] = 0;
     });
 
     // Assign them all hues in the range [0..mapColourCount]
-    var hues: { [colour: number]: number } = {};
-    var mapColourCount = [0];
-    for (var c in colourUsage) {
+    let hues: { [colour: number]: number } = {};
+    let mapColourCount = [0];
+    for (let c in colourUsage) {
       hues[c] = mapColourCount[0]++;
     }
 

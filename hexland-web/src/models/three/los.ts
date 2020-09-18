@@ -254,7 +254,7 @@ export class LoS extends Drawn {
   // Renders the LoS frames.  Overwrites the render target and clear colours.
   // TODO Can I sometimes avoid re-rendering these?  Separate the `needsRedraw` flags?
   render(camera: THREE.Camera, fixedCamera: THREE.Camera, renderer: THREE.WebGLRenderer) {
-    var zOffset = 0;
+    let zOffset = 0;
 
     // Always clear the composed target to begin with (otherwise, with 0 token positions to
     // render, we'll end up returning the old composed target!)

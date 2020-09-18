@@ -2,13 +2,13 @@ import { IGridCoord, IGridEdge, CoordDictionary, coordString, coordsEqual, edgeS
 
 test('convert to and from grid coords', () => {
   const tileDim = 12;
-  for (var i = 0; i < 5000; ++i) {
-    var x = Math.floor(Math.random() * 1000) - 500;
-    var y = Math.floor(Math.random() * 1000) - 500;
-    var coord = { x: x, y: y };
-    var tile = getTile(coord, tileDim);
-    var face = getFace(coord, tileDim);
-    var coord2 = createGridCoord(tile, face, tileDim);
+  for (let i = 0; i < 5000; ++i) {
+    let x = Math.floor(Math.random() * 1000) - 500;
+    let y = Math.floor(Math.random() * 1000) - 500;
+    let coord = { x: x, y: y };
+    let tile = getTile(coord, tileDim);
+    let face = getFace(coord, tileDim);
+    let coord2 = createGridCoord(tile, face, tileDim);
 
     expect(face.x).toBeGreaterThanOrEqual(0);
     expect(face.x).toBeLessThan(tileDim);
@@ -18,11 +18,11 @@ test('convert to and from grid coords', () => {
 
     expect(coordsEqual(coord, coord2)).toBeTruthy();
 
-    var e = Math.floor(Math.random() * 3);
-    var edge = { x: x, y: y, edge: e };
+    let e = Math.floor(Math.random() * 3);
+    let edge = { x: x, y: y, edge: e };
     tile = getTile(edge, tileDim);
     face = getFace(edge, tileDim);
-    var edge2 = createGridEdge(tile, face, tileDim, e);
+    let edge2 = createGridEdge(tile, face, tileDim, e);
 
     expect(face.x).toBeGreaterThanOrEqual(0);
     expect(face.x).toBeLessThan(tileDim);
@@ -35,20 +35,20 @@ test('convert to and from grid coords', () => {
 });
 
 test('grid coord dictionary entries', () => {
-  var dict = new CoordDictionary<IGridCoord, number>(coordString);
-  var a = { x: 0, y: 0 };
-  var b = { x: 0, y: 1 };
-  var c = { x: -8, y: 1 };
-  var d = { x: -2, y: 66 };
-  var e = { x: -2, y: 83 };
+  let dict = new CoordDictionary<IGridCoord, number>(coordString);
+  let a = { x: 0, y: 0 };
+  let b = { x: 0, y: 1 };
+  let c = { x: -8, y: 1 };
+  let d = { x: -2, y: 66 };
+  let e = { x: -2, y: 83 };
 
-  var b2 = { x: 0, y: 1 };
+  let b2 = { x: 0, y: 1 };
 
   // At the start everything should be empty
   expect(dict.get(a)).toBeUndefined();
 
-  var allKeys: IGridCoord[] = [];
-  var allValues: number[] = [];
+  let allKeys: IGridCoord[] = [];
+  let allValues: number[] = [];
   dict.foreach((k, v) => {
     allKeys.push(k);
     allValues.push(v);
@@ -94,13 +94,13 @@ test('grid coord dictionary entries', () => {
 });
 
 test('grid edge dictionary entries', () => {
-  var dict = new CoordDictionary<IGridEdge, number>(edgeString);
-  var a = { x: 0, y: 0, edge: 0 };
-  var b = { x: 0, y: 1, edge: 0 };
-  var c = { x: 0, y: 0, edge: 1 };
-  var d = { x: 0, y: 1, edge: 1 };
+  let dict = new CoordDictionary<IGridEdge, number>(edgeString);
+  let a = { x: 0, y: 0, edge: 0 };
+  let b = { x: 0, y: 1, edge: 0 };
+  let c = { x: 0, y: 0, edge: 1 };
+  let d = { x: 0, y: 1, edge: 1 };
   
-  var c2 = { x: 0, y: 0, edge: 1 };
+  let c2 = { x: 0, y: 0, edge: 1 };
 
   dict.set(a, 61);
   dict.set(b, 62);
@@ -111,8 +111,8 @@ test('grid edge dictionary entries', () => {
   expect(dict.get(c2)).toBe(63);
   expect(dict.get(d)).toBeUndefined();
 
-  var allKeys: IGridEdge[] = [];
-  var allValues: number[] = [];
+  let allKeys: IGridEdge[] = [];
+  let allValues: number[] = [];
   dict.foreach((k, v) => {
     allKeys.push(k);
     allValues.push(v);

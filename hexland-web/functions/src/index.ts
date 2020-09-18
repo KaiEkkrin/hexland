@@ -8,7 +8,10 @@ import * as CORS from 'cors';
 
 const corsHandler = CORS({
   origin: [
-    'http://localhost'
+    'http://localhost',
+    'http://localhost:3000',
+    'https://hexland.web.app',
+    'https://hexland-test.web.app'
   ]
 });
 

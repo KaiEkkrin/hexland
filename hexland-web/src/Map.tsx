@@ -78,7 +78,7 @@ function Map(props: IMapPageProps) {
 
     // TODO remove debug after confirming we don't multiple-watch things
     console.log("Watching adventure " + props.adventureId + ", map " + props.mapId);
-    var mapRef = userContext.dataService.getMapRef(props.adventureId, props.mapId);
+    let mapRef = userContext.dataService.getMapRef(props.adventureId, props.mapId);
     return userContext.dataService.watch<IMap>(
       mapRef, m => setMap(m === undefined ? undefined : {
         adventureId: props.adventureId,
@@ -149,7 +149,7 @@ function Map(props: IMapPageProps) {
   // This helps us focus somewhere useful when the map becomes visible
   useEffect(() => {
     if (canSeeAnything === false) {
-      var removeToast = addToast(statusContext, {
+      let removeToast = addToast(statusContext, {
         title: "No tokens available",
         message: "The map owner has not assigned you any tokens, so you will not see any of the map yet.  If you remain on this page until they do, it will update."
       });
@@ -159,6 +159,8 @@ function Map(props: IMapPageProps) {
         removeToast();
         stateMachine?.resetView();
       };
+    } else {
+      return undefined;
     }
   }, [statusContext, canSeeAnything, stateMachine]);
 
@@ -243,7 +245,7 @@ function Map(props: IMapPageProps) {
   const handleMapEditorSave = useCallback(async (adventureId: string, updated: IMap) => {
     setShowMapEditor(false);
     if (userContext.dataService !== undefined && map !== undefined) {
-      var dataService = userContext.dataService;
+      let dataService = userContext.dataService;
 
       if (map.record.ffa === true && updated.ffa === false) {
         // We should do a consolidate first, otherwise we might be invalidating the
@@ -301,9 +303,9 @@ function Map(props: IMapPageProps) {
   }, [addChanges, handleModalClose, noteToEditPosition, stateMachine]);
 
   const handleTokenDeletion = useCallback(() => {
-    var changes: IChange[] = [];
-    for (var t of tokensToDelete) {
-      var chs = stateMachine?.setTokenPosition(t.position, undefined);
+    let changes: IChange[] = [];
+    for (let t of tokensToDelete) {
+      let chs = stateMachine?.setTokenPosition(t.position, undefined);
       if (chs !== undefined) {
         changes.push(...chs);
       }
@@ -338,13 +340,13 @@ function Map(props: IMapPageProps) {
   );
 
   const getClientPosition = useCallback((clientX: number, clientY: number) => {
-    var bounds = drawingRef.current?.getBoundingClientRect();
+    let bounds = drawingRef.current?.getBoundingClientRect();
     if (bounds === undefined) {
       return undefined;
     }
 
-    var x = clientX - bounds.left;
-    var y = clientY - bounds.top;
+    let x = clientX - bounds.left;
+    let y = clientY - bounds.top;
     return new THREE.Vector3(x, bounds.height - y - 1, 0);
   }, [drawingRef]);
 
@@ -361,21 +363,21 @@ function Map(props: IMapPageProps) {
   }, [setShowTokenEditor, setTokenToEdit, setTokenToEditPosition]);
 
   const editNoteFromMenu = useCallback(() => {
-    var cp = getClientPosition(contextMenuX, contextMenuY);
+    let cp = getClientPosition(contextMenuX, contextMenuY);
     if (cp !== undefined) {
       editNote(cp, stateMachine?.getNote(cp));
     }
   }, [contextMenuX, contextMenuY, editNote, getClientPosition, stateMachine]);
 
   const editTokenFromMenu = useCallback(() => {
-    var cp = getClientPosition(contextMenuX, contextMenuY);
+    let cp = getClientPosition(contextMenuX, contextMenuY);
     if (cp !== undefined) {
       editToken(cp, stateMachine?.getToken(cp));
     }
   }, [contextMenuX, contextMenuY, editToken, getClientPosition, stateMachine]);
 
   const handleContextMenu = useCallback((e: MouseEvent) => {
-    var bounds = drawingRef.current?.getBoundingClientRect();
+    let bounds = drawingRef.current?.getBoundingClientRect();
     if (bounds === undefined) {
       return;
     }
@@ -387,7 +389,7 @@ function Map(props: IMapPageProps) {
     setContextMenuPageRight(bounds.right);
     setContextMenuPageBottom(bounds.bottom);
 
-    var cp = getClientPosition(e.clientX, e.clientY);
+    let cp = getClientPosition(e.clientX, e.clientY);
     if (cp !== undefined) {
       setContextMenuToken(stateMachine?.getToken(cp));
       setContextMenuNote(stateMachine?.getNote(cp));
@@ -451,7 +453,7 @@ function Map(props: IMapPageProps) {
       e.preventDefault();
     } else if (e.key === 'Delete') {
       // This invokes the token deletion if we've got tokens selected.
-      var tokens = [...stateMachine.getSelectedTokens()];
+      let tokens = [...stateMachine.getSelectedTokens()];
       if (canDoAnything && tokens.length > 0) {
         setShowTokenDeletion(true);
         setTokensToDelete(tokens);
@@ -478,7 +480,7 @@ function Map(props: IMapPageProps) {
   // *** Handler helpers to cover the common functionality between mouse and touch ***
 
   const handleInteractionEnd = useCallback((cp: THREE.Vector3, shiftKey: boolean) => {
-    var changes: IChange[] | undefined;
+    let changes: IChange[] | undefined;
     if (isDraggingView) {
       stateMachine?.panEnd();
       setIsDraggingView(false);
@@ -555,7 +557,7 @@ function Map(props: IMapPageProps) {
 
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     setShowContextMenu(false);
-    var cp = getClientPosition(e.clientX, e.clientY);
+    let cp = getClientPosition(e.clientX, e.clientY);
     if (cp === undefined || anEditorIsOpen || e.button !== 0 || movementKeyDown) {
       return;
     }
@@ -565,7 +567,7 @@ function Map(props: IMapPageProps) {
   }, [anEditorIsOpen, getClientPosition, handleInteractionStart, movementKeyDown, setMouseDown, setShowContextMenu]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    var cp = getClientPosition(e.clientX, e.clientY);
+    let cp = getClientPosition(e.clientX, e.clientY);
     if (cp === undefined || anEditorIsOpen || movementKeyDown) {
       return undefined;
     }
@@ -574,7 +576,7 @@ function Map(props: IMapPageProps) {
   }, [anEditorIsOpen, getClientPosition, handleInteractionMove, movementKeyDown]);
 
   const handleMouseUp = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    var cp = handleMouseMove(e);
+    let cp = handleMouseMove(e);
     if (cp === undefined || anEditorIsOpen || e.button !== 0 || movementKeyDown) {
       return;
     }
@@ -584,7 +586,7 @@ function Map(props: IMapPageProps) {
   }, [anEditorIsOpen, handleInteractionEnd, handleMouseMove, movementKeyDown, setMouseDown]);
 
   const isTrackingTouch = useCallback((e: React.TouchEvent) => {
-    for (var i = 0; i < e.changedTouches.length; ++i) {
+    for (let i = 0; i < e.changedTouches.length; ++i) {
       if (e.changedTouches[i].identifier === touch) {
         return e.changedTouches[i];
       }
@@ -595,12 +597,12 @@ function Map(props: IMapPageProps) {
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     // This only takes effect if the touch we're tracking has changed
-    var t = isTrackingTouch(e);
+    let t = isTrackingTouch(e);
     if (t === undefined) {
       return undefined;
     }
 
-    var cp = getClientPosition(t.clientX, t.clientY);
+    let cp = getClientPosition(t.clientX, t.clientY);
     if (cp === undefined || anEditorIsOpen || movementKeyDown) {
       return undefined;
     }
@@ -610,7 +612,7 @@ function Map(props: IMapPageProps) {
   }, [anEditorIsOpen, getClientPosition, handleInteractionMove, isTrackingTouch, movementKeyDown]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    var x = handleTouchMove(e);
+    let x = handleTouchMove(e);
     if (x === undefined || anEditorIsOpen || movementKeyDown) {
       return;
     }
@@ -624,9 +626,9 @@ function Map(props: IMapPageProps) {
       return;
     }
 
-    var t = e.changedTouches[0];
+    let t = e.changedTouches[0];
     setShowContextMenu(false);
-    var cp = getClientPosition(t.clientX, t.clientY);
+    let cp = getClientPosition(t.clientX, t.clientY);
     if (cp === undefined || anEditorIsOpen || movementKeyDown) {
       return;
     }
@@ -665,6 +667,8 @@ function Map(props: IMapPageProps) {
       return () => {
         document.removeEventListener('contextmenu', handleContextMenu);
       };
+    } else {
+      return undefined;
     }
   }, [canDoAnything, handleContextMenu]);
 
