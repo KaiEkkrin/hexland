@@ -432,7 +432,7 @@ export class MapStateMachine {
     this._drawing.selectionDrag.clear();
     this._drawing.selectionDragRed.clear();
     const delta = this.getTokenMoveDelta(position);
-    if (delta !== undefined && !coordsEqual(delta, { x: 0, y: 0 }) && this.canDropSelectionAt(position)) {
+    if (delta !== undefined && this.canDropSelectionAt(position)) {
       // Create commands that move all the tokens
       for (const s of this._drawing.selection) {
         const tokenHere = this._drawing.tokens.get(s.position);
@@ -440,10 +440,15 @@ export class MapStateMachine {
           continue;
         }
 
-        chs.push(createTokenMove(s.position, coordAdd(s.position, delta), tokenHere.id));
+        // Don't create changes if the tokens didn't actually move anywhere (saves us some writes)
+        if (!coordsEqual(delta, { x: 0, y: 0 })) {
+          chs.push(createTokenMove(s.position, coordAdd(s.position, delta), tokenHere.id));
+        }
       }
 
-      // Move the selection to the target positions.
+      // Move the selection to the target positions.  (Even if they haven't moved, we need
+      // to do this in order to activate the correct LoS for these tokens if different ones
+      // were previously selected.)
       // Careful, we need to remove all old positions before adding the new ones, otherwise
       // we can end up not re-selecting some of the tokens
       const removed = [...fluent(this._drawing.selection).map(t => this._drawing.selection.remove(t.position))];
