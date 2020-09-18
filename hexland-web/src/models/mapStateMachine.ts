@@ -15,6 +15,7 @@ import { IChange, createTokenRemove, createTokenAdd, createNoteRemove, createNot
 import { trackChanges } from '../data/changeTracking';
 import { IGridCoord, coordString, coordsEqual, coordSub, coordAdd } from '../data/coord';
 import { FeatureDictionary, IToken, ITokenProperties } from '../data/feature';
+import { IAdventureIdentified } from '../data/identified';
 import { IMap, MapType } from '../data/map';
 
 import { createDrawing } from './three/drawing';
@@ -69,7 +70,7 @@ export function createDefaultState(): IMapState {
 // Any other mutable fields in here are state that the owning component should
 // never find out about.
 export class MapStateMachine {
-  private readonly _map: IMap;
+  private readonly _map: IAdventureIdentified<IMap>;
   private readonly _uid: string;
 
   private readonly _drawing: IDrawing;
@@ -122,7 +123,7 @@ export class MapStateMachine {
   private _isDisposed = false;
 
   constructor(
-    map: IMap,
+    map: IAdventureIdentified<IMap>,
     uid: string,
     colours: FeatureColour[],
     mount: HTMLDivElement,
@@ -139,7 +140,7 @@ export class MapStateMachine {
     };
     this._setState(this._state);
 
-    this._gridGeometry = map.ty === MapType.Hex ?
+    this._gridGeometry = map.record.ty === MapType.Hex ?
       new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
 
     this._drawing = createDrawing(this._gridGeometry, colours, mount, this.seeEverything);
@@ -203,7 +204,7 @@ export class MapStateMachine {
     this._drawing.animate(this.onPreAnimate, this.onPostAnimate);
   }
 
-  private get seeEverything() { return this._uid === this._map.owner || this._map.ffa === true; }
+  private get seeEverything() { return this._uid === this._map.record.owner || this._map.record.ffa === true; }
 
   private buildLoS(state: IMapState) {
     this._drawing.setLoSPositions(this.getLoSPositions(), this.seeEverything);
@@ -251,7 +252,7 @@ export class MapStateMachine {
     var changeTracker = new MapChangeTracker(
       this._drawing.areas, this._drawing.tokens.clone(), this._drawing.walls, this._notes, this._mapColouring
     );
-    return trackChanges(this._map, changeTracker, changes, this._uid);
+    return trackChanges(this._map.record, changeTracker, changes, this._uid);
   }
 
   private canSelectToken(t: IToken) {
@@ -569,6 +570,7 @@ export class MapStateMachine {
   }
 
   get changeTracker() { return this._changeTracker; }
+  get map() { return this._map; }
   get panningX() { return this._panningX; }
   get panningY() { return this._panningY; }
 

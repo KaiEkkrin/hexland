@@ -11,13 +11,9 @@ import { IAuth, IUser, IAuthProvider } from '../../services/interfaces';
 
 import { v4 as uuidv4 } from 'uuid';
 
-export const FirebaseContext = React.createContext<IFirebaseContext>({
-  auth: undefined,
-  db: undefined,
-  googleAuthProvider: undefined,
-  timestampProvider: undefined,
-  createAnalytics: undefined
-});
+const region = 'europe-west2';
+
+export const FirebaseContext = React.createContext<IFirebaseContext>({});
 
 // This module provides a Firebase context provider that uses the simulator.
 // To do this, we need to track project IDs (different for every test and database)
@@ -53,14 +49,7 @@ function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) 
     uid: 'owner'
   }), [props.user]);
 
-  const [firebaseContext, setFirebaseContext] = useState<IFirebaseContext>({
-    auth: undefined,
-    db: undefined,
-    googleAuthProvider: undefined,
-    timestampProvider: undefined,
-    createAnalytics: undefined
-  });
-
+  const [firebaseContext, setFirebaseContext] = useState<IFirebaseContext>({});
   useEffect(() => {
     if (props.projectId === undefined) {
       throw RangeError("Project id must be defined in testing");
@@ -75,6 +64,7 @@ function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) 
     setFirebaseContext({
       auth: simulatedAuth,
       db: emul.firestore(),
+      functions: emul.functions(region),
       googleAuthProvider: {},
       timestampProvider: () => timestamp++,
       createAnalytics: undefined

@@ -129,6 +129,12 @@ export interface IDataView {
   update<T>(r: IDataReference<T>, changes: any): Promise<void>;
 }
 
+// Provides access to Firebase Functions.
+export interface IFunctionsService {
+  // Consolidates changes in the given map.
+  consolidateMapChanges(adventureId: string, mapId: string): Promise<void>;
+}
+
 // Provides logging for the extensions.
 export interface ILogger {
   logError(message: string, ...optionalParams: any[]): void;

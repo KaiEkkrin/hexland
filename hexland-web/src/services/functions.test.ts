@@ -1,8 +1,8 @@
-import * as Convert from './converter';
 import { DataService } from './dataService';
 import { editAdventure, editMap, ensureProfile, getAllMapChanges } from './extensions';
+import { FunctionsService } from './functions';
 import { IUser } from './interfaces';
-import { ChangeCategory, ChangeType, IChanges, ITokenAdd, ITokenMove, IWallAdd } from '../data/change';
+import { ChangeCategory, ChangeType, ITokenAdd, ITokenMove, IWallAdd } from '../data/change';
 import { MapType } from '../data/map';
 
 import * as firebase from 'firebase/app';
@@ -77,6 +77,7 @@ describe('test functions', () => {
   async function testConsolidate(moveCount: number) {
     const functions = emul['owner'].functions;
     functions.useFunctionsEmulator('http://localhost:5001');
+    const functionsService = new FunctionsService(functions);
 
     // make sure my user is set up
     const db = emul['owner'].db;
@@ -167,9 +168,7 @@ describe('test functions', () => {
     expect(changes).toHaveLength(2 + moveCount);
 
     // Call the consolidate function:
-    const consolidateMapChanges = functions.httpsCallable('consolidateMapChanges');
-    var consolidateResult = await consolidateMapChanges({ adventureId: a1Id, mapId: m1Id });
-    expect(consolidateResult).toBeTruthy();
+    await functionsService.consolidateMapChanges(a1Id, m1Id);
 
     // After doing that, we should have only one changes record, thus:
     async function verifyBaseChangesRecord(expectedX: number) {
@@ -200,8 +199,7 @@ describe('test functions', () => {
       await dataService.addChanges(a1Id, 'owner', m1Id, [createMoveToken1(i)]);
     }
 
-    consolidateResult = await consolidateMapChanges({ adventureId: a1Id, mapId: m1Id });
-    expect(consolidateResult).toBeTruthy();
+    await functionsService.consolidateMapChanges(a1Id, m1Id);
     await verifyBaseChangesRecord(moveCount * 2);
   }
 

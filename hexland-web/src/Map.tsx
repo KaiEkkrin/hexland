@@ -4,7 +4,7 @@ import './Map.css';
 
 import { addToast } from './components/extensions';
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
-import { FirebaseContext } from './components/FirebaseContextProvider';
+import { IAnalyticsContext } from './components/interfaces';
 import MapContextMenu from './components/MapContextMenu';
 import MapControls, { EditMode, MapColourVisualisationMode } from './components/MapControls';
 import MapAnnotations, { ShowAnnotationFlags } from './components/MapAnnotations';
@@ -25,8 +25,8 @@ import { trackChanges } from './data/changeTracking';
 import { IToken, ITokenProperties } from './data/feature';
 import { IAdventureIdentified } from './data/identified';
 import { IMap } from './data/map';
-import { registerMapAsRecent, consolidateMapChanges, editMap } from './services/extensions';
-import consoleLogger from './services/consoleLogger';
+import { registerMapAsRecent, editMap } from './services/extensions';
+import { IDataService, IFunctionsService } from './services/interfaces';
 
 import { standardColours } from './models/featureColour';
 import * as Keys from './models/keys';
@@ -39,7 +39,6 @@ import fluent from 'fluent-iterable';
 
 // The map component is rather large because of all the state that got pulled into it...
 function Map(props: IMapPageProps) {
-  const firebaseContext = useContext(FirebaseContext);
   const userContext = useContext(UserContext);
   const analyticsContext = useContext(AnalyticsContext);
   const statusContext = useContext(StatusContext);
@@ -48,9 +47,16 @@ function Map(props: IMapPageProps) {
 
   const [map, setMap] = useState(undefined as IAdventureIdentified<IMap> | undefined);
   const [players, setPlayers] = useState([] as IPlayer[]);
-  const [stateMachine, setStateMachine] = useState(undefined as MapStateMachine | undefined);
   const [canDoAnything, setCanDoAnything] = useState(false);
   const [mapState, setMapState] = useState(createDefaultState());
+
+  // Building the map state machine like this lets us auto-dispose old ones:
+  const [stateMachine, setStateMachine] = useReducer(
+    (state: MapStateMachine | undefined, action: (() => MapStateMachine) | undefined) => {
+      state?.dispose();
+      return action?.();
+    }, undefined
+  );
 
   // Hide scroll bars whilst viewing the map.
   useEffect(() => {
@@ -83,11 +89,35 @@ function Map(props: IMapPageProps) {
     );
   }, [userContext.dataService, analyticsContext.analytics, props.adventureId, props.mapId]);
 
-  // Track changes to the map
+  // Track changes to the map.
+  // We don't start watching until we have an initialised state machine (which means the
+  // consolidate is done).
+  // The "openMap" utility's dependencies are deliberately limited to prevent it from being
+  // re-created and causing lots of extra Firebase work.
+  const openMap = useCallback(async (analyticsContext: IAnalyticsContext, dataService: IDataService, functionsService: IFunctionsService, uid: string, map: IAdventureIdentified<IMap>, mount: HTMLDivElement) => {
+    // These two calls are both done on a best-effort basis, because failing shouldn't
+    // preclude us from opening the map (although hopefully they will succeed)
+    try {
+      registerMapAsRecent(dataService, uid, map.adventureId, map.id, map.record);
+    } catch (e) {
+      analyticsContext.logError("Error registering map " + map.adventureId + "/" + map.id + " as recent", e);
+    }
+
+    try {
+      functionsService.consolidateMapChanges(map.adventureId, map.id);
+    } catch (e) {
+      analyticsContext.logError("Error consolidating map " + map.adventureId + "/" + map.id + " changes", e);
+    }
+
+    setStateMachine(() => new MapStateMachine(map, uid, standardColours, mount, setMapState));
+  }, [setMapState, setStateMachine]);
+
   useEffect(() => {
     const uid = userContext.user?.uid;
     if (
-      userContext.dataService === undefined || map === undefined ||
+      userContext.dataService === undefined ||
+      userContext.functionsService === undefined ||
+      map === undefined ||
       uid === undefined ||
       drawingRef?.current === null
     ) {
@@ -95,28 +125,21 @@ function Map(props: IMapPageProps) {
       return;
     }
 
-    registerMapAsRecent(userContext.dataService, uid, map.adventureId, map.id, map.record)
-      .catch(e => analyticsContext.logError("Error registering map as recent", e));
-    if (userContext.user?.uid === map.record.owner) {
-      consolidateMapChanges(userContext.dataService, consoleLogger, firebaseContext.timestampProvider, map.adventureId, map.id, map.record)
-        .catch(e => analyticsContext.logError("Error consolidating map changes", e));
+    openMap(analyticsContext, userContext.dataService, userContext.functionsService, uid, map, drawingRef?.current)
+      .catch(e => analyticsContext.logError("Error opening map", e));
+  }, [analyticsContext, drawingRef, openMap, map, userContext]);
+
+  useEffect(() => {
+    if (stateMachine === undefined) {
+      return;
     }
 
-    var sm = new MapStateMachine(
-      map.record, uid, standardColours, drawingRef.current, setMapState
-    );
-    setStateMachine(sm);
-
-    console.log("Watching changes to map " + map.id);
-    var stopWatchingChanges = userContext.dataService.watchChanges(map.adventureId, map.id,
-      chs => trackChanges(map.record, sm.changeTracker, chs.chs, chs.user),
+    console.log("Watching changes to map " + stateMachine.map.id);
+    return userContext.dataService?.watchChanges(
+      stateMachine.map.adventureId, stateMachine.map.id,
+      chs => trackChanges(stateMachine.map.record, stateMachine.changeTracker, chs.chs, chs.user),
       e => analyticsContext.logError("Error watching map changes", e));
-    
-    return () => {
-      stopWatchingChanges();
-      sm.dispose();
-    };
-  }, [userContext.dataService, userContext.user, firebaseContext.timestampProvider, analyticsContext, map]);
+  }, [analyticsContext, stateMachine, userContext]);
 
   // If we can't see anything, notify the user
   const canSeeAnything = useMemo(() => {
@@ -217,22 +240,29 @@ function Map(props: IMapPageProps) {
     stateMachine?.setShowMapColourVisualisation(mapColourMode === MapColourVisualisationMode.Connectivity);
   }, [stateMachine, mapColourMode]);
 
-  const handleMapEditorSave = useCallback((adventureId: string, updated: IMap) => {
+  const handleMapEditorSave = useCallback(async (adventureId: string, updated: IMap) => {
     setShowMapEditor(false);
     if (userContext.dataService !== undefined && map !== undefined) {
       var dataService = userContext.dataService;
 
-      // We should always do a consolidate here to avoid accidentally invalidating
-      // any recent changes when switching from FFA to non-FFA mode, for example.
-      // TODO #64 I should make this update to the map record inside the consolidate transaction,
-      // shouldn't I?  (Except, if I turn the consolidate into a Firebase function,
-      // that's not going to fly...  Maybe it's fine.)
-      consolidateMapChanges(dataService, consoleLogger, firebaseContext.timestampProvider, map.adventureId, map.id, map.record)
-        .then(() => editMap(dataService, map.adventureId, map.id, updated))
-        .then(() => console.log("Updated map"))
-        .catch(e => analyticsContext.logError("Failed to update map:", e));
+      if (map.record.ffa === true && updated.ffa === false) {
+        // We should do a consolidate first, otherwise we might be invalidating the
+        // backlog of non-owner moves.
+        try {
+          await userContext.functionsService?.consolidateMapChanges(map.adventureId, map.id);
+        } catch (e) {
+          analyticsContext.logError("Error consolidating map " + map.adventureId + "/" + map.id + " changes", e);
+        }
+      }
+
+      try {
+        await editMap(dataService, map.adventureId, map.id, updated);
+        console.log("Updated map");
+      } catch (e) {
+        analyticsContext.logError("Failed to update map: ", e);
+      }
     }
-  }, [firebaseContext.timestampProvider, analyticsContext, map, setShowMapEditor, userContext.dataService]);
+  }, [analyticsContext, map, setShowMapEditor, userContext]);
 
   const handleModalClose = useCallback(() => {
     setShowMapEditor(false);

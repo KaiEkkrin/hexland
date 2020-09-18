@@ -1,26 +1,28 @@
 import { Subject } from 'rxjs';
 import { IIdentified } from '../data/identified';
-import { IDataService, IUser, IAuth, IAuthProvider, IAnalytics } from '../services/interfaces';
+import { IDataService, IUser, IAuth, IAuthProvider, IAnalytics, IFunctionsService } from '../services/interfaces';
 
 export interface IContextProviderProps {
   children: React.ReactNode;
 }
  
 export interface IFirebaseContext {
-  auth: IAuth | undefined;
-  db: firebase.firestore.Firestore | undefined;
-  googleAuthProvider: IAuthProvider | undefined;
+  auth?: IAuth | undefined;
+  db?: firebase.firestore.Firestore | undefined;
+  functions?: firebase.functions.Functions | undefined;
+  googleAuthProvider?: IAuthProvider | undefined;
   // Return a numeric value in testing where the server timestamp isn't accessible
-  timestampProvider: (() => firebase.firestore.FieldValue | number) | undefined;
+  timestampProvider?: (() => firebase.firestore.FieldValue | number) | undefined;
   // Creates an Analytics provider
-  createAnalytics: (() => IAnalytics) | undefined;
+  createAnalytics?: (() => IAnalytics) | undefined;
 }
 
 export interface IUserContext {
   user: IUser | null | undefined; // This is the field to query for "is a user logged in?"
                                   // undefined means "I don't know yet, wait"
                                   // null means "Not logged in"
-  dataService: IDataService | undefined;
+  dataService?: IDataService | undefined;
+  functionsService?: IFunctionsService | undefined;
 }
 
 export interface IAnalyticsContext {

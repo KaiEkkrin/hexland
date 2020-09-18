@@ -18,6 +18,7 @@ import { v4 as uuidv4 } from 'uuid';
 jest.mock('./components/FirebaseContextProvider');
 jest.mock('./components/Routing');
 jest.mock('./models/three/drawing.ts');
+jest.mock('./services/functions.ts');
 
 // We mock `useHistory` providing this way to wait for changes:
 
