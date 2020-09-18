@@ -26,6 +26,7 @@ import { IToken, ITokenProperties } from './data/feature';
 import { IAdventureIdentified } from './data/identified';
 import { IMap } from './data/map';
 import { registerMapAsRecent, consolidateMapChanges, editMap } from './services/extensions';
+import consoleLogger from './services/consoleLogger';
 
 import { standardColours } from './models/featureColour';
 import * as Keys from './models/keys';
@@ -97,7 +98,7 @@ function Map(props: IMapPageProps) {
     registerMapAsRecent(userContext.dataService, uid, map.adventureId, map.id, map.record)
       .catch(e => analyticsContext.logError("Error registering map as recent", e));
     if (userContext.user?.uid === map.record.owner) {
-      consolidateMapChanges(userContext.dataService, firebaseContext.timestampProvider, map.adventureId, map.id, map.record)
+      consolidateMapChanges(userContext.dataService, consoleLogger, firebaseContext.timestampProvider, map.adventureId, map.id, map.record)
         .catch(e => analyticsContext.logError("Error consolidating map changes", e));
     }
 
@@ -223,10 +224,10 @@ function Map(props: IMapPageProps) {
 
       // We should always do a consolidate here to avoid accidentally invalidating
       // any recent changes when switching from FFA to non-FFA mode, for example.
-      // TODO I should make this update to the map record inside the consolidate transaction,
+      // TODO #64 I should make this update to the map record inside the consolidate transaction,
       // shouldn't I?  (Except, if I turn the consolidate into a Firebase function,
       // that's not going to fly...  Maybe it's fine.)
-      consolidateMapChanges(dataService, firebaseContext.timestampProvider, map.adventureId, map.id, map.record)
+      consolidateMapChanges(dataService, consoleLogger, firebaseContext.timestampProvider, map.adventureId, map.id, map.record)
         .then(() => editMap(dataService, map.adventureId, map.id, updated))
         .then(() => console.log("Updated map"))
         .catch(e => analyticsContext.logError("Failed to update map:", e));

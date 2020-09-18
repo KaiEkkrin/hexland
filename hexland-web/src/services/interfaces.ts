@@ -59,7 +59,7 @@ export interface IDataService extends IDataView {
   // Gets a map.
   getMapRef(adventureId: string, id: string): IDataReference<IMap>;
   getMapBaseChangeRef(adventureId: string, id: string): IDataReference<IChanges>;
-  getMapChangesRefs(adventureId: string, id: string): Promise<IDataAndReference<IChanges>[] | undefined>;
+  getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number): Promise<IDataAndReference<IChanges>[] | undefined>;
 
   // Gets all my adventures, invites, and player records.
   getMyAdventures(uid: string): Promise<IDataAndReference<IAdventure>[]>;
@@ -127,4 +127,11 @@ export interface IDataView {
   set<T>(r: IDataReference<T>, value: T): Promise<void>; // call this with an explicit type so TypeScript
                                                          // can check you included all the right fields
   update<T>(r: IDataReference<T>, changes: any): Promise<void>;
+}
+
+// Provides logging for the extensions.
+export interface ILogger {
+  logError(message: string, ...optionalParams: any[]): void;
+  logInfo(message: string, ...optionalParams: any[]): void;
+  logWarning(message: string, ...optionalParams: any[]): void;
 }

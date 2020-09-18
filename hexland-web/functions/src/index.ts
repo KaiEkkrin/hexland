@@ -1,5 +1,6 @@
 import { AdminDataService } from './services/adminDataService';
 import * as Extensions from './services/extensions';
+import functionLogger from './services/functionLogger';
 
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
@@ -29,32 +30,13 @@ export const helloWorld = functions.region(region).https.onRequest((request, res
   });
 });
 
-// Second test: check that I can fetch the given map record, via the Admin SDK.
-// TODO #64 remove this (security: it fetches any map regardless of whether you're
-// a player in that adventure or not!)
-
-export const getMap = functions.region(region).https.onRequest(async (request, response) => {
-  corsHandler(request, response, async () => {
-    try {
-      functions.logger.info("calling getMap...");
-      const adventureId = request.body.data['adventureId'];
-      const mapId = request.body.data['mapId'];
-      const mapRef = dataService.getMapRef(adventureId, mapId);
-      const map = await dataService.get(mapRef);
-      response.json({ result: map });
-    } catch (e) {
-      functions.logger.error("getMap error: ", e);
-      response.status(500).json({ error: e.message });
-    }
-  });
-});
-
 // Consolidates map changes.
 
 export const consolidateMapChanges = functions.region(region).https.onRequest(async (request, response) => {
   corsHandler(request, response, async () => {
     try {
       // Fetch the map record in question
+      // TODO #70 Require authorization here (not critical, but would be good)
       const adventureId = request.body.data['adventureId'];
       const mapId = request.body.data['mapId'];
       if (!adventureId || !mapId) {
@@ -69,9 +51,9 @@ export const consolidateMapChanges = functions.region(region).https.onRequest(as
         return;
       }
 
-      // TODO #64: Authorize this only to map owners/players.
       await Extensions.consolidateMapChanges(
         dataService,
+        functionLogger,
         admin.firestore.FieldValue.serverTimestamp,
         String(adventureId),
         String(mapId),

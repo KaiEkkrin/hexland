@@ -1,6 +1,6 @@
 import * as Convert from './converter';
 import { DataService } from './dataService';
-import { editAdventure, editMap, ensureProfile } from './extensions';
+import { editAdventure, editMap, ensureProfile, getAllMapChanges } from './extensions';
 import { IUser } from './interfaces';
 import { ChangeCategory, ChangeType, IChanges, ITokenAdd, ITokenMove, IWallAdd } from '../data/change';
 import { MapType } from '../data/map';
@@ -74,7 +74,7 @@ describe('test functions', () => {
     expect(result.data).toBe('Hello from Firebase!');
   });
 
-  test('create a map and consolidate some simple changes', async () => {
+  async function testConsolidate(moveCount: number) {
     const functions = emul['owner'].functions;
     functions.useFunctionsEmulator('http://localhost:5001');
 
@@ -120,24 +120,12 @@ describe('test functions', () => {
     expect(m1Record?.ty).toBe(MapType.Hex);
     expect(m1Record?.ffa).toBeFalsy();
 
-    // Get the map record with the function.  It should be the same.
-    // TODO #64 remove this when I'm happy.
-    const getMap = functions.httpsCallable('getMap');
-    const getMapResult = await getMap({ adventureId: a1Id, mapId: m1Id });
-    const m1Returned = Convert.mapConverter.convert(getMapResult.data);
-    expect(m1Returned?.name).toBe('Map One');
-    expect(m1Returned?.adventureName).toBe('Adventure One');
-    expect(m1Returned?.description).toBe('First map');
-    expect(m1Returned?.owner).toBe('owner');
-    expect(m1Returned?.ty).toBe(MapType.Hex);
-    expect(m1Returned?.ffa).toBeFalsy();
-
     // Add a few simple changes:
     const addToken1: ITokenAdd = {
       ty: ChangeType.Add,
       cat: ChangeCategory.Token,
       feature: {
-        position: { x: 0, y: 0 },
+        position: { x: 0, y: 3 },
         colour: 1,
         id: 'token1',
         players: ['owner'],
@@ -147,13 +135,16 @@ describe('test functions', () => {
       }
     };
 
-    const moveToken1: ITokenMove = {
-      ty: ChangeType.Move,
-      cat: ChangeCategory.Token,
-      tokenId: 'token1',
-      oldPosition: { x: 0, y: 0 },
-      newPosition: { x: 2, y: 1 }
-    }; // should merge with `addToken1` on consolidate
+    function createMoveToken1(x: number): ITokenMove {
+      // This function keeps moving the token along, generating lots of moves.
+      return {
+        ty: ChangeType.Move,
+        cat: ChangeCategory.Token,
+        tokenId: 'token1',
+        oldPosition: { x: x, y: 3 },
+        newPosition: { x: x + 1, y: 3 }
+      };
+    }
 
     const addWall1: IWallAdd = {
       ty: ChangeType.Add,
@@ -165,36 +156,72 @@ describe('test functions', () => {
     };
 
     await dataService.addChanges(a1Id, 'owner', m1Id, [addToken1]);
-    await dataService.addChanges(a1Id, 'owner', m1Id, [moveToken1]);
+    for (var i = 0; i < moveCount; ++i) {
+      await dataService.addChanges(a1Id, 'owner', m1Id, [createMoveToken1(i)]);
+    }
+
     await dataService.addChanges(a1Id, 'owner', m1Id, [addWall1]);
 
     // Check that the changes went in successfully and we can read them back:
-    var refs = await dataService.getMapChangesRefs(a1Id, m1Id);
-    expect(refs).toHaveLength(3);
+    var changes = await getAllMapChanges(dataService, a1Id, m1Id, 2 + moveCount);
+    expect(changes).toHaveLength(2 + moveCount);
 
     // Call the consolidate function:
     const consolidateMapChanges = functions.httpsCallable('consolidateMapChanges');
-    const consolidateResult = await consolidateMapChanges({ adventureId: a1Id, mapId: m1Id });
+    var consolidateResult = await consolidateMapChanges({ adventureId: a1Id, mapId: m1Id });
     expect(consolidateResult).toBeTruthy();
 
     // After doing that, we should have only one changes record, thus:
-    refs = await dataService.getMapChangesRefs(a1Id, m1Id);
-    expect(refs).toHaveLength(1);
-    expect(refs?.[0].data.user).toBe('owner');
+    async function verifyBaseChangesRecord(expectedX: number) {
+      var changes = await getAllMapChanges(dataService, a1Id, m1Id, 499);
+      expect(changes).toHaveLength(1);
+      expect(changes?.[0].user).toBe('owner');
 
-    // with just an add token and an add wall:
-    expect(refs?.[0].data.chs).toHaveLength(2);
+      // with just an add token and an add wall:
+      expect(changes?.[0].chs).toHaveLength(2);
 
-    const addTokenRecord = refs?.[0].data.chs.find(ch => ch.cat === ChangeCategory.Token);
-    expect(addTokenRecord?.ty).toBe(ChangeType.Add);
-    expect((addTokenRecord as ITokenAdd).feature.id).toBe('token1');
-    expect((addTokenRecord as ITokenAdd).feature.position.x).toBe(2);
-    expect((addTokenRecord as ITokenAdd).feature.position.y).toBe(1);
+      const addTokenRecord = changes?.[0].chs.find(ch => ch.cat === ChangeCategory.Token);
+      expect(addTokenRecord?.ty).toBe(ChangeType.Add);
+      expect((addTokenRecord as ITokenAdd).feature.id).toBe('token1');
+      expect((addTokenRecord as ITokenAdd).feature.position.x).toBe(expectedX);
+      expect((addTokenRecord as ITokenAdd).feature.position.y).toBe(3);
 
-    const addWallRecord = refs?.[0].data.chs.find(ch => ch.cat === ChangeCategory.Wall);
-    expect(addWallRecord?.ty).toBe(ChangeType.Add);
-    expect((addWallRecord as IWallAdd).feature.position.x).toBe(0);
-    expect((addWallRecord as IWallAdd).feature.position.y).toBe(0);
-    expect((addWallRecord as IWallAdd).feature.colour).toBe(0);
+      const addWallRecord = changes?.[0].chs.find(ch => ch.cat === ChangeCategory.Wall);
+      expect(addWallRecord?.ty).toBe(ChangeType.Add);
+      expect((addWallRecord as IWallAdd).feature.position.x).toBe(0);
+      expect((addWallRecord as IWallAdd).feature.position.y).toBe(0);
+      expect((addWallRecord as IWallAdd).feature.colour).toBe(0);
+    }
+    await verifyBaseChangesRecord(moveCount);
+
+    // Now that I've consolidated once, I should be able to make some more changes and
+    // consolidate again (which is different, because there is now a base change:)
+    for (i = moveCount; i < moveCount * 2; ++i) {
+      await dataService.addChanges(a1Id, 'owner', m1Id, [createMoveToken1(i)]);
+    }
+
+    consolidateResult = await consolidateMapChanges({ adventureId: a1Id, mapId: m1Id });
+    expect(consolidateResult).toBeTruthy();
+    await verifyBaseChangesRecord(moveCount * 2);
+  }
+
+  test('create a map and consolidate 1 move', async () => {
+    await testConsolidate(1);
+  });
+
+  test('create a map and consolidate 2 moves', async () => {
+    await testConsolidate(2);
+  });
+
+  test('create a map and consolidate 10 moves', async () => {
+    await testConsolidate(10);
+  });
+
+  test('create a map and consolidate 200 moves', async () => {
+    await testConsolidate(200);
+  });
+
+  test('create a map and consolidate 600 moves', async () => {
+    await testConsolidate(600);
   });
 });

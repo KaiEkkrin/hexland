@@ -6,7 +6,7 @@ import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
 import { FeatureDictionary, IToken, IFeature } from '../data/feature';
 import { IMap } from '../data/map';
 import { IAdventureSummary, IProfile } from '../data/profile';
-import { IDataService, IDataView, IDataReference, IDataAndReference, IUser, IAnalytics } from './interfaces';
+import { IDataService, IDataView, IDataReference, IDataAndReference, IUser, IAnalytics, ILogger } from './interfaces';
 
 import * as firebase from 'firebase/app';
 import { v4 as uuidv4 } from 'uuid';
@@ -534,19 +534,46 @@ export async function registerMapAsRecent(
   );
 }
 
+// A simple helper to fetch all map changes instantaneously -- useful for testing; the
+// live application should probably be watching changes instead
+export async function getAllMapChanges(
+  dataService: IDataService | undefined,
+  adventureId: string,
+  mapId: string,
+  limit: number
+) {
+  if (dataService === undefined) {
+    return;
+  }
+
+  const baseChangeRef = dataService.getMapBaseChangeRef(adventureId, mapId);
+  const baseChange = await dataService.get(baseChangeRef);
+  const incrementalChanges = await dataService.getMapIncrementalChangesRefs(adventureId, mapId, limit);
+
+  var changes = [];
+  if (baseChange !== undefined) {
+    changes.push(baseChange);
+  }
+
+  if (incrementalChanges !== undefined) {
+    changes.push(...incrementalChanges.map(c => c.convert(c.data)));
+  }
+
+  return changes;
+}
+
 async function consolidateMapChangesTransaction(
   view: IDataView,
+  logger: ILogger,
   timestampProvider: () => firebase.firestore.FieldValue | number,
+  baseChange: IChanges | undefined,
   baseChangeRef: IDataReference<IChanges>,
-  changes: IDataAndReference<IChanges>[],
+  incrementalChanges: IDataAndReference<IChanges>[],
   consolidated: IChange[],
   uid: string
 ) {
   // Check that the base change hasn't changed since we did the query.
   // If it has, we'll simply abort -- someone else has done this recently
-  var baseChanges = changes.filter(c => c.data.incremental === false);
-  var baseChange = baseChanges.length > 0 ? baseChanges[0].data : undefined;
-
   var latestBaseChange = await view.get(baseChangeRef);
   if (baseChange !== undefined && latestBaseChange !== undefined) {
     if (
@@ -558,11 +585,13 @@ async function consolidateMapChangesTransaction(
       const latestTimestamp = latestBaseChange.timestamp as firebase.firestore.FieldValue;
       const baseTimestamp = baseChange.timestamp as firebase.firestore.FieldValue;
       if (!latestTimestamp.isEqual(baseTimestamp)) {
-        throw Error("Map changes have already been consolidated");
+        logger.logWarning("Map changes for " + baseChangeRef.id + " have already been consolidated");
+        return;
       }
     } else {
       if (latestBaseChange.timestamp !== baseChange.timestamp) {
-        throw Error("Map changes have already been consolidated");
+        logger.logWarning("Map changes for " + baseChangeRef.id + " have already been consolidated");
+        return;
       }
     }
   }
@@ -576,32 +605,25 @@ async function consolidateMapChangesTransaction(
   });
 
   // Delete all the others
-  await Promise.all(
-    changes.filter(c => c.data.incremental === true).map(c => view.delete(c))
-  );
+  await Promise.all(incrementalChanges.map(c => view.delete(c)));
 }
 
-// TODO So that things are consolidated more regularly, pick a suitable
-// count and run this as a Firebase Function when that many changes are
-// added to the map?
-// Doing lots of deletes from a Web client is not recommended:
-// https://firebase.google.com/docs/firestore/manage-data/delete-data
-export async function consolidateMapChanges(
-  dataService: IDataService | undefined,
-  timestampProvider: (() => firebase.firestore.FieldValue | number) | undefined,
+// Returns true if finished, false to continue trying (e.g. more to be done.)
+async function tryConsolidateMapChanges(
+  dataService: IDataService,
+  logger: ILogger,
+  timestampProvider: () => firebase.firestore.FieldValue | number,
   adventureId: string,
   mapId: string,
   m: IMap
-): Promise<void> {
-  if (dataService === undefined || timestampProvider === undefined) {
-    return;
-  }
-
+) {
   // Fetch all the current changes for this map, along with their refs
   var baseChangeRef = await dataService.getMapBaseChangeRef(adventureId, mapId);
-  var changes = await dataService.getMapChangesRefs(adventureId, mapId);
-  if (changes === undefined) {
-    return;
+  var baseChange = await dataService.get(baseChangeRef); // undefined in case of the first consolidate
+  var incrementalChanges = await dataService.getMapIncrementalChangesRefs(adventureId, mapId, 499);
+  if (incrementalChanges === undefined) {
+    // No changes to consolidate
+    return true;
   }
 
   // Consolidate all of that.
@@ -615,13 +637,49 @@ export async function consolidateMapChanges(
     new FeatureDictionary<IGridCoord, IAnnotation>(coordString),
     // new MapColouring(m.ty === MapType.Hex ? new HexGridGeometry(1, 1) : new SquareGridGeometry(1, 1))
   );
-  changes.forEach(c => trackChanges(m, tracker, c.data.chs, c.data.user));
+  if (baseChange !== undefined) {
+    trackChanges(m, tracker, baseChange.chs, baseChange.user);
+  }
+  incrementalChanges.forEach(c => trackChanges(m, tracker, c.data.chs, c.data.user));
   var consolidated = tracker.getConsolidated();
 
   // Apply it
-  await dataService.runTransaction(view =>
-    consolidateMapChangesTransaction(view, timestampProvider, baseChangeRef, changes ?? [], consolidated, m.owner)
-  );
+  await dataService.runTransaction(async view => {
+    await consolidateMapChangesTransaction(
+      view, logger, timestampProvider, baseChange, baseChangeRef, incrementalChanges ?? [], consolidated, m.owner
+    );
+  });
+  
+  // There may be more
+  return false;
+}
+
+// TODO So that things are consolidated more regularly, pick a suitable
+// count and run this as a Firebase Function when that many changes are
+// added to the map?
+// Doing lots of deletes from a Web client is not recommended:
+// https://firebase.google.com/docs/firestore/manage-data/delete-data
+export async function consolidateMapChanges(
+  dataService: IDataService | undefined,
+  logger: ILogger,
+  timestampProvider: (() => firebase.firestore.FieldValue | number) | undefined,
+  adventureId: string,
+  mapId: string,
+  m: IMap
+): Promise<void> {
+  if (dataService === undefined || timestampProvider === undefined) {
+    return;
+  }
+
+  // Because we can consolidate at most 499 changes in one go due to the write limit,
+  // we do this in a loop until we can't find any more:
+  while (true) {
+    if (await tryConsolidateMapChanges(
+      dataService, logger, timestampProvider, adventureId, mapId, m
+    )) {
+      break;
+    }
+  }
 }
 
 // Either creates an invite record for an adventure and returns it, or returns

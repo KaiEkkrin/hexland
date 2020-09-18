@@ -137,10 +137,12 @@ export class AdminDataService implements IDataService {
     return new DataReference<IChanges>(d, Convert.changesConverter);
   }
 
-  async getMapChangesRefs(adventureId: string, id: string): Promise<IDataAndReference<IChanges>[] | undefined> {
+  async getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number): Promise<IDataAndReference<IChanges>[] | undefined> {
     var s = await this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(id).collection(changes)
+      .where("incremental", "==", true)
       .orderBy("timestamp")
+      .limit(limit)
       .get();
     return s.empty ? undefined : s.docs.map(d => new DataAndReference(d.ref, d.data(), Convert.changesConverter));
   }
