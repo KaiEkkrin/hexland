@@ -1,17 +1,14 @@
 import { IAdventure, IMapSummary, IPlayer } from '../data/adventure';
 import { IAnnotation } from '../data/annotation';
 import { IChange, IChanges } from '../data/change';
-import { trackChanges } from '../data/changeTracking';
+import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
+import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
 import { FeatureDictionary, IToken, IFeature } from '../data/feature';
 import { IMap } from '../data/map';
 import { IAdventureSummary, IProfile } from '../data/profile';
 import { IDataService, IDataView, IDataReference, IDataAndReference, IUser, IAnalytics } from './interfaces';
 
-import { MapChangeTracker } from '../models/mapChangeTracker';
-import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
-
 import * as firebase from 'firebase/app';
-
 import { v4 as uuidv4 } from 'uuid';
 
 const maxProfileEntries = 7;
@@ -611,7 +608,7 @@ export async function consolidateMapChanges(
   // #64: I'm no longer including a map colouring here.  It's a bit unsafe (a player could
   // technically cheat and non-owners would believe them), but it will save huge amounts of
   // CPU time (especially valuable if this is going to be called in a Firebase Function.)
-  var tracker = new MapChangeTracker(
+  var tracker = new SimpleChangeTracker(
     new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
     new FeatureDictionary<IGridCoord, IToken>(coordString),
     new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
@@ -715,11 +712,11 @@ async function leaveAdventureTransaction(
   profileRef: IDataReference<IProfile>,
   adventureRef: IDataReference<IAdventure>,
   playerRef: IDataReference<IPlayer>
-) {
+): Promise<void> {
   // Fetch the profile and adventure
   const profile = await view.get(profileRef);
   if (profile === undefined) {
-    return undefined;
+    return;
   }
 
   const adventure = await view.get(adventureRef);
@@ -746,9 +743,9 @@ export async function leaveAdventure(
   dataService: IDataService | undefined,
   uid: string | undefined,
   adventureId: string
-) {
+): Promise<void> {
   if (dataService === undefined || uid === undefined) {
-    return undefined;
+    return;
   }
 
   var profileRef = dataService.getProfileRef(uid);

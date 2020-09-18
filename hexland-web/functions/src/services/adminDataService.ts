@@ -67,12 +67,10 @@ class DataAndReference<T> extends DataReference<T> implements IDataAndReference<
 export class AdminDataService implements IDataService {
   private readonly _db: FirebaseFirestore.Firestore;
   private readonly _timestampProvider: () => firebase.firestore.FieldValue | number;
-  private readonly _uid: string;
 
-  constructor() {
-    this._db = admin.firestore();
+  constructor(app: admin.app.App) {
+    this._db = admin.firestore(app);
     this._timestampProvider = admin.firestore.Timestamp.now;
-    this._uid = "owner"; // TODO #64 Remove the uid from the data service entirely
   }
 
   // IDataView implementation
@@ -100,12 +98,12 @@ export class AdminDataService implements IDataService {
 
   // IDataService implementation
 
-  async addChanges(adventureId: string, mapId: string, chs: IChange[]): Promise<void> {
+  async addChanges(adventureId: string, uid: string, mapId: string, chs: IChange[]): Promise<void> {
     await this._db.collection(adventures).doc(adventureId).collection(maps).doc(mapId).collection(changes).add({
       chs: chs,
       timestamp: this._timestampProvider(),
       incremental: true,
-      user: this._uid
+      user: uid
     });
   }
 
@@ -147,15 +145,15 @@ export class AdminDataService implements IDataService {
     return s.empty ? undefined : s.docs.map(d => new DataAndReference(d.ref, d.data(), Convert.changesConverter));
   }
 
-  async getMyAdventures(): Promise<IDataAndReference<IAdventure>[]> {
-    const a = await this._db.collection(adventures).where("owner", "==", this._uid).get();
+  async getMyAdventures(uid: string): Promise<IDataAndReference<IAdventure>[]> {
+    const a = await this._db.collection(adventures).where("owner", "==", uid).get();
     return a.docs.map(d => new DataAndReference(
       d.ref, Convert.adventureConverter.convert(d.data()), Convert.adventureConverter
     ));
   }
 
-  async getMyPlayerRecords(): Promise<IDataAndReference<IPlayer>[]> {
-    const p = await this._db.collectionGroup(players).where("playerId", "==", this._uid).get();
+  async getMyPlayerRecords(uid: string): Promise<IDataAndReference<IPlayer>[]> {
+    const p = await this._db.collectionGroup(players).where("playerId", "==", uid).get();
     return p.docs.map(d => new DataAndReference(
       d.ref, Convert.playerConverter.convert(d.data()), Convert.playerConverter
     ));
@@ -172,13 +170,9 @@ export class AdminDataService implements IDataService {
       d.ref, Convert.playerConverter.convert(d.data()), Convert.playerConverter));
   }
 
-  getProfileRef(): IDataReference<IProfile> {
-    var d = this._db.collection(profiles).doc(this._uid);
+  getProfileRef(uid: string): IDataReference<IProfile> {
+    var d = this._db.collection(profiles).doc(uid);
     return new DataReference<IProfile>(d, Convert.profileConverter);
-  }
-
-  getUid(): string {
-    return this._uid;
   }
 
   runTransaction<T>(fn: (dataView: IDataView) => Promise<T>): Promise<T> {
@@ -199,10 +193,11 @@ export class AdminDataService implements IDataService {
   }
 
   watchAdventures(
+    uid: string,
     onNext: (adventures: IIdentified<IAdventure>[]) => void,
     onError?: ((error: Error) => void) | undefined
   ) {
-    return this._db.collection(adventures).where("owner", "==", this._uid)
+    return this._db.collection(adventures).where("owner", "==", uid)
       .orderBy("name")
       .onSnapshot(s => {
         var adventures: IIdentified<IAdventure>[] = [];
@@ -250,10 +245,11 @@ export class AdminDataService implements IDataService {
   }
 
   watchSharedAdventures(
+    uid: string,
     onNext: (adventures: IPlayer[]) => void,
     onError?: ((error: Error) => void) | undefined
   ) {
-    return this._db.collectionGroup(players).where("playerId", "==", this._uid).onSnapshot(s => {
+    return this._db.collectionGroup(players).where("playerId", "==", uid).onSnapshot(s => {
       onNext(s.docs.map(d => Convert.playerConverter.convert(d.data())));
     }, onError);
   }
