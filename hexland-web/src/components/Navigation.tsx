@@ -94,7 +94,7 @@ function NavLogin() {
           <Button variant="outline-primary" onClick={handleSignOut}>Log out</Button>
         </ButtonGroup>
       </Form>
-      <Modal show={showEditProfile}>
+      <Modal show={showEditProfile} onHide={handleModalClose}>
         <Modal.Header closeButton>
           <Modal.Title>User profile settings</Modal.Title>
         </Modal.Header>
