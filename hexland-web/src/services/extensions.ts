@@ -28,7 +28,7 @@ export async function ensureProfile(
 
     // If we get here, we need to create a new profile
     profile = {
-      name: user.displayName ?? "Unknown user",
+      name: user.displayName ?? "Unnamed user",
       adventures: [],
       latestMaps: []
     };

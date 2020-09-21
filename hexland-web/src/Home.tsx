@@ -42,7 +42,7 @@ function LatestColumn() {
       name: name,
       description: description,
       owner: uid,
-      ownerName: profile?.name ?? "Unknown user"
+      ownerName: profile?.name ?? "Unnamed user"
     };
 
     editAdventure(userContext.dataService, uid, true, record)

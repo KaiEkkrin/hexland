@@ -42,16 +42,21 @@ jest.mock('react-router-dom', () => ({
 // These helpers let us mock up the local storage and track analysis context changes:
 interface IStorageChange {
   key: string;
-  value: string;
+  value: string | null;
 }
 
 const mockStorageSubject = new Subject<IStorageChange>();
 const mockStorage: { [key: string]: string } = {};
 
-const mockGetItem = jest.fn((key: string) => mockStorage[key]);
-const mockSetItem = jest.fn((key: string, value: string) => {
-  mockStorage[key] = value;
-  mockStorageSubject.next({ key: key, value: value });
+const mockGetItem = jest.fn((key: string) => mockStorage[key] ?? null);
+const mockSetItem = jest.fn((key: string, value: string | null) => {
+  if (value === null) {
+    delete mockStorage[key];
+    mockStorageSubject.next({ key: key, value: null });
+  } else {
+    mockStorage[key] = value;
+    mockStorageSubject.next({ key: key, value: value });
+  }
 });
 
 // Some return types from our test helper functions.
@@ -65,15 +70,27 @@ interface IPageCheck {
   textsAbsent?: RegExp[] | undefined;
 }
 
+// A default user mapping to the "Owner" default alias in the Firebase emulator.
+const ownerUser: IUser = {
+  displayName: 'Owner',
+  email: 'owner@example.com',
+  emailVerified: true,
+  providerId: 'google.com',
+  uid: 'owner',
+  sendEmailVerification: jest.fn(),
+  updatePassword: jest.fn(),
+  updateProfile: jest.fn()
+};
+
 describe('test app', () => {
   // This helper function verifies it can log in with Google and returns the redirect.
-  async function logInWithGoogle(projectId: string, user?: IUser | undefined): Promise<IHistoryChange | undefined> {
+  async function logInWithGoogle(projectId: string, user: IUser): Promise<IHistoryChange | undefined> {
     const { findByText, getByRole, queryByText } = render(
       <App projectId={projectId} user={user} defaultRoute="/login" />
     );
 
     // It should not be showing our username ("Owner")
-    let userElement = queryByText(user?.displayName ?? 'Owner');
+    let userElement = queryByText(user.displayName);
     expect(userElement).toBeNull();
 
     // Find the login button and click it
@@ -87,7 +104,7 @@ describe('test app', () => {
       historyChange.push(await historyWillChange);
     });
 
-    userElement = await findByText(user?.displayName ?? 'Owner');
+    userElement = await findByText(user.displayName);
     expect(userElement).toBeInTheDocument();
 
     cleanup();
@@ -123,12 +140,12 @@ describe('test app', () => {
     });
   }
 
-  async function createAdventureAndMapFromHome(projectId: string, user?: IUser | undefined): Promise<IAdventureAndMapLinks> {
+  async function createAdventureAndMapFromHome(projectId: string, user: IUser): Promise<IAdventureAndMapLinks> {
     const { findByLabelText, findByRole, findByText, queryByLabelText, queryByRole } = render(
       <App projectId={projectId} user={user} defaultRoute="/" />
     );
 
-    const userElement = await findByText(user?.displayName ?? 'Owner');
+    const userElement = await findByText(user.displayName);
     expect(userElement).toBeInTheDocument();
 
     const newAdventureElement = await findByRole('button', { name: /New adventure/i });
@@ -186,8 +203,8 @@ describe('test app', () => {
     };
   }
 
-  async function createMapFromAdventure(projectId: string, user: IUser | undefined, pathname: string, adventureName: RegExp, adventureDescription: RegExp): Promise<string> {
-    const { findByLabelText, findByRole, findByText, queryByLabelText, queryByRole } = render(
+  async function createMapFromAdventure(projectId: string, user: IUser, pathname: string, adventureName: RegExp, adventureDescription: RegExp): Promise<string> {
+    const { findByLabelText, findByRole, findByText, queryByLabelText } = render(
       <App projectId={projectId} user={user} defaultRoute={pathname} />
     );
 
@@ -225,12 +242,12 @@ describe('test app', () => {
     return openMapElement.pathname;
   }
 
-  async function createAdventureAndMapFromAll(projectId: string, user?: IUser | undefined): Promise<IAdventureAndMapLinks> {
+  async function createAdventureAndMapFromAll(projectId: string, user: IUser): Promise<IAdventureAndMapLinks> {
     const { findByLabelText, findByRole, findByText, queryByLabelText, queryByRole } = render(
       <App projectId={projectId} user={user} defaultRoute="/all" />
     );
 
-    const userElement = await findByText(user?.displayName ?? 'Owner');
+    const userElement = await findByText(user.displayName);
     expect(userElement).toBeInTheDocument();
 
     const newAdventureElement = await findByRole('button', { name: /New adventure/i });
@@ -267,7 +284,7 @@ describe('test app', () => {
     };
   }
 
-  async function checkPage(location: string | undefined, check: IPageCheck, projectId: string, user?: IUser | undefined) {
+  async function checkPage(location: string | undefined, check: IPageCheck, projectId: string, user: IUser) {
     console.log("checking page " + location);
     // This function simply render a page and checks the string texts are all (eventually) found in it.
     const { findByText, queryByText } = render(
@@ -289,7 +306,7 @@ describe('test app', () => {
     cleanup();
   }
 
-  function loadPageExpectingRedirect(location: string | undefined, projectId: string, user?: IUser | undefined): Promise<IHistoryChange> {
+  function loadPageExpectingRedirect(location: string | undefined, projectId: string, user: IUser): Promise<IHistoryChange> {
     const historyWillChange = historySubject.pipe(first()).toPromise();
     render(
       <App projectId={projectId} user={user} defaultRoute={location ?? '/'} />
@@ -298,9 +315,9 @@ describe('test app', () => {
     return historyWillChange;
   }
 
-  async function createInviteLink(location: string, projectId: string, user?: IUser | undefined): Promise<string> {
+  async function createInviteLink(location: string, projectId: string, user: IUser): Promise<string> {
     // Render the adventure page
-    const { findByLabelText, findByRole, findByText, queryByLabelText, queryByRole } = render(
+    const { findByRole, findByText } = render(
       <App projectId={projectId} user={user} defaultRoute={location} />
     );
 
@@ -327,7 +344,7 @@ describe('test app', () => {
     return inviteLinkElement.pathname;
   }
 
-  async function acceptInvite(location: string, projectId: string, user?: IUser | undefined): Promise<IHistoryChange> {
+  async function acceptInvite(location: string, projectId: string, user: IUser): Promise<IHistoryChange> {
     // render the invite page
     const { findByRole, findByText } = render(
       <App projectId={projectId} user={user} defaultRoute={location} />
@@ -335,7 +352,7 @@ describe('test app', () => {
 
     // This should be showing me the invite greeting
     const greetingElement = await findByText(
-      (user?.displayName ?? "Owner") + ", you have been invited to join",
+      user.displayName + ", you have been invited to join",
       { exact: false }
     );
     expect(greetingElement).toBeInTheDocument();
@@ -354,7 +371,7 @@ describe('test app', () => {
     return historyWillChange;
   }
 
-  async function checkNoTokensOnMap(location: string, projectId: string, user?: IUser | undefined): Promise<void> {
+  async function checkNoTokensOnMap(location: string, projectId: string, user: IUser): Promise<void> {
     // render the map page
     const { findByTitle, findByText, getByTitle } = render(
       <App projectId={projectId} user={user} defaultRoute={location} />
@@ -377,22 +394,22 @@ describe('test app', () => {
     const playersOwnerElement = await findByTitle("Player Owner");
     expect(playersOwnerElement).toBeInTheDocument();
 
-    const playersUserElement = await findByTitle("Player " + user?.displayName);
+    const playersUserElement = await findByTitle("Player " + user.displayName);
     expect(playersUserElement).toBeInTheDocument();
 
     // We should also be showing suitable badges
     const playerOwnerIsOwnerElement = await findByTitle("Player Owner is the owner");
     expect(playerOwnerIsOwnerElement).toBeInTheDocument();
 
-    const playerUserHasNoTokenElement = await findByTitle("Player " + user?.displayName + " has no token");
+    const playerUserHasNoTokenElement = await findByTitle("Player " + user.displayName + " has no token");
     expect(playerUserHasNoTokenElement).toBeInTheDocument();
 
     cleanup();
   }
 
-  async function shareAdventureAndMap(projectId: string, links: IAdventureAndMapLinks) {
+  async function shareAdventureAndMap(projectId: string, links: IAdventureAndMapLinks, user: IUser) {
     // Open the adventure; we should see the map listed, along with "Create invite link"
-    const inviteLink = await createInviteLink(links.adventureLink, projectId);
+    const inviteLink = await createInviteLink(links.adventureLink, projectId, user);
     console.log("Invite link: " + inviteLink);
 
     // Trying to load that link when not logged in (which is what our simulated auth does
@@ -400,8 +417,12 @@ describe('test app', () => {
     const user1 = {
       displayName: "User One",
       email: "user1@example.com",
+      emailVerified: true,
       providerId: "google.com",
-      uid: "user1"
+      uid: "user1",
+      sendEmailVerification: jest.fn(),
+      updatePassword: jest.fn(),
+      updateProfile: jest.fn()
     };
 
     const redirectToLogin = await loadPageExpectingRedirect(inviteLink, projectId, user1);
@@ -464,8 +485,12 @@ describe('test app', () => {
     const user = {
       displayName: "A User",
       email: "user@example.com",
+      emailVerified: true,
       providerId: "google.com",
-      uid: "userA"
+      uid: "userA",
+      sendEmailVerification: jest.fn(),
+      updatePassword: jest.fn(),
+      updateProfile: jest.fn()
     };
     let redirectToHome = await logInWithGoogle(projectId, user);
     expect(redirectToHome?.verb).toBe('replace');
@@ -505,47 +530,47 @@ describe('test app', () => {
     const projectId = uuidv4();
 
     // Get logged in
-    let redirectToHome = await logInWithGoogle(projectId);
+    let redirectToHome = await logInWithGoogle(projectId, ownerUser);
     expect(redirectToHome?.verb).toBe('replace');
     expect(redirectToHome?.parameter).toBe('/');
 
     // If I load the home page now, it should let me create a new adventure and
     // it should still be showing the profile name
-    const links = await createAdventureAndMapFromHome(projectId);
+    const links = await createAdventureAndMapFromHome(projectId, ownerUser);
     expect(links.adventureLink).toMatch(/^\/adventure\/.*$/);
     console.log("Adventure link: " + links.adventureLink);
 
-    await shareAdventureAndMap(projectId, links);
+    await shareAdventureAndMap(projectId, links, ownerUser);
   }, 10000);
 
   test('log in and create and share an adventure and map from the All page', async () => {
     const projectId = uuidv4();
 
     // Get logged in
-    let redirectToHome = await logInWithGoogle(projectId);
+    let redirectToHome = await logInWithGoogle(projectId, ownerUser);
     expect(redirectToHome?.verb).toBe('replace');
     expect(redirectToHome?.parameter).toBe('/');
 
     // Do the adventure and map creation
-    const links = await createAdventureAndMapFromAll(projectId);
+    const links = await createAdventureAndMapFromAll(projectId, ownerUser);
     expect(links.adventureLink).toMatch(/^\/adventure\/.*$/);
     console.log("Adventure link: " + links.adventureLink);
 
-    await shareAdventureAndMap(projectId, links);
+    await shareAdventureAndMap(projectId, links, ownerUser);
   });
 
   test('log in and twiddle the analytics setting', async () => {
     const projectId = uuidv4();
 
     // Get logged in
-    let redirectToHome = await logInWithGoogle(projectId);
+    let redirectToHome = await logInWithGoogle(projectId, ownerUser);
     expect(redirectToHome?.verb).toBe('replace');
     expect(redirectToHome?.parameter).toBe('/');
 
     // Load the home page.  We expect analytics to be disabled and the GA acceptance
     // thingummy to be there.
     const { findByLabelText, findByRole, getByRole, queryByRole } = render(
-      <App projectId={projectId} user={undefined} getItem={mockGetItem} setItem={mockSetItem} defaultRoute="/" />
+      <App projectId={projectId} user={ownerUser} getItem={mockGetItem} setItem={mockSetItem} defaultRoute="/" />
     );
 
     let acceptElement = await findByRole('button', { name: /Accept/i });
@@ -587,9 +612,5 @@ describe('test app', () => {
 
     // The analytics enabled flag should now be off again
     expect(mockStorage["analyticsEnabled"]).toBe("false");
-
-    // And, the accept element should have come back
-    acceptElement = await findByRole('button', { name: /Accept/i });
-    expect(acceptElement).toBeInTheDocument();
   });
 });

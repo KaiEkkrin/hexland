@@ -12,8 +12,22 @@ export class FirebaseAuth implements IAuth {
     this._auth = auth;
   }
 
+  async createUserWithEmailAndPassword(email: string, password: string) {
+    let credential = await this._auth.createUserWithEmailAndPassword(email, password);
+    return credential.user;
+  }
+
+  sendPasswordResetEmail(email: string) {
+    return this._auth.sendPasswordResetEmail(email);
+  }
+
+  async signInWithEmailAndPassword(email: string, password: string) {
+    let credential = await this._auth.signInWithEmailAndPassword(email, password);
+    return credential.user;
+  }
+
   async signInWithPopup(provider: IAuthProvider | undefined) {
-    if (provider instanceof FirebaseAuthProviderWrapper) {
+    if (provider instanceof PopupAuthProviderWrapper) {
       let credential = await provider.signInWithPopup(this._auth);
       return credential.user;
     }
@@ -26,27 +40,15 @@ export class FirebaseAuth implements IAuth {
   }
 
   onAuthStateChanged(onNext: (user: IUser | null) => void, onError?: ((e: Error) => void) | undefined) {
-    return this._auth.onAuthStateChanged(u => {
-      onNext(u === null ? null : {
-        displayName: u.displayName,
-        email: u.email,
-        providerId: u.providerId,
-        uid: u.uid
-      });
-    }, e => onError?.(new Error(e.message)));
+    return this._auth.onAuthStateChanged(onNext, e => onError?.(new Error(e.message)));
   }
 }
 
-abstract class FirebaseAuthProviderWrapper implements IAuthProvider {
-  abstract signInWithPopup(auth: firebase.auth.Auth): Promise<firebase.auth.UserCredential>;
-}
+class PopupAuthProviderWrapper implements IAuthProvider {
+  private readonly _provider: firebase.auth.AuthProvider;
 
-export class GoogleAuthProviderWrapper extends FirebaseAuthProviderWrapper {
-  private readonly _provider: firebase.auth.GoogleAuthProvider;
-
-  constructor() {
-    super();
-    this._provider = new firebase.auth.GoogleAuthProvider();
+  constructor(provider: firebase.auth.AuthProvider) {
+    this._provider = provider;
   }
 
   signInWithPopup(auth: firebase.auth.Auth) {
@@ -54,3 +56,5 @@ export class GoogleAuthProviderWrapper extends FirebaseAuthProviderWrapper {
     return credential;
   }
 }
+
+export const googleAuthProviderWrapper = new PopupAuthProviderWrapper(new firebase.auth.GoogleAuthProvider());

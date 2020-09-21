@@ -8,6 +8,9 @@ import { IProfile } from '../data/profile';
 // Abstracts the Firebase authentication stuff, which isn't supported by the
 // simulator.
 export interface IAuth {
+  createUserWithEmailAndPassword(email: string, password: string): Promise<IUser | null>;
+  sendPasswordResetEmail(email: string): Promise<void>;
+  signInWithEmailAndPassword(email: string, password: string): Promise<IUser | null>;
   signInWithPopup(provider: IAuthProvider | undefined): Promise<IUser | null>;
   signOut(): Promise<void>;
 
@@ -24,8 +27,13 @@ export type IAuthProvider = {};
 export interface IUser {
   displayName: string | null;
   email: string | null;
+  emailVerified: boolean;
   providerId: string;
   uid: string;
+
+  sendEmailVerification: () => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
+  updateProfile: (p: any) => Promise<void>;
 }
 
 // The analytics service.

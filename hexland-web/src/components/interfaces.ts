@@ -45,7 +45,7 @@ export interface IStatusContext {
 export interface IFirebaseProps {
   // For testing only -- ignored by the real context provider.
   projectId?: string | undefined; // in testing, *must* be a unique identifier
-  user?: IUser | null | undefined; // null for no user, undefined for default (the db owner)
+  user?: IUser | null; // null for no user
 }
 
 export interface IRoutingProps {

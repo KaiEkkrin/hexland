@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import * as firebase from 'firebase/app';
 import 'firebase/auth';
@@ -42,13 +42,6 @@ afterAll(async () => {
 });
 
 function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) {
-  const user = useMemo(() => (props.user !== undefined ? props.user : {
-    displayName: 'Owner',
-    email: 'owner@example.com',
-    providerId: 'unknown',
-    uid: 'owner'
-  }), [props.user]);
-
   const [firebaseContext, setFirebaseContext] = useState<IFirebaseContext>({});
   useEffect(() => {
     if (props.projectId === undefined) {
@@ -57,10 +50,10 @@ function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) 
 
     const emul = initializeTestApp({
       projectId: props.projectId,
-      auth: user ?? undefined
+      auth: props.user ?? undefined
     });
 
-    simulatedAuth.setUser(user);
+    simulatedAuth.setUser(props.user ?? null);
     setFirebaseContext({
       auth: simulatedAuth,
       db: emul.firestore(),
@@ -71,7 +64,7 @@ function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) 
     });
 
     return () => { emulsToDelete.push(emul); };
-  }, [props.projectId, user]);
+  }, [props.projectId, props.user]);
 
   return (
     <FirebaseContext.Provider value={firebaseContext}>
@@ -90,6 +83,16 @@ class SimulatedAuth implements IAuth {
     this._user = user;
   }
 
+  private signInSync() {
+    if (this._isLoggedIn !== true) {
+      this._isLoggedIn = true;
+      for (let id in this._userHandlers) {
+        this._userHandlers[id](this._user);
+      }
+    }
+    return Promise.resolve(this._user);
+  }
+
   private signOutSync() {
     if (this._isLoggedIn !== false) {
       this._isLoggedIn = false;
@@ -97,6 +100,18 @@ class SimulatedAuth implements IAuth {
         this._userHandlers[id](null);
       }
     }
+  }
+
+  createUserWithEmailAndPassword(email: string, password: string) {
+    return this.signInSync();
+  }
+
+  sendPasswordResetEmail(email: string) {
+    return Promise.resolve();
+  }
+
+  signInWithEmailAndPassword(email: string, password: string): Promise<IUser | null> {
+    return this.signInSync();
   }
 
   setUser(user: IUser | null) {
@@ -109,13 +124,7 @@ class SimulatedAuth implements IAuth {
   }
 
   signInWithPopup(provider: IAuthProvider | undefined) {
-    if (this._isLoggedIn !== true) {
-      this._isLoggedIn = true;
-      for (let id in this._userHandlers) {
-        this._userHandlers[id](this._user);
-      }
-    }
-    return Promise.resolve(this._user);
+    return this.signInSync();
   }
 
   signOut() {

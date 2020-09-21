@@ -7,7 +7,7 @@ import 'firebase/firestore';
 import 'firebase/functions';
 
 import { IContextProviderProps, IFirebaseContext, IFirebaseProps } from './interfaces';
-import { FirebaseAuth, GoogleAuthProviderWrapper } from '../services/auth';
+import * as Auth from '../services/auth';
 
 const region = 'europe-west2';
 
@@ -17,10 +17,10 @@ async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => vo
   let response = await fetch('/__/firebase/init.json');
   let app = firebase.initializeApp(await response.json());
   setFirebaseContext({
-    auth: new FirebaseAuth(app.auth()),
+    auth: new Auth.FirebaseAuth(app.auth()),
     db: app.firestore(),
     functions: app.functions(region),
-    googleAuthProvider: new GoogleAuthProviderWrapper(),
+    googleAuthProvider: Auth.googleAuthProviderWrapper,
     timestampProvider: firebase.firestore.FieldValue.serverTimestamp,
     createAnalytics: () => app.analytics()
   });
