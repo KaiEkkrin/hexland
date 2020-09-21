@@ -6,15 +6,15 @@ function Introduction() {
   return (
     <div>
       <img className="App-introduction-image" alt="Orc with chest (hex grid)" src="/orc_with_chest.png" />
-      <h5 className="mt-4">Welcome to Hexland.</h5>
+      <h5 className="mt-4">Welcome to Wall &amp; Shadow.</h5>
       <p>
-        Hexland helps you create, share and play on encounter maps for your favourite tabletop roleplaying games, quickly and easily.
+        Wall &amp; Shadow helps you create, share and play on encounter maps for your favourite tabletop roleplaying games, quickly and easily.
         In fact, it's fast enough that you don't always need to prepare -- you can draw your map around your players' character tokens,
         after your game has begun!
       </p>
-      <p>To get started, log in through the <Link to="/login">Sign up/Login</Link> link.  (Logging in prevents Hexland from confusing you with other players.)</p>
+      <p>To get started, log in through the <Link to="/login">Sign up/Login</Link> link.  (Logging in prevents Wall &amp; Shadow from confusing you with other players.)</p>
       <p>
-        As a Game Master, Hexland enables you to create one or more <b>Adventures</b>, each containing one or more <b>Maps</b>.
+        As a Game Master, Wall &amp; Shadow enables you to create one or more <b>Adventures</b>, each containing one or more <b>Maps</b>.
         Click the <b>New adventure</b> button to create an adventure and the <b>New map</b> button to create a map.
         To invite players into your adventure, click the <b>Create invite link</b> button and send them the link.
       </p>
@@ -48,7 +48,7 @@ function Introduction() {
       </dl>
       <h5>And finally</h5>
       <p>
-        Hexland should run well in any reasonably modern browser with WebGL support.
+        Wall &amp; Shadow should run well in any reasonably modern browser with WebGL support.
       </p>
       <p>This web application was made possible by many free and open source projects, including Bootstrap, Font Awesome, Node, React, Three.js and TypeScript.</p>
       <p>Happy gaming!</p>

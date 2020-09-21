@@ -11,7 +11,9 @@ const corsHandler = CORS({
     'http://localhost',
     'http://localhost:3000',
     'https://hexland.web.app',
-    'https://hexland-test.web.app'
+    'https://hexland-test.web.app',
+    'https://wallandshadow.io',
+    'https://www.wallandshadow.io'
   ]
 });
 
@@ -26,12 +28,12 @@ const dataService = new AdminDataService(app);
 // Start writing Firebase Functions
 // https://firebase.google.com/docs/functions/typescript
 
-export const helloWorld = functions.region(region).https.onRequest((request, response) => {
-  corsHandler(request, response, () => {
-    functions.logger.info("Hello logs!", {structuredData: true});
-    response.json({ result: "Hello from Firebase!" });
-  });
-});
+// export const helloWorld = functions.region(region).https.onRequest((request, response) => {
+//   corsHandler(request, response, () => {
+//     functions.logger.info("Hello logs!", {structuredData: true});
+//     response.json({ result: "Hello from Firebase!" });
+//   });
+// });
 
 // Consolidates map changes.
 

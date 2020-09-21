@@ -6,8 +6,8 @@ import { IAnalytics } from '../services/interfaces';
 
 export const AnalyticsContext = React.createContext<IAnalyticsContext>({
   analytics: undefined,
-  enabled: false,
-  setEnabled: (enabled: boolean) => {},
+  enabled: undefined,
+  setEnabled: (enabled: boolean | undefined) => {},
   logError: (message: string, e: any, fatal?: boolean | undefined) => {}
 });
 
@@ -26,16 +26,18 @@ export function AnalyticsContextProvider(props: IContextProviderProps & IAnalyti
   );
 
   const setItem = useCallback(
-    (key: string, value: string) => {
+    (key: string, value: string | null) => {
       if (props.setItem !== undefined) {
         props.setItem(key, value);
-      } else {
+      } else if (value !== null) {
         localStorage.setItem(key, value);
+      } else {
+        localStorage.removeItem(key);
       }
     }, [props]
   );
 
-  const [enabled, setEnabled] = useState(false);
+  const [enabled, setEnabled] = useState<boolean | undefined>(undefined);
   const [analytics, setAnalytics] = useState<IAnalytics | undefined>(undefined);
   const analyticsContext = useMemo(() => ({
     analytics: enabled ? analytics : undefined,
@@ -59,14 +61,22 @@ export function AnalyticsContextProvider(props: IContextProviderProps & IAnalyti
 
   // When the setting is changed, save its value back to local storage
   useEffect(() => {
-    if (enabled) {
+    if (enabled === true) {
+      // User chose to enable GA
       console.log("Enabling Google Analytics");
       setAnalytics(firebaseContext.createAnalytics?.());
-    } else {
+      setItem(enabledKey, "true");
+    } else if (enabled === false) {
+      // User chose to disable GA
       console.log("Disabling Google Analytics");
       setAnalytics(undefined);
+      setItem(enabledKey, "false");
+    } else {
+      // User hasn't chosen yet (default to disabled)
+      console.log("Disabling Google Analytics by default");
+      setAnalytics(undefined);
+      setItem(enabledKey, null);
     }
-    setItem(enabledKey, enabled ? "true" : "false");
   }, [enabled, firebaseContext.createAnalytics, setAnalytics, setItem]);
 
   return (

@@ -21,6 +21,13 @@
   z-index: 202;
 }
 
+.App-consent-card-content {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
 .App-consent-container {
   position: fixed;
   left: 50%;

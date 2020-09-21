@@ -12,6 +12,7 @@ interface IExpansionToggleProps {
   direction: "up" | "down";
   eventKey: string;
   callback?: any;
+  rhs?: React.ReactNode | undefined;
 }
 
 // https://react-bootstrap.github.io/components/accordion/ provided the template for this stuff
@@ -30,10 +31,13 @@ function ExpansionToggle(props: IExpansionToggleProps) {
   );
 
   return (
-    <Card.Header style={{ display: "flex", flexDirection: "row", justifyContent: "space-between" }}
+    <Card.Header style={{ display: "flex", flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}
       onClick={decoratedOnClick}>
       {props.children}
-      <FontAwesomeIcon icon={icon} color="white" className="ml-2" />
+      <div>
+        {props.rhs}
+        <FontAwesomeIcon icon={icon} color="white" className="ml-2" />
+      </div>
     </Card.Header>
   );
 }

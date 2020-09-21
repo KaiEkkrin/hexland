@@ -56,13 +56,14 @@ function NavLogin() {
   // The profile editor:
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [editDisplayName, setEditDisplayName] = useState("");
-  const [editAnalyticsEnabled, setEditAnalyticsEnabled] = useState(false);
+  const [editAnalyticsEnabled, setEditAnalyticsEnabled] = useState<boolean | undefined>(undefined);
+  const analyticsIsEnabled = useMemo(() => editAnalyticsEnabled === true, [editAnalyticsEnabled]);
 
   const handleEditProfile = useCallback(() => {
     setEditDisplayName(displayName);
     setEditAnalyticsEnabled(analyticsContext.enabled);
     setShowEditProfile(true);
-  }, [analyticsContext, displayName, setEditDisplayName, setShowEditProfile]);
+  }, [analyticsContext, displayName, setEditAnalyticsEnabled, setEditDisplayName, setShowEditProfile]);
 
   const handleModalClose = useCallback(() => setShowEditProfile(false), [setShowEditProfile]);
 
@@ -107,12 +108,12 @@ function NavLogin() {
             </Form.Group>
             <Form.Group>
               <FormCheck inline>
-                <FormCheck.Input id="allowAnalytics" type="checkbox" checked={editAnalyticsEnabled}
+                <FormCheck.Input id="allowAnalytics" type="checkbox" checked={analyticsIsEnabled}
                   onChange={handleEditAnalyticsEnabledChange} />
                 <FormCheck.Label htmlFor="allowAnalytics">Allow Google Analytics</FormCheck.Label>
               </FormCheck>
               <Form.Text className="text-muted">
-                Check this box to allow Hexland to use Google Analytics to measure usage and identify errors, and accept the data collection and cookies required.
+                Check this box to allow Wall &amp; Shadow to use Google Analytics to measure usage and identify errors, and accept the data collection and cookies required.
               </Form.Text>
             </Form.Group>
           </Form>
@@ -140,7 +141,7 @@ function Navigation(props: INavigationProps) {
   return (
     <Navbar bg="dark" expand="md" variant="dark" sticky="top" onToggle={setExpanded}>
       <LinkContainer to="/">
-        <Navbar.Brand>hexland</Navbar.Brand>
+        <Navbar.Brand>Wall &amp; Shadow</Navbar.Brand>
       </LinkContainer>
       <Navbar.Toggle aria-controls="basic-navbar-nav" />
       <Navbar.Collapse id="basic-navbar-nav">

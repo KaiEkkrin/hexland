@@ -27,8 +27,8 @@ export interface IUserContext {
 
 export interface IAnalyticsContext {
   analytics: IAnalytics | undefined;
-  enabled: boolean; // Residing in local storage, this signals consent.
-  setEnabled: (enabled: boolean) => void;
+  enabled: boolean | undefined; // Residing in local storage, this signals consent.
+  setEnabled: (enabled: boolean | undefined) => void;
   logError: (message: string, e: any, fatal?: boolean | undefined) => void; // Use this error helper to track errors in GA where possible.
 }
 
@@ -57,5 +57,5 @@ export interface IAnalyticsProps {
   // These two optional functions can be set in testing to override the
   // use of local storage.
   getItem?: ((key: string) => string | null) | undefined;
-  setItem?: ((key: string, value: string) => void) | undefined;
+  setItem?: ((key: string, value: string | null) => void) | undefined;
 }

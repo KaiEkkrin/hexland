@@ -65,14 +65,13 @@ describe('test functions', () => {
     // await clearFirestoreData({ projectId: projectId });
   });
 
-  test('invoke hello world function', async () => {
-    // TODO #64 Remove this when some "real" functions are working :)
-    const functions = emul['owner'].functions;
-    functions.useFunctionsEmulator('http://localhost:5001');
-    const hello = functions.httpsCallable('helloWorld');
-    const result = await hello();
-    expect(result.data).toBe('Hello from Firebase!');
-  });
+  // test('invoke hello world function', async () => {
+  //   const functions = emul['owner'].functions;
+  //   functions.useFunctionsEmulator('http://localhost:5001');
+  //   const hello = functions.httpsCallable('helloWorld');
+  //   const result = await hello();
+  //   expect(result.data).toBe('Hello from Firebase!');
+  // });
 
   async function testConsolidate(moveCount: number) {
     const functions = emul['owner'].functions;
