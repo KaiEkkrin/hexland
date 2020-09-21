@@ -105,6 +105,9 @@ function NavLogin() {
               <Form.Label htmlFor="nameInput">Display name</Form.Label>
               <Form.Control id="nameInput" type="text" maxLength={30} value={editDisplayName}
                 onChange={e => setEditDisplayName(e.target.value)} />
+              <Form.Text className="text-muted">
+                This is the name that will be shown to other users of Wall &amp; Shadow.
+              </Form.Text>
             </Form.Group>
             <Form.Group>
               <FormCheck inline>
