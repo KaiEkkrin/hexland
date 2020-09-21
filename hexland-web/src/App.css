@@ -29,10 +29,15 @@
 }
 
 .App-consent-container {
+  display: flex;
   position: fixed;
-  left: 50%;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-end;
   bottom: 0;
-  transform: translateX(-50%);
+  padding-left: 10px;
+  padding-right: 10px;
+  width: calc(100vw - 20px);
 }
 
 .App-header {
@@ -44,6 +49,8 @@
   justify-content: center;
   color: white;
   line-height: 200%;
+  padding-left: 15px;
+  padding-right: 15px;
 }
 
 .App-introduction-image {
@@ -56,6 +63,8 @@
 
 .App-login-text {
   margin-top: 2rem;
+  margin-bottom: 2rem;
+  max-width: calc(20rem + 40vw);
 }
 
 .App-link {

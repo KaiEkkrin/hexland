@@ -47,10 +47,10 @@ function Consent() {
         <Accordion.Collapse eventKey="0">
           <Card.Body className="App-consent-card-content">
             <div>
-              Like many other websites, Wall &amp; Shadow can use Google Analytics to measure how it is used and identify errors.
-              To accept this data collection and any cookies required, click the Accept button. <a target="_blank" rel="noopener noreferrer" href="https://policies.google.com/technologies/partner-sites">Learn more.</a>
+              Like many other websites, Wall &amp; Shadow includes Google Analytics to measure how it is used and identify errors.
+              To accept this, click the Accept button. No data will be collected unless you do so. <a target="_blank" rel="noopener noreferrer" href="https://policies.google.com/technologies/partner-sites">Learn more.</a>
             </div>
-            <Button size="sm" variant="danger" onClick={handleDeclineClick}>Decline</Button>
+            <Button className="ml-2" size="sm" variant="danger" onClick={handleDeclineClick}>Decline</Button>
           </Card.Body>
         </Accordion.Collapse>
       </Card>

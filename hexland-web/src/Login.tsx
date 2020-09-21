@@ -86,12 +86,18 @@ function Login() {
     <div>
       <Navigation title={undefined} />
       <header className="App-header">
+        <div className="App-login-text">
+          Sign in to get started with Wall &amp; Shadow.
+        </div>
         <Button onClick={handleGoogleLoginClick}>
           Sign in with Google
         </Button>
         <LoginFailedMessage isVisible={loginFailedVisible} />
         <LoginSuccessfulMessage isVisible={loginSuccessfulVisible} />
-        <div className="App-login-text">Your account is used only to create a unique player identifier for you.</div>
+        <div className="App-login-text">
+          Your account is used only to create a unique player identifier for you.
+          After signing in, you can click on your name button at the top right to change the name shown to other players.
+        </div>
       </header>
     </div>
   );
