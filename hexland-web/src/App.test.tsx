@@ -77,8 +77,8 @@ const ownerUser: IUser = {
   emailVerified: true,
   providerId: 'google.com',
   uid: 'owner',
+  changePassword: jest.fn(),
   sendEmailVerification: jest.fn(),
-  updatePassword: jest.fn(),
   updateProfile: jest.fn()
 };
 
@@ -420,8 +420,8 @@ describe('test app', () => {
       emailVerified: true,
       providerId: "google.com",
       uid: "user1",
+      changePassword: jest.fn(),
       sendEmailVerification: jest.fn(),
-      updatePassword: jest.fn(),
       updateProfile: jest.fn()
     };
 
@@ -488,8 +488,8 @@ describe('test app', () => {
       emailVerified: true,
       providerId: "google.com",
       uid: "userA",
+      changePassword: jest.fn(),
       sendEmailVerification: jest.fn(),
-      updatePassword: jest.fn(),
       updateProfile: jest.fn()
     };
     let redirectToHome = await logInWithGoogle(projectId, user);

@@ -2,6 +2,10 @@ import { IAuth, IAuthProvider, IUser } from "./interfaces";
 
 import * as firebase from 'firebase/app';
 
+function createUser(user: firebase.User | null) {
+  return user === null ? null : new User(user);
+}
+
 // Wraps the real Firebase auth service and the providers we recognise
 // into our IAuth abstraction.
 
@@ -14,7 +18,11 @@ export class FirebaseAuth implements IAuth {
 
   async createUserWithEmailAndPassword(email: string, password: string) {
     let credential = await this._auth.createUserWithEmailAndPassword(email, password);
-    return credential.user;
+    return createUser(credential.user);
+  }
+
+  fetchSignInMethodsForEmail(email: string) {
+    return this._auth.fetchSignInMethodsForEmail(email);
   }
 
   sendPasswordResetEmail(email: string) {
@@ -23,13 +31,13 @@ export class FirebaseAuth implements IAuth {
 
   async signInWithEmailAndPassword(email: string, password: string) {
     let credential = await this._auth.signInWithEmailAndPassword(email, password);
-    return credential.user;
+    return createUser(credential.user);
   }
 
   async signInWithPopup(provider: IAuthProvider | undefined) {
     if (provider instanceof PopupAuthProviderWrapper) {
       let credential = await provider.signInWithPopup(this._auth);
-      return credential.user;
+      return createUser(credential.user);
     }
 
     throw Error("Incompatible auth provider");
@@ -40,7 +48,10 @@ export class FirebaseAuth implements IAuth {
   }
 
   onAuthStateChanged(onNext: (user: IUser | null) => void, onError?: ((e: Error) => void) | undefined) {
-    return this._auth.onAuthStateChanged(onNext, e => onError?.(new Error(e.message)));
+    return this._auth.onAuthStateChanged(
+      u => onNext(createUser(u)),
+      e => onError?.(new Error(e.message))
+    );
   }
 }
 
@@ -54,6 +65,49 @@ class PopupAuthProviderWrapper implements IAuthProvider {
   signInWithPopup(auth: firebase.auth.Auth) {
     const credential = auth.signInWithPopup(this._provider);
     return credential;
+  }
+}
+
+export class User implements IUser {
+  private readonly _user: firebase.User;
+
+  constructor(user: firebase.User) {
+    this._user = user;
+  }
+
+  get displayName() { return this._user.displayName; }
+  get email() { return this._user.email; }
+  get emailVerified() { return this._user.emailVerified; }
+  get providerId() { return this._user.providerId; }
+  get uid() { return this._user.uid; }
+
+  async changePassword(oldPassword: string, newPassword: string) {
+    if (this._user.email === null) {
+      return;
+    }
+
+    // We always re-authenticate first to make sure we're not stale
+    const updated = await this._user.reauthenticateWithCredential(
+      firebase.auth.EmailAuthProvider.credential(this._user.email, oldPassword)
+    );
+
+    if (updated.user === null) {
+      throw Error("Unable to reauthenticate (wrong password?)");
+    }
+
+    await updated.user?.updatePassword(newPassword);
+  }
+
+  sendEmailVerification() {
+    return this._user.sendEmailVerification();
+  }
+
+  updatePassword(newPassword: string) {
+    return this._user.updatePassword(newPassword);
+  }
+
+  updateProfile(p: any) {
+    return this._user.updateProfile(p);
   }
 }
 

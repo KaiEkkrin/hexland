@@ -106,6 +106,11 @@ class SimulatedAuth implements IAuth {
     return this.signInSync();
   }
 
+  fetchSignInMethodsForEmail(email: string) {
+    // TODO Fill this in if I find myself needing it
+    return Promise.resolve([]);
+  }
+
   sendPasswordResetEmail(email: string) {
     return Promise.resolve();
   }

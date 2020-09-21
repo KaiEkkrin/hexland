@@ -4,6 +4,7 @@ import './App.css';
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
 import { FirebaseContext } from './components/FirebaseContextProvider';
 import Navigation from './components/Navigation';
+import * as Policy from './components/policy';
 import { ProfileContext } from './components/ProfileContextProvider';
 
 import { DataService } from './services/dataService';
@@ -24,15 +25,6 @@ interface ILoginMessageProps {
 
 function LoginFailedMessage(props: ILoginMessageProps) {
   return props.isVisible ? <p style={{ color: "red" }}>Login failed.</p> : <div></div>;
-}
-
-// This email address validation from https://ui.dev/validate-email-address-javascript/
-function emailIsValid(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-}
-
-function passwordIsValid(password: string) {
-  return password.length >= 8 && /[a-z]/i.test(password) && /[0-9]/.test(password);
 }
 
 interface INewUserFormProps {
@@ -58,7 +50,7 @@ function EmailPasswordModal(props: INewUserFormProps) {
   }, [props.shown]);
 
   const signInDisabled = useMemo(() => {
-    if (!emailIsValid(email) || !passwordIsValid(password)) {
+    if (!Policy.emailIsValid(email) || !Policy.passwordIsValid(password)) {
       return true;
     }
 

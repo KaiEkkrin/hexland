@@ -25,6 +25,10 @@ export interface IUserContext {
   functionsService?: IFunctionsService | undefined;
 }
 
+export interface ISignInMethodsContext {
+  signInMethods: string[];
+}
+
 export interface IAnalyticsContext {
   analytics: IAnalytics | undefined;
   enabled: boolean | undefined; // Residing in local storage, this signals consent.

@@ -9,6 +9,7 @@ import { IProfile } from '../data/profile';
 // simulator.
 export interface IAuth {
   createUserWithEmailAndPassword(email: string, password: string): Promise<IUser | null>;
+  fetchSignInMethodsForEmail(email: string): Promise<Array<string>>;
   sendPasswordResetEmail(email: string): Promise<void>;
   signInWithEmailAndPassword(email: string, password: string): Promise<IUser | null>;
   signInWithPopup(provider: IAuthProvider | undefined): Promise<IUser | null>;
@@ -31,8 +32,8 @@ export interface IUser {
   providerId: string;
   uid: string;
 
+  changePassword: (oldPassword: string, newPassword: string) => Promise<void>;
   sendEmailVerification: () => Promise<void>;
-  updatePassword: (newPassword: string) => Promise<void>;
   updateProfile: (p: any) => Promise<void>;
 }
 
