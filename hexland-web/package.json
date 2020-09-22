@@ -1,6 +1,6 @@
 {
   "name": "hexland-web",
-  "version": "0.8.7",
+  "version": "0.8.8",
   "private": true,
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.30",

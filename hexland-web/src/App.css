@@ -4,15 +4,33 @@
   height: 100vh;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.App-brand {
+  align-items: center;
+  display: flex !important;
+  font-family: 'Princess Sofia';
+  font-size: 1rem !important;
+  font-weight: bold;
+  height: 40px;
+  padding: 0px !important;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.App-brand-main {
+  color: #ed8a17 !important;
+  left: 0px;
+  position: relative;
+  top: 0.1rem;
+}
+
+.App-brand-shadow {
+  color: black !important;
+  left: 0px;
+  position: relative;
+  top: -0.5rem;
+  transform: skew(45deg, 0deg) scaleY(-1) translateX(0.3rem);
+}
+
+.App-brand-text {
+  display: inline-block;
 }
 
 .App-consent-card {

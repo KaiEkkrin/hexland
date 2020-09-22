@@ -305,7 +305,17 @@ function Navigation(props: INavigationProps) {
   return (
     <Navbar bg="dark" expand="md" variant="dark" sticky="top" onToggle={setExpanded}>
       <LinkContainer to="/">
-        <Navbar.Brand>Wall &amp; Shadow</Navbar.Brand>
+        <Navbar.Brand className="App-brand">
+          <img src="32.png" alt="logo" />
+          <div className="App-brand-text">
+            <div className="App-brand-main">
+              wall &amp; shadow
+            </div>
+            <div className="App-brand-shadow">
+              wall &amp; shadow
+            </div>
+          </div>
+        </Navbar.Brand>
       </LinkContainer>
       <Navbar.Toggle aria-controls="basic-navbar-nav" />
       <Navbar.Collapse id="basic-navbar-nav">
