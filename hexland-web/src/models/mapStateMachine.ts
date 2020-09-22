@@ -838,7 +838,7 @@ export class MapStateMachine {
   // Returns true if it selected something, else false.
   selectToken(cp: THREE.Vector3) {
     const token = this.getToken(cp);
-    if (token === undefined) {
+    if (token === undefined || !this.canSelectToken(token)) {
       return false;
     }
 
