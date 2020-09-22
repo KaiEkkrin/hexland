@@ -52,11 +52,13 @@ function Map(props: IMapPageProps) {
   const [canDoAnything, setCanDoAnything] = useState(false);
   const [mapState, setMapState] = useState(createDefaultState());
 
-  // Building the map state machine like this lets us auto-dispose old ones:
+  // Building the map state machine like this lets us auto-dispose old ones.
+  // Careful, the function may be called more than once for any given pair of
+  // arguments (state, action) (wtf, React?!)
   const [stateMachine, setStateMachine] = useReducer(
-    (state: MapStateMachine | undefined, action: (() => MapStateMachine) | undefined) => {
+    (state: MapStateMachine | undefined, action: MapStateMachine | undefined) => {
       state?.dispose();
-      return action?.();
+      return action;
     }, undefined
   );
 
@@ -139,7 +141,7 @@ function Map(props: IMapPageProps) {
       analyticsContext.logError("Error consolidating map " + map.adventureId + "/" + map.id + " changes", e);
     }
 
-    setStateMachine(() => new MapStateMachine(map, uid, standardColours, mount, setMapState));
+    setStateMachine(new MapStateMachine(map, uid, standardColours, mount, setMapState));
   }, [setMapState, setStateMachine]);
 
   useEffect(() => {
