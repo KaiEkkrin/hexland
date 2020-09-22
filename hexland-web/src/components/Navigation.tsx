@@ -1,9 +1,10 @@
-import React, { useContext, useMemo, useCallback, useState } from 'react';
+import React, { useContext, useMemo, useCallback, useState, useEffect } from 'react';
 
 import { AnalyticsContext } from './AnalyticsContextProvider';
 import { FirebaseContext } from './FirebaseContextProvider';
 import { ProfileContext } from './ProfileContextProvider';
 import * as Policy from './policy';
+import { StatusContext } from './StatusContextProvider';
 import { SignInMethodsContext, UserContext } from './UserContextProvider';
 import { updateProfile } from '../services/extensions';
 
@@ -15,8 +16,11 @@ import FormCheck from 'react-bootstrap/FormCheck';
 import Modal from 'react-bootstrap/Modal';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
+
 import { LinkContainer } from 'react-router-bootstrap';
-import { StatusContext } from './StatusContextProvider';
+
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCheck } from '@fortawesome/free-solid-svg-icons';
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -164,27 +168,70 @@ function NavLogin() {
     setShowEditProfile(false);
   }, [setShowChangePassword, setShowEditProfile]);
 
+  // We show a verified icon if the user's email is verified
+  const verifiedIcon = useMemo(() => {
+    if (userContext.user?.emailVerified === true) {
+      return (
+        <FontAwesomeIcon className="ml-1" icon={faCheck} color="white" />
+      );
+    } else {
+      return undefined;
+    }
+  }, [userContext.user]);
+
+  // We'll let users re-send their email verification once per login
+  const [canResendEmailVerification, setCanResendEmailVerification] = useState(false);
+
+  useEffect(() => {
+    if (userContext.user?.emailVerified === false) {
+      setCanResendEmailVerification(true);
+    } else {
+      setCanResendEmailVerification(false);
+    }
+  }, [userContext.user]);
+
+  const handleResendEmailVerification = useCallback(() => {
+    setCanResendEmailVerification(false);
+    userContext.user?.sendEmailVerification()
+      .then(() => statusContext.toasts.next({
+        id: uuidv4(),
+        record: { title: "Email/password login", message: "A verification email has been sent to " + userContext.user?.email }
+      }))
+      .catch(e => analyticsContext.logError("Resend email verification error", e));
+  }, [analyticsContext, setCanResendEmailVerification, statusContext, userContext.user]);
+
+  const resendVerificationItem = useMemo(() => {
+    if (canResendEmailVerification === true) {
+      return (
+        <Dropdown.Item onClick={handleResendEmailVerification}>Re-send email verification</Dropdown.Item>
+      );
+    } else {
+      return undefined;
+    }
+  }, [canResendEmailVerification, handleResendEmailVerification]);
+
   // We show the profile button as a dropdown only if there are further things to drop
   // down from it
   const profileButton = useMemo(() => {
     if (isPasswordUser) {
       return (
-        <Dropdown>
-          <Dropdown.Toggle variant="dark">
-            {displayName}
+        <Dropdown alignRight>
+          <Dropdown.Toggle variant="primary">
+            {displayName}{verifiedIcon}
           </Dropdown.Toggle>
           <Dropdown.Menu>
             <Dropdown.Item onClick={handleEditProfile}>Edit profile</Dropdown.Item>
             <Dropdown.Item onClick={handleChangePassword}>Change password</Dropdown.Item>
+            {resendVerificationItem}
           </Dropdown.Menu>
         </Dropdown>
       );
     } else {
       return (
-        <Button variant="primary" onClick={handleEditProfile}>{displayName}</Button>
+        <Button variant="primary" onClick={handleEditProfile}>{displayName}{verifiedIcon}</Button>
       );
     }
-  }, [displayName, handleChangePassword, handleEditProfile, isPasswordUser]);
+  }, [displayName, handleChangePassword, handleEditProfile, isPasswordUser, resendVerificationItem, verifiedIcon]);
 
   const handleChangePasswordSave = useCallback((oldPassword: string, newPassword: string) => {
     handleModalClose();

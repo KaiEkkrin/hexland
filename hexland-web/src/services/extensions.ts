@@ -12,7 +12,8 @@ const maxProfileEntries = 7;
 export async function ensureProfile(
   dataService: IDataService | undefined,
   user: IUser | undefined,
-  analytics: IAnalytics | undefined
+  analytics: IAnalytics | undefined,
+  displayName?: string | undefined
 ): Promise<IProfile | undefined> {
   if (dataService === undefined || user === undefined) {
     return undefined;
@@ -28,7 +29,7 @@ export async function ensureProfile(
 
     // If we get here, we need to create a new profile
     profile = {
-      name: user.displayName ?? "Unnamed user",
+      name: displayName ?? user.displayName ?? "Unnamed user",
       adventures: [],
       latestMaps: []
     };
