@@ -531,6 +531,76 @@ export async function registerMapAsRecent(
   );
 }
 
+async function removeAdventureFromRecentTransaction(
+  view: IDataView,
+  profileRef: IDataReference<IProfile>,
+  id: string
+) {
+  let profile = await view.get(profileRef);
+  if (profile === undefined) {
+    throw Error("No such profile");
+  }
+
+  if (profile.adventures === undefined) {
+    return;
+  }
+
+  let excepted = profile.adventures?.filter(a => a.id !== id);
+  if (excepted.length !== profile.adventures.length) {
+    view.update(profileRef, { adventures: excepted });
+  }
+}
+
+export async function removeAdventureFromRecent(
+  dataService: IDataService | undefined,
+  uid: string,
+  id: string
+) {
+  if (dataService === undefined) {
+    return;
+  }
+
+  let profileRef = dataService.getProfileRef(uid);
+  await dataService.runTransaction(
+    view => removeAdventureFromRecentTransaction(view, profileRef, id)
+  );
+}
+
+async function removeMapFromRecentTransaction(
+  view: IDataView,
+  profileRef: IDataReference<IProfile>,
+  id: string
+) {
+  let profile = await view.get(profileRef);
+  if (profile === undefined) {
+    throw Error("No such profile");
+  }
+
+  if (profile.latestMaps === undefined) {
+    return;
+  }
+
+  let excepted = profile.latestMaps?.filter(a => a.id !== id);
+  if (excepted.length !== profile.latestMaps.length) {
+    view.update(profileRef, { latestMaps: excepted });
+  }
+}
+
+export async function removeMapFromRecent(
+  dataService: IDataService | undefined,
+  uid: string,
+  id: string
+) {
+  if (dataService === undefined) {
+    return;
+  }
+
+  let profileRef = dataService.getProfileRef(uid);
+  await dataService.runTransaction(
+    view => removeMapFromRecentTransaction(view, profileRef, id)
+  );
+}
+
 // A simple helper to fetch all map changes instantaneously -- useful for testing; the
 // live application should probably be watching changes instead
 export async function getAllMapChanges(

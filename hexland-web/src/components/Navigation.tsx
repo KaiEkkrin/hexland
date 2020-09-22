@@ -306,7 +306,7 @@ function Navigation(props: INavigationProps) {
     <Navbar bg="dark" expand="md" variant="dark" sticky="top" onToggle={setExpanded}>
       <LinkContainer to="/">
         <Navbar.Brand className="App-brand">
-          <img src="32.png" alt="logo" />
+          <img src="/32.png" alt="logo" />
           <div className="App-brand-text">
             <div className="App-brand-main">
               wall &amp; shadow

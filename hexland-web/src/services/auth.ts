@@ -102,10 +102,6 @@ export class User implements IUser {
     return this._user.sendEmailVerification();
   }
 
-  updatePassword(newPassword: string) {
-    return this._user.updatePassword(newPassword);
-  }
-
   updateProfile(p: any) {
     return this._user.updateProfile(p);
   }

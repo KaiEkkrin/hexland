@@ -1,5 +1,6 @@
 import { DataService } from './dataService';
 import { editAdventure, editMap, ensureProfile, getAllMapChanges } from './extensions';
+import { createTestUser } from './extensions.test';
 import { FunctionsService } from './functions';
 import { IUser } from './interfaces';
 import { ChangeCategory, ChangeType, ITokenAdd, ITokenMove, IWallAdd } from '../data/change';
@@ -41,12 +42,7 @@ describe('test functions', () => {
   }
 
   beforeAll(() => {
-    initializeEmul({
-      displayName: 'Owner',
-      email: 'owner@example.com',
-      providerId: 'google.com',
-      uid: 'owner'
-    });
+    initializeEmul(createTestUser('Owner', 'owner@example.com', 'google.com', 'owner'));
   });
 
   afterAll(async () => {
@@ -81,12 +77,9 @@ describe('test functions', () => {
     // make sure my user is set up
     const db = emul['owner'].db;
     const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
-    const profile = await ensureProfile(dataService, {
-      displayName: 'Owner',
-      email: 'owner@example.com',
-      providerId: 'google.com',
-      uid: 'owner'
-    }, undefined);
+    const profile = await ensureProfile(dataService, createTestUser(
+      'Owner', 'owner@example.com', 'google.com', 'owner'
+    ), undefined);
     expect(profile?.name).toBe('Owner');
 
     // create an adventure

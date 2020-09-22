@@ -25,23 +25,25 @@ import { trackChanges } from './data/changeTracking';
 import { IToken, ITokenProperties } from './data/feature';
 import { IAdventureIdentified } from './data/identified';
 import { IMap } from './data/map';
-import { registerMapAsRecent, editMap, watchChangesAndConsolidate } from './services/extensions';
+import { registerMapAsRecent, editMap, watchChangesAndConsolidate, removeMapFromRecent } from './services/extensions';
 import { IDataService, IFunctionsService } from './services/interfaces';
 
 import { standardColours } from './models/featureColour';
 import * as Keys from './models/keys';
 import { MapStateMachine, createDefaultState } from './models/mapStateMachine';
 
-import { RouteComponentProps } from 'react-router-dom';
+import { RouteComponentProps, useHistory } from 'react-router-dom';
 
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
+import { v4 as uuidv4 } from 'uuid';
 
 // The map component is rather large because of all the state that got pulled into it...
 function Map(props: IMapPageProps) {
   const userContext = useContext(UserContext);
   const analyticsContext = useContext(AnalyticsContext);
   const statusContext = useContext(StatusContext);
+  const history = useHistory();
 
   const drawingRef = useRef<HTMLDivElement>(null);
 
@@ -71,23 +73,50 @@ function Map(props: IMapPageProps) {
       return;
     }
 
+    let mapRef = userContext.dataService.getMapRef(props.adventureId, props.mapId);
+
+    // How to handle a map load failure.
+    function couldNotLoad(message: string) {
+      statusContext.toasts.next({
+        id: uuidv4(),
+        record: { title: 'Error loading map', message: message }
+      });
+
+      const uid = userContext.user?.uid;
+      if (uid && mapRef) {
+        removeMapFromRecent(userContext.dataService, uid, mapRef.id)
+          .catch(e => analyticsContext.logError("Error removing map from recent", e));
+      }
+
+      history.replace('/');
+    }
+
+    // Check this map exists and can be fetched (the watch doesn't do this for us)
+    userContext.dataService.get(mapRef)
+      .then(r => {
+        if (r === undefined) {
+          couldNotLoad('That map does not exist.');
+        }
+      })
+      .catch(e => {
+        analyticsContext.logError("Error checking for map " + props.mapId + ": ", e);
+        couldNotLoad(e.message);
+      });
+
     analyticsContext.analytics?.logEvent("select_content", {
       "content_type": "map",
       "item_id": props.mapId
     });
 
-    // TODO remove debug after confirming we don't multiple-watch things
-    console.log("Watching adventure " + props.adventureId + ", map " + props.mapId);
-    let mapRef = userContext.dataService.getMapRef(props.adventureId, props.mapId);
     return userContext.dataService.watch<IMap>(
       mapRef, m => setMap(m === undefined ? undefined : {
         adventureId: props.adventureId,
         id: props.mapId,
         record: m
       }),
-      e => console.error("Error watching map " + props.mapId, e)
+      e => analyticsContext.logError("Error watching map " + props.mapId, e)
     );
-  }, [userContext.dataService, analyticsContext.analytics, props.adventureId, props.mapId]);
+  }, [userContext, analyticsContext, history, props.adventureId, props.mapId, statusContext]);
 
   // Track changes to the map.
   // We don't start watching until we have an initialised state machine (which means the

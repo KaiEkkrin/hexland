@@ -1,5 +1,5 @@
 import { DataService } from './dataService';
-import { ensureProfile, editAdventure, editMap, deleteMap, deleteAdventure, inviteToAdventure, joinAdventure, registerAdventureAsRecent, registerMapAsRecent, leaveAdventure, updateProfile } from './extensions';
+import { ensureProfile, editAdventure, editMap, deleteMap, deleteAdventure, inviteToAdventure, joinAdventure, registerAdventureAsRecent, registerMapAsRecent, leaveAdventure, updateProfile, removeAdventureFromRecent, removeMapFromRecent } from './extensions';
 import { IUser } from './interfaces';
 import { MapType } from '../data/map';
 
@@ -10,6 +10,25 @@ import { clearFirestoreData, initializeTestApp } from '@firebase/rules-unit-test
 
 import { v4 as uuidv4 } from 'uuid';
 import fluent from 'fluent-iterable';
+
+export function createTestUser(
+  displayName: string | null,
+  email: string | null,
+  providerId: string,
+  uid: string,
+  emailVerified?: boolean | undefined,
+): IUser {
+  return {
+    displayName: displayName,
+    email: email,
+    emailVerified: emailVerified ?? true,
+    providerId: providerId,
+    uid: uid,
+    changePassword: jest.fn(),
+    sendEmailVerification: jest.fn(),
+    updateProfile: jest.fn()
+  };
+}
 
 describe('test extensions', () => {
   const projectIds: string[] = [];
@@ -36,12 +55,7 @@ describe('test extensions', () => {
   beforeEach(() => {
     const id = uuidv4();
     projectIds.push(id);
-    initializeEmul({
-      displayName: 'Owner',
-      email: 'owner@example.com',
-      providerId: 'google.com',
-      uid: 'owner'
-    });
+    initializeEmul(createTestUser('Owner', 'owner@example.com', 'google.com', 'owner'));
   });
 
   afterEach(async () => {
@@ -63,23 +77,17 @@ describe('test extensions', () => {
   test('create a new profile entry', async () => {
     const db = emul['owner'].firestore();
     const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
-    const profile = await ensureProfile(dataService, {
-      displayName: 'Owner',
-      email: 'owner@example.com',
-      providerId: 'google.com',
-      uid: 'owner'
-    }, undefined);
+    const profile = await ensureProfile(dataService, createTestUser(
+      'Owner', 'owner@example.com', 'google.com', 'owner'
+    ), undefined);
 
     expect(profile?.name).toBe('Owner');
 
     // If we fetch it, it should not get re-created or updated (changing their Hexland display
     // name should be a Hexland UI feature, it shouldn't sync with the provider's idea of it)
-    const profile2 = await ensureProfile(dataService, {
-      displayName: 'fish',
-      email: 'owner@example.com',
-      providerId: 'google.com',
-      uid: 'owner'
-    }, undefined);
+    const profile2 = await ensureProfile(dataService, createTestUser(
+      'fish', 'owner@example.com', 'google.com', 'owner'
+    ), undefined);
 
     expect(profile2?.name).toBe('Owner');
   });
@@ -87,12 +95,9 @@ describe('test extensions', () => {
   test('create and edit adventures and maps', async () => {
     const db = emul['owner'].firestore();
     const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
-    let profile = await ensureProfile(dataService, {
-      displayName: 'Owner',
-      email: 'owner@example.com',
-      providerId: 'google.com',
-      uid: 'owner'
-    }, undefined);
+    let profile = await ensureProfile(dataService, createTestUser(
+      'Owner', 'owner@example.com', 'google.com', 'owner'
+    ), undefined);
 
     // There should be no adventures in the profile now
     expect(profile?.adventures).toHaveLength(0);
@@ -222,12 +227,9 @@ describe('test extensions', () => {
     // As the owner, create an adventure and a map
     const db = emul['owner'].firestore();
     const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
-    let profile = await ensureProfile(dataService, {
-      displayName: 'Owner',
-      email: 'owner@example.com',
-      providerId: 'google.com',
-      uid: 'owner'
-    }, undefined);
+    let profile = await ensureProfile(dataService, createTestUser(
+      'Owner', 'owner@example.com', 'google.com', 'owner'
+    ), undefined);
 
     // There should be no adventures in the profile now
     expect(profile?.adventures).toHaveLength(0);
@@ -261,12 +263,7 @@ describe('test extensions', () => {
     expect(invite).not.toBeUndefined();
 
     // Get myself a profile as a different user
-    const user = {
-      displayName: "User 1",
-      email: 'user1@example.com',
-      providerId: 'google.com',
-      uid: 'user1'
-    };
+    const user = createTestUser('User 1', 'user1@example.com', 'google.com', 'user1');
     const userDb = initializeEmul(user).firestore();
     const userDataService = new DataService(userDb, firebase.firestore.FieldValue.serverTimestamp);
     let userProfile = await ensureProfile(userDataService, user, undefined);
@@ -309,6 +306,23 @@ describe('test extensions', () => {
     expect(userProfile?.latestMaps).toHaveLength(1);
     expect(userProfile?.latestMaps?.find(m => m.name === 'Map One')).not.toBeUndefined();
 
+    // Check I can unregister those as recent as well:
+    await removeAdventureFromRecent(userDataService, 'user1', a1Id);
+    await removeMapFromRecent(userDataService, 'user1', m1Id);
+
+    userProfile = await userDataService.get(userDataService.getProfileRef('user1'));
+    expect(userProfile?.adventures).toHaveLength(0);
+    expect(userProfile?.latestMaps).toHaveLength(0);
+
+    await registerAdventureAsRecent(userDataService, 'user1', a1Id, a1Record);
+    await registerMapAsRecent(userDataService, 'user1', a1Id, m1Id, m1Record);
+
+    userProfile = await userDataService.get(userDataService.getProfileRef('user1'));
+    expect(userProfile?.adventures).toHaveLength(1);
+    expect(userProfile?.adventures?.find(a => a.name === 'Adventure One')).not.toBeUndefined();
+    expect(userProfile?.latestMaps).toHaveLength(1);
+    expect(userProfile?.latestMaps?.find(m => m.name === 'Map One')).not.toBeUndefined();
+
     // Leave the adventure
     await leaveAdventure(userDataService, 'user1', a1Id);
 
@@ -328,12 +342,7 @@ describe('test extensions', () => {
 
   test('change my display name', async () => {
     // As one user, create our profile and an adventure
-    const user1 = {
-      displayName: "User 1",
-      email: 'user1@example.com',
-      providerId: 'google.com',
-      uid: 'user1'
-    };
+    const user1 = createTestUser('User 1', 'user1@example.com', 'google.com', 'user1');
     const user1Db = initializeEmul(user1).firestore();
     const user1DataService = new DataService(user1Db, firebase.firestore.FieldValue.serverTimestamp);
     let user1Profile = await ensureProfile(user1DataService, user1, undefined);
@@ -353,12 +362,7 @@ describe('test extensions', () => {
     await registerAdventureAsRecent(user1DataService, 'user1', a1Id, { maps: [], ...a1 });
 
     // As another user, also create an adventure
-    const user2 = {
-      displayName: "User 2",
-      email: 'user2@example.com',
-      providerId: 'google.com',
-      uid: 'user2'
-    };
+    const user2 = createTestUser('User 2', 'user2@example.com', 'google.com', 'user2');
     const user2Db = initializeEmul(user2).firestore();
     const user2DataService = new DataService(user2Db, firebase.firestore.FieldValue.serverTimestamp);
     let user2Profile = await ensureProfile(user2DataService, user2, undefined);

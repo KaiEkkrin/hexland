@@ -8,12 +8,13 @@ import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
 import PlayerInfoList from './components/PlayerInfoList';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
+import { StatusContext } from './components/StatusContextProvider';
 import { UserContext } from './components/UserContextProvider';
 
 import { IAdventure, summariseAdventure, IPlayer } from './data/adventure';
 import { IMap } from './data/map';
 import { IIdentified } from './data/identified';
-import { deleteMap, editMap, registerAdventureAsRecent, inviteToAdventure, editAdventure, deleteAdventure, leaveAdventure } from './services/extensions';
+import { deleteMap, editMap, registerAdventureAsRecent, inviteToAdventure, editAdventure, deleteAdventure, leaveAdventure, removeAdventureFromRecent } from './services/extensions';
 
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
@@ -35,6 +36,8 @@ function Adventure(props: IAdventureProps) {
   const firebaseContext = useContext(FirebaseContext);
   const userContext = useContext(UserContext);
   const analyticsContext = useContext(AnalyticsContext);
+  const statusContext = useContext(StatusContext);
+  const history = useHistory();
 
   const [adventure, setAdventure] = useState<IIdentified<IAdventure> | undefined>(undefined);
   useEffect(() => {
@@ -43,14 +46,42 @@ function Adventure(props: IAdventureProps) {
       return;
     }
 
+    // How to handle an adventure load failure.
+    function couldNotLoad(message: string) {
+      statusContext.toasts.next({
+        id: uuidv4(),
+        record: { title: 'Error loading adventure', message: message }
+      });
+
+      const uid = userContext.user?.uid;
+      if (uid && d) {
+        removeAdventureFromRecent(userContext.dataService, uid, d.id)
+          .catch(e => analyticsContext.logError("Error removing adventure from recent", e));
+      }
+
+      history.replace('/');
+    }
+
+    // Check this adventure exists and can be fetched (the watch doesn't do this for us)
+    userContext.dataService?.get(d)
+      .then(r => {
+        if (r === undefined) {
+          couldNotLoad("That adventure does not exist.");
+        }
+      })
+      .catch(e => {
+        analyticsContext.logError("Error checking for adventure " + props.adventureId + ": ", e);
+        couldNotLoad(e.message);
+      });
+
     analyticsContext.analytics?.logEvent("select_content", {
       "content_type": "adventure",
       "item_id": props.adventureId
     });
     return userContext.dataService?.watch(d,
       a => setAdventure(a === undefined ? undefined : { id: props.adventureId, record: a }),
-      e => console.error("Error watching adventure " + props.adventureId + ": ", e));
-  }, [userContext.dataService, analyticsContext.analytics, props.adventureId]);
+      e => analyticsContext.logError("Error watching adventure " + props.adventureId + ": ", e));
+  }, [userContext, analyticsContext, history, props.adventureId, statusContext]);
 
   // Track changes to the adventure
   useEffect(() => {
@@ -122,7 +153,6 @@ function Adventure(props: IAdventureProps) {
   );
   const cannotDeleteAdventure = useMemo(() => canDeleteAdventure === false, [canDeleteAdventure]);
   const [showDeleteAdventure, setShowDeleteAdventure] = useState(false);
-  const history = useHistory();
 
   // Support for leaving the adventure
   const canLeaveAdventure = useMemo(
