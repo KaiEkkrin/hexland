@@ -4,18 +4,6 @@ import functionLogger from './services/functionLogger';
 
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
-import * as CORS from 'cors';
-
-const corsHandler = CORS({
-  origin: [
-    'http://localhost',
-    'http://localhost:3000',
-    'https://hexland.web.app',
-    'https://hexland-test.web.app',
-    'https://wallandshadow.io',
-    'https://www.wallandshadow.io'
-  ]
-});
 
 const region = 'europe-west2';
 
@@ -37,37 +25,54 @@ const dataService = new AdminDataService(app);
 
 // Consolidates map changes.
 
-export const consolidateMapChanges = functions.region(region).https.onRequest(async (request, response) => {
-  corsHandler(request, response, async () => {
-    try {
-      // Fetch the map record in question
-      // TODO #70 Require authorization here (not critical, but would be good)
-      const adventureId = request.body.data['adventureId'];
-      const mapId = request.body.data['mapId'];
-      if (!adventureId || !mapId) {
-        response.status(400).json({ result: 'No adventure or map id supplied' });
-        return;
-      }
+export const consolidateMapChanges = functions.region(region).https.onCall(async (data, context) => {
+  // Fetch the map record in question
+  const adventureId = data['adventureId'];
+  const mapId = data['mapId'];
+  if (!adventureId || !mapId) {
+    throw new functions.https.HttpsError('invalid-argument', 'No adventure or map id supplied');
+  }
 
-      const mapRef = dataService.getMapRef(adventureId, mapId);
-      const map = await dataService.get(mapRef);
-      if (map === undefined) {
-        response.status(404).json({ result: 'No such map' });
-        return;
-      }
+  const mapRef = dataService.getMapRef(adventureId, mapId);
+  const map = await dataService.get(mapRef);
+  if (map === undefined) {
+    throw new functions.https.HttpsError('not-found', 'No such map');
+  }
 
-      await Extensions.consolidateMapChanges(
-        dataService,
-        functionLogger,
-        admin.firestore.FieldValue.serverTimestamp,
-        String(adventureId),
-        String(mapId),
-        map
-      );
-      response.json({ result: 'success' });
-    } catch (e) {
-      functions.logger.error("consolidateMapChanges error: ", e);
-      response.status(500).json({ error: e.message });
-    }
-  });
+  await Extensions.consolidateMapChanges(
+    dataService,
+    functionLogger,
+    admin.firestore.FieldValue.serverTimestamp,
+    String(adventureId),
+    String(mapId),
+    map
+  );
+});
+
+// Joins an adventure (with invite validation.)
+
+export const joinAdventure = functions.region(region).https.onCall(async (data, context) => {
+  // Do the authorization thing, by bearer token:
+  // (Obvious sequence to pull out into a handler function!)
+  const uid = context.auth?.uid;
+  if (uid === undefined) {
+    throw new functions.https.HttpsError('unauthenticated', 'No uid found');
+  }
+
+  // In this case, we need no further authorization for the decoded token itself;
+  // we just need to check they specified a valid invite
+  const adventureId = data['adventureId'];
+  const inviteId = data['inviteId'];
+  if (!adventureId || !inviteId) {
+    throw new functions.https.HttpsError('invalid-argument', 'No adventure or map id supplied');
+  }
+
+  const inviteRef = dataService.getInviteRef(String(adventureId), String(inviteId));
+  const invite = await dataService.get(inviteRef);
+  if (invite === undefined) {
+    throw new functions.https.HttpsError('not-found', 'No such invite found');
+  }
+
+  // TODO Check against the invite's expiry here
+  await Extensions.joinAdventure(dataService, uid, adventureId);
 });

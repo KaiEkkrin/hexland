@@ -1,10 +1,15 @@
+import { IAdventure, IPlayer } from '../data/adventure';
 import { IAnnotation } from '../data/annotation';
 import { IChange, IChanges } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
 import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
 import { FeatureDictionary, IToken, IFeature } from '../data/feature';
 import { IMap } from '../data/map';
+import { IProfile } from '../data/profile';
 import { IDataService, IDataView, IDataReference, IDataAndReference, ILogger } from './interfaces';
+
+// For HttpsError.  It's a bit abstraction-breaking, but very convenient...
+import * as functions from 'firebase-functions';
 
 async function consolidateMapChangesTransaction(
   view: IDataView,
@@ -98,11 +103,6 @@ async function tryConsolidateMapChanges(
   return false;
 }
 
-// TODO So that things are consolidated more regularly, pick a suitable
-// count and run this as a Firebase Function when that many changes are
-// added to the map?
-// Doing lots of deletes from a Web client is not recommended:
-// https://firebase.google.com/docs/firestore/manage-data/delete-data
 export async function consolidateMapChanges(
   dataService: IDataService | undefined,
   logger: ILogger,
@@ -124,4 +124,58 @@ export async function consolidateMapChanges(
       break;
     }
   }
+}
+
+async function joinAdventureTransaction(
+  view: IDataView,
+  adventureRef: IDataReference<IAdventure>,
+  playerRef: IDataReference<IPlayer>,
+  profileRef: IDataReference<IProfile>
+): Promise<void> {
+  const adventure = await view.get(adventureRef);
+  if (adventure === undefined) {
+    throw new functions.https.HttpsError('not-found', 'No such adventure');
+  }
+
+  const profile = await view.get(profileRef);
+  if (profile === undefined) {
+    throw new functions.https.HttpsError('not-found', 'No profile for this user');
+  }
+
+  const player = await view.get(playerRef);
+  if (player === undefined) {
+    await view.set<IPlayer>(playerRef, { // remember this is an adventure summary plus player details
+      id: adventureRef.id,
+      name: adventure.name,
+      description: adventure.description,
+      owner: adventure.owner,
+      ownerName: adventure.ownerName,
+      playerId: playerRef.id,
+      playerName: profile.name
+    });
+  } else {
+    // Update that record in case there are changes
+    if (player.name !== adventure.name || player.description !== adventure.description ||
+      player.ownerName !== adventure.ownerName || player.playerName !== profile.name) {
+      await view.update(playerRef, {
+        name: adventure.name,
+        description: adventure.description,
+        ownerName: adventure.ownerName,
+        playerName: profile.name
+      });
+    }
+  }
+}
+
+export async function joinAdventure(
+  dataService: IDataService,
+  uid: string,
+  adventureId: string
+): Promise<void> {
+  const adventureRef = dataService.getAdventureRef(adventureId);
+  const playerRef = dataService.getPlayerRef(adventureId, uid);
+  const profileRef = dataService.getProfileRef(uid);
+  await dataService.runTransaction(tr => joinAdventureTransaction(
+    tr, adventureRef, playerRef, profileRef
+  ));
 }

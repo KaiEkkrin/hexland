@@ -697,59 +697,6 @@ export async function inviteToAdventure(
   return id;
 }
 
-async function joinAdventureTransaction(
-  view: IDataView,
-  adventureRef: IDataReference<IAdventure>,
-  playerRef: IDataReference<IPlayer>,
-  name: string
-): Promise<void> {
-  let adventure = await view.get(adventureRef);
-  if (adventure === undefined) {
-    throw Error("No such adventure");
-  }
-
-  let player = await view.get(playerRef);
-  if (player === undefined) {
-    await view.set<IPlayer>(playerRef, { // remember this is an adventure summary plus player details
-      id: adventureRef.id,
-      name: adventure.name,
-      description: adventure.description,
-      owner: adventure.owner,
-      ownerName: adventure.ownerName,
-      playerId: playerRef.id,
-      playerName: name
-    });
-  } else {
-    // Update that record in case there are changes
-    if (player.name !== adventure.name || player.description !== adventure.description ||
-      player.ownerName !== adventure.ownerName || player.playerName !== name) {
-      await view.update(playerRef, {
-        name: adventure.name,
-        description: adventure.description,
-        ownerName: adventure.ownerName,
-        playerName: name
-      });
-    }
-  }
-}
-
-export async function joinAdventure(
-  dataService: IDataService | undefined,
-  profile: IProfile | undefined,
-  uid: string | undefined,
-  adventureId: string
-): Promise<void> {
-  // TODO Verify that this is a valid invite before allowing join.
-  // (Really a rules thing for the most part.)
-  if (dataService === undefined || profile === undefined || uid === undefined) {
-    return undefined;
-  }
-
-  let adventureRef = dataService.getAdventureRef(adventureId);
-  let playerRef = dataService.getPlayerRef(adventureId, uid);
-  await dataService.runTransaction(tr => joinAdventureTransaction(tr, adventureRef, playerRef, profile.name));
-}
-
 async function leaveAdventureTransaction(
   view: IDataView,
   profileRef: IDataReference<IProfile>,

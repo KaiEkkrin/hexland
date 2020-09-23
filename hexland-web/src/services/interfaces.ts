@@ -142,6 +142,9 @@ export interface IDataView {
 export interface IFunctionsService {
   // Consolidates changes in the given map.
   consolidateMapChanges(adventureId: string, mapId: string): Promise<void>;
+
+  // Joins an adventure.
+  joinAdventure(adventureId: string, inviteId: string): Promise<void>;
 }
 
 // Provides logging for the extensions.

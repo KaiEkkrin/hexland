@@ -8,7 +8,6 @@ import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { UserContext } from './components/UserContextProvider';
 
 import { IInvite } from './data/invite';
-import { joinAdventure } from './services/extensions';
 
 import Button from 'react-bootstrap/Button';
 
@@ -19,6 +18,17 @@ function Invite(props: IInvitePageProps) {
   const profile = useContext(ProfileContext);
   const analyticsContext = useContext(AnalyticsContext);
   const history = useHistory();
+
+  // Because the `joinAdventure` function is likely to be cold-started and may take a
+  // little while to run, we change the button to "Joining..." while it's happening:
+  const [buttonDisabled, setButtonDisabled] = useState(false);
+  const buttonText = useMemo(() => buttonDisabled ? 'Joining...' : 'Join', [buttonDisabled]);
+
+  useEffect(() => {
+    if (props.inviteId) {
+      setButtonDisabled(false);
+    }
+  }, [props.inviteId]);
 
   const [invite, setInvite] = useState(undefined as IInvite | undefined);
   useEffect(() => {
@@ -35,18 +45,24 @@ function Invite(props: IInvitePageProps) {
     [invite]);
 
   const handleJoin = useCallback(() => {
-    analyticsContext.analytics?.logEvent("join_group", { "group_id": props.adventureId });
-    joinAdventure(userContext.dataService, profile, userContext.user?.uid, props.adventureId)
-      .then(() => history.replace("/adventure/" + props.adventureId))
-      .catch(e => analyticsContext.logError("Failed to join adventure " + props.adventureId, e));
-  }, [analyticsContext, userContext, props.adventureId, profile, history]);
+    setButtonDisabled(true);
+    userContext.functionsService?.joinAdventure(props.adventureId, props.inviteId)
+      .then(() => {
+        analyticsContext.analytics?.logEvent("join_group", { "group_id": props.adventureId });
+        history.replace("/adventure/" + props.adventureId);
+      })
+      .catch(e => {
+        setButtonDisabled(false);
+        analyticsContext.logError("Failed to join adventure " + props.adventureId, e);
+      });
+  }, [analyticsContext, userContext, props.adventureId, props.inviteId, history, setButtonDisabled]);
 
   return (
     <div>
       <Navigation title={undefined} />
       <header className="App-header">
         <h5>{profile?.name ?? "Unknown"}, you have been invited to join {inviteDescription}.</h5>
-        <Button variant="primary" onClick={handleJoin}>Join</Button>
+        <Button variant="primary" disabled={buttonDisabled} onClick={handleJoin}>{buttonText}</Button>
       </header>
     </div>
   );

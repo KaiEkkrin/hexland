@@ -48,7 +48,6 @@ export interface IStatusContext {
 
 export interface IFirebaseProps {
   // For testing only -- ignored by the real context provider.
-  projectId?: string | undefined; // in testing, *must* be a unique identifier
   user?: IUser | null; // null for no user
 }
 

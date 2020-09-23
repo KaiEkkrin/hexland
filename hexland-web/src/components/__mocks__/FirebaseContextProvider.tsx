@@ -4,13 +4,16 @@ import * as firebase from 'firebase/app';
 import 'firebase/auth';
 import 'firebase/firestore';
 
-import { clearFirestoreData, initializeTestApp } from '@firebase/rules-unit-testing';
+import { initializeTestApp } from '@firebase/rules-unit-testing';
 
 import { IContextProviderProps, IFirebaseContext, IFirebaseProps } from '../interfaces';
 import { IAuth, IUser, IAuthProvider } from '../../services/interfaces';
 
 import { v4 as uuidv4 } from 'uuid';
 
+// To successfully call Firebase Functions we *must* use a fixed project ID, which
+// is pretty annoying
+const projectId = 'hexland-test';
 const region = 'europe-west2';
 
 export const FirebaseContext = React.createContext<IFirebaseContext>({});
@@ -19,13 +22,12 @@ export const FirebaseContext = React.createContext<IFirebaseContext>({});
 // To do this, we need to track project IDs (different for every test and database)
 // and clean them up afterwards:
 const emulsToDelete: firebase.app.App[] = [];
-const idsToClear: { [id: string]: boolean } = {};
 
 // The Firebase emulator doesn't appear to provide server timestamps, so instead
 // we increment this global:
 let timestamp = 0;
 
-afterEach(async () => {
+afterAll(async () => {
   while (true) {
     let emul = emulsToDelete.pop();
     if (emul === undefined) {
@@ -35,36 +37,28 @@ afterEach(async () => {
   }
 });
 
-afterAll(async () => {
-  for (let id in idsToClear) {
-    await clearFirestoreData({ projectId: id });
-  }
-});
-
 function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) {
   const [firebaseContext, setFirebaseContext] = useState<IFirebaseContext>({});
   useEffect(() => {
-    if (props.projectId === undefined) {
-      throw RangeError("Project id must be defined in testing");
-    }
-
     const emul = initializeTestApp({
-      projectId: props.projectId,
+      projectId: projectId,
       auth: props.user ?? undefined
     });
 
     simulatedAuth.setUser(props.user ?? null);
+    const functions = emul.functions(region);
+    functions.useFunctionsEmulator('http://localhost:5001');
     setFirebaseContext({
       auth: simulatedAuth,
       db: emul.firestore(),
-      functions: emul.functions(region),
+      functions: functions,
       googleAuthProvider: {},
       timestampProvider: () => timestamp++,
       createAnalytics: undefined
     });
 
     return () => { emulsToDelete.push(emul); };
-  }, [props.projectId, props.user]);
+  }, [props.user]);
 
   return (
     <FirebaseContext.Provider value={firebaseContext}>
