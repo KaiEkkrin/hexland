@@ -46,10 +46,9 @@ service cloud.firestore {
     }
 
     match /adventures/{adventureId}/players/{uid} {
-      allow create: if request.auth != null && request.resource.data.playerId == uid && (
-        request.auth.uid == uid || isOwner(adventureId)
-      ); // TODO also require invite for someone to create one of these, right now anyone can
-         // invite themselves to any adventure.
+      // Yes, only owners can create a player record!  Joining player records are created by the
+      // `joinAdventure` function through the Admin API, not by the player directly.
+      allow create: if request.auth != null && request.auth.uid == uid && request.resource.data.playerId == uid && isOwner(adventureId);
       allow update, delete: if request.auth != null &&
         (request.auth.uid == uid || isOwner(adventureId)
       );

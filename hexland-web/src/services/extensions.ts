@@ -127,6 +127,8 @@ function updateProfileAdventures(adventures: IAdventureSummary[] | undefined, ch
   }
 }
 
+// returns the fetched profile, because that will be helpful for adding any
+// required player record for the owner of the adventure
 async function editAdventureTransaction(
   view: IDataView,
   uid: string,
@@ -136,7 +138,7 @@ async function editAdventureTransaction(
   playerRefs: IDataAndReference<IPlayer>[],
   newPlayerRef: IDataReference<IPlayer> | undefined,
   changed: IAdventureSummary
-): Promise<void> {
+): Promise<IProfile> {
   // Fetch the profile, which we'll want to edit (maybe)
   let profile = await view.get(profileRef);
   if (profile === undefined) {
@@ -153,15 +155,9 @@ async function editAdventureTransaction(
       maps: []
     });
 
-    await view.set<IPlayer>(newPlayerRef, {
-      id: changed.id,
-      name: changed.name,
-      description: changed.description,
-      owner: changed.owner,
-      ownerName: changed.ownerName,
-      playerId: uid,
-      playerName: profile.name
-    });
+    // We don't create the player record here, because it will fail (the rules require
+    // us to be the adventure owner, but the adventure doesn't exist yet.)  So, we must
+    // create that separately after the transaction.  (There won't be a conflict.)
   } else {
     let players = await Promise.all(playerRefs.map(r => view.get(r)));
     await Promise.all(players.map(async (p, i) => {
@@ -196,6 +192,7 @@ async function editAdventureTransaction(
 
   // Update any maps associated with it
   await Promise.all(mapRefs.map(m => view.update(m, { adventureName: changed.name })));
+  return profile;
 }
 
 export async function editAdventure(
@@ -226,7 +223,7 @@ export async function editAdventure(
     newPlayerRef = dataService.getPlayerRef(changed.id, uid);
   }
 
-  await dataService.runTransaction(view =>
+  const profile = await dataService.runTransaction(view =>
     editAdventureTransaction(
       view,
       uid,
@@ -238,6 +235,18 @@ export async function editAdventure(
       changed
     )
   );
+
+  if (newPlayerRef !== undefined) { // it's new
+    await dataService.set<IPlayer>(newPlayerRef, {
+      id: changed.id,
+      name: changed.name,
+      description: changed.description,
+      owner: changed.owner,
+      ownerName: changed.ownerName,
+      playerId: uid,
+      playerName: profile.name
+    });
+  }
 }
 
 async function deleteAdventureTransaction(
