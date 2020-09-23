@@ -6,7 +6,7 @@ import { IDrawing } from '../interfaces';
 import { RedrawFlag } from '../redrawFlag';
 
 import { Areas, createPaletteColouredAreaObject, createAreas, createSelectionColouredAreaObject } from './areas';
-import { Grid, IGridLoSPreRenderParameters } from './grid';
+import { Grid, IGridLoSPreRenderParameters, losTestPointCount } from './grid';
 import { GridFilter } from './gridFilter';
 import { LoS } from './los';
 import { MapColourVisualisation } from './mapColourVisualisation';
@@ -83,6 +83,7 @@ export class DrawingOrtho implements IDrawing {
 
   private readonly _scratchMatrix1 = new THREE.Matrix4();
   private readonly _scratchQuaternion = new THREE.Quaternion();
+  private readonly _scratchVector1 = new THREE.Vector3();
 
   private _showLoS = false;
   private _showMapColourVisualisation = false;
@@ -156,9 +157,16 @@ export class DrawingOrtho implements IDrawing {
       this._gridGeometry, this._needsRedraw, losZ, losQ, losWidth, losHeight
     );
 
+    function *enumerateTestPointVectors() {
+      for (let i = 0; i < losTestPointCount; ++i) {
+        yield new THREE.Vector3();
+      }
+    }
+
     this._losParameters = {
       fullyHidden: 0.0, // increased if `seeEverything`
       fullyVisible: 1.0,
+      losTestPoints: [...enumerateTestPointVectors()], // calculated properly on `resize`
       losTarget: this._los.target
     };
 
@@ -306,7 +314,7 @@ export class DrawingOrtho implements IDrawing {
   }
 
   checkLoS(cp: THREE.Vector3) {
-    return this._showLoS ? (this._los.checkLoS(cp) ?? false) : true;
+    return this._showLoS ? (this._los.checkLoS(cp, this._losParameters.losTestPoints) ?? false) : true;
   }
 
   getGridCoordAt(cp: THREE.Vector3): IGridCoord | undefined {
@@ -372,6 +380,22 @@ export class DrawingOrtho implements IDrawing {
 
     const [losWidth, losHeight] = this.createLoSSize(width, height, scaling);
     this._los.resize(losWidth, losHeight);
+
+    // The grid geometry gives us LoS test points in world space and we need to
+    // transform them into texture space (0..1), which will have changed, and then
+    // make them all relative to the face centre (which we assume is the first point)
+    this._scratchVector1.set(width * 0.5, height * 0.5, 0);
+    const coord = this.getGridCoordAt(this._scratchVector1);
+    if (coord !== undefined) {
+      this._gridGeometry.createLoSTestPoints(this._losParameters.losTestPoints, coord, 0);
+      this._losParameters.losTestPoints.forEach((p, i) => {
+        this.worldToViewport(p).multiplyScalar(0.5);
+        if (i > 0) {
+          p.sub(this._losParameters.losTestPoints[0]);
+        }
+      });
+      this._losParameters.losTestPoints[0].set(0, 0, 0);
+    }
 
     this._needsRedraw.setNeedsRedraw();
     this._gridNeedsRedraw.setNeedsRedraw();

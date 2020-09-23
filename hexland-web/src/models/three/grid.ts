@@ -158,6 +158,8 @@ class GridColouredFeatureObject<K extends IGridCoord, F extends IFeature<K>> ext
   }
 }
 
+export const losTestPointCount = 9;
+
 // Using the same mesh as the grid coord shader, this samples the LoS texture to draw the
 // LoS of each face of the grid.
 // TODO Are there performance improvements to be had via using extra functionality?  Could
@@ -167,7 +169,7 @@ function createLoSShader(gridGeometry: IGridGeometry) {
     uniforms: {
       "fullyHidden": { type: 'f', value: null },
       "fullyVisible": { type: 'f', value: null },
-      "losStep": { type: 'v2', value: null },
+      "losTestPoints": { type: 'v3v', value: null },
       "losTex": { value: null },
       ...gridGeometry.createShaderUniforms()
     },
@@ -175,7 +177,7 @@ function createLoSShader(gridGeometry: IGridGeometry) {
       ...gridGeometry.createShaderDeclarations(),
       "uniform float fullyHidden;",
       "uniform float fullyVisible;",
-      "uniform vec2 losStep;",
+      "uniform vec3 losTestPoints[" + losTestPointCount + "];",
       "uniform sampler2D losTex;",
       "attribute vec3 face;", // per-vertex; z is the edge or vertex number
       "attribute vec2 tile;",
@@ -194,15 +196,14 @@ function createLoSShader(gridGeometry: IGridGeometry) {
       "void main() {",
       "  vec2 worldCentre = createCoordCentre(face.xy);",
       "  vec4 centre = projectionMatrix * viewMatrix * instanceMatrix * vec4(worldCentre, 0.0, 1.0);",
-      "  vec2 uv = centre.xy * 0.5 + 0.5 + 0.25 * losStep;",
+      "  vec2 uv = centre.xy * 0.5 + 0.5;",
       "  int visibleCount = 0;",
-      "  sampleLoS(uv, visibleCount);",
-      "  sampleLoS(uv - 2.0 * losStep, visibleCount);",
-      "  sampleLoS(uv + 2.0 * vec2(-losStep.x, losStep.y), visibleCount);",
-      "  sampleLoS(uv + 2.0 * vec2(losStep.x, -losStep.y), visibleCount);",
-      "  sampleLoS(uv + 2.0 * losStep, visibleCount);",
+      // This sampling must be the same as in `LoS.checkLoS`
+      "  for (int i = 0; i < " + losTestPointCount + "; ++i) {",
+      "    sampleLoS(uv + losTestPoints[i].xy, visibleCount);",
+      "  }",
       "  float result = visibleCount == 0 ? fullyHidden :",
-      "    visibleCount == 5 ? fullyVisible : mix(fullyHidden, fullyVisible, 0.5);",
+      "    visibleCount == " + losTestPointCount + " ? fullyVisible : mix(fullyHidden, fullyVisible, 0.5);",
       "  vertexColour = vec3(result, result, result);",
       "  gl_Position = projectionMatrix * viewMatrix * instanceMatrix * vec4(position, 1.0);",
       "}"
@@ -223,12 +224,11 @@ function createLoSShader(gridGeometry: IGridGeometry) {
 export interface IGridLoSPreRenderParameters {
   fullyHidden: number;
   fullyVisible: number;
+  losTestPoints: THREE.Vector3[]; // in texture space, 0..1
   losTarget: THREE.WebGLRenderTarget;
 }
 
 class GridLoSFeatureObject extends GridColouredFeatureObject<IGridCoord, IFeature<IGridCoord>> {
-  private readonly _losStep = new THREE.Vector2();
-
   constructor(
     gridGeometry: IGridGeometry,
     maxInstances: number,
@@ -259,12 +259,13 @@ class GridLoSFeatureObject extends GridColouredFeatureObject<IGridCoord, IFeatur
   }
 
   preRender(params: IGridLoSPreRenderParameters) {
+    if (params.losTestPoints.length !== losTestPointCount) {
+      throw RangeError("Expected " + losTestPointCount + " test points");
+    }
     this.gridGeometry.populateShaderUniforms(this.uniforms);
     this.uniforms['fullyHidden'].value = params.fullyHidden;
     this.uniforms['fullyVisible'].value = params.fullyVisible;
-
-    this._losStep.set(1.0 / params.losTarget.width, 1.0 / params.losTarget.height);
-    this.uniforms['losStep'].value = this._losStep;
+    this.uniforms['losTestPoints'].value = params.losTestPoints;
     this.uniforms['losTex'].value = params.losTarget.texture;
   }
 }

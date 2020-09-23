@@ -234,19 +234,15 @@ export class LoS extends Drawn {
 
   // Checks the LoS for the given client position and returns true if the position
   // is visible, else false.
-  checkLoS(cp: THREE.Vector3) {
-    const x = Math.floor((cp.x + 1) * 0.5 * this._composeRenderTarget.width);
-    const y = Math.floor((cp.y + 1) * 0.5 * this._composeRenderTarget.height);
-    function *enumerateSamplePositions() {
-      yield [x, y];
-      yield [x - 2, y - 2];
-      yield [x + 2, y - 2];
-      yield [x - 2, y + 2];
-      yield [x + 2, y + 2];
-    }
-
-    const visibleCount = fluent(enumerateSamplePositions())
-      .map(p => this._composedTargetReader.sample(p[0], p[1], (buf, offset) => buf[offset] ?? 0))
+  checkLoS(cp: THREE.Vector3, losTestPoints: THREE.Vector3[]) {
+    const x = (cp.x + 1) * 0.5 * this._composeRenderTarget.width;
+    const y = (cp.y + 1) * 0.5 * this._composeRenderTarget.height;
+    const visibleCount = fluent(losTestPoints)
+      .map(p => this._composedTargetReader.sample(
+        Math.floor(x + p.x * this._composeRenderTarget.width),
+        Math.floor(y + p.y * this._composeRenderTarget.height),
+        (buf, offset) => buf[offset] ?? 0
+      ))
       .sum();
     return visibleCount > 0;
   }

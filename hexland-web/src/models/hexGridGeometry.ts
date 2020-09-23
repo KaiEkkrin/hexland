@@ -163,6 +163,15 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     yield this.createBottomLeft(new THREE.Vector3(), centre).lerp(centre, invAlpha);
   }
 
+  createLoSTestPoints(points: THREE.Vector3[], coord: IGridCoord, z: number) {
+    if (points.length === 0) {
+      return;
+    }
+
+    const centre = this.createCoordCentre(points[0], coord, z);
+    this.createLoSTestPointsAtOffsets(points, 1, centre, z, this._xStep * 0.3, this._yOffTop * 0.3);
+  }
+
   *createSolidVertices(tile: THREE.Vector2, alpha: number, z: number): Iterable<THREE.Vector3> {
     const invAlpha = 1 - alpha;
     for (let y = 0; y < this.tileDim; ++y) {

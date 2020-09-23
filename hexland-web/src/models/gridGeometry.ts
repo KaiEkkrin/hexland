@@ -47,6 +47,9 @@ export interface IGridGeometry {
   // Creates the indices that match that LoS mesh.
   createLoSIndices(): number[];
 
+  // Fills in the vectors in the array with the absolute points to use for LoS testing.
+  createLoSTestPoints(points: THREE.Vector3[], coord: IGridCoord, z: number): void;
+
   // Creates the vertices to use for an occlusion test.
   createOcclusionTestVertices(coord: IGridCoord, z: number, alpha: number): Iterable<THREE.Vector3>;
 
@@ -303,6 +306,14 @@ export abstract class BaseGeometry {
       0, 1, 2,
       1, 2, 3
     ];
+  }
+
+  protected createLoSTestPointsAtOffsets(points: THREE.Vector3[], pointsOffset: number, centre: THREE.Vector3, z: number, offX: number, offY: number) {
+    const length = points.length - pointsOffset;
+    for (let i = 0; i < length; ++i) {
+      const angle = i * 2.0 * Math.PI / length;
+      points[i + pointsOffset].set(offX * Math.sin(angle), offY * Math.cos(angle), z).add(centre);
+    }
   }
 
   createSolidVertexVertices(tile: THREE.Vector2, alpha: number, z: number, maxVertex?: number | undefined): THREE.Vector3[] {

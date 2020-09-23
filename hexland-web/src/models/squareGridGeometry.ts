@@ -121,6 +121,15 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     yield this.createBottomRight(new THREE.Vector3(), centre).lerp(centre, invAlpha);
   }
 
+  createLoSTestPoints(points: THREE.Vector3[], coord: THREE.Vector3, z: number) {
+    if (points.length === 0) {
+      return;
+    }
+
+    const centre = this.createCoordCentre(points[0], coord, z);
+    this.createLoSTestPointsAtOffsets(points, 1, centre, z, this._off * 0.4, this._off * 0.4);
+  }
+
   *createSolidVertices(tile: THREE.Vector2, alpha: number, z: number): Iterable<THREE.Vector3> {
     let centre = new THREE.Vector3();
     const invAlpha = 1 - alpha;
