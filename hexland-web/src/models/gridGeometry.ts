@@ -312,7 +312,8 @@ export abstract class BaseGeometry {
     const length = points.length - pointsOffset;
     for (let i = 0; i < length; ++i) {
       const angle = i * 2.0 * Math.PI / length;
-      points[i + pointsOffset].set(offX * Math.sin(angle), offY * Math.cos(angle), z).add(centre);
+      let [oX, oY] = (i % 2) === 0 ? [offX, offY] : [offX * 0.5, offY * 0.5];
+      points[i + pointsOffset].set(oX * Math.sin(angle), oY * Math.cos(angle), z).add(centre);
     }
   }
 

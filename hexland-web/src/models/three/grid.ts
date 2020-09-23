@@ -158,7 +158,7 @@ class GridColouredFeatureObject<K extends IGridCoord, F extends IFeature<K>> ext
   }
 }
 
-export const losTestPointCount = 9;
+export const losTestPointCount = 13;
 
 // Using the same mesh as the grid coord shader, this samples the LoS texture to draw the
 // LoS of each face of the grid.
