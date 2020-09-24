@@ -141,16 +141,19 @@ export class MapColouring {
     this._pending = new FeatureDictionary<IGridEdge, IPendingWall>(edgeString);
     this._toFill = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
     this._faces = new FaceDictionary();
-
-    // We always start ourselves off with colour 0 at the zero co-ordinate -- if we
-    // didn't do this we couldn't handle any `colourOf` calls.
-    this._faces.replace({ position: { x: 0, y: 0 }, colour: this._nextColour++ });
+    this.addStartingColour();
   }
 
   private addGutterToWallBounds(lowerBounds: THREE.Vector2, upperBounds: THREE.Vector2) {
     // This 2-face gutter should be enough to flow an outside colour fill around anything
     lowerBounds.subScalar(2);
     upperBounds.addScalar(2);
+  }
+
+  private addStartingColour() {
+    // We always start ourselves off with colour 0 at the zero co-ordinate -- if we
+    // didn't do this we couldn't handle any `colourOf` calls.
+    this._faces.replace({ position: { x: 0, y: 0 }, colour: this._nextColour++ });
   }
 
   // Calculates the bounds around the walls.  This is the minimum bounds we need in
@@ -168,6 +171,14 @@ export class MapColouring {
     }
 
     this.addGutterToWallBounds(lowerBounds, upperBounds);
+  }
+
+  clear() {
+    this._walls.clear();
+    this._pending.clear();
+    this._toFill.clear();
+    this._faces.clear();
+    this.addStartingColour();
   }
 
   colourOf(coord: IGridCoord): number {

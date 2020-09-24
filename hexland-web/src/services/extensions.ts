@@ -4,6 +4,8 @@ import { IMap } from '../data/map';
 import { IAdventureSummary, IProfile } from '../data/profile';
 import { IDataService, IDataView, IDataReference, IDataAndReference, IUser, IAnalytics, IFunctionsService } from './interfaces';
 
+import dayjs from 'dayjs';
+
 const maxProfileEntries = 7;
 
 export async function ensureProfile(
@@ -641,8 +643,10 @@ export function watchChangesAndConsolidate(
   functionsService: IFunctionsService | undefined,
   adventureId: string,
   mapId: string,
-  onNext: (chs: IChanges) => void,
-  onError?: ((error: Error) => void) | undefined
+  onNext: (chs: IChanges) => boolean, // applies changes and returns true if successful, else false
+  onReset: () => void, // reset the map state to blank (expect an onNext() right after)
+  onError?: ((message: string, ...params: any) => void) | undefined,
+  resyncIntervalSeconds?: number | undefined
 ) {
   if (dataService === undefined || functionsService === undefined) {
     return undefined;
@@ -657,19 +661,55 @@ export function watchChangesAndConsolidate(
     return i;
   }
 
-  const interval = [createConsolidateInterval()];
+  let interval = createConsolidateInterval();
+  let lastDesync: dayjs.Dayjs | undefined = undefined;
+  let seenBaseChange = false;
   return dataService.watchChanges(
     adventureId, mapId,
     (chs: IChanges) => {
-      onNext(chs);
-      if (--interval[0] <= 0) {
-        console.log("consolidating map changes");
-        interval[0] = createConsolidateInterval();
-        functionsService.consolidateMapChanges(adventureId, mapId)
-          .catch(onError);
+      // If this isn't a resync and we've seen the base change already, we can
+      // safely skip this; there shouldn't be any new information
+      if (chs.incremental === false && chs.resync === false && seenBaseChange === true) {
+        console.log("skipping non-resync base change");
+        return;
+      }
+
+      if (chs.incremental === false) {
+        // This is a first base change or a resync.  Reset the map state before this one
+        console.log("accepting base change");
+        onReset();
+        seenBaseChange = true;
+      }
+
+      if (onNext(chs) === false) {
+        if (chs.incremental === false) {
+          // An invalid base change is fatal.
+          onError?.("Invalid base change -- map corrupt");
+          throw Error("Invalid base change -- map corrupt");
+        }
+
+        // TODO #63 Count the desync rate and panic if we get too many -- we want to
+        // bail out, not spam consolidates in an attempt to resync :)
+        // TODO #63 --better, queue up a resync on an interval.  More fiddly though.
+        // Will require careful unit testing ;)
+        const now = dayjs();
+        if (lastDesync === undefined || now.diff(lastDesync, 'second') >= (resyncIntervalSeconds ?? 30)) {
+          lastDesync = now;
+          console.log("lost sync -- trying to consolidate");
+          interval = createConsolidateInterval();
+          functionsService.consolidateMapChanges(adventureId, mapId, true)
+            .catch(e => onError?.("Consolidate call failed", e));
+        }
+      } else if (--interval <= 0) {
+        // Issue regular consolidate on interval to reduce the number of in-flight changes
+        // users opening the map have to handle
+        console.log("consolidating map changes upon interval");
+        interval = createConsolidateInterval();
+        functionsService.consolidateMapChanges(adventureId, mapId, false)
+          .catch(e => onError?.("Consolidate call failed", e));
       }
     },
-    onError
+    (e: Error) => onError?.("Watch changes failed for map " + mapId, e)
   );
 }
 

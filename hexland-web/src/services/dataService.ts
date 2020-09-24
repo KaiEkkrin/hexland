@@ -223,15 +223,18 @@ export class DataService implements IDataService {
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ) {
+    const baseChangeRef = this._db.collection(adventures).doc(adventureId)
+      .collection(maps).doc(mapId).collection(changes).doc(baseChange);
     return this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(mapId).collection(changes)
       .orderBy("incremental") // base change must always be first even if it has a later timestamp
       .orderBy("timestamp")
       .onSnapshot(s => {
         s.docChanges().forEach(d => {
-          // We're only interested in newly added documents -- these are new
-          // changes to the map
-          if (d.doc.exists && d.oldIndex === -1) {
+          // We're interested in the following:
+          // - newly added documents -- these are new changes for the map
+          // - updates to the base change *only*, to act on a resync
+          if (d.doc.exists && (d.doc.ref.isEqual(baseChangeRef) || d.oldIndex === -1)) {
             let chs = Convert.changesConverter.convert(d.doc.data());
             onNext(chs);
           }

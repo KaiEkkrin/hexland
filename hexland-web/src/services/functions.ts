@@ -13,8 +13,8 @@ export class FunctionsService implements IFunctionsService {
     this._joinAdventure = functions.httpsCallable('joinAdventure');
   }
 
-  async consolidateMapChanges(adventureId: string, mapId: string) {
-    await this._consolidateMapChanges({ adventureId: adventureId, mapId: mapId });
+  async consolidateMapChanges(adventureId: string, mapId: string, resync: boolean) {
+    await this._consolidateMapChanges({ adventureId: adventureId, mapId: mapId, resync: resync });
   }
 
   async inviteToAdventure(

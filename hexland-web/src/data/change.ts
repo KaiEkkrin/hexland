@@ -9,6 +9,8 @@ export interface IChanges {
   timestamp: Timestamp | number; // initialise this to `serverTimestamp`;
                                  // use the number instead for testing only
   incremental: boolean;
+  resync: boolean; // true if the recipient of this change should do a resync
+                   // (only if incremental === false)
   user: string; // the uid that made these changes.
 }
 

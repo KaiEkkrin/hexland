@@ -142,7 +142,7 @@ export interface IDataView {
 // Provides access to Firebase Functions.
 export interface IFunctionsService {
   // Consolidates changes in the given map.
-  consolidateMapChanges(adventureId: string, mapId: string): Promise<void>;
+  consolidateMapChanges(adventureId: string, mapId: string, resync: boolean): Promise<void>;
 
   // Creates and returns an adventure invite.
   inviteToAdventure(adventureId: string, policy?: IInviteExpiryPolicy | undefined): Promise<string>;

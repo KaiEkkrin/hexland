@@ -30,6 +30,11 @@ export class MapChangeTracker extends SimpleChangeTracker {
     this._handleChangesAborted = handleChangesAborted;
   }
 
+  clear() {
+    super.clear();
+    this._colouring?.clear();
+  }
+
   tokenAdd(map: IMap, user: string, feature: IToken, oldPosition: IGridCoord | undefined) {
     // If this is a move, `oldPosition` will be set.
     // In non-FFA mode, non-owners can only move a token within its bounded

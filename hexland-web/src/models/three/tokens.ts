@@ -94,6 +94,15 @@ export class Tokens extends InstancedFeatures<IGridCoord, IInstancedToken> {
     return true;
   }
 
+  clear() {
+    this.forEach(f => {
+      if (f.textMesh !== undefined) {
+        this.scene?.remove(f.textMesh);
+      }
+    });
+    super.clear();
+  }
+
   remove(oldPosition: IGridCoord): IInstancedToken | undefined {
     let f = super.remove(oldPosition);
     if (f === undefined) {

@@ -24,7 +24,8 @@ async function consolidateMapChangesTransaction(
   baseChangeRef: IDataReference<IChanges>,
   incrementalChanges: IDataAndReference<IChanges>[],
   consolidated: IChange[],
-  uid: string
+  uid: string,
+  resync: boolean
 ) {
   // Check that the base change hasn't changed since we did the query.
   // If it has, we'll simply abort -- someone else has done this recently
@@ -55,7 +56,8 @@ async function consolidateMapChangesTransaction(
     chs: consolidated,
     timestamp: timestampProvider(),
     incremental: false,
-    user: uid
+    user: uid,
+    resync: resync
   });
 
   // Delete all the others
@@ -69,7 +71,8 @@ async function tryConsolidateMapChanges(
   timestampProvider: () => FirebaseFirestore.FieldValue | number,
   adventureId: string,
   mapId: string,
-  m: IMap
+  m: IMap,
+  resync: boolean
 ) {
   // Fetch all the current changes for this map, along with their refs
   const baseChangeRef = await dataService.getMapBaseChangeRef(adventureId, mapId);
@@ -100,7 +103,7 @@ async function tryConsolidateMapChanges(
   // Apply it
   await dataService.runTransaction(async view => {
     await consolidateMapChangesTransaction(
-      view, logger, timestampProvider, baseChange, baseChangeRef, incrementalChanges ?? [], consolidated, m.owner
+      view, logger, timestampProvider, baseChange, baseChangeRef, incrementalChanges ?? [], consolidated, m.owner, resync
     );
   });
   
@@ -114,7 +117,8 @@ export async function consolidateMapChanges(
   timestampProvider: (() => FirebaseFirestore.FieldValue | number) | undefined,
   adventureId: string,
   mapId: string,
-  m: IMap
+  m: IMap,
+  resync: boolean
 ): Promise<void> {
   if (dataService === undefined || timestampProvider === undefined) {
     return;
@@ -124,7 +128,7 @@ export async function consolidateMapChanges(
   // we do this in a loop until we can't find any more:
   while (true) {
     if (await tryConsolidateMapChanges(
-      dataService, logger, timestampProvider, adventureId, mapId, m
+      dataService, logger, timestampProvider, adventureId, mapId, m, resync
     )) {
       break;
     }

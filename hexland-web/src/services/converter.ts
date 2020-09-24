@@ -288,6 +288,7 @@ export const changesConverter = new RecursingConverter<IChanges>({
   chs: [],
   timestamp: 0,
   incremental: true,
+  resync: false,
   user: ""
 }, {
   "chs": (conv, raw) => {

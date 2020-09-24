@@ -30,6 +30,7 @@ export const consolidateMapChanges = functions.region(region).https.onCall(async
   // Fetch the map record in question
   const adventureId = data['adventureId'];
   const mapId = data['mapId'];
+  const resync = data['resync'] == true;
   if (!adventureId || !mapId) {
     throw new functions.https.HttpsError('invalid-argument', 'No adventure or map id supplied');
   }
@@ -46,7 +47,8 @@ export const consolidateMapChanges = functions.region(region).https.onCall(async
     admin.firestore.FieldValue.serverTimestamp,
     String(adventureId),
     String(mapId),
-    map
+    map,
+    resync
   );
 });
 

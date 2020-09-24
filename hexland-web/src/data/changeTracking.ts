@@ -53,6 +53,13 @@ export class SimpleChangeTracker implements IChangeTracker {
     return this._areas.remove(position);
   }
 
+  clear() {
+    this._areas.clear();
+    this._tokens.clear();
+    this._walls.clear();
+    this._notes.clear();
+  }
+
   tokenAdd(map: IMap, user: string, feature: IToken, oldPosition: IGridCoord | undefined) {
     return this._tokens.add(feature);
   }

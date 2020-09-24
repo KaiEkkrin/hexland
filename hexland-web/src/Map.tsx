@@ -136,7 +136,7 @@ function Map(props: IMapPageProps) {
 
     try {
       console.log("consolidating map changes");
-      functionsService.consolidateMapChanges(map.adventureId, map.id);
+      functionsService.consolidateMapChanges(map.adventureId, map.id, false);
     } catch (e) {
       analyticsContext.logError("Error consolidating map " + map.adventureId + "/" + map.id + " changes", e);
     }
@@ -171,6 +171,7 @@ function Map(props: IMapPageProps) {
       userContext.dataService, userContext.functionsService,
       stateMachine.map.adventureId, stateMachine.map.id,
       chs => trackChanges(stateMachine.map.record, stateMachine.changeTracker, chs.chs, chs.user),
+      () => stateMachine.changeTracker.clear(),
       e => analyticsContext.logError("Error watching map changes", e));
   }, [analyticsContext, stateMachine, userContext]);
 
@@ -285,7 +286,7 @@ function Map(props: IMapPageProps) {
         // backlog of non-owner moves.
         try {
           console.log("consolidating map changes");
-          await userContext.functionsService?.consolidateMapChanges(map.adventureId, map.id);
+          await userContext.functionsService?.consolidateMapChanges(map.adventureId, map.id, false);
         } catch (e) {
           analyticsContext.logError("Error consolidating map " + map.adventureId + "/" + map.id + " changes", e);
         }
