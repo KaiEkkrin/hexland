@@ -594,11 +594,12 @@ describe('test functions', () => {
       changeTracker.clear();
       ++resetCount;
     });
+    const onEvent = jest.fn();
     const onError = jest.fn();
 
     // We test with a 1 second resync interval because we want to hit it a few times
     const finish = watchChangesAndConsolidate(
-      dataService, functionsService, a1Id, m1Id, onNext, onReset, onError, 1000
+      dataService, functionsService, a1Id, m1Id, onNext, onReset, onEvent, onError, 1000
     );
     expect(finish).not.toBeUndefined();
     try {

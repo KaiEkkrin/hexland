@@ -31,6 +31,7 @@ import { IDataService, IFunctionsService } from './services/interfaces';
 import { standardColours } from './models/featureColour';
 import * as Keys from './models/keys';
 import { MapStateMachine, createDefaultState } from './models/mapStateMachine';
+import { networkStatusTracker } from './models/networkStatusTracker';
 
 import { RouteComponentProps, useHistory } from 'react-router-dom';
 
@@ -51,6 +52,15 @@ function Map(props: IMapPageProps) {
   const [players, setPlayers] = useState([] as IPlayer[]);
   const [canDoAnything, setCanDoAnything] = useState(false);
   const [mapState, setMapState] = useState(createDefaultState());
+
+  // Track network status
+  const [resyncCount, setResyncCount] = useState(0);
+  useEffect(() => {
+    const resyncSub = networkStatusTracker.resyncCount.subscribe(setResyncCount);
+    return () => {
+      resyncSub.unsubscribe();
+    }
+  }, [setResyncCount]);
 
   // Building the map state machine like this lets us auto-dispose old ones.
   // Careful, the function may be called more than once for any given pair of
@@ -167,11 +177,16 @@ function Map(props: IMapPageProps) {
     }
 
     console.log("Watching changes to map " + stateMachine.map.id);
+    networkStatusTracker.clear();
     return watchChangesAndConsolidate(
       userContext.dataService, userContext.functionsService,
       stateMachine.map.adventureId, stateMachine.map.id,
-      chs => trackChanges(stateMachine.map.record, stateMachine.changeTracker, chs.chs, chs.user),
+      chs => {
+        networkStatusTracker.onChanges(chs);
+        return trackChanges(stateMachine.map.record, stateMachine.changeTracker, chs.chs, chs.user);
+      },
       () => stateMachine.changeTracker.clear(),
+      analyticsContext.logEvent,
       e => analyticsContext.logError("Error watching map changes", e));
   }, [analyticsContext, stateMachine, userContext]);
 
@@ -736,7 +751,8 @@ function Map(props: IMapPageProps) {
           openMapEditor={() => setShowMapEditor(true)}
           setShowAnnotationFlags={cycleShowAnnotationFlags} />
         <MapInfo map={map?.record} players={players} tokens={mapState.tokens}
-          canDoAnything={canDoAnything} resetView={c => stateMachine?.resetView(c)} />
+          canDoAnything={canDoAnything} resetView={c => stateMachine?.resetView(c)}
+          resyncCount={resyncCount} />
       </div>
       <div className="Map-content">
         <div id="drawingDiv" ref={drawingRef}

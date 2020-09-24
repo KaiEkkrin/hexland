@@ -76,3 +76,10 @@
   width: 100vw;
   z-index: 4;
 }
+
+.Map-network-status-item {
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}

@@ -1,16 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 
 import { IPlayer } from '../data/adventure';
 import { IGridCoord } from '../data/coord';
 import { IToken } from '../data/feature';
 import { IMap } from '../data/map';
+import MapInfoCard from './MapInfoCard';
+import NetworkStatus, { INetworkStatusProps } from './NetworkStatus';
 import PlayerHelp from './PlayerHelp';
 import PlayerInfoList from './PlayerInfoList';
 
 import Badge from 'react-bootstrap/Badge';
-import Button from 'react-bootstrap/Button';
-import Card from 'react-bootstrap/Card';
-import Nav from 'react-bootstrap/Nav';
 
 import { faUsers, faQuestion } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -34,43 +33,7 @@ function hasAnyTokens(map: IMap | undefined, player: IPlayer, tokens: IToken[]) 
 // All of them should default to unexpanded (button only form) and
 // toggle to expand.
 
-interface IMapInfoCardProps {
-  title: string;
-  buttonContent: React.ReactNode;
-  children: React.ReactNode;
-}
-
-function MapInfoCard(props: IMapInfoCardProps) {
-  const [isCollapsed, setIsCollapsed] = useState(true);
-
-  if (isCollapsed) {
-    return (
-      <Button className="Map-info-card mb-2" title={props.title} variant="dark" onClick={() => setIsCollapsed(false)}>
-        {props.buttonContent}
-      </Button>
-    );
-  }
-
-  return (
-    <Card className="Map-info-card mb-2" bg="dark" text="white">
-      <Card.Header>
-        <Nav className="justify-content-between">
-          <Nav.Item>
-            <h5>{props.title}</h5>
-          </Nav.Item>
-          <Nav.Item>
-            <Button variant="dark" onClick={() => setIsCollapsed(true)}>
-              {props.buttonContent}
-            </Button>
-          </Nav.Item>
-        </Nav>
-      </Card.Header>
-      {props.children}
-    </Card>
-  );
-}
-
-interface IMapInfoProps {
+interface IMapInfoProps extends INetworkStatusProps {
   map: IMap | undefined;
   players: IPlayer[];
   tokens: IToken[];
@@ -110,6 +73,7 @@ function MapInfo(props: IMapInfoProps) {
       <MapInfoCard title="Players" buttonContent={playerInfoButton}>
         <PlayerInfoList ownerUid={ownerUid} showNoTokenWarning={true} {...props} />
       </MapInfoCard>
+      <NetworkStatus {...props} />
     </div>
   );
 }

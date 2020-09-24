@@ -8,7 +8,8 @@ export const AnalyticsContext = React.createContext<IAnalyticsContext>({
   analytics: undefined,
   enabled: undefined,
   setEnabled: (enabled: boolean | undefined) => {},
-  logError: (message: string, e: any, fatal?: boolean | undefined) => {}
+  logError: (message: string, e: any, fatal?: boolean | undefined) => {},
+  logEvent: (event: string, parameters: any) => {}
 });
 
 const enabledKey = "analyticsEnabled";
@@ -51,6 +52,11 @@ export function AnalyticsContextProvider(props: IContextProviderProps & IAnalyti
           "exMessage": String(e?.message),
           "exFatal": fatal !== false
         });
+      }
+    },
+    logEvent: (event: string, parameters: any) => {
+      if (enabled) {
+        analytics?.logEvent(event, parameters);
       }
     }
   }), [analytics, enabled, setEnabled]);

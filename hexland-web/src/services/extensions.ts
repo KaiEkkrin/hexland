@@ -646,6 +646,7 @@ export function watchChangesAndConsolidate(
   mapId: string,
   onNext: (chs: IChanges) => boolean, // applies changes and returns true if successful, else false
   onReset: () => void, // reset the map state to blank (expect an onNext() right after)
+  onEvent: (event: string, parameters: any) => void, // GA events delegate
   onError?: ((message: string, ...params: any) => void) | undefined,
   resyncIntervalMillis?: number | undefined
 ) {
@@ -670,6 +671,7 @@ export function watchChangesAndConsolidate(
   const resyncSub = resyncSubject.pipe(throttle(() => interval(resyncIntervalMillis ?? 5000)))
     .subscribe(() => {
       console.log("lost sync -- trying to consolidate");
+      onEvent("desync", { "adventureId": adventureId, "mapId": mapId });
       changesBeforeConsolidate = createConsolidateInterval();
       functionsService.consolidateMapChanges(adventureId, mapId, true)
         .catch(e => onError?.("Consolidate call failed", e));
