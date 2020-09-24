@@ -4,9 +4,6 @@ import { IMap } from '../data/map';
 import { IAdventureSummary, IProfile } from '../data/profile';
 import { IDataService, IDataView, IDataReference, IDataAndReference, IUser, IAnalytics, IFunctionsService } from './interfaces';
 
-import * as firebase from 'firebase/app';
-import { v4 as uuidv4 } from 'uuid';
-
 const maxProfileEntries = 7;
 
 export async function ensureProfile(
@@ -674,36 +671,6 @@ export function watchChangesAndConsolidate(
     },
     onError
   );
-}
-
-// Either creates an invite record for an adventure and returns it, or returns
-// the existing one if it's still valid.  Returns the invite ID.
-export async function inviteToAdventure(
-  dataService: IDataService | undefined,
-  timestampProvider: (() => firebase.firestore.FieldValue | number) | undefined,
-  adventure: IAdventureSummary
-): Promise<string | undefined> {
-  if (dataService === undefined || timestampProvider === undefined) {
-    return undefined;
-  }
-
-  // Fetch any current invite
-  let latestInvite = await dataService.getLatestInviteRef(adventure.id);
-  if (latestInvite !== undefined) {
-    return latestInvite.id;
-  }
-
-  // If we couldn't, make a new one and return that
-  let id = uuidv4();
-  let inviteRef = dataService.getInviteRef(adventure.id, id);
-  await dataService.set(inviteRef, {
-    adventureName: adventure.name,
-    owner: adventure.owner,
-    ownerName: adventure.ownerName,
-    timestamp: timestampProvider()
-  });
-
-  return id;
 }
 
 async function leaveAdventureTransaction(

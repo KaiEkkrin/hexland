@@ -3,6 +3,7 @@ import { IChange, IChanges } from '../data/change';
 import { IIdentified } from '../data/identified';
 import { IInvite } from '../data/invite';
 import { IMap } from '../data/map';
+import { IInviteExpiryPolicy } from '../data/policy';
 import { IProfile } from '../data/profile';
 
 // Abstracts the Firebase authentication stuff, which isn't supported by the
@@ -143,8 +144,11 @@ export interface IFunctionsService {
   // Consolidates changes in the given map.
   consolidateMapChanges(adventureId: string, mapId: string): Promise<void>;
 
+  // Creates and returns an adventure invite.
+  inviteToAdventure(adventureId: string, policy?: IInviteExpiryPolicy | undefined): Promise<string>;
+
   // Joins an adventure.
-  joinAdventure(adventureId: string, inviteId: string): Promise<void>;
+  joinAdventure(adventureId: string, inviteId: string, policy?: IInviteExpiryPolicy | undefined): Promise<void>;
 }
 
 // Provides logging for the extensions.

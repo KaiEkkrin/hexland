@@ -3,7 +3,7 @@ import React, { useContext, useMemo, useCallback, useState, useEffect } from 're
 import { AnalyticsContext } from './AnalyticsContextProvider';
 import { FirebaseContext } from './FirebaseContextProvider';
 import { ProfileContext } from './ProfileContextProvider';
-import * as Policy from './policy';
+import * as Policy from '../data/policy';
 import { StatusContext } from './StatusContextProvider';
 import { SignInMethodsContext, UserContext } from './UserContextProvider';
 import { updateProfile } from '../services/extensions';

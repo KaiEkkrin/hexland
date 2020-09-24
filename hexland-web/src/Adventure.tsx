@@ -3,7 +3,6 @@ import './App.css';
 
 import AdventureModal from './components/AdventureModal';
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
-import { FirebaseContext } from './components/FirebaseContextProvider';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
 import PlayerInfoList from './components/PlayerInfoList';
@@ -14,7 +13,7 @@ import { UserContext } from './components/UserContextProvider';
 import { IAdventure, summariseAdventure, IPlayer } from './data/adventure';
 import { IMap } from './data/map';
 import { IIdentified } from './data/identified';
-import { deleteMap, editMap, registerAdventureAsRecent, inviteToAdventure, editAdventure, deleteAdventure, leaveAdventure, removeAdventureFromRecent } from './services/extensions';
+import { deleteMap, editMap, registerAdventureAsRecent, editAdventure, deleteAdventure, leaveAdventure, removeAdventureFromRecent } from './services/extensions';
 
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
@@ -33,7 +32,6 @@ interface IAdventureProps {
 }
 
 function Adventure(props: IAdventureProps) {
-  const firebaseContext = useContext(FirebaseContext);
   const userContext = useContext(UserContext);
   const analyticsContext = useContext(AnalyticsContext);
   const statusContext = useContext(StatusContext);
@@ -104,23 +102,36 @@ function Adventure(props: IAdventureProps) {
     [adventure]
   );
 
+  // We want to be able to set the "create invite link" button's text to "Creating..." while it's
+  // happening, which might take a moment:
+  const [createInviteButtonDisabled, setCreateInviteButtonDisabled] = useState(false);
+  const createInviteText = useMemo(
+    () => createInviteButtonDisabled ? "Creating invite link..." : "Create invite link",
+    [createInviteButtonDisabled]
+  );
+
+  useEffect(() => {
+    if (props.adventureId) {
+      setCreateInviteButtonDisabled(false);
+    }
+  }, [props.adventureId, setCreateInviteButtonDisabled]);
+
   // Invitations
   const [inviteLink, setInviteLink] = useState<string | undefined>(undefined);
-
-  function createInviteLink() {
-    if (inviteLink !== undefined || adventure === undefined) {
+  const createInviteLink = useCallback(() => {
+    if (adventure === undefined || userContext.functionsService === undefined) {
       return;
     }
 
+    setCreateInviteButtonDisabled(true);
     analyticsContext.analytics?.logEvent("share", { "content_type": "adventure", "item_id": props.adventureId });
-    inviteToAdventure(
-      userContext.dataService,
-      firebaseContext.timestampProvider,
-      summariseAdventure(adventure.id, adventure.record)
-    )
+    userContext.functionsService.inviteToAdventure(adventure.id)
       .then(l => setInviteLink(props.adventureId + "/invite/" + l))
-      .catch(e => analyticsContext.logError("Failed to create invite link for " + props.adventureId, e));
-  }
+      .catch(e => {
+        setCreateInviteButtonDisabled(false);
+        analyticsContext.logError("Failed to create invite link for " + props.adventureId, e);
+      });
+  }, [adventure, analyticsContext, props.adventureId, setCreateInviteButtonDisabled, setInviteLink, userContext]);
 
   // Adventure editing support
   const [players, setPlayers] = useState<IPlayer[]>([]);
@@ -254,7 +265,7 @@ function Adventure(props: IAdventureProps) {
                   </Card.Body>
                   <Card.Footer className="card-footer-spaced">
                     {canEditAdventure !== true ? <div></div> : inviteLink === undefined ?
-                      <Button variant="primary" onClick={createInviteLink}>Create invite link</Button> :
+                      <Button variant="primary" disabled={createInviteButtonDisabled} onClick={createInviteLink}>{createInviteText}</Button> :
                       <Link to={inviteLink}>Send this link to other players to invite them.</Link>
                     }
                     {canEditAdventure === true ?

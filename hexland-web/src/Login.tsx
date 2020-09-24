@@ -4,7 +4,7 @@ import './App.css';
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
 import { FirebaseContext } from './components/FirebaseContextProvider';
 import Navigation from './components/Navigation';
-import * as Policy from './components/policy';
+import * as Policy from './data/policy';
 import { ProfileContext } from './components/ProfileContextProvider';
 import { StatusContext } from './components/StatusContextProvider';
 

@@ -23,10 +23,6 @@ export const FirebaseContext = React.createContext<IFirebaseContext>({});
 // and clean them up afterwards:
 const emulsToDelete: firebase.app.App[] = [];
 
-// The Firebase emulator doesn't appear to provide server timestamps, so instead
-// we increment this global:
-let timestamp = 0;
-
 afterAll(async () => {
   while (true) {
     let emul = emulsToDelete.pop();
@@ -53,7 +49,7 @@ function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) 
       db: emul.firestore(),
       functions: functions,
       googleAuthProvider: {},
-      timestampProvider: () => timestamp++,
+      timestampProvider: jest.fn(),
       createAnalytics: undefined
     });
 

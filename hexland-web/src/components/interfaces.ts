@@ -11,8 +11,7 @@ export interface IFirebaseContext {
   db?: firebase.firestore.Firestore | undefined;
   functions?: firebase.functions.Functions | undefined;
   googleAuthProvider?: IAuthProvider | undefined;
-  // Return a numeric value in testing where the server timestamp isn't accessible
-  timestampProvider?: (() => firebase.firestore.FieldValue | number) | undefined;
+  timestampProvider?: (() => firebase.firestore.FieldValue) | undefined;
   // Creates an Analytics provider
   createAnalytics?: (() => IAnalytics) | undefined;
 }

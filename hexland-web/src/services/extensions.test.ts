@@ -15,7 +15,6 @@ export function createTestUser(
   displayName: string | null,
   email: string | null,
   providerId: string,
-  uid: string,
   emailVerified?: boolean | undefined,
 ): IUser {
   return {
@@ -23,7 +22,7 @@ export function createTestUser(
     email: email,
     emailVerified: emailVerified ?? true,
     providerId: providerId,
-    uid: uid,
+    uid: uuidv4(),
     changePassword: jest.fn(),
     sendEmailVerification: jest.fn(),
     updateProfile: jest.fn()
@@ -55,7 +54,6 @@ describe('test extensions', () => {
   beforeEach(() => {
     const id = uuidv4();
     projectIds.push(id);
-    initializeEmul(createTestUser('Owner', 'owner@example.com', 'google.com', 'owner'));
   });
 
   afterEach(async () => {
@@ -75,29 +73,24 @@ describe('test extensions', () => {
   });
 
   test('create a new profile entry', async () => {
-    const db = emul['owner'].firestore();
+    const user = createTestUser('Owner', 'owner@example.com', 'google.com');
+    const db = initializeEmul(user).firestore();
     const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
-    const profile = await ensureProfile(dataService, createTestUser(
-      'Owner', 'owner@example.com', 'google.com', 'owner'
-    ), undefined);
+    const profile = await ensureProfile(dataService, user, undefined);
 
     expect(profile?.name).toBe('Owner');
 
     // If we fetch it, it should not get re-created or updated (changing their Hexland display
     // name should be a Hexland UI feature, it shouldn't sync with the provider's idea of it)
-    const profile2 = await ensureProfile(dataService, createTestUser(
-      'fish', 'owner@example.com', 'google.com', 'owner'
-    ), undefined);
-
+    const profile2 = await ensureProfile(dataService, { ...user, displayName: 'fish' }, undefined);
     expect(profile2?.name).toBe('Owner');
   });
 
   test('create and edit adventures and maps', async () => {
-    const db = emul['owner'].firestore();
+    const user = createTestUser('Owner', 'owner@example.com', 'google.com');
+    const db = initializeEmul(user).firestore();
     const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
-    let profile = await ensureProfile(dataService, createTestUser(
-      'Owner', 'owner@example.com', 'google.com', 'owner'
-    ), undefined);
+    let profile = await ensureProfile(dataService, user, undefined);
 
     // There should be no adventures in the profile now
     expect(profile?.adventures).toHaveLength(0);
@@ -107,24 +100,24 @@ describe('test extensions', () => {
     const a1 = {
       name: 'Adventure One',
       description: 'First adventure',
-      owner: 'owner',
+      owner: user.uid,
       ownerName: 'Owner',
     };
-    await editAdventure(dataService, 'owner', true, { id: a1Id, ...a1 }, { maps: [], ...a1 });
+    await editAdventure(dataService, user.uid, true, { id: a1Id, ...a1 }, { maps: [], ...a1 });
 
     // And another
     const a2Id = uuidv4();
     const a2 = {
       name: 'Adventure Two',
       description: 'Second adventure',
-      owner: 'owner',
+      owner: user.uid,
       ownerName: 'Owner'
     };
-    await editAdventure(dataService, 'owner', true, { id: a2Id, ...a2 }, { maps: [], ...a2 });
+    await editAdventure(dataService, user.uid, true, { id: a2Id, ...a2 }, { maps: [], ...a2 });
 
     // Edit the first adventure (we don't need to supply the whole record for a description change)
     a1.description = "Edited adventure";
-    await editAdventure(dataService, 'owner', false, { id: a1Id, ...a1 }, undefined);
+    await editAdventure(dataService, user.uid, false, { id: a1Id, ...a1 }, undefined);
 
     // If we fetch the adventure records the descriptions should be as expected
     let a1Record = await dataService.get(dataService.getAdventureRef(a1Id));
@@ -134,7 +127,7 @@ describe('test extensions', () => {
     expect(a2Record?.description).toBe("Second adventure");
 
     // And they should both appear in the user's profile
-    profile = await dataService.get(dataService.getProfileRef('owner'));
+    profile = await dataService.get(dataService.getProfileRef(user.uid));
     expect(profile?.adventures).toHaveLength(2);
     expect(profile?.adventures?.find(a => a.description === "Second adventure")).toBeTruthy();
     expect(profile?.adventures?.find(a => a.description === "Edited adventure")).toBeTruthy();
@@ -145,7 +138,7 @@ describe('test extensions', () => {
       adventureName: 'this will be overwritten',
       name: 'Map One',
       description: 'First map',
-      owner: 'owner',
+      owner: user.uid,
       ty: MapType.Square,
       ffa: false
     };
@@ -157,7 +150,7 @@ describe('test extensions', () => {
       adventureName: 'this will be overwritten',
       name: 'Map Two',
       description: 'Second map',
-      owner: 'owner',
+      owner: user.uid,
       ty: MapType.Hex,
       ffa: true
     };
@@ -192,13 +185,13 @@ describe('test extensions', () => {
     expect(a2Record?.maps[0].description).toBe('Edited map');
 
     // And they should both appear in the user's profile
-    profile = await dataService.get(dataService.getProfileRef('owner'));
+    profile = await dataService.get(dataService.getProfileRef(user.uid));
     expect(profile?.latestMaps).toHaveLength(2);
     expect(profile?.latestMaps?.find(m => m.name === 'Map One')).toBeTruthy();
     expect(profile?.latestMaps?.find(m => m.description === 'Edited map')).toBeTruthy();
 
     // Delete a map and it should vanish from these places
-    await deleteMap(dataService, 'owner', a2Id, m2Id);
+    await deleteMap(dataService, user.uid, a2Id, m2Id);
 
     m2Record = await dataService.get(dataService.getMapRef(a2Id, m2Id));
     expect(m2Record).toBeUndefined();
@@ -206,18 +199,18 @@ describe('test extensions', () => {
     a2Record = await dataService.get(dataService.getAdventureRef(a2Id));
     expect(a2Record?.maps).toHaveLength(0);
 
-    profile = await dataService.get(dataService.getProfileRef('owner'));
+    profile = await dataService.get(dataService.getProfileRef(user.uid));
     expect(profile?.latestMaps).toHaveLength(1);
     expect(profile?.latestMaps?.find(m => m.name === 'Map One')).toBeTruthy();
     expect(profile?.latestMaps?.find(m => m.description === 'Edited map')).toBeFalsy();
 
     // Delete an adventure and it, too, should vanish
-    await deleteAdventure(dataService, 'owner', a2Id);
+    await deleteAdventure(dataService, user.uid, a2Id);
 
     a2Record = await dataService.get(dataService.getAdventureRef(a2Id));
     expect(a2Record).toBeUndefined();
 
-    profile = await dataService.get(dataService.getProfileRef('owner'));
+    profile = await dataService.get(dataService.getProfileRef(user.uid));
     expect(profile?.adventures).toHaveLength(1);
     expect(profile?.adventures?.find(a => a.name === 'Adventure One')).toBeTruthy();
     expect(profile?.adventures?.find(a => a.name === 'Adventure Two')).toBeFalsy();

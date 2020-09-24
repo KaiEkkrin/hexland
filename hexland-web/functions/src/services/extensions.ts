@@ -4,9 +4,14 @@ import { IChange, IChanges } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
 import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
 import { FeatureDictionary, IToken, IFeature } from '../data/feature';
+import { IInvite } from '../data/invite';
 import { IMap } from '../data/map';
-import { IProfile } from '../data/profile';
+import { IInviteExpiryPolicy } from '../data/policy';
+import { IAdventureSummary, IProfile } from '../data/profile';
 import { IDataService, IDataView, IDataReference, IDataAndReference, ILogger } from './interfaces';
+
+import * as dayjs from 'dayjs';
+import { v4 as uuidv4 } from 'uuid';
 
 // For HttpsError.  It's a bit abstraction-breaking, but very convenient...
 import * as functions from 'firebase-functions';
@@ -126,12 +131,81 @@ export async function consolidateMapChanges(
   }
 }
 
+// Checks whether this invite is still in date; deletes super-out-of-date ones.
+async function isValidInvite(
+  dataService: IDataService,
+  invite: IDataAndReference<IInvite>,
+  policy: IInviteExpiryPolicy
+): Promise<boolean> {
+  if (typeof(invite.data.timestamp) === 'number') {
+    return true;
+  }
+
+  const inviteDate = dayjs((invite.data.timestamp as FirebaseFirestore.Timestamp).toDate());
+  const age = dayjs().diff(inviteDate, policy.timeUnit);
+  if (age >= policy.deletion) {
+    try {
+      await dataService.delete(invite);
+    } catch (e) {
+      // It's going to be really hard to diagnose this one...
+      functions.logger.error("Failed to delete expired invite " + invite.id, e);
+    }
+  }
+
+  // We check for the recreate date not the actual expiry, checked by `joinAdventure`.
+  // This is because we want to create new invites a bit before then to avoid expired
+  // ones knocking around too much!
+  return age <= policy.recreate;
+}
+
+// Either creates an invite record for an adventure and returns it, or returns
+// the existing one if it's still valid.  Returns the invite ID.
+export async function inviteToAdventure(
+  dataService: IDataService,
+  timestampProvider: () => FirebaseFirestore.FieldValue,
+  adventure: IAdventureSummary,
+  policy: IInviteExpiryPolicy
+): Promise<string | undefined> {
+  // Fetch any current invite
+  const latestInvite = await dataService.getLatestInviteRef(adventure.id);
+  if (latestInvite !== undefined && (await isValidInvite(dataService, latestInvite, policy)) === true) {
+    return latestInvite.id;
+  }
+
+  // If we couldn't, make a new one and return that
+  const id = uuidv4();
+  const inviteRef = dataService.getInviteRef(adventure.id, id);
+  await dataService.set(inviteRef, {
+    adventureName: adventure.name,
+    owner: adventure.owner,
+    ownerName: adventure.ownerName,
+    timestamp: timestampProvider()
+  });
+
+  return id;
+}
+
 async function joinAdventureTransaction(
   view: IDataView,
   adventureRef: IDataReference<IAdventure>,
+  inviteRef: IDataReference<IInvite>,
   playerRef: IDataReference<IPlayer>,
-  profileRef: IDataReference<IProfile>
+  profileRef: IDataReference<IProfile>,
+  policy: IInviteExpiryPolicy
 ): Promise<void> {
+  const invite = await view.get(inviteRef);
+  if (invite === undefined) {
+    throw new functions.https.HttpsError('not-found', 'No such invite');
+  }
+
+  if (typeof(invite.timestamp) !== 'number') {
+    const inviteDate = dayjs((invite.timestamp as FirebaseFirestore.Timestamp).toDate());
+    const age = dayjs().diff(inviteDate, policy.timeUnit);
+    if (age >= policy.expiry) {
+      throw new functions.https.HttpsError('deadline-exceeded', 'Invite has expired');
+    }
+  }
+
   const adventure = await view.get(adventureRef);
   if (adventure === undefined) {
     throw new functions.https.HttpsError('not-found', 'No such adventure');
@@ -170,12 +244,15 @@ async function joinAdventureTransaction(
 export async function joinAdventure(
   dataService: IDataService,
   uid: string,
-  adventureId: string
+  adventureId: string,
+  inviteId: string,
+  policy: IInviteExpiryPolicy
 ): Promise<void> {
   const adventureRef = dataService.getAdventureRef(adventureId);
+  const inviteRef = dataService.getInviteRef(adventureId, inviteId);
   const playerRef = dataService.getPlayerRef(adventureId, uid);
   const profileRef = dataService.getProfileRef(uid);
   await dataService.runTransaction(tr => joinAdventureTransaction(
-    tr, adventureRef, playerRef, profileRef
+    tr, adventureRef, inviteRef, playerRef, profileRef, policy
   ));
 }
