@@ -35,9 +35,9 @@ function All() {
     return userContext.dataService?.watchAdventures(
       uid,
       a => setAdventures(a),
-      e => console.error("Error watching adventures: ", e)
+      e => analyticsContext.logError("Error watching adventures: ", e)
     );
-  }, [userContext]);
+  }, [analyticsContext, userContext]);
 
   // Keep summaries of them
   const adventureSummaries = useMemo(

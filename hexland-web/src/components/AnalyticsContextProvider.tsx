@@ -46,7 +46,11 @@ export function AnalyticsContextProvider(props: IContextProviderProps & IAnalyti
     logError: (message: string, e: any, fatal?: boolean | undefined) => {
       console.error(message, e);
       if (enabled) {
-        analytics?.logEvent("exception", { "exDescription": message, "exFatal": fatal !== false });
+        analytics?.logEvent("exception", {
+          "exDescription": message,
+          "exMessage": String(e?.message),
+          "exFatal": fatal !== false
+        });
       }
     }
   }), [analytics, enabled, setEnabled]);

@@ -206,8 +206,8 @@ function Map(props: IMapPageProps) {
 
     console.log("Watching players in adventure " + props.adventureId);
     return userContext.dataService.watchPlayers(props.adventureId, setPlayers,
-      e => console.error("Error watching players", e));
-  }, [userContext.dataService, props.adventureId, canDoAnything]);
+      e => analyticsContext.logError("Error watching players", e));
+  }, [analyticsContext, userContext.dataService, props.adventureId, canDoAnything]);
 
   // How to create and share the map changes we make
   const addChanges = useCallback((changes: IChange[] | undefined) => {

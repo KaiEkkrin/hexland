@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import './App.css';
 
 import AdventureCollection from './components/AdventureCollection';
+import { AnalyticsContext } from './components/AnalyticsContextProvider';
 import Navigation from './components/Navigation';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { UserContext } from './components/UserContextProvider';
@@ -13,6 +14,7 @@ import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 
 function Shared() {
+  const analyticsContext = useContext(AnalyticsContext);
   const userContext = useContext(UserContext);
   const [adventures, setAdventures] = useState<IPlayer[]>([]);
 
@@ -28,9 +30,9 @@ function Shared() {
         console.log("Received " + a.length + " shared adventures");
         setAdventures(a.filter(a2 => a2.playerId !== a2.owner));
       },
-      e => console.error("Error watching shared adventures: ", e)
+      e => analyticsContext.logError("Error watching shared adventures: ", e)
     );
-  }, [userContext]);
+  }, [analyticsContext, userContext]);
 
   return (
     <RequireLoggedIn>

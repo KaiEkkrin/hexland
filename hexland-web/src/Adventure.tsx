@@ -144,9 +144,9 @@ function Adventure(props: IAdventureProps) {
     return userContext.dataService.watchPlayers(
       props.adventureId,
       setPlayers,
-      e => console.error("Failed to watch players of adventure " + props.adventureId, e)
+      e => analyticsContext.logError("Failed to watch players of adventure " + props.adventureId, e)
     );
-  }, [userContext.dataService, props.adventureId]);
+  }, [analyticsContext, userContext.dataService, props.adventureId]);
 
   const canEditAdventure = useMemo(
     () => adventure?.record.owner === userContext.user?.uid,
