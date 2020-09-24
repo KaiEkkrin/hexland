@@ -541,7 +541,7 @@ describe('test app', () => {
     console.log("Adventure link: " + links.adventureLink);
 
     await shareAdventureAndMap(links, user);
-  });
+  }, 10000);
 
   test('log in and twiddle the analytics setting', async () => {
     // Get logged in
@@ -595,5 +595,5 @@ describe('test app', () => {
 
     // The analytics enabled flag should now be off again
     expect(mockStorage["analyticsEnabled"]).toBe("false");
-  });
+  }, 10000);
 });

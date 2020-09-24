@@ -1,10 +1,13 @@
 import { DataService } from './dataService';
-import { editAdventure, editMap, ensureProfile, getAllMapChanges, leaveAdventure, registerAdventureAsRecent, registerMapAsRecent, removeAdventureFromRecent, removeMapFromRecent, updateProfile } from './extensions';
-import { createTestUser } from './extensions.test';
+import { editAdventure, editMap, ensureProfile, getAllMapChanges, leaveAdventure, registerAdventureAsRecent, registerMapAsRecent, removeAdventureFromRecent, removeMapFromRecent, updateProfile, watchChangesAndConsolidate } from './extensions';
 import { FunctionsService } from './functions';
 import { IUser } from './interfaces';
-import { ChangeCategory, ChangeType, ITokenAdd, ITokenMove, IWallAdd } from '../data/change';
-import { MapType } from '../data/map';
+import { IAnnotation } from '../data/annotation';
+import { ChangeCategory, ChangeType, IChanges, ITokenAdd, ITokenMove, IWallAdd } from '../data/change';
+import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
+import { coordString, edgeString, IGridCoord, IGridEdge } from '../data/coord';
+import { FeatureDictionary, IFeature, IToken } from '../data/feature';
+import { IMap, MapType } from '../data/map';
 import * as Policy from '../data/policy';
 
 import * as firebase from 'firebase/app';
@@ -12,12 +15,37 @@ import 'firebase/firestore';
 import 'firebase/functions';
 
 import { initializeTestApp } from '@firebase/rules-unit-testing';
+import { Subject } from 'rxjs';
+import { filter, first } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
+
+export function createTestUser(
+  displayName: string | null,
+  email: string | null,
+  providerId: string,
+  emailVerified?: boolean | undefined,
+): IUser {
+  return {
+    displayName: displayName,
+    email: email,
+    emailVerified: emailVerified ?? true,
+    providerId: providerId,
+    uid: uuidv4(),
+    changePassword: jest.fn(),
+    sendEmailVerification: jest.fn(),
+    updateProfile: jest.fn()
+  };
+}
 
 interface IEmul {
   app: firebase.app.App;
   db: firebase.firestore.Firestore;
   functions: firebase.functions.Functions;
+}
+
+interface IChangesEvent {
+  changes: IChanges;
+  accepted: boolean;
 }
 
 describe('test functions', () => {
@@ -154,7 +182,7 @@ describe('test functions', () => {
     expect(changes).toHaveLength(2 + moveCount);
 
     // Call the consolidate function:
-    await functionsService.consolidateMapChanges(a1Id, m1Id);
+    await functionsService.consolidateMapChanges(a1Id, m1Id, false);
 
     // After doing that, we should have only one changes record, thus:
     async function verifyBaseChangesRecord(expectedX: number) {
@@ -185,7 +213,7 @@ describe('test functions', () => {
       await dataService.addChanges(a1Id, user.uid, m1Id, [createMoveToken1(i)]);
     }
 
-    await functionsService.consolidateMapChanges(a1Id, m1Id);
+    await functionsService.consolidateMapChanges(a1Id, m1Id, false);
     await verifyBaseChangesRecord(moveCount * 2);
   }
 
@@ -509,5 +537,200 @@ describe('test functions', () => {
     expect(p2Record?.playerId).toBe(user2.uid);
     expect(p2Record?.playerName).toBe('User 2');
     expect(p2Record?.description).toBe('First adventure');
+  }, 10000);
+
+  test('resync on conflict', async () => {
+    const user = createTestUser('Owner', 'owner@example.com', 'google.com');
+    const emul = initializeEmul(user);
+    const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
+    const functionsService = new FunctionsService(emul.functions);
+    let profile = await ensureProfile(dataService, user, undefined);
+
+    // There should be no adventures in the profile now
+    expect(profile?.adventures).toHaveLength(0);
+
+    // Add a new adventure
+    const a1Id = uuidv4();
+    const a1 = {
+      name: 'Adventure One',
+      description: 'First adventure',
+      owner: user.uid,
+      ownerName: 'Owner',
+    };
+    await editAdventure(dataService, user.uid, true, { id: a1Id, ...a1 }, { maps: [], ...a1 });
+
+    // Add a new map
+    const m1Id = uuidv4();
+    const m1 = {
+      adventureName: 'this will be overwritten',
+      name: 'Map One',
+      description: 'First map',
+      owner: user.uid,
+      ty: MapType.Square,
+      ffa: false
+    };
+    await editMap(dataService, a1Id, m1Id, m1);
+    const mapRecord = await dataService.get(dataService.getMapRef(a1Id, m1Id));
+    expect(mapRecord).not.toBeUndefined();
+
+    // Watch changes, mocking up the handlers:
+    const tokens = new FeatureDictionary<IGridCoord, IToken>(coordString);
+    const changeTracker = new SimpleChangeTracker(
+      new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
+      tokens,
+      new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
+      new FeatureDictionary<IGridCoord, IAnnotation>(coordString)
+    );
+
+    let changesSeen = new Subject<IChangesEvent>();
+    function onNext(changes: IChanges) {
+      const accepted = trackChanges(mapRecord as IMap, changeTracker, changes.chs, user.uid);
+      changesSeen.next({ changes: changes, accepted: accepted });
+      return accepted;
+    }
+
+    let resetCount = 0;
+    const onReset = jest.fn(() => {
+      changeTracker.clear();
+      ++resetCount;
+    });
+    const onError = jest.fn();
+
+    // We test with a 1 second resync interval because we want to hit it a few times
+    const finish = watchChangesAndConsolidate(
+      dataService, functionsService, a1Id, m1Id, onNext, onReset, onError, 1000
+    );
+    expect(finish).not.toBeUndefined();
+    try {
+      // Push in a first change and wait for it -- it should be accepted.
+      const addToken1: ITokenAdd = {
+        ty: ChangeType.Add,
+        cat: ChangeCategory.Token,
+        feature: {
+          position: { x: 0, y: 0 },
+          colour: 0,
+          id: '1',
+          players: [],
+          text: 'ONE',
+          note: '',
+          noteVisibleToPlayers: false
+        }
+      };
+      const addOnePromise = changesSeen.pipe(first()).toPromise();
+      await dataService.addChanges(a1Id, user.uid, m1Id, [addToken1]);
+      const addOne = await addOnePromise;
+
+      // This should be an incremental change; we don't have a base change yet
+      expect(addOne.accepted).toBeTruthy();
+      expect(addOne.changes.incremental).toBeTruthy();
+      expect(addOne.changes.user).toBe(user.uid);
+      expect(addOne.changes.chs).toHaveLength(1);
+      expect(addOne.changes.chs[0].cat).toBe(ChangeCategory.Token);
+      expect(onReset).not.toHaveBeenCalled();
+      expect(onError).not.toHaveBeenCalled();
+
+      // Push in another good change and make sure it's accepted
+      const moveToken1: ITokenMove = {
+        ty: ChangeType.Move,
+        cat: ChangeCategory.Token,
+        tokenId: '1',
+        oldPosition: { x: 0, y: 0 },
+        newPosition: { x: -1, y: -2 }
+      };
+      const moveOnePromise = changesSeen.pipe(first()).toPromise();
+      await dataService.addChanges(a1Id, user.uid, m1Id, [moveToken1]);
+      const moveOne = await moveOnePromise;
+
+      // This should also be an incremental change and be good
+      expect(moveOne.accepted).toBeTruthy();
+      expect(moveOne.changes.incremental).toBeTruthy();
+      expect(moveOne.changes.user).toBe(user.uid);
+      expect(moveOne.changes.chs).toHaveLength(1);
+      expect(moveOne.changes.chs[0].cat).toBe(ChangeCategory.Token);
+      expect((moveOne.changes.chs[0] as ITokenMove).newPosition.x).toBe(-1);
+      expect((moveOne.changes.chs[0] as ITokenMove).newPosition.y).toBe(-2);
+      expect(onReset).not.toHaveBeenCalled();
+      expect(onError).not.toHaveBeenCalled();
+
+      // Push in a bad change, setting ourselves up to reject it.
+      // This should cause a resync
+      const badMoveToken1: ITokenMove = {
+        ty: ChangeType.Move,
+        cat: ChangeCategory.Token,
+        tokenId: '1',
+        oldPosition: { x: 0, y: 0 },
+        newPosition: { x: 3, y: 4 }
+      };
+      const resyncPromise = changesSeen.pipe(filter(chs => chs.changes.resync === true), first()).toPromise();
+      await dataService.addChanges(a1Id, user.uid, m1Id, [badMoveToken1]);
+      const resync = await resyncPromise;
+
+      // ...which should contain the good change not the bad, and we expect a reset to have happened
+      expect(resync.accepted).toBeTruthy();
+      expect(resync.changes.incremental).toBeFalsy();
+      expect(resync.changes.user).toBe(user.uid);
+      expect(resync.changes.chs).toHaveLength(1);
+      expect(resync.changes.chs[0].cat).toBe(ChangeCategory.Token);
+      expect(resync.changes.chs[0].ty).toBe(ChangeType.Add);
+      expect((resync.changes.chs[0] as ITokenAdd).feature.position.x).toBe(-1);
+      expect((resync.changes.chs[0] as ITokenAdd).feature.position.y).toBe(-2);
+      expect(onReset).toHaveBeenCalledTimes(1);
+      expect(onError).not.toHaveBeenCalled();
+
+      // Wait a couple of seconds; that should be enough for anything else to flush through
+      await new Promise(r => setTimeout(r, 2000));
+
+      // To exercise throttling behaviour, I'll now iterate over (bad change, bad change,
+      // good change) a few times in quick succession -- we should avoid doing a resync
+      // every time!
+      const badMoveToken2 = { ...badMoveToken1, tokenId: '2' };
+      const badMoveToken3 = { ...badMoveToken1, tokenId: '3' };
+      for (let i = 0; i < 5; ++i) {
+        const moveTokenAgain: ITokenMove = {
+          ty: ChangeType.Move,
+          cat: ChangeCategory.Token,
+          tokenId: '1',
+          oldPosition: { x: -1, y: -2 + i },
+          newPosition: { x: -1, y: -2 + i + 1 }
+        };
+
+        // We can expect that good move in either an incremental change or a resync, so
+        // we'll inspect the token dictionary instead (easier)
+        const movedAgainPromise = changesSeen.pipe(filter(chs => {
+          if (!chs.accepted) {
+            return false;
+          }
+          return tokens.get({ x: -1, y: -2 + i + 1 })?.id === '1';
+        }), first()).toPromise();
+
+        // Upon the first iteration we'll wait for that resync to fire as well
+        const resyncAgainPromise = i === 0 ?
+          changesSeen.pipe(filter(chs => chs.changes.resync === true), first()).toPromise() :
+          undefined;
+
+        await dataService.addChanges(a1Id, user.uid, m1Id, [badMoveToken2]);
+        await dataService.addChanges(a1Id, user.uid, m1Id, [badMoveToken3]);
+        await dataService.addChanges(a1Id, user.uid, m1Id, [moveTokenAgain]);
+
+        const movedAgain = await movedAgainPromise;
+        expect(movedAgain.accepted).toBeTruthy();
+
+        if (resyncAgainPromise !== undefined) {
+          const resyncAgain = await resyncAgainPromise;
+          expect(resyncAgain.accepted).toBeTruthy();
+        }
+      }
+
+      // Wait a couple of seconds; that should be enough for anything else to flush through
+      await new Promise(r => setTimeout(r, 2000));
+
+      // We should have only received or two more resets, and not another five, and
+      // no actual errors
+      const resetCountAfterIteration = resetCount;
+      expect(resetCountAfterIteration).toBeLessThanOrEqual(3);
+      expect(onError).not.toHaveBeenCalled();
+    } finally {
+      finish?.();
+    }
   }, 10000);
 });

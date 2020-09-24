@@ -4,7 +4,8 @@ import { IMap } from '../data/map';
 import { IAdventureSummary, IProfile } from '../data/profile';
 import { IDataService, IDataView, IDataReference, IDataAndReference, IUser, IAnalytics, IFunctionsService } from './interfaces';
 
-import dayjs from 'dayjs';
+import { interval, Subject } from 'rxjs';
+import { throttle } from 'rxjs/operators';
 
 const maxProfileEntries = 7;
 
@@ -646,12 +647,13 @@ export function watchChangesAndConsolidate(
   onNext: (chs: IChanges) => boolean, // applies changes and returns true if successful, else false
   onReset: () => void, // reset the map state to blank (expect an onNext() right after)
   onError?: ((message: string, ...params: any) => void) | undefined,
-  resyncIntervalSeconds?: number | undefined
+  resyncIntervalMillis?: number | undefined
 ) {
   if (dataService === undefined || functionsService === undefined) {
     return undefined;
   }
 
+  // This creates the changes interval that non-resync consolidates are done on.
   function createConsolidateInterval() {
     // We want to consolidate before 500 incremental changes (so it can all
     // be done in one transaction), and randomly, so that clients don't all
@@ -661,10 +663,20 @@ export function watchChangesAndConsolidate(
     return i;
   }
 
-  let interval = createConsolidateInterval();
-  let lastDesync: dayjs.Dayjs | undefined = undefined;
+  let changesBeforeConsolidate = createConsolidateInterval();
+
+  // This mechanism should throttle resync calls to at most the given time interval.
+  const resyncSubject = new Subject<void>();
+  const resyncSub = resyncSubject.pipe(throttle(() => interval(resyncIntervalMillis ?? 5000)))
+    .subscribe(() => {
+      console.log("lost sync -- trying to consolidate");
+      changesBeforeConsolidate = createConsolidateInterval();
+      functionsService.consolidateMapChanges(adventureId, mapId, true)
+        .catch(e => onError?.("Consolidate call failed", e));
+    });
+
   let seenBaseChange = false;
-  return dataService.watchChanges(
+  const stopWatching = dataService.watchChanges(
     adventureId, mapId,
     (chs: IChanges) => {
       // If this isn't a resync and we've seen the base change already, we can
@@ -688,29 +700,24 @@ export function watchChangesAndConsolidate(
           throw Error("Invalid base change -- map corrupt");
         }
 
-        // TODO #63 Count the desync rate and panic if we get too many -- we want to
-        // bail out, not spam consolidates in an attempt to resync :)
-        // TODO #63 --better, queue up a resync on an interval.  More fiddly though.
-        // Will require careful unit testing ;)
-        const now = dayjs();
-        if (lastDesync === undefined || now.diff(lastDesync, 'second') >= (resyncIntervalSeconds ?? 30)) {
-          lastDesync = now;
-          console.log("lost sync -- trying to consolidate");
-          interval = createConsolidateInterval();
-          functionsService.consolidateMapChanges(adventureId, mapId, true)
-            .catch(e => onError?.("Consolidate call failed", e));
-        }
-      } else if (--interval <= 0) {
+        // An invalid incremental change suggests we might be confused; trigger a resync.
+        resyncSubject.next();
+      } else if (--changesBeforeConsolidate <= 0) {
         // Issue regular consolidate on interval to reduce the number of in-flight changes
         // users opening the map have to handle
-        console.log("consolidating map changes upon interval");
-        interval = createConsolidateInterval();
+        console.log("consolidating map changes upon counted interval");
+        changesBeforeConsolidate = createConsolidateInterval();
         functionsService.consolidateMapChanges(adventureId, mapId, false)
           .catch(e => onError?.("Consolidate call failed", e));
       }
     },
     (e: Error) => onError?.("Watch changes failed for map " + mapId, e)
   );
+
+  return () => {
+    stopWatching();
+    resyncSub.unsubscribe();
+  }
 }
 
 async function leaveAdventureTransaction(
