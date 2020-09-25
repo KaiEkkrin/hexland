@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useContext, useEffect, useReducer, useState, useMemo, useCallback } from 'react';
 import './App.css';
 
 import AdventureModal from './components/AdventureModal';
@@ -39,8 +39,14 @@ function Adventure(props: IAdventureProps) {
 
   const [adventure, setAdventure] = useState<IIdentified<IAdventure> | undefined>(undefined);
   useEffect(() => {
-    let d = userContext.dataService?.getAdventureRef(props.adventureId);
-    if (d === undefined) {
+    const uid = userContext.user?.uid;
+    if (uid === undefined) {
+      return;
+    }
+
+    const d = userContext.dataService?.getAdventureRef(props.adventureId);
+    const playerRef = userContext.dataService?.getPlayerRef(props.adventureId, uid);
+    if (d === undefined || playerRef === undefined) {
       return;
     }
 
@@ -61,9 +67,15 @@ function Adventure(props: IAdventureProps) {
     }
 
     // Check this adventure exists and can be fetched (the watch doesn't do this for us)
-    userContext.dataService?.get(d)
+    // We do this by checking for the player record because that also allows us to check if
+    // we're blocked; being blocked necessarily doesn't stop us from getting the adventure
+    // from the db (only the maps), but showing it to the user in that state would *not*
+    // be a helpful thing to do
+    userContext.dataService?.get(playerRef)
       .then(r => {
-        if (r === undefined) {
+        // Deliberately try not to show the player the difference between the adventure being
+        // deleted and the player being blocked!  Might avoid a confrontation...
+        if (r === undefined || r?.allowed === false) {
           couldNotLoad("That adventure does not exist.");
         }
       })
@@ -174,12 +186,49 @@ function Adventure(props: IAdventureProps) {
 
   // Support for the players list
   const ownerUid = useMemo(() => adventure?.record.owner, [adventure]);
+  const showBlockButtons = useMemo(() => ownerUid === userContext.user?.uid, [ownerUid, userContext.user]);
+  const showShowBlockedToggle = useMemo(
+    () => showBlockButtons && players.find(p => p.allowed === false) !== undefined,
+    [showBlockButtons, players]
+  );
+
+  const [showBlocked, toggleShowBlocked] = useReducer(state => !state, false);
+  const [showBlockPlayer, setShowBlockPlayer] = useState(false);
+  const [showUnblockPlayer, setShowUnblockPlayer] = useState(false);
+  const [playerToBlock, setPlayerToBlock] = useState<IPlayer | undefined>(undefined);
+
+  const showBlockedText = useMemo(() => showBlocked === true ? "Hide blocked" : "Show blocked", [showBlocked]);
 
   const handleModalClose = useCallback(() => {
+    setShowBlockPlayer(false);
+    setShowUnblockPlayer(false);
     setShowEditAdventure(false);
     setShowDeleteAdventure(false);
     setShowLeaveAdventure(false);
-  }, [setShowEditAdventure, setShowDeleteAdventure, setShowLeaveAdventure]);
+  }, [setShowBlockPlayer, setShowUnblockPlayer, setShowEditAdventure, setShowDeleteAdventure, setShowLeaveAdventure]);
+
+  const handleShowBlockPlayer = useCallback((player: IPlayer) => {
+    setShowBlockPlayer(true);
+    setPlayerToBlock(player);
+  }, [setPlayerToBlock, setShowBlockPlayer]);
+
+  const handleShowUnblockPlayer = useCallback((player: IPlayer) => {
+    setShowUnblockPlayer(true);
+    setPlayerToBlock(player);
+  }, [setPlayerToBlock, setShowUnblockPlayer]);
+
+  const handleBlockPlayerSave = useCallback((allowed: boolean) => {
+    handleModalClose();
+    if (playerToBlock === undefined) {
+      return;
+    }
+
+    const playerRef = userContext.dataService?.getPlayerRef(props.adventureId, playerToBlock.playerId);
+    if (playerRef !== undefined) {
+      userContext.dataService?.update(playerRef, { allowed: allowed })
+        .catch(e => analyticsContext.logError("Failed to block/unblock player", e));
+    }
+  }, [analyticsContext, handleModalClose, playerToBlock, props.adventureId, userContext.dataService]);
 
   const handleShowEditAdventure = useCallback(() => {
     if (adventure === undefined) {
@@ -276,8 +325,18 @@ function Adventure(props: IAdventureProps) {
                   </Card.Footer>
                 </Card>
                 <Card bg="dark" text="white">
-                  <Card.Header>Players</Card.Header>
-                  <PlayerInfoList ownerUid={ownerUid} players={players} tokens={[]} />
+                  <Card.Header className="card-body-spaced">
+                    <div>Players</div>
+                    {showShowBlockedToggle ?
+                      <Button variant="secondary" onClick={toggleShowBlocked}>{showBlockedText}</Button> :
+                      <div></div>
+                    }
+                  </Card.Header>
+                  <PlayerInfoList ownerUid={ownerUid} players={players} tokens={[]}
+                    showBlockedPlayers={showBlocked}
+                    showBlockButtons={showBlockButtons}
+                    blockPlayer={handleShowBlockPlayer}
+                    unblockPlayer={handleShowUnblockPlayer} />
                 </Card>
               </CardDeck>
             </Col>
@@ -301,6 +360,34 @@ function Adventure(props: IAdventureProps) {
         handleSave={handleEditAdventureSave}
         setDescription={setEditAdventureDescription}
         setName={setEditAdventureName} />
+      <Modal show={showBlockPlayer} onHide={handleModalClose}>
+        <Modal.Header>
+          <Modal.Title>Block {playerToBlock?.playerName}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Do you really want to block {playerToBlock?.playerName}?  They will no longer be able to watch or join in with this adventure.</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleModalClose}>Cancel</Button>
+          <Button variant="danger" onClick={() => handleBlockPlayerSave(false)}>
+            Yes, block player!
+          </Button>
+        </Modal.Footer>
+      </Modal>
+      <Modal show={showUnblockPlayer} onHide={handleModalClose}>
+        <Modal.Header>
+          <Modal.Title>Unblock {playerToBlock?.playerName}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Do you really want to unblock {playerToBlock?.playerName}?  They will once again be able to watch or join in with this adventure.</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleModalClose}>Cancel</Button>
+          <Button variant="success" onClick={() => handleBlockPlayerSave(true)}>
+            Yes, unblock player!
+          </Button>
+        </Modal.Footer>
+      </Modal>
       <Modal show={showDeleteAdventure} onHide={handleModalClose}>
         <Modal.Header>
           <Modal.Title>Delete adventure</Modal.Title>
@@ -310,7 +397,7 @@ function Adventure(props: IAdventureProps) {
           <p>Adventures with maps cannot be deleted.</p>}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={handleModalClose}>Close</Button>
+          <Button variant="secondary" onClick={handleModalClose}>Cancel</Button>
           <Button disabled={cannotDeleteAdventure} variant="danger" onClick={handleDeleteAdventureSave}>
             Yes, delete adventure!
           </Button>
@@ -324,7 +411,7 @@ function Adventure(props: IAdventureProps) {
           <p>You will no longer be able to see maps in or participate in this adventure.</p>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={handleModalClose}>Close</Button>
+          <Button variant="secondary" onClick={handleModalClose}>Cancel</Button>
           <Button variant="danger" onClick={handleLeaveAdventureSave}>
             Yes, leave adventure!
           </Button>

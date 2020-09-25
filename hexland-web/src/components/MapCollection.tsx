@@ -85,7 +85,7 @@ function MapCollection(props: IMapCollectionProps) {
           <p>Do you really want to delete {editName}?</p>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={handleModalClose}>Close</Button>
+          <Button variant="secondary" onClick={handleModalClose}>Cancel</Button>
           <Button variant="danger" onClick={handleDeleteMapSave}>
             Yes, delete map!
             </Button>

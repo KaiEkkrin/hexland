@@ -28,7 +28,7 @@ function Shared() {
       uid,
       a => {
         console.log("Received " + a.length + " shared adventures");
-        setAdventures(a.filter(a2 => a2.playerId !== a2.owner));
+        setAdventures(a.filter(a2 => a2.playerId !== a2.owner && a2.allowed !== false));
       },
       e => analyticsContext.logError("Error watching shared adventures: ", e)
     );

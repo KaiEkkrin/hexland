@@ -57,7 +57,7 @@ function MapInfo(props: IMapInfoProps) {
   const playerInfoButton = useMemo(() => (
     <div>
       <FontAwesomeIcon icon={faUsers} color="white" />
-      <Badge className="ml-1" hidden={hideNumberOfPlayersWithNoTokens} variant="danger">
+      <Badge className="ml-1" hidden={hideNumberOfPlayersWithNoTokens} variant="warning">
         {numberOfPlayersWithNoTokens}
       </Badge>
     </div>

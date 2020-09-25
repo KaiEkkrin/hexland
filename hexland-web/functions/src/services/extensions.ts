@@ -229,7 +229,8 @@ async function joinAdventureTransaction(
       owner: adventure.owner,
       ownerName: adventure.ownerName,
       playerId: playerRef.id,
-      playerName: profile.name
+      playerName: profile.name,
+      allowed: true
     });
   } else {
     // Update that record in case there are changes

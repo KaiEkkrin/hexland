@@ -6,17 +6,39 @@ import { IToken } from '../data/feature';
 import { hexColours } from '../models/featureColour';
 
 import Badge from 'react-bootstrap/Badge';
+import Dropdown from 'react-bootstrap/Dropdown';
 import ListGroup from 'react-bootstrap/ListGroup';
 
-interface IPlayerInfoListItemProps {
+interface IPlayerInfoListPropsBase {
   ownerUid: string | undefined;
-  player: IPlayer;
   tokens: IToken[];
+  showBlockedPlayers?: boolean | undefined;
+  showBlockButtons?: boolean | undefined;
   showNoTokenWarning?: boolean | undefined;
+  blockPlayer?: ((player: IPlayer) => void) | undefined;
+  unblockPlayer?: ((player: IPlayer) => void) | undefined;
   resetView?: ((centreOn?: IGridCoord | undefined) => void) | undefined;
 }
 
+interface IPlayerInfoListItemProps extends IPlayerInfoListPropsBase {
+  player: IPlayer;
+}
+
 function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
+  const blockedBadge = useMemo(
+    () => props.player.allowed === false ?
+      <Badge className="ml-2 mt-1" variant="danger" title={"Player " + props.player.playerName + " is blocked"}>BLOCKED</Badge> :
+      undefined,
+    [props.player]
+  );
+
+  const blockItem = useMemo(
+    () => (props.showBlockButtons !== true || props.player.playerId === props.ownerUid) ? undefined :
+      props.player.allowed === false ? <Dropdown.Item onClick={() => props.unblockPlayer?.(props.player)}>Unblock</Dropdown.Item> :
+      <Dropdown.Item onClick={() => props.blockPlayer?.(props.player)}>Block</Dropdown.Item>,
+    [props.ownerUid, props.player, props.showBlockButtons, props.blockPlayer, props.unblockPlayer]
+  );
+
   const myTokens = useMemo(
     () => props.tokens.filter(t => t.players.find(p => p === props.player.playerId) !== undefined),
     [props.player, props.tokens]
@@ -27,51 +49,79 @@ function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
     [props.ownerUid, props.player]
   );
 
-  const showOwnerBadge = useMemo(
-    () => props.player.playerId === props.ownerUid,
-    [props.ownerUid, props.player]
-  );
+  const badges = useMemo(() => {
+    if (props.player.playerId === props.ownerUid) {
+      return [(
+        <Badge key="ownerBadge" className="ml-2 mt-1" variant="warning"
+          title={"Player " + props.player.playerName + " is the owner"}
+        >Owner</Badge>
+      )];
+    } else if (myTokens.length > 0) {
+      return myTokens.map(t => (
+        <Badge key={"badge_" + t.id} className="ml-2 mt-1"
+          title={"Player " + props.player.playerName + " has token " + t.text}
+          style={{ backgroundColor: hexColours[t.colour], color: "black", userSelect: "none" }}
+          onClick={() => props.resetView?.(t.position)}
+        >{t.text}</Badge>
+      ));
+    } else if (props.showNoTokenWarning === true) {
+      return [(
+        <Badge key="noTokenBadge" className="ml-2 mt-1" hidden={isNoTokenHidden} variant="warning"
+          title={"Player " + props.player.playerName + " has no token"}
+        >No token</Badge>
+      )];
+    } else {
+      return [];
+    }
+  }, [isNoTokenHidden, myTokens, props.ownerUid, props.player, props.resetView, props.showNoTokenWarning]);
+
+  const contentItems = useMemo(() => {
+    // Always show the player name
+    const items = [(
+      <div key="nameItem" style={{ wordBreak: "break-all", wordWrap: "break-word" }}>{props.player.playerName}{blockedBadge}</div>
+    )];
+
+    // If we have a block item, show that in a little menu to make it less threatening
+    if (blockItem !== undefined) {
+      items.push((
+        <Dropdown key="manageItem">
+          <Dropdown.Toggle className="ml-2" variant="secondary" size="sm">Manage</Dropdown.Toggle>
+          <Dropdown.Menu>{blockItem}</Dropdown.Menu>
+        </Dropdown>
+      ));
+    }
+
+    // If we have any badges, include those
+    if (badges.length > 0) {
+      items.push((
+        <div key="badgesItem" style={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-end", alignItems: "center" }}>
+          {badges}
+        </div>
+      ));
+    }
+
+    return items;
+  }, [badges, blockedBadge, blockItem, props.player]);
 
   return (
     <ListGroup.Item className="Map-info-list-item">
       <div title={"Player " + props.player.playerName}
         style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between" }}
       >
-        <div style={{ wordBreak: "break-all", wordWrap: "break-word" }}>{props.player.playerName}</div>
-        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-end", alignItems: "center" }}>
-          {showOwnerBadge ? (
-            <Badge className="ml-2 mt-1" variant="warning"
-              title={"Player " + props.player.playerName + " is the owner"}
-            >Owner</Badge>
-          ) : myTokens.length > 0 ? myTokens.map(t => (
-            <Badge className="ml-2 mt-1" key={t.id}
-              title={"Player " + props.player.playerName + " has token " + t.text}
-              style={{ backgroundColor: hexColours[t.colour], color: "black", userSelect: "none" }}
-              onClick={() => props.resetView?.(t.position)}
-            >{t.text}</Badge>
-          )) : props.showNoTokenWarning === true ? (
-            <Badge className="ml-2 mt-1" hidden={isNoTokenHidden} variant="danger"
-              title={"Player " + props.player.playerName + " has no token"}
-            >No token</Badge>
-          ) : (<div></div>)}
-        </div>
+        {contentItems}
       </div>
     </ListGroup.Item>
   );
 }
 
-export interface IPlayerInfoListProps {
-  ownerUid: string | undefined;
+export interface IPlayerInfoListProps extends IPlayerInfoListPropsBase {
   players: IPlayer[];
-  tokens: IToken[];
-  showNoTokenWarning?: boolean | undefined;
-  resetView?: ((centreOn?: IGridCoord | undefined) => void) | undefined;
 }
 
 function PlayerInfoList(props: IPlayerInfoListProps) {
   return (
     <ListGroup variant="flush">
-      {props.players.map(p => (
+      {props.players.filter(p => props.showBlockedPlayers === true || p.allowed !== false).map(p => (
         <PlayerInfoListItem key={p.playerId} player={p} {...props} />
       ))}
     </ListGroup>

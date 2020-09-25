@@ -275,7 +275,8 @@ export const playerConverter = new ShallowConverter<IPlayer>({
   owner: "",
   ownerName: "",
   playerId: "",
-  playerName: ""
+  playerName: "",
+  allowed: true
 });
 
 export const profileConverter = new ShallowConverter<IProfile>({

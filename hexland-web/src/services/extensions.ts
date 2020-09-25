@@ -244,7 +244,8 @@ export async function editAdventure(
       owner: changed.owner,
       ownerName: changed.ownerName,
       playerId: uid,
-      playerName: profile.name
+      playerName: profile.name,
+      allowed: true
     });
   }
 }

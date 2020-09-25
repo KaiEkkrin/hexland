@@ -24,6 +24,7 @@ export interface IMapSummary {
 export interface IPlayer extends IAdventureSummary {
   playerId: string; // the uid -- also the record id
   playerName: string;
+  allowed: boolean; // default true; if false, this player has been blocked from the adventure
 }
 
 export function summariseAdventure(id: string, a: IAdventure): IAdventureSummary {

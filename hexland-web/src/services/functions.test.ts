@@ -278,12 +278,10 @@ describe('test functions', () => {
     let userProfile = await ensureProfile(userDataService, user, undefined);
 
     // If I try to fetch that map without being invited I should get an error
-    try
-    {
+    try {
       await userDataService.get(userDataService.getMapRef(a1Id, m1Id));
       fail("Fetched map in un-joined adventure");
-    }
-    catch {}
+    } catch {}
 
     // Join the adventure.
     await userFunctionsService.joinAdventure(a1Id, invite ?? "");
@@ -452,6 +450,93 @@ describe('test functions', () => {
     expect(a2Summary?.ownerName).toBe("User 2");
   });
 
+  test('block a user from an adventure', async () => {
+    const owner = createTestUser('Owner', 'owner@example.com', 'google.com');
+    const emul = initializeEmul(owner);
+    const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
+    const functionsService = new FunctionsService(emul.functions);
+    await ensureProfile(dataService, owner, undefined);
+
+    // Add a new adventure
+    const a1Id = uuidv4();
+    const a1 = {
+      name: 'Adventure One',
+      description: 'First adventure',
+      owner: owner.uid,
+      ownerName: 'Owner',
+    };
+    await editAdventure(dataService, owner.uid, true, { id: a1Id, ...a1 }, { maps: [], ...a1 });
+
+    // We should be able to add a map
+    const m1Id = uuidv4();
+    const m1 = {
+      adventureName: 'this will be overwritten',
+      name: 'Map One',
+      description: 'First map',
+      owner: owner.uid,
+      ty: MapType.Square,
+      ffa: false
+    };
+    await editMap(dataService, a1Id, m1Id, m1);
+
+    // Create an invite to that adventure
+    const invite = await functionsService.inviteToAdventure(a1Id);
+    expect(invite).not.toBeUndefined();
+
+    // Get myself a profile as a different user
+    const user = createTestUser('User 1', 'user1@example.com', 'google.com');
+    const userEmul = initializeEmul(user);
+    const userDataService = new DataService(userEmul.db, firebase.firestore.FieldValue.serverTimestamp);
+    const userFunctionsService = new FunctionsService(userEmul.functions);
+    await ensureProfile(userDataService, user, undefined);
+
+    // If I try to fetch that map without being invited I should get an error
+    try {
+      await userDataService.get(userDataService.getMapRef(a1Id, m1Id));
+      fail("Fetched map in un-joined adventure");
+    } catch {}
+
+    // Join the adventure.
+    await userFunctionsService.joinAdventure(a1Id, invite ?? "");
+
+    // Check I can fetch that map now
+    let m1Record = await userDataService.get(userDataService.getMapRef(a1Id, m1Id));
+    expect(m1Record).not.toBeUndefined();
+    expect(m1Record?.description).toBe("First map");
+
+    // As the map owner I can block that player
+    let playerRef = dataService.getPlayerRef(a1Id, user.uid);
+    await dataService.update(playerRef, { allowed: false });
+
+    // As the player, I can no longer see that map
+    try {
+      await userDataService.get(userDataService.getMapRef(a1Id, m1Id));
+      fail("Fetched map when blocked");
+    } catch {}
+
+    // ...and I can't unblock myself...
+    try {
+      playerRef = userDataService.getPlayerRef(a1Id, user.uid);
+      await userDataService.update(playerRef, { allowed: true });
+      fail("Unblocked myself");
+    } catch {}
+
+    // As a blocked player, I can't leave an adventure, because that would delete
+    // the record that I was blocked (and I could simply re-join)
+    try {
+      await leaveAdventure(userDataService, user.uid, a1Id);
+      fail("Left an adventure I was blocked in")
+    } catch {}
+
+    // The owner *can* unblock me, though, and then I see it again
+    playerRef = dataService.getPlayerRef(a1Id, user.uid);
+    await dataService.update(playerRef, { allowed: true });
+
+    m1Record = await userDataService.get(userDataService.getMapRef(a1Id, m1Id));
+    expect(m1Record).not.toBeUndefined();
+    expect(m1Record?.description).toBe("First map");
+  });
+
   test('invites expire', async () => {
     // As the owner, create an adventure
     const owner = createTestUser('Owner', 'owner@example.com', 'google.com');
@@ -539,7 +624,8 @@ describe('test functions', () => {
     expect(p2Record?.description).toBe('First adventure');
   }, 10000);
 
-  test('resync on conflict', async () => {
+  // Having this in a nested describe block stops jest from parallelising it with the rest
+  describe('resync', () => { test('resync on conflict', async () => {
     const user = createTestUser('Owner', 'owner@example.com', 'google.com');
     const emul = initializeEmul(user);
     const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
@@ -728,10 +814,10 @@ describe('test functions', () => {
       // We should have only received or two more resets, and not another five, and
       // no actual errors
       const resetCountAfterIteration = resetCount;
-      expect(resetCountAfterIteration).toBeLessThanOrEqual(3);
+      expect(resetCountAfterIteration).toBeLessThanOrEqual(4);
       expect(onError).not.toHaveBeenCalled();
     } finally {
       finish?.();
     }
-  }, 10000);
+  }, 10000); });
 });

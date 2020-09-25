@@ -7,7 +7,8 @@ service cloud.firestore {
     }
 
     function isPlayer(adventureId) {
-      return exists(/databases/$(database)/documents/adventures/$(adventureId)/players/$(request.auth.uid));
+      let player = get(/databases/$(database)/documents/adventures/$(adventureId)/players/$(request.auth.uid));
+      return player.data.playerId == request.auth.uid && player.data.id == adventureId && player.data.get('allowed', true) != false;
     }
 
     function isPlayerOrOwner(adventureId) {
@@ -46,11 +47,21 @@ service cloud.firestore {
     }
 
     match /adventures/{adventureId}/players/{uid} {
-      // Yes, only owners can create a player record!  Joining player records are created by the
+      // Yes, only owners can create (their own) player record!  Joining player records are created by the
       // `joinAdventure` function through the Admin API, not by the player directly.
       allow create: if request.auth != null && request.auth.uid == uid && request.resource.data.playerId == uid && isOwner(adventureId);
-      allow update, delete: if request.auth != null &&
-        (request.auth.uid == uid || isOwner(adventureId)
+
+      // Players can update their records, but not to change the allowed flag
+      allow update: if request.auth != null && request.resource.data.playerId == uid && (
+        (request.auth.uid == uid && request.resource.data.get('allowed', true) == resource.data.get('allowed', true)) ||
+        isOwner(adventureId)
+      );
+
+      // Players and owners can delete (leave adventure; delete adventure) -- but only un-blocked
+      // players can leave (otherwise a blocked player could simply re-join)
+      allow delete: if request.auth != null && (
+        (request.auth.uid == uid && resource.data.get('allowed', true) != false) ||
+        isOwner(adventureId)
       );
     }
 
