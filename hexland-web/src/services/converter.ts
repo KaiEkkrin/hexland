@@ -1,11 +1,12 @@
 import { IAdventure, IPlayer } from '../data/adventure';
+import { IAnnotation, defaultAnnotation } from '../data/annotation';
 import { IChange, IChanges, ChangeType, ChangeCategory, ITokenAdd, ITokenMove, ITokenRemove, IAreaAdd, IAreaRemove, INoteAdd, INoteRemove, IWallAdd, IWallRemove } from '../data/change';
+import { IGridCoord, defaultGridCoord, IGridEdge, defaultGridEdge } from '../data/coord';
+import { IToken, defaultToken, IFeature, defaultArea, defaultWall } from '../data/feature';
 import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
 import { IProfile } from '../data/profile';
-import { IToken, defaultToken, IFeature, defaultArea, defaultWall } from '../data/feature';
-import { IGridCoord, defaultGridCoord, IGridEdge, defaultGridEdge } from '../data/coord';
-import { IAnnotation, defaultAnnotation } from '../data/annotation';
+import { UserLevel } from '../data/policy';
 
 // Converts raw data from Firestore to data matching the given interface,
 // filling in the missing properties with default values.
@@ -281,6 +282,7 @@ export const playerConverter = new ShallowConverter<IPlayer>({
 
 export const profileConverter = new ShallowConverter<IProfile>({
   name: "",
+  level: UserLevel.Standard,
   adventures: undefined,
   latestMaps: undefined
 });

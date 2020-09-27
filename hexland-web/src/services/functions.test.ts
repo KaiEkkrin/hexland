@@ -1,5 +1,5 @@
 import { DataService } from './dataService';
-import { editAdventure, editMap, ensureProfile, getAllMapChanges, leaveAdventure, registerAdventureAsRecent, registerMapAsRecent, removeAdventureFromRecent, removeMapFromRecent, updateProfile, watchChangesAndConsolidate } from './extensions';
+import { deleteAdventure, deleteMap, editAdventure, editMap, ensureProfile, getAllMapChanges, leaveAdventure, registerAdventureAsRecent, registerMapAsRecent, removeAdventureFromRecent, removeMapFromRecent, updateProfile, watchChangesAndConsolidate } from './extensions';
 import { FunctionsService } from './functions';
 import { IUser } from './interfaces';
 import { IAnnotation } from '../data/annotation';
@@ -95,6 +95,126 @@ describe('test functions', () => {
   //   expect(result.data).toBe('Hello from Firebase!');
   // });
 
+  test('create and edit adventures and maps', async () => {
+    const user = createTestUser('Owner', 'owner@example.com', 'google.com');
+    const emul = initializeEmul(user);
+    const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
+    const functionsService = new FunctionsService(emul.functions);
+    let profile = await ensureProfile(dataService, user, undefined);
+
+    // There should be no adventures in the profile now
+    expect(profile?.adventures).toHaveLength(0);
+
+    // Add a new adventure
+    const a1Id = await functionsService.createAdventure('Adventure One', 'First adventure');
+    const a1 = await dataService.get(dataService.getAdventureRef(a1Id));
+
+    // And another
+    const a2Id = await functionsService.createAdventure('Adventure Two', 'Second adventure');
+
+    // Edit the first adventure (we don't need to supply the whole record for a description change)
+    if (a1 !== undefined) {
+      a1.description = "Edited adventure";
+      await editAdventure(dataService, user.uid, { id: a1Id, ...a1 }, undefined);
+    }
+
+    // If we fetch the adventure records the descriptions should be as expected
+    let a1Record = await dataService.get(dataService.getAdventureRef(a1Id));
+    expect(a1Record?.description).toBe("Edited adventure");
+
+    let a2Record = await dataService.get(dataService.getAdventureRef(a2Id));
+    expect(a2Record?.description).toBe("Second adventure");
+
+    // And they should both appear in the user's profile
+    profile = await dataService.get(dataService.getProfileRef(user.uid));
+    expect(profile?.adventures).toHaveLength(2);
+    expect(profile?.adventures?.find(a => a.description === "Second adventure")).toBeTruthy();
+    expect(profile?.adventures?.find(a => a.description === "Edited adventure")).toBeTruthy();
+
+    // We should be able to add a map
+    const m1Id = uuidv4();
+    const m1 = {
+      adventureName: 'this will be overwritten',
+      name: 'Map One',
+      description: 'First map',
+      owner: user.uid,
+      ty: MapType.Square,
+      ffa: false
+    };
+    await editMap(dataService, a1Id, m1Id, m1);
+
+    // And another
+    const m2Id = uuidv4();
+    const m2 = {
+      adventureName: 'this will be overwritten',
+      name: 'Map Two',
+      description: 'Second map',
+      owner: user.uid,
+      ty: MapType.Hex,
+      ffa: true
+    };
+    await editMap(dataService, a2Id, m2Id, m2);
+
+    // Edit the second adventure
+    m2.description = 'Edited map';
+    await editMap(dataService, a2Id, m2Id, m2);
+
+    // We should be able to fetch the map records
+    let m1Record = await dataService.get(dataService.getMapRef(a1Id, m1Id));
+    expect(m1Record?.name).toBe('Map One');
+    expect(m1Record?.adventureName).toBe('Adventure One');
+    expect(m1Record?.ty).toBe(MapType.Square);
+    expect(m1Record?.ffa).toBe(false);
+
+    let m2Record = await dataService.get(dataService.getMapRef(a2Id, m2Id));
+    expect(m2Record?.name).toBe('Map Two');
+    expect(m2Record?.adventureName).toBe('Adventure Two');
+    expect(m2Record?.ty).toBe(MapType.Hex);
+    expect(m2Record?.ffa).toBe(true);
+
+    // The adventure records should now feature these maps in their summaries
+    a1Record = await dataService.get(dataService.getAdventureRef(a1Id));
+    expect(a1Record?.maps).toHaveLength(1);
+    expect(a1Record?.maps[0].name).toBe('Map One');
+    expect(a1Record?.maps[0].description).toBe('First map');
+
+    a2Record = await dataService.get(dataService.getAdventureRef(a2Id));
+    expect(a2Record?.maps).toHaveLength(1);
+    expect(a2Record?.maps[0].name).toBe('Map Two');
+    expect(a2Record?.maps[0].description).toBe('Edited map');
+
+    // And they should both appear in the user's profile
+    profile = await dataService.get(dataService.getProfileRef(user.uid));
+    expect(profile?.latestMaps).toHaveLength(2);
+    expect(profile?.latestMaps?.find(m => m.name === 'Map One')).toBeTruthy();
+    expect(profile?.latestMaps?.find(m => m.description === 'Edited map')).toBeTruthy();
+
+    // Delete a map and it should vanish from these places
+    await deleteMap(dataService, user.uid, a2Id, m2Id);
+
+    m2Record = await dataService.get(dataService.getMapRef(a2Id, m2Id));
+    expect(m2Record).toBeUndefined();
+
+    a2Record = await dataService.get(dataService.getAdventureRef(a2Id));
+    expect(a2Record?.maps).toHaveLength(0);
+
+    profile = await dataService.get(dataService.getProfileRef(user.uid));
+    expect(profile?.latestMaps).toHaveLength(1);
+    expect(profile?.latestMaps?.find(m => m.name === 'Map One')).toBeTruthy();
+    expect(profile?.latestMaps?.find(m => m.description === 'Edited map')).toBeFalsy();
+
+    // Delete an adventure and it, too, should vanish
+    await deleteAdventure(dataService, user.uid, a2Id);
+
+    a2Record = await dataService.get(dataService.getAdventureRef(a2Id));
+    expect(a2Record).toBeUndefined();
+
+    profile = await dataService.get(dataService.getProfileRef(user.uid));
+    expect(profile?.adventures).toHaveLength(1);
+    expect(profile?.adventures?.find(a => a.name === 'Adventure One')).toBeTruthy();
+    expect(profile?.adventures?.find(a => a.name === 'Adventure Two')).toBeFalsy();
+  });
+
   async function testConsolidate(moveCount: number) {
     // make sure my user is set up
     const user = createTestUser('Owner', 'owner@example.com', 'google.com');
@@ -105,14 +225,7 @@ describe('test functions', () => {
     expect(profile?.name).toBe('Owner');
 
     // create an adventure
-    const a1Id = uuidv4();
-    const a1 = {
-      name: 'Adventure One',
-      description: 'First adventure',
-      owner: user.uid,
-      ownerName: 'Owner',
-    };
-    await editAdventure(dataService, user.uid, true, { id: a1Id, ...a1 }, { maps: [], ...a1 });
+    const a1Id = await functionsService.createAdventure('Adventure One', 'First adventure');
 
     // create a map
     const m1Id = uuidv4();
@@ -245,14 +358,7 @@ describe('test functions', () => {
     await ensureProfile(dataService, owner, undefined);
 
     // Add a new adventure
-    const a1Id = uuidv4();
-    const a1 = {
-      name: 'Adventure One',
-      description: 'First adventure',
-      owner: owner.uid,
-      ownerName: 'Owner',
-    };
-    await editAdventure(dataService, owner.uid, true, { id: a1Id, ...a1 }, { maps: [], ...a1 });
+    const a1Id = await functionsService.createAdventure('Adventure One', 'First adventure');
 
     // We should be able to add a map
     const m1Id = uuidv4();
@@ -349,21 +455,14 @@ describe('test functions', () => {
     const user1 = createTestUser('User 1', 'user1@example.com', 'google.com');
     const user1Emul = initializeEmul(user1);
     const user1DataService = new DataService(user1Emul.db, firebase.firestore.FieldValue.serverTimestamp);
+    const user1FunctionsService = new FunctionsService(user1Emul.functions);
     let user1Profile = await ensureProfile(user1DataService, user1, undefined);
 
     // Ensure we have our default name (since we'll change it later)
     await updateProfile(user1DataService, user1.uid, 'User 1');
 
     // Add a new adventure and make it one of our latest
-    const a1Id = uuidv4();
-    const a1 = {
-      name: 'Adventure OneA',
-      description: 'First adventure',
-      owner: user1.uid,
-      ownerName: 'User 1',
-    };
-    await editAdventure(user1DataService, user1.uid, true, { id: a1Id, ...a1 }, { maps: [], ...a1 });
-    await registerAdventureAsRecent(user1DataService, user1.uid, a1Id, { maps: [], ...a1 });
+    const a1Id = await user1FunctionsService.createAdventure('Adventure OneA', 'First adventure');
 
     // As another user, also create an adventure
     const user2 = createTestUser('User 2', 'user2@example.com', 'google.com');
@@ -372,24 +471,16 @@ describe('test functions', () => {
     const user2FunctionsService = new FunctionsService(user2Emul.functions);
     await ensureProfile(user2DataService, user2, undefined);
 
-    // Add a new adventure
-    const a2Id = uuidv4();
-    const a2 = {
-      name: 'Adventure TwoA',
-      description: 'Second adventure',
-      owner: user2.uid,
-      ownerName: 'User 2',
-    };
-    await editAdventure(user2DataService, user2.uid, true, { id: a2Id, ...a2 }, { maps: [], ...a2 });
+    const a2Id = await user2FunctionsService.createAdventure('Adventure TwoA', 'Second adventure');
 
     // ...with an invite...
     const invite = await user2FunctionsService.inviteToAdventure(a2Id);
     expect(invite).not.toBeUndefined();
 
-    // As user 1, join user 2's adventure and add that as one of our recent adventures too
+    // As user 1, join user 2's adventure (which will make it recent)
     const user1Functions = new FunctionsService(user1Emul.functions);
     await user1Functions.joinAdventure(a2Id, invite ?? "");
-    await registerAdventureAsRecent(user1DataService, user1.uid, a2Id, { maps: [], ...a2 });
+    const a2 = await user1DataService.get(user1DataService.getAdventureRef(a2Id));
 
     // Now, change our display name
     await updateProfile(user1DataService, user1.uid, "New Name");
@@ -419,10 +510,12 @@ describe('test functions', () => {
     expect(a2Summary?.ownerName).toBe("User 2");
 
     // If user 2 renames their adventure:
-    await editAdventure(user2DataService, user2.uid, false,
-      { id: a2Id, ...a2, name: "Renamed Adventure" },
-      { ...a2, maps: [], name: "Renamed Adventure"}
-    );
+    if (a2 !== undefined) {
+      await editAdventure(user2DataService, user2.uid,
+        { id: a2Id, ...a2, name: "Renamed Adventure" },
+        { ...a2, maps: [], name: "Renamed Adventure" }
+      );
+    }
 
     // Then, user 1 should see it has changed in their player record:
     p2Record = await user1DataService.get(user1DataService.getPlayerRef(a2Id, user1.uid));
@@ -458,14 +551,7 @@ describe('test functions', () => {
     await ensureProfile(dataService, owner, undefined);
 
     // Add a new adventure
-    const a1Id = uuidv4();
-    const a1 = {
-      name: 'Adventure One',
-      description: 'First adventure',
-      owner: owner.uid,
-      ownerName: 'Owner',
-    };
-    await editAdventure(dataService, owner.uid, true, { id: a1Id, ...a1 }, { maps: [], ...a1 });
+    const a1Id = await functionsService.createAdventure('Adventure One', 'First adventure');
 
     // We should be able to add a map
     const m1Id = uuidv4();
@@ -546,14 +632,7 @@ describe('test functions', () => {
     await ensureProfile(dataService, owner, undefined);
 
     // Add a new adventure
-    const a1Id = uuidv4();
-    const a1 = {
-      name: 'Adventure One',
-      description: 'First adventure',
-      owner: owner.uid,
-      ownerName: 'Owner',
-    };
-    await editAdventure(dataService, owner.uid, true, { id: a1Id, ...a1 }, { maps: [], ...a1 });
+    const a1Id = await functionsService.createAdventure('Adventure One', 'First adventure');
 
     // Create an invite to that adventure that expires after 4 seconds
     const testPolicy: Policy.IInviteExpiryPolicy = {
@@ -636,14 +715,7 @@ describe('test functions', () => {
     expect(profile?.adventures).toHaveLength(0);
 
     // Add a new adventure
-    const a1Id = uuidv4();
-    const a1 = {
-      name: 'Adventure One',
-      description: 'First adventure',
-      owner: user.uid,
-      ownerName: 'Owner',
-    };
-    await editAdventure(dataService, user.uid, true, { id: a1Id, ...a1 }, { maps: [], ...a1 });
+    const a1Id = await functionsService.createAdventure('Adventure One', 'First adventure');
 
     // Add a new map
     const m1Id = uuidv4();

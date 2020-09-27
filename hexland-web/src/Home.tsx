@@ -10,7 +10,7 @@ import { ProfileContext } from './components/ProfileContextProvider';
 import { UserContext } from './components/UserContextProvider';
 
 import { IMap } from './data/map';
-import { editAdventure, editMap } from './services/extensions';
+import { editMap } from './services/extensions';
 
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
@@ -32,23 +32,15 @@ function LatestColumn() {
   const latestMaps = useMemo(() => profile?.latestMaps ?? [], [profile]);
 
   const createAdventure = useCallback((name: string, description: string) => {
-    const uid = userContext.user?.uid;
-    if (userContext.dataService === undefined || uid === undefined) {
+    const functionsService = userContext.functionsService;
+    if (functionsService === undefined) {
       return;
     }
 
-    const record = {
-      id: uuidv4(),
-      name: name,
-      description: description,
-      owner: uid,
-      ownerName: profile?.name ?? "Unnamed user"
-    };
-
-    editAdventure(userContext.dataService, uid, true, record)
-      .then(() => console.log("Adventure " + record.id + " successfully created"))
-      .catch(e => analyticsContext.logError("Error creating adventure " + record.id, e));
-  }, [userContext, profile, analyticsContext]);
+    functionsService.createAdventure(name, description)
+      .then(id => console.log("Adventure " + id + " successfully created"))
+      .catch(e => analyticsContext.logError("Error creating adventure", e));
+  }, [userContext, analyticsContext]);
 
   const setMap = useCallback((adventureId: string, id: string | undefined, map: IMap) => {
     id = id ?? uuidv4();

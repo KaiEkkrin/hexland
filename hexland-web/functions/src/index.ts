@@ -24,6 +24,24 @@ const dataService = new AdminDataService(app);
 //   });
 // });
 
+// Creates an adventure, checking for cap.
+
+export const createAdventure = functions.region(region).https.onCall(async (data, context) => {
+  const uid = context.auth?.uid;
+  if (uid === undefined) {
+    throw new functions.https.HttpsError('unauthenticated', 'No uid found');
+  }
+
+  // Get the submitted adventure data
+  const name = data['name'];
+  const description = data['description'];
+  if (!name || !description) {
+    throw new functions.https.HttpsError('invalid-argument', 'Name and description required');
+  }
+
+  return await Extensions.createAdventure(dataService, uid, String(name), String(description));
+});
+
 // Consolidates map changes.
 
 export const consolidateMapChanges = functions.region(region).https.onCall(async (data, context) => {
@@ -81,8 +99,6 @@ function parseAndApply(rawValue: any, apply: (value: number) => void) {
 // Creates an adventure invite or returns an existing one.
 
 export const inviteToAdventure = functions.region(region).https.onCall(async (data, context) => {
-  // Do the authorization thing, by bearer token:
-  // (Obvious sequence to pull out into a handler function!)
   const uid = context.auth?.uid;
   if (uid === undefined) {
     throw new functions.https.HttpsError('unauthenticated', 'No uid found');

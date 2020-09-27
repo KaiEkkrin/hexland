@@ -17,7 +17,7 @@ service cloud.firestore {
 
     match /adventures/{adventureId} {
       allow read: if request.auth != null; // must be able to read adventures to join them
-      allow create: if request.auth != null && request.resource.data.owner == request.auth.uid;
+      allow create: if false; // create adventures using the `createAdventure` function
       allow update, delete: if request.auth != null && resource.data.owner == request.auth.uid;
     }
 
@@ -47,9 +47,8 @@ service cloud.firestore {
     }
 
     match /adventures/{adventureId}/players/{uid} {
-      // Yes, only owners can create (their own) player record!  Joining player records are created by the
-      // `joinAdventure` function through the Admin API, not by the player directly.
-      allow create: if request.auth != null && request.auth.uid == uid && request.resource.data.playerId == uid && isOwner(adventureId);
+      // Player records are created with the `createAdventure` and `joinAdventure` functions
+      allow create: if false;
 
       // Players can update their records, but not to change the allowed flag
       allow update: if request.auth != null && request.resource.data.playerId == uid && (
@@ -65,9 +64,16 @@ service cloud.firestore {
       );
     }
 
-    // Profiles can be read and written only by a user with the id matching the document
+    // Profiles can be read and written only by a user with the id matching the document.
+    // The `level` field is locked, so that users can't change their own permission level and
+    // can't create themselves at a level that isn't the base one.
     match /profiles/{id} {
-      allow read, write: if request.auth != null && request.auth.uid == id;
+      allow read: if request.auth != null && request.auth.uid == id;
+      allow create: if request.auth != null && request.auth.uid == id &&
+        request.resource.data.get('level', 'standard') == 'standard';
+      allow update: if request.auth != null && request.auth.uid == id &&
+        request.resource.data.get('level', 'standard') == resource.data.get('level', 'standard');
+      allow delete: if request.auth != null && request.auth.uid == id;
     }
 
     // No writing anything else! :P

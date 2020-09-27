@@ -1,4 +1,4 @@
-import { IAdventure, IPlayer } from '../data/adventure';
+import { IAdventure, IPlayer, summariseAdventure } from '../data/adventure';
 import { IAnnotation } from '../data/annotation';
 import { IChange, IChanges } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
@@ -6,8 +6,9 @@ import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
 import { FeatureDictionary, IToken, IFeature } from '../data/feature';
 import { IInvite } from '../data/invite';
 import { IMap } from '../data/map';
-import { IInviteExpiryPolicy } from '../data/policy';
+import { getUserPolicy, IInviteExpiryPolicy } from '../data/policy';
 import { IAdventureSummary, IProfile } from '../data/profile';
+import { updateProfileAdventures } from './helpers';
 import { IDataService, IDataView, IDataReference, IDataAndReference, ILogger } from './interfaces';
 
 import * as dayjs from 'dayjs';
@@ -15,6 +16,67 @@ import { v4 as uuidv4 } from 'uuid';
 
 // For HttpsError.  It's a bit abstraction-breaking, but very convenient...
 import * as functions from 'firebase-functions';
+
+async function createAdventureTransaction(
+  view: IDataView,
+  profileRef: IDataReference<IProfile>,
+  currentAdventures: IDataAndReference<IAdventure>[],
+  name: string,
+  description: string,
+  newAdventureRef: IDataReference<IAdventure>,
+  newPlayerRef: IDataReference<IPlayer>
+): Promise<void> {
+  // Get this user's level from their profile
+  const profile = await view.get(profileRef);
+  if (profile === undefined) {
+    throw new functions.https.HttpsError('permission-denied', 'No profile available');
+  }
+
+  const policy = getUserPolicy(profile.level);
+  if (currentAdventures.length >= policy.adventures) {
+    throw new functions.https.HttpsError('permission-denied', 'You already have the maximum number of adventures.');
+  }
+
+  // OK, we're good -- go about doing the creation
+  const record: IAdventure = {
+    name: name,
+    description: description,
+    owner: profileRef.id,
+    ownerName: profile.name,
+    maps: []
+  };
+
+  await view.set(newAdventureRef, record);
+  await view.set(newPlayerRef, {
+    ...record,
+    id: newAdventureRef.id,
+    playerId: profileRef.id,
+    playerName: profile.name,
+    allowed: true
+  });
+
+  // Add it to the user's profile as a recent adventure
+  const adventures = updateProfileAdventures(profile.adventures, summariseAdventure(newAdventureRef.id, record));
+  if (adventures !== undefined) {
+    await view.update(profileRef, { adventures: adventures });
+  }
+}
+
+export async function createAdventure(dataService: IDataService, uid: string, name: string, description: string): Promise<string> {
+  // I'm going to need this user's profile and all their current adventures:
+  const profileRef = dataService.getProfileRef(uid);
+  const currentAdventures = await dataService.getMyAdventures(uid);
+
+  // ...and a ref for the new one, along with the new owner's player record
+  const id = uuidv4();
+  const newAdventureRef = dataService.getAdventureRef(id);
+  const newPlayerRef = dataService.getPlayerRef(id, uid);
+  await dataService.runTransaction(tr => createAdventureTransaction(
+    tr, profileRef, currentAdventures, name, description, newAdventureRef, newPlayerRef
+  ));
+
+  return id;
+}
 
 async function consolidateMapChangesTransaction(
   view: IDataView,
@@ -243,6 +305,12 @@ async function joinAdventureTransaction(
         playerName: profile.name
       });
     }
+  }
+
+  // Make this a recent adventure in the user's profile
+  const adventures = updateProfileAdventures(profile.adventures, summariseAdventure(adventureRef.id, adventure));
+  if (adventures !== undefined) {
+    await view.update(profileRef, { adventures: adventures });
   }
 }
 

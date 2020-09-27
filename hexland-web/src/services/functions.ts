@@ -1,16 +1,24 @@
-import { IFunctionsService } from "./interfaces";
-import * as firebase from 'firebase/app';
 import { IInviteExpiryPolicy } from "../data/policy";
+import { IFunctionsService } from "./interfaces";
+
+import * as firebase from 'firebase/app';
 
 export class FunctionsService implements IFunctionsService {
+  private readonly _createAdventure: firebase.functions.HttpsCallable;
   private readonly _consolidateMapChanges: firebase.functions.HttpsCallable;
   private readonly _inviteToAdventure: firebase.functions.HttpsCallable;
   private readonly _joinAdventure: firebase.functions.HttpsCallable;
 
   constructor(functions: firebase.functions.Functions) {
+    this._createAdventure = functions.httpsCallable('createAdventure');
     this._consolidateMapChanges = functions.httpsCallable('consolidateMapChanges');
     this._inviteToAdventure = functions.httpsCallable('inviteToAdventure');
     this._joinAdventure = functions.httpsCallable('joinAdventure');
+  }
+
+  async createAdventure(name: string, description: string): Promise<string> {
+    const result = await this._createAdventure({ name: name, description: description });
+    return String(result.data);
   }
 
   async consolidateMapChanges(adventureId: string, mapId: string, resync: boolean) {

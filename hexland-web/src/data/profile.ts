@@ -1,9 +1,12 @@
 import { IMapSummary } from './adventure';
+import { UserLevel } from './policy';
 
 export interface IProfile {
   name: string; // a friendly user name to have in maps.
                 // Use of this property should always be preferred to userContext.displayName
                 // except when actually creating the profile.
+  level: UserLevel; // the user's permission level.  Firebase rules stop us from
+                    // changing this willy nilly.
   adventures: IAdventureSummary[] | undefined; 
   latestMaps: IMapSummary[] | undefined;
 }

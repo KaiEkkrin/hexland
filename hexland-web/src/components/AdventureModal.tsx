@@ -16,7 +16,10 @@ interface IAdventureModalProps {
 }
 
 function AdventureModal(props: IAdventureModalProps) {
-  const isSaveDisabled = useMemo(() => props.name.length === 0, [props.name]);
+  const isSaveDisabled = useMemo(
+    () => props.name.length === 0 || props.description.length === 0,
+    [props.description, props.name]
+  );
 
   return (
     <Modal show={props.show} onHide={props.handleClose}>

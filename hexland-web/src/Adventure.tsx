@@ -253,7 +253,7 @@ function Adventure(props: IAdventureProps) {
     };
 
     editAdventure(
-      userContext.dataService, userContext.user?.uid, false, summariseAdventure(props.adventureId, updated), updated
+      userContext.dataService, userContext.user?.uid, summariseAdventure(props.adventureId, updated), updated
     ).then(() => console.log("Adventure " + props.adventureId + " successfully updated"))
       .catch(e => analyticsContext.logError("Error editing adventure " + props.adventureId, e));
   }, [userContext, props.adventureId, analyticsContext, adventure, editAdventureName, editAdventureDescription, handleModalClose]);

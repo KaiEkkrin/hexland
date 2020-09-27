@@ -1,13 +1,13 @@
 import { IAdventure, IMapSummary, IPlayer } from '../data/adventure';
 import { IChanges } from '../data/change';
 import { IMap } from '../data/map';
+import { maxProfileEntries, UserLevel } from '../data/policy';
 import { IAdventureSummary, IProfile } from '../data/profile';
+import { updateProfileAdventures } from './helpers';
 import { IDataService, IDataView, IDataReference, IDataAndReference, IUser, IAnalytics, IFunctionsService } from './interfaces';
 
 import { interval, Subject } from 'rxjs';
 import { throttle } from 'rxjs/operators';
-
-const maxProfileEntries = 7;
 
 export async function ensureProfile(
   dataService: IDataService | undefined,
@@ -30,6 +30,7 @@ export async function ensureProfile(
     // If we get here, we need to create a new profile
     profile = {
       name: displayName ?? user.displayName ?? "Unnamed user",
+      level: UserLevel.Standard,
       adventures: [],
       latestMaps: []
     };
@@ -102,84 +103,40 @@ export async function updateProfile(dataService: IDataService | undefined, uid: 
   ));
 }
 
-function updateProfileAdventures(adventures: IAdventureSummary[] | undefined, changed: IAdventureSummary): IAdventureSummary[] | undefined {
-  let existingIndex = adventures?.findIndex(a => a.id === changed.id) ?? -1;
-  if (adventures !== undefined && existingIndex >= 0) {
-    let existing = adventures[existingIndex];
-    if (existing.name === changed.name && existing.description === changed.description &&
-      existing.ownerName === changed.ownerName) {
-      // No change to make
-      return undefined;
-    }
-
-    let updated = [...adventures];
-    updated[existingIndex].name = changed.name;
-    updated[existingIndex].description = changed.description;
-    updated[existingIndex].ownerName = changed.ownerName;
-    return updated;
-  } else {
-    let created = [changed];
-    if (adventures !== undefined) {
-      created.push(...adventures.slice(0, maxProfileEntries - 1));
-    }
-
-    return created;
-  }
-}
-
-// returns the fetched profile, because that will be helpful for adding any
-// required player record for the owner of the adventure
 async function editAdventureTransaction(
   view: IDataView,
-  uid: string,
   profileRef: IDataReference<IProfile>,
   adventureRef: IDataReference<IAdventure>,
   mapRefs: IDataReference<IMap>[],
   playerRefs: IDataAndReference<IPlayer>[],
-  newPlayerRef: IDataReference<IPlayer> | undefined,
   changed: IAdventureSummary
-): Promise<IProfile> {
+): Promise<void> {
   // Fetch the profile, which we'll want to edit (maybe)
   let profile = await view.get(profileRef);
   if (profile === undefined) {
     throw Error("No profile available");
   }
 
-  // Update the adventure record itself, and the players associated with it
-  if (newPlayerRef !== undefined) { // it's new
-    await view.set<IAdventure>(adventureRef, {
-      name: changed.name,
-      description: changed.description,
-      owner: uid,
-      ownerName: changed.ownerName,
-      maps: []
-    });
+  let players = await Promise.all(playerRefs.map(r => view.get(r)));
+  await Promise.all(players.map(async (p, i) => {
+    if (p === undefined || profile === undefined) {
+      return;
+    }
 
-    // We don't create the player record here, because it will fail (the rules require
-    // us to be the adventure owner, but the adventure doesn't exist yet.)  So, we must
-    // create that separately after the transaction.  (There won't be a conflict.)
-  } else {
-    let players = await Promise.all(playerRefs.map(r => view.get(r)));
-    await Promise.all(players.map(async (p, i) => {
-      if (p === undefined || profile === undefined) {
-        return;
-      }
+    if (changed.name !== p.name || changed.description !== p.description || changed.ownerName !== p.ownerName) {
+      await view.update(playerRefs[i], {
+        name: changed.name,
+        description: changed.description,
+        ownerName: changed.ownerName,
+      });
+    }
+  }));
 
-      if (changed.name !== p.name || changed.description !== p.description || changed.ownerName !== p.ownerName) {
-        await view.update(playerRefs[i], {
-          name: changed.name,
-          description: changed.description,
-          ownerName: changed.ownerName,
-        });
-      }
-    }));
-
-    await view.update(adventureRef, {
-      name: changed.name,
-      description: changed.description,
-      ownerName: changed.ownerName
-    });
-  }
+  await view.update(adventureRef, {
+    name: changed.name,
+    description: changed.description,
+    ownerName: changed.ownerName
+  });
 
   // Update the profile to include this adventure if it didn't already, or
   // alter any existing entry, and fix any map entries too
@@ -192,13 +149,11 @@ async function editAdventureTransaction(
 
   // Update any maps associated with it
   await Promise.all(mapRefs.map(m => view.update(m, { adventureName: changed.name })));
-  return profile;
 }
 
 export async function editAdventure(
   dataService: IDataService | undefined,
   uid: string | undefined,
-  isNew: boolean,
   changed: IAdventureSummary,
   rec?: IAdventure | undefined
 ): Promise<void> {
@@ -209,45 +164,22 @@ export async function editAdventure(
   // Get the references to all the relevant stuff.
   // There's a chance this could be slightly out of sync, but it's low, so I'll
   // go with it.
-  let profileRef = dataService.getProfileRef(uid);
-  let adventureRef = dataService.getAdventureRef(changed.id);
-  let mapRefs: IDataReference<IMap>[] = [];
-  let playerRefs: IDataAndReference<IPlayer>[] = [];
-  let newPlayerRef: IDataReference<IPlayer> | undefined = undefined;
-  if (isNew === false) {
-    let adventure = rec ?? (await dataService.get(adventureRef));
-    mapRefs = adventure?.maps.map(m => dataService.getMapRef(changed.id, m.id)) ?? [];
-    playerRefs = await dataService.getPlayerRefs(changed.id);
-    newPlayerRef = undefined;
-  } else {
-    newPlayerRef = dataService.getPlayerRef(changed.id, uid);
-  }
+  const profileRef = dataService.getProfileRef(uid);
+  const adventureRef = dataService.getAdventureRef(changed.id);
+  const adventure = rec ?? (await dataService.get(adventureRef));
+  const mapRefs = adventure?.maps.map(m => dataService.getMapRef(changed.id, m.id)) ?? [];
+  const playerRefs = await dataService.getPlayerRefs(changed.id);
 
-  const profile = await dataService.runTransaction(view =>
+  await dataService.runTransaction(view =>
     editAdventureTransaction(
       view,
-      uid,
       profileRef,
       adventureRef,
       mapRefs,
       playerRefs,
-      newPlayerRef,
       changed
     )
   );
-
-  if (newPlayerRef !== undefined) { // it's new
-    await dataService.set<IPlayer>(newPlayerRef, {
-      id: changed.id,
-      name: changed.name,
-      description: changed.description,
-      owner: changed.owner,
-      ownerName: changed.ownerName,
-      playerId: uid,
-      playerName: profile.name,
-      allowed: true
-    });
-  }
 }
 
 async function deleteAdventureTransaction(

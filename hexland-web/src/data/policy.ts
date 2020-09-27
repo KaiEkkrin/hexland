@@ -20,3 +20,44 @@ export function emailIsValid(email: string) {
 export function passwordIsValid(password: string) {
   return password.length >= 8 && /[a-z]/i.test(password) && /[0-9]/.test(password);
 }
+
+// The maximum number of entries to display on the home page for each type
+// (map, adventure).
+export const maxProfileEntries = 7;
+
+// Describes what permissions, caps different kinds of user have.
+export enum UserLevel {
+  Standard = "standard",
+  Gold = "gold"
+}
+
+interface IUserPolicy { // one per user level
+  adventures: number, // cap on adventures created
+  maps: number, // cap on maps per adventure
+  players: number, // cap on players per adventure
+  objects: number, // cap on objects per map
+  objectsWarning: number, // soft-cap on objects per map
+}
+
+export const standardUser: IUserPolicy = {
+  adventures: 3,
+  maps: 12,
+  players: 6,
+  objects: 10000,
+  objectsWarning: 9000
+};
+
+export const goldUser: IUserPolicy = {
+  adventures: 15,
+  maps: 100,
+  players: 15,
+  objects: 20000,
+  objectsWarning: 18000
+};
+
+export function getUserPolicy(level: UserLevel): IUserPolicy {
+  switch (level) {
+    case UserLevel.Gold: return goldUser;
+    default: return standardUser;
+  }
+}
