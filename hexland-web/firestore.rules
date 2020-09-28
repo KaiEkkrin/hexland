@@ -28,8 +28,7 @@ service cloud.firestore {
 
     match /adventures/{adventureId}/maps/{id} {
       allow read: if request.auth != null && isPlayerOrOwner(adventureId);
-      allow create: if request.auth != null && request.resource.data.owner == request.auth.uid &&
-        isOwner(adventureId);
+      allow create: if false; // create maps using the `createMap` function
       allow update, delete: if request.auth != null && resource.data.owner == request.auth.uid;
     }
 

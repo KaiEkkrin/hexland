@@ -6,14 +6,15 @@ import { AnalyticsContext } from './components/AnalyticsContextProvider';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
 import PlayerInfoList from './components/PlayerInfoList';
+import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { StatusContext } from './components/StatusContextProvider';
 import { UserContext } from './components/UserContextProvider';
 
 import { IAdventure, summariseAdventure, IPlayer } from './data/adventure';
-import { IMap } from './data/map';
 import { IIdentified } from './data/identified';
-import { deleteMap, editMap, registerAdventureAsRecent, editAdventure, deleteAdventure, leaveAdventure, removeAdventureFromRecent } from './services/extensions';
+import { getUserPolicy } from './data/policy';
+import { deleteMap, registerAdventureAsRecent, editAdventure, deleteAdventure, leaveAdventure, removeAdventureFromRecent } from './services/extensions';
 
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
@@ -34,6 +35,7 @@ interface IAdventureProps {
 function Adventure(props: IAdventureProps) {
   const userContext = useContext(UserContext);
   const analyticsContext = useContext(AnalyticsContext);
+  const profile = useContext(ProfileContext);
   const statusContext = useContext(StatusContext);
   const history = useHistory();
 
@@ -165,6 +167,15 @@ function Adventure(props: IAdventureProps) {
     [userContext.user, adventure]
   );
 
+  const canCreateNewMap = useMemo(() => {
+    if (canEditAdventure === false || profile === undefined || adventure === undefined) {
+      return false;
+    }
+
+    const userPolicy = getUserPolicy(profile.level);
+    return adventure.record.maps.length < userPolicy.maps;
+  }, [adventure, canEditAdventure, profile]);
+
   const [showEditAdventure, setShowEditAdventure] = useState(false);
   const [editAdventureName, setEditAdventureName] = useState("");
   const [editAdventureDescription, setEditAdventureDescription] = useState("");
@@ -240,7 +251,7 @@ function Adventure(props: IAdventureProps) {
     setShowEditAdventure(true);
   }, [adventure, setEditAdventureName, setEditAdventureDescription, setShowEditAdventure]);
 
-  const handleEditAdventureSave = useCallback(() => {
+  const handleEditAdventureSave = useCallback(async () => {
     handleModalClose();
     if (adventure === undefined) {
       return;
@@ -252,11 +263,10 @@ function Adventure(props: IAdventureProps) {
       description: editAdventureDescription
     };
 
-    editAdventure(
+    await editAdventure(
       userContext.dataService, userContext.user?.uid, summariseAdventure(props.adventureId, updated), updated
-    ).then(() => console.log("Adventure " + props.adventureId + " successfully updated"))
-      .catch(e => analyticsContext.logError("Error editing adventure " + props.adventureId, e));
-  }, [userContext, props.adventureId, analyticsContext, adventure, editAdventureName, editAdventureDescription, handleModalClose]);
+    );
+  }, [userContext, props.adventureId, adventure, editAdventureName, editAdventureDescription, handleModalClose]);
 
   const handleDeleteAdventureSave = useCallback(() => {
     handleModalClose();
@@ -278,18 +288,7 @@ function Adventure(props: IAdventureProps) {
       .catch(e => analyticsContext.logError("Error leaving adventure " + props.adventureId, e));
   }, [userContext, analyticsContext, props.adventureId, handleModalClose, history]);
 
-  // Map editing support
-  // TODO #23 Make this able to create a new map only and consolidate the editing
-  // functionality with the map view
   const maps = useMemo(() => adventure?.record.maps ?? [], [adventure]);
-
-  const setMap = useCallback((adventureId: string, id: string | undefined, map: IMap) => {
-    id = id ?? uuidv4();
-    editMap(userContext.dataService, adventureId, id, map)
-      .then(() => console.log("Map " + id + " successfully updated"))
-      .catch(e => analyticsContext.logError("Error editing map " + id, e));
-  }, [userContext.dataService, analyticsContext]);
-
   const mapDelete = useCallback((id: string) => {
     deleteMap(userContext.dataService, userContext.user?.uid, props.adventureId, id)
       .then(() => console.log("Map " + id + " successfully deleted"))
@@ -298,7 +297,7 @@ function Adventure(props: IAdventureProps) {
 
   return (
     <div>
-      <Navigation title={adventure?.record.name} />
+      <Navigation>{adventure?.record.name}</Navigation>
       <Container>
         {adventure !== undefined ?
           <Row className="mt-4">
@@ -348,7 +347,8 @@ function Adventure(props: IAdventureProps) {
             <MapCollection
               adventures={adventures}
               maps={maps}
-              setMap={setMap} deleteMap={mapDelete} />
+              showNewMap={canCreateNewMap}
+              deleteMap={mapDelete} />
           </Col>
         </Row>
       </Container>

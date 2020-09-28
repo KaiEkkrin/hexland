@@ -33,7 +33,7 @@ import * as Keys from './models/keys';
 import { MapStateMachine, createDefaultState } from './models/mapStateMachine';
 import { networkStatusTracker } from './models/networkStatusTracker';
 
-import { RouteComponentProps, useHistory } from 'react-router-dom';
+import { Link, RouteComponentProps, useHistory } from 'react-router-dom';
 
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
@@ -52,6 +52,20 @@ function Map(props: IMapPageProps) {
   const [players, setPlayers] = useState([] as IPlayer[]);
   const [canDoAnything, setCanDoAnything] = useState(false);
   const [mapState, setMapState] = useState(createDefaultState());
+
+  // Create a suitable title
+  const title = useMemo(() => {
+    if (map === undefined) {
+      return undefined;
+    }
+
+    const adventureLink = "/adventure/" + props.adventureId;
+    return (
+      <div>
+        <Link to={adventureLink}>{map.record.adventureName}</Link> | {map.record.name}
+      </div>
+    );
+  }, [props.adventureId, map]);
 
   // Track network status
   const [resyncCount, setResyncCount] = useState(0);
@@ -735,7 +749,7 @@ function Map(props: IMapPageProps) {
   return (
     <div className="Map-container">
       <div className="Map-nav">
-        <Navigation title={map?.record.name} />
+        <Navigation>{title}</Navigation>
       </div>
       <div className="Map-overlay">
         <MapControls

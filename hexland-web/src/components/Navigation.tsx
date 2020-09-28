@@ -296,7 +296,7 @@ function NavLogin() {
 }
 
 interface INavigationProps {
-  title: string | undefined;
+  children?: React.ReactNode | undefined;
 }
 
 function Navigation(props: INavigationProps) {
@@ -322,7 +322,7 @@ function Navigation(props: INavigationProps) {
         <NavPageLinks />
       </Navbar.Collapse>
       <Navbar.Collapse id="basic-navbar-nav" className="justify-content-center" hidden={expanded}>
-        <Navbar.Text className="mr-2">{props.title ?? ""}</Navbar.Text>
+        <Navbar.Text className="mr-2">{props.children}</Navbar.Text>
       </Navbar.Collapse>
       <Navbar.Collapse id="basic-navbar-nav" className="justify-content-end">
         <NavLogin />

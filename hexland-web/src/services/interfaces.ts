@@ -2,7 +2,7 @@ import { IAdventure, IPlayer } from '../data/adventure';
 import { IChange, IChanges } from '../data/change';
 import { IIdentified } from '../data/identified';
 import { IInvite } from '../data/invite';
-import { IMap } from '../data/map';
+import { IMap, MapType } from '../data/map';
 import { IInviteExpiryPolicy } from '../data/policy';
 import { IProfile } from '../data/profile';
 
@@ -143,6 +143,9 @@ export interface IDataView {
 export interface IFunctionsService {
   // Creates a new adventure, returning its ID.
   createAdventure(name: string, description: string): Promise<string>;
+
+  // Creates a new map, returning its ID.
+  createMap(adventureId: string, name: string, description: string, ty: MapType, ffa: boolean): Promise<string>;
 
   // Consolidates changes in the given map.
   consolidateMapChanges(adventureId: string, mapId: string, resync: boolean): Promise<void>;

@@ -1,53 +1,29 @@
-import React, { useCallback, useContext, useMemo } from 'react';
+import React, { useContext, useMemo } from 'react';
 import './App.css';
 
 import AdventureCollection from './components/AdventureCollection';
-import { AnalyticsContext } from './components/AnalyticsContextProvider';
 import Introduction from './components/Introduction';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
 import { ProfileContext } from './components/ProfileContextProvider';
 import { UserContext } from './components/UserContextProvider';
 
-import { IMap } from './data/map';
-import { editMap } from './services/extensions';
-
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 
-import { v4 as uuidv4 } from 'uuid';
-
 function LatestColumn() {
   const userContext = useContext(UserContext);
   const profile = useContext(ProfileContext);
-  const analyticsContext = useContext(AnalyticsContext);
 
   const myAdventures = useMemo(
     () => profile?.adventures?.filter(a => a.owner === userContext.user?.uid) ?? [],
     [profile, userContext.user]
   );
 
+  const showNewMap = useMemo(() => myAdventures.length > 0, [myAdventures]);
   const adventures = useMemo(() => profile?.adventures ?? [], [profile]);
   const latestMaps = useMemo(() => profile?.latestMaps ?? [], [profile]);
-
-  const createAdventure = useCallback((name: string, description: string) => {
-    const functionsService = userContext.functionsService;
-    if (functionsService === undefined) {
-      return;
-    }
-
-    functionsService.createAdventure(name, description)
-      .then(id => console.log("Adventure " + id + " successfully created"))
-      .catch(e => analyticsContext.logError("Error creating adventure", e));
-  }, [userContext, analyticsContext]);
-
-  const setMap = useCallback((adventureId: string, id: string | undefined, map: IMap) => {
-    id = id ?? uuidv4();
-    editMap(userContext.dataService, adventureId, id, map)
-      .then(() => console.log("Map " + id + " successfully updated"))
-      .catch(e => analyticsContext.logError("Error editing map " + id, e));
-  }, [userContext.dataService, analyticsContext]);
 
   return (
     <div>
@@ -55,11 +31,12 @@ function LatestColumn() {
       <MapCollection
         adventures={myAdventures}
         maps={latestMaps}
-        setMap={setMap} />
+        showNewMap={showNewMap}
+        />
       <h5 className="mt-4">Latest adventures</h5>
       <AdventureCollection
         uid={userContext.user?.uid}
-        adventures={adventures} createAdventure={createAdventure} />
+        adventures={adventures} showNewAdventure={true} />
     </div>
   );
 }
@@ -98,7 +75,7 @@ function Home() {
 
   return (
     <div>
-      <Navigation title={undefined} />
+      <Navigation />
       <Container fluid={containerFluid}>
         <Row>
           {columns}

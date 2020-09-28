@@ -1,14 +1,16 @@
-import React, { useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useContext, useState, useEffect, useMemo } from 'react';
 import './App.css';
 
 import AdventureCollection from './components/AdventureCollection';
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
 import Navigation from './components/Navigation';
+import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { UserContext } from './components/UserContextProvider';
 
 import { IAdventure, summariseAdventure } from './data/adventure';
 import { IIdentified } from './data/identified';
+import { getUserPolicy } from './data/policy';
 
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
@@ -16,6 +18,7 @@ import Row from 'react-bootstrap/Row';
 
 function All() {
   const userContext = useContext(UserContext);
+  const profile = useContext(ProfileContext);
   const analyticsContext = useContext(AnalyticsContext);
 
   const [adventures, setAdventures] = useState<IIdentified<IAdventure>[]>([]);
@@ -34,31 +37,30 @@ function All() {
     );
   }, [analyticsContext, userContext]);
 
+  // I can create a new adventure if I'm not at cap
+  const showNewAdventure = useMemo(() => {
+    if (profile === undefined) {
+      return false;
+    }
+
+    const userPolicy = getUserPolicy(profile.level);
+    return adventures.length < userPolicy.adventures;
+  }, [adventures, profile]);
+
   // Keep summaries of them
   const adventureSummaries = useMemo(
     () => adventures.map(a => summariseAdventure(a.id, a.record)),
     [adventures]
   );
 
-  const createAdventure = useCallback((name: string, description: string) => {
-    const functionsService = userContext.functionsService;
-    if (functionsService === undefined) {
-      return;
-    }
-
-    functionsService.createAdventure(name, description)
-      .then(id => console.log("Adventure " + id + " successfully created"))
-      .catch(e => analyticsContext.logError("Error creating adventure", e));
-  }, [userContext, analyticsContext]);
-
   return (
     <RequireLoggedIn>
-      <Navigation title={"All adventures"}/>
+      <Navigation>My adventures</Navigation>
       <Container>
         <Row>
           <Col>
             <AdventureCollection uid={userContext.user?.uid}
-              adventures={adventureSummaries} createAdventure={createAdventure} />
+              adventures={adventureSummaries} showNewAdventure={showNewAdventure} />
           </Col>
         </Row>
       </Container>

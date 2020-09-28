@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import '../App.css';
 
 import Button from 'react-bootstrap/Button';
@@ -10,16 +10,25 @@ interface IAdventureModalProps {
   name: string;
   show: boolean;
   handleClose: () => void;
-  handleSave: () => void;
+  handleSave: () => Promise<void>;
   setDescription: (value: string) => void;
   setName: (value: string) => void;
 }
 
 function AdventureModal(props: IAdventureModalProps) {
+  const [isSaving, setIsSaving] = useState(false);
+
   const isSaveDisabled = useMemo(
-    () => props.name.length === 0 || props.description.length === 0,
-    [props.description, props.name]
+    () => props.name.length === 0 || props.description.length === 0 || isSaving,
+    [isSaving, props.description, props.name]
   );
+
+  const saveText = useMemo(() => isSaving ? "Saving..." : "Save adventure", [isSaving]);
+  const handleSave = useCallback(() => {
+    setIsSaving(true);
+    props.handleSave()
+      .then(() => console.log("created adventure successfully"));
+  }, [props]);
 
   return (
     <Modal show={props.show} onHide={props.handleClose}>
@@ -43,8 +52,8 @@ function AdventureModal(props: IAdventureModalProps) {
       <Modal.Footer>
         <Button variant="secondary" onClick={props.handleClose}>Close</Button>
         <Button variant="primary" disabled={isSaveDisabled}
-          onClick={props.handleSave}>
-          Save adventure
+          onClick={handleSave}>
+          {saveText}
       </Button>
       </Modal.Footer>
     </Modal>

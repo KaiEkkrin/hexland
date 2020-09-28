@@ -5,10 +5,10 @@ import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
 import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
 import { FeatureDictionary, IToken, IFeature } from '../data/feature';
 import { IInvite } from '../data/invite';
-import { IMap } from '../data/map';
+import { IMap, MapType, summariseMap } from '../data/map';
 import { getUserPolicy, IInviteExpiryPolicy } from '../data/policy';
 import { IAdventureSummary, IProfile } from '../data/profile';
-import { updateProfileAdventures } from './helpers';
+import { updateProfileAdventures, updateProfileMaps, updateAdventureMaps } from './helpers';
 import { IDataService, IDataView, IDataReference, IDataAndReference, ILogger } from './interfaces';
 
 import * as dayjs from 'dayjs';
@@ -73,6 +73,79 @@ export async function createAdventure(dataService: IDataService, uid: string, na
   const newPlayerRef = dataService.getPlayerRef(id, uid);
   await dataService.runTransaction(tr => createAdventureTransaction(
     tr, profileRef, currentAdventures, name, description, newAdventureRef, newPlayerRef
+  ));
+
+  return id;
+}
+
+async function createMapTransaction(
+  view: IDataView,
+  profileRef: IDataReference<IProfile>,
+  adventureRef: IDataReference<IAdventure>,
+  newMapRef: IDataReference<IMap>,
+  name: string,
+  description: string,
+  ty: MapType,
+  ffa: boolean
+): Promise<void> {
+  // Fetch things
+  const profile = await view.get(profileRef);
+  if (profile === undefined) {
+    throw new functions.https.HttpsError('permission-denied', 'No profile available');
+  }
+
+  const adventure = await view.get(adventureRef);
+  if (adventure === undefined) {
+    throw new functions.https.HttpsError('invalid-argument', 'No such adventure');
+  }
+
+  // Check they haven't exceeded their map quota in this adventure
+  const policy = getUserPolicy(profile.level);
+  if (adventure.maps.length >= policy.maps) {
+    throw new functions.https.HttpsError('permission-denied', 'You already have the maximum number of maps in this adventure.');
+  }
+
+  // If we reach here we can safely create that map:
+  const record: IMap = {
+    adventureName: adventure.name,
+    name: name,
+    description: description,
+    owner: profileRef.id,
+    ty: ty,
+    ffa: ffa
+  };
+  await view.set(newMapRef, record);
+
+  // Update the adventure record to include this map
+  const summary = summariseMap(adventureRef.id, newMapRef.id, record);
+  const allMaps = updateAdventureMaps(adventure.maps, summary);
+  await view.update(adventureRef, { maps: allMaps });
+
+  // Update the profile to include this map
+  const latestMaps = updateProfileMaps(profile.latestMaps, summary);
+  if (latestMaps !== undefined) {
+    await view.update(profileRef, { latestMaps: latestMaps });
+  }
+}
+
+export async function createMap(
+  dataService: IDataService,
+  uid: string,
+  adventureId: string,
+  name: string,
+  description: string,
+  ty: MapType,
+  ffa: boolean
+): Promise<string> {
+  // I'll need to edit the user's profile and the adventure record as well as
+  // create the map itself:
+  const profileRef = dataService.getProfileRef(uid);
+  const adventureRef = dataService.getAdventureRef(adventureId);
+
+  const id = uuidv4();
+  const newMapRef = dataService.getMapRef(adventureId, id);
+  await dataService.runTransaction(tr => createMapTransaction(
+    tr, profileRef, adventureRef, newMapRef, name, description, ty, ffa
   ));
 
   return id;

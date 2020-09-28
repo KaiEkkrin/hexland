@@ -132,32 +132,22 @@ describe('test functions', () => {
     expect(profile?.adventures?.find(a => a.description === "Edited adventure")).toBeTruthy();
 
     // We should be able to add a map
-    const m1Id = uuidv4();
-    const m1 = {
-      adventureName: 'this will be overwritten',
-      name: 'Map One',
-      description: 'First map',
-      owner: user.uid,
-      ty: MapType.Square,
-      ffa: false
-    };
-    await editMap(dataService, a1Id, m1Id, m1);
+    const m1Id = await functionsService.createMap(
+      a1Id, 'Map One', 'First map', MapType.Square, false
+    );
 
     // And another
-    const m2Id = uuidv4();
-    const m2 = {
-      adventureName: 'this will be overwritten',
-      name: 'Map Two',
-      description: 'Second map',
-      owner: user.uid,
-      ty: MapType.Hex,
-      ffa: true
-    };
-    await editMap(dataService, a2Id, m2Id, m2);
+    const m2Id = await functionsService.createMap(
+      a2Id, 'Map Two', 'Second map', MapType.Hex, true
+    );
 
-    // Edit the second adventure
-    m2.description = 'Edited map';
-    await editMap(dataService, a2Id, m2Id, m2);
+    // Edit the second map
+    const m2 = await dataService.get(dataService.getMapRef(a2Id, m2Id));
+    expect(m2).not.toBeUndefined();
+    if (m2 !== undefined) {
+      m2.description = 'Edited map';
+      await editMap(dataService, a2Id, m2Id, m2);
+    }
 
     // We should be able to fetch the map records
     let m1Record = await dataService.get(dataService.getMapRef(a1Id, m1Id));
@@ -228,16 +218,9 @@ describe('test functions', () => {
     const a1Id = await functionsService.createAdventure('Adventure One', 'First adventure');
 
     // create a map
-    const m1Id = uuidv4();
-    const m1 = {
-      adventureName: 'this will be overwritten',
-      name: 'Map One',
-      description: 'First map',
-      owner: user.uid,
-      ty: MapType.Hex,
-      ffa: false
-    };
-    await editMap(dataService, a1Id, m1Id, m1);
+    const m1Id = await functionsService.createMap(
+      a1Id, 'Map One', 'First map', MapType.Hex, false
+    );
 
     // Get the map record with the data service
     const m1Record = await dataService.get(dataService.getMapRef(a1Id, m1Id));
@@ -361,16 +344,9 @@ describe('test functions', () => {
     const a1Id = await functionsService.createAdventure('Adventure One', 'First adventure');
 
     // We should be able to add a map
-    const m1Id = uuidv4();
-    const m1 = {
-      adventureName: 'this will be overwritten',
-      name: 'Map One',
-      description: 'First map',
-      owner: owner.uid,
-      ty: MapType.Square,
-      ffa: false
-    };
-    await editMap(dataService, a1Id, m1Id, m1);
+    const m1Id = await functionsService.createMap(
+      a1Id, 'Map One', 'First map', MapType.Square, false
+    );
 
     // Create an invite to that adventure
     const invite = await functionsService.inviteToAdventure(a1Id);
@@ -554,16 +530,9 @@ describe('test functions', () => {
     const a1Id = await functionsService.createAdventure('Adventure One', 'First adventure');
 
     // We should be able to add a map
-    const m1Id = uuidv4();
-    const m1 = {
-      adventureName: 'this will be overwritten',
-      name: 'Map One',
-      description: 'First map',
-      owner: owner.uid,
-      ty: MapType.Square,
-      ffa: false
-    };
-    await editMap(dataService, a1Id, m1Id, m1);
+    const m1Id = await functionsService.createMap(
+      a1Id, 'Map One', 'First map', MapType.Square, false
+    );
 
     // Create an invite to that adventure
     const invite = await functionsService.inviteToAdventure(a1Id);
@@ -718,16 +687,10 @@ describe('test functions', () => {
     const a1Id = await functionsService.createAdventure('Adventure One', 'First adventure');
 
     // Add a new map
-    const m1Id = uuidv4();
-    const m1 = {
-      adventureName: 'this will be overwritten',
-      name: 'Map One',
-      description: 'First map',
-      owner: user.uid,
-      ty: MapType.Square,
-      ffa: false
-    };
-    await editMap(dataService, a1Id, m1Id, m1);
+    const m1Id = await functionsService.createMap(
+      a1Id, 'Map One', 'First map', MapType.Square, false
+    );
+
     const mapRecord = await dataService.get(dataService.getMapRef(a1Id, m1Id));
     expect(mapRecord).not.toBeUndefined();
 

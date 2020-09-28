@@ -18,11 +18,18 @@ interface IMapEditorModalProps {
   adventures?: IAdventureSummary[] | undefined; // for new map only
   map: IAdventureIdentified<IMap> | undefined; // undefined to create a new map
   handleClose: () => void;
-  handleSave: (adventureId: string, updated: IMap) => void;
+  handleSave: (adventureId: string, updated: IMap) => Promise<void>;
 }
 
 function MapEditorModal(props: IMapEditorModalProps) {
   const userContext = useContext(UserContext);
+
+  const [isSaving, setIsSaving] = useState(false);
+  useEffect(() => {
+    if (props.show === true) {
+      setIsSaving(false);
+    }
+  }, [props.show, setIsSaving]);
 
   const [name, setName] = useState("");
   const [adventureId, setAdventureId] = useState<string | undefined>(undefined);
@@ -36,54 +43,63 @@ function MapEditorModal(props: IMapEditorModalProps) {
     [props.adventures]
   );
 
+  const isSaveDisabled = useMemo(
+    () => name.length === 0 || description.length === 0 || isSaving,
+    [isSaving, name, description]
+  );
+
+  const saveText = useMemo(() => isSaving ? "Saving..." : "Save map", [isSaving]);
+
   useEffect(() => {
     setName(props.map?.record.name ?? "");
     setAdventureId(props.map?.adventureId ?? firstAdventure?.id);
     setDescription(props.map?.record.description ?? "");
     setTy(props.map?.record.ty ?? MapType.Square);
     setFfa(props.map?.record.ffa ?? false);
-  }, [props.map, firstAdventure]);
+    setIsSaving(false);
+  }, [props.map, firstAdventure, setName, setAdventureId, setDescription, setTy, setFfa, setIsSaving]);
 
   const handleFfaChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => setFfa(e.currentTarget.checked),
     [setFfa]
   );
 
-  const handleSave = useCallback(
-    () => {
-      if (adventureId === undefined) {
-        return;
-      }
+  const handleSave = useCallback(() => {
+    if (adventureId === undefined) {
+      return;
+    }
 
-      if (props.map !== undefined) {
-        // This is an edit of an existing map:
-        props.handleSave(adventureId, {
-          ...props.map.record,
-          name: name,
-          description: description,
-          ffa: ffa
-        });
-        return;
-      }
-
-      // We're adding a new map.
-      // There must be a valid adventure to add it to and a valid user
-      const adventureName = props.adventures?.find(a => a.id === adventureId)?.name;
-      const uid = userContext.user?.uid;
-      if (adventureName === undefined || uid === undefined) {
-        return;
-      }
-
+    setIsSaving(true);
+    if (props.map !== undefined) {
+      // This is an edit of an existing map:
       props.handleSave(adventureId, {
-        adventureName: adventureName,
+        ...props.map.record,
         name: name,
         description: description,
-        owner: uid,
-        ty: ty,
         ffa: ffa
-      });
-    }, [props, adventureId, description, ffa, name, ty, userContext.user]
-  );
+      }).then(() => console.log("edited map " + props.map?.id))
+        .catch(e => setIsSaving(false));
+      return;
+    }
+
+    // We're adding a new map.
+    // There must be a valid adventure to add it to and a valid user
+    const adventureName = props.adventures?.find(a => a.id === adventureId)?.name;
+    const uid = userContext.user?.uid;
+    if (adventureName === undefined || uid === undefined) {
+      return;
+    }
+
+    props.handleSave(adventureId, {
+      adventureName: adventureName,
+      name: name,
+      description: description,
+      owner: uid,
+      ty: ty,
+      ffa: ffa
+    }).then(() => console.log("created new map"))
+      .catch(e => setIsSaving(false));
+  }, [props, adventureId, description, ffa, name, setIsSaving, ty, userContext.user]);
 
   return (
     <Modal show={props.show} onHide={props.handleClose}>
@@ -129,7 +145,7 @@ function MapEditorModal(props: IMapEditorModalProps) {
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={props.handleClose}>Close</Button>
-        <Button variant="primary" onClick={handleSave}>Save map</Button>
+        <Button disabled={isSaveDisabled} variant="primary" onClick={handleSave}>{saveText}</Button>
       </Modal.Footer>
     </Modal>
   );

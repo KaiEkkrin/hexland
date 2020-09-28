@@ -1,9 +1,9 @@
-import { IAdventure, IMapSummary, IPlayer } from '../data/adventure';
+import { IAdventure, IPlayer } from '../data/adventure';
 import { IChanges } from '../data/change';
-import { IMap } from '../data/map';
-import { maxProfileEntries, UserLevel } from '../data/policy';
+import { IMap, summariseMap } from '../data/map';
+import { UserLevel } from '../data/policy';
 import { IAdventureSummary, IProfile } from '../data/profile';
-import { updateProfileAdventures } from './helpers';
+import { updateProfileAdventures, updateAdventureMaps, updateProfileMaps } from './helpers';
 import { IDataService, IDataView, IDataReference, IDataAndReference, IUser, IAnalytics, IFunctionsService } from './interfaces';
 
 import { interval, Subject } from 'rxjs';
@@ -224,45 +224,6 @@ export async function deleteAdventure(dataService: IDataService | undefined, uid
     deleteAdventureTransaction(view, profileRef, adventureRef, playerRefs));
 }
 
-function updateProfileMaps(maps: IMapSummary[] | undefined, changed: IMapSummary): IMapSummary[] | undefined {
-  let existingIndex = maps?.findIndex(m => m.id === changed.id) ?? -1;
-  if (maps !== undefined && existingIndex >= 0) {
-    if (
-      changed.name === maps[existingIndex].name &&
-      changed.description === maps[existingIndex].description
-    ) {
-      // No change to make
-      return undefined;
-    }
-
-    let updated = [...maps];
-    updated[existingIndex].name = changed.name;
-    updated[existingIndex].description = changed.description;
-    return updated;
-  } else {
-    let created = [changed];
-    if (maps !== undefined) {
-      created.push(...maps.slice(0, maxProfileEntries - 1));
-    }
-
-    return created;
-  }
-}
-
-function updateAdventureMaps(maps: IMapSummary[], changed: IMapSummary): IMapSummary[] {
-  let existingIndex = maps?.findIndex(m => m.id === changed.id) ?? -1;
-  let updated = [...maps];
-  if (existingIndex >= 0) {
-    updated[existingIndex].name = changed.name;
-    updated[existingIndex].description = changed.description;
-  } else {
-    updated.push(changed);
-    updated.sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  return updated;
-}
-
 async function editMapTransaction(
   view: IDataView,
   profileRef: IDataReference<IProfile>,
@@ -271,28 +232,25 @@ async function editMapTransaction(
   changed: IMap
 ): Promise<void> {
   // Fetch the profile, which we'll want to edit (maybe)
-  let profile = await view.get(profileRef);
+  const profile = await view.get(profileRef);
 
   // Fetch the adventure, which we'll certainly want to edit
-  let adventure = await view.get(adventureRef);
+  const adventure = await view.get(adventureRef);
   if (adventure === undefined) {
     throw Error("Adventure not found");
   }
 
-  // Fetch the map as well, mostly so I can check if it exists :)
-  let existingMap = await view.get(mapRef);
+  // Fetch the map as well
+  const existingMap = await view.get(mapRef);
+  if (existingMap === undefined) {
+    throw Error("Map not found");
+  }
 
   // Don't trust the adventure name in the changed record, update it ourselves
   changed.adventureName = adventure.name;
 
   // Create the new map summary, for the benefit of other records
-  const summary = {
-    adventureId: adventureRef.id,
-    id: mapRef.id,
-    name: changed.name,
-    description: changed.description,
-    ty: changed.ty
-  };
+  const summary = summariseMap(adventureRef.id, mapRef.id, changed);
 
   // Update the profile to include this map if it didn't already, or
   // alter any existing entry
@@ -303,22 +261,18 @@ async function editMapTransaction(
     }
   }
 
-  // Update the adventure record to include this map
+  // Update the adventure record with the new summary
   let allMaps = updateAdventureMaps(adventure.maps, summary);
   await view.update(adventureRef, { maps: allMaps });
 
   // Update the map record itself
-  if (existingMap === undefined) {
-    await view.set<IMap>(mapRef, changed);
-  } else {
-    // We can only update some fields after the fact
-    await view.update(mapRef, {
-      adventureName: changed.adventureName,
-      name: changed.name,
-      description: changed.description,
-      ffa: changed.ffa
-    });
-  }
+  // We can only update some fields after the fact
+  await view.update(mapRef, {
+    adventureName: changed.adventureName,
+    name: changed.name,
+    description: changed.description,
+    ffa: changed.ffa
+  });
 }
 
 export async function editMap(
@@ -334,7 +288,6 @@ export async function editMap(
   let profileRef = dataService.getProfileRef(changed.owner);
   let adventureRef = dataService.getAdventureRef(adventureId);
   let mapRef = dataService.getMapRef(adventureId, mapId);
-
   await dataService.runTransaction(view =>
     editMapTransaction(view, profileRef, adventureRef, mapRef, changed)
   );

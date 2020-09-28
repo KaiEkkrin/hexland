@@ -59,7 +59,7 @@ function Invite(props: IInvitePageProps) {
 
   return (
     <div>
-      <Navigation title={undefined} />
+      <Navigation />
       <header className="App-header">
         <h5>{profile?.name ?? "Unknown"}, you have been invited to join {inviteDescription}.</h5>
         <Button variant="primary" disabled={buttonDisabled} onClick={handleJoin}>{buttonText}</Button>

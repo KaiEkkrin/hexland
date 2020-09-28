@@ -5,6 +5,7 @@ import functionLogger from './services/functionLogger';
 
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
+import { MapType } from './data/map';
 
 const region = 'europe-west2';
 
@@ -42,13 +43,38 @@ export const createAdventure = functions.region(region).https.onCall(async (data
   return await Extensions.createAdventure(dataService, uid, String(name), String(description));
 });
 
+// Creates a map, checking for cap.
+
+export const createMap = functions.region(region).https.onCall(async (data, context) => {
+  const uid = context.auth?.uid;
+  if (uid === undefined) {
+    throw new functions.https.HttpsError('unauthenticated', 'No uid found');
+  }
+
+  // Get the submitted map data
+  const adventureId = data['adventureId'];
+  const name = data['name'];
+  const description = data['description'];
+  const ty = data['ty'];
+  const ffa = data['ffa'] ? true : false;
+  if (!adventureId || !name || !description || !ty) {
+    throw new functions.https.HttpsError('invalid-argument', 'Not all required parameters supplied');
+  }
+
+  return await Extensions.createMap(
+    dataService, uid, String(adventureId), String(name), String(description),
+    String(ty) === MapType.Hex ? MapType.Hex : MapType.Square,
+    ffa
+  );
+});
+
 // Consolidates map changes.
 
 export const consolidateMapChanges = functions.region(region).https.onCall(async (data, context) => {
   // Fetch the map record in question
   const adventureId = data['adventureId'];
   const mapId = data['mapId'];
-  const resync = data['resync'] == true;
+  const resync = data['resync'] ? true : false;
   if (!adventureId || !mapId) {
     throw new functions.https.HttpsError('invalid-argument', 'No adventure or map id supplied');
   }

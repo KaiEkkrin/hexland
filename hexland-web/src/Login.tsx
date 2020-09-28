@@ -289,7 +289,7 @@ function Login() {
 
   return (
     <div>
-      <Navigation title={undefined} />
+      <Navigation />
       <header className="App-header">
         <div className="App-login-text">
           Sign in to get started with Wall &amp; Shadow.
