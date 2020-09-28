@@ -3,10 +3,14 @@ import { IChange, ChangeCategory, ChangeType, IAreaAdd, IAreaRemove, ITokenAdd, 
 import { IGridCoord, IGridEdge } from "./coord";
 import { IFeature, IToken, IFeatureDictionary } from "./feature";
 import { IMap } from "./map";
+import { IUserPolicy } from "./policy";
 
 import { v4 as uuidv4 } from 'uuid';
+import fluent from "fluent-iterable";
 
 export interface IChangeTracker {
+  objectCount: number;
+
   areaAdd: (feature: IFeature<IGridCoord>) => boolean;
   areaRemove: (position: IGridCoord) => IFeature<IGridCoord> | undefined;
   tokenAdd: (map: IMap, user: string, feature: IToken, oldPosition: IGridCoord | undefined) => boolean;
@@ -16,7 +20,7 @@ export interface IChangeTracker {
   noteAdd: (feature: IAnnotation) => boolean;
   noteRemove: (position: IGridCoord) => IAnnotation | undefined;
 
-  // Called after a batch of changes has been completed, before any redraw
+  // Called after a batch of changes has been completed, before any redraw.
   changesApplied(): void;
 
   // Called after a batch of changes is aborted
@@ -32,25 +36,61 @@ export class SimpleChangeTracker implements IChangeTracker {
   private readonly _tokens: IFeatureDictionary<IGridCoord, IToken>;
   private readonly _walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
   private readonly _notes: IFeatureDictionary<IGridCoord, IAnnotation>;
+  private readonly _userPolicy: IUserPolicy | undefined;
+
+  private _objectCount = 0;
 
   constructor(
     areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
     tokens: IFeatureDictionary<IGridCoord, IToken>,
     walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
-    notes: IFeatureDictionary<IGridCoord, IAnnotation>
+    notes: IFeatureDictionary<IGridCoord, IAnnotation>,
+    userPolicy: IUserPolicy | undefined
   ) {
     this._areas = areas;
     this._tokens = tokens;
     this._walls = walls;
     this._notes = notes;
+    this._userPolicy = userPolicy;
   }
 
+  private policyAdd<K extends IGridCoord, F extends IFeature<K>>(
+    dict: IFeatureDictionary<K, F>,
+    feature: F
+  ): boolean {
+    const added = dict.add(feature);
+    if (added) {
+      ++this._objectCount;
+      if (this._userPolicy !== undefined && this._objectCount > this._userPolicy.objects) {
+        // Oops
+        this.policyRemove(dict, feature.position);
+        return false;
+      }
+    }
+
+    return added;
+  }
+
+  private policyRemove<K extends IGridCoord, F extends IFeature<K>>(
+    dict: IFeatureDictionary<K, F>,
+    position: K
+  ): F | undefined {
+    const removed = dict.remove(position);
+    if (removed !== undefined) {
+      --this._objectCount;
+    }
+
+    return removed;
+  }
+
+  get objectCount() { return this._objectCount; }
+
   areaAdd(feature: IFeature<IGridCoord>) {
-    return this._areas.add(feature);
+    return this.policyAdd(this._areas, feature);
   }
 
   areaRemove(position: IGridCoord) {
-    return this._areas.remove(position);
+    return this.policyRemove(this._areas, position);
   }
 
   clear() {
@@ -58,17 +98,18 @@ export class SimpleChangeTracker implements IChangeTracker {
     this._tokens.clear();
     this._walls.clear();
     this._notes.clear();
+    this._objectCount = 0;
   }
 
   tokenAdd(map: IMap, user: string, feature: IToken, oldPosition: IGridCoord | undefined) {
-    return this._tokens.add(feature);
+    return this.policyAdd(this._tokens, feature);
   }
 
   tokenRemove(map: IMap, user: string, position: IGridCoord, tokenId: string | undefined) {
-    const removed = this._tokens.remove(position);
+    const removed = this.policyRemove(this._tokens, position);
     if (removed !== undefined && removed.id !== tokenId) {
       // Oops, ID mismatch, put it back!
-      this._tokens.add(removed);
+      this.policyAdd(this._tokens, removed);
       return undefined;
     }
 
@@ -76,19 +117,19 @@ export class SimpleChangeTracker implements IChangeTracker {
   }
 
   wallAdd(feature: IFeature<IGridEdge>) {
-    return this._walls.add(feature);
+    return this.policyAdd(this._walls, feature);
   }
 
   wallRemove(position: IGridEdge) {
-    return this._walls.remove(position);
+    return this.policyRemove(this._walls, position);
   }
 
   noteAdd(feature: IAnnotation) {
-    return this._notes.add(feature);
+    return this.policyAdd(this._notes, feature);
   }
 
   noteRemove(position: IGridCoord) {
-    return this._notes.remove(position);
+    return this.policyRemove(this._notes, position);
   }
 
   changesApplied() {
@@ -117,6 +158,17 @@ export class SimpleChangeTracker implements IChangeTracker {
     this._notes.forEach(f => all.push(createNoteAdd(f)));
     return all;
   }
+}
+
+// Helps work out the theoretical change in object count from a list of changes
+export function netObjectCount(chs: Iterable<IChange>) {
+  return fluent(chs).map(ch => {
+    switch (ch.ty) {
+      case ChangeType.Add: return 1;
+      case ChangeType.Remove: return -1;
+      default: return 0;
+    }
+  }).sum();
 }
 
 // Handles a whole collection of (ordered) changes in one go, either applying or rejecting all.

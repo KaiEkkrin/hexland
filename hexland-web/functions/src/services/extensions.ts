@@ -218,27 +218,44 @@ async function tryConsolidateMapChanges(
     return true;
   }
 
+  // Fetch the map owner's profile so I can figure out their user policy
+  const ownerProfile = await dataService.get(dataService.getProfileRef(m.owner));
+  if (ownerProfile === undefined) {
+    throw new functions.https.HttpsError('invalid-argument', 'No profile found for map owner');
+  }
+
   // Consolidate all of that.
   // #64: I'm no longer including a map colouring here.  It's a bit unsafe (a player could
   // technically cheat and non-owners would believe them), but it will save huge amounts of
   // CPU time (especially valuable if this is going to be called in a Firebase Function.)
+  const ownerPolicy = getUserPolicy(ownerProfile.level);
   const tracker = new SimpleChangeTracker(
     new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
     new FeatureDictionary<IGridCoord, IToken>(coordString),
     new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
     new FeatureDictionary<IGridCoord, IAnnotation>(coordString),
+    ownerPolicy
     // new MapColouring(m.ty === MapType.Hex ? new HexGridGeometry(1, 1) : new SquareGridGeometry(1, 1))
   );
   if (baseChange !== undefined) {
     trackChanges(m, tracker, baseChange.chs, baseChange.user);
   }
-  incrementalChanges.forEach(c => trackChanges(m, tracker, c.data.chs, c.data.user));
+
+  // If any of the incremental changes fail we should mark this as a resync, because our
+  // clients might be confused
+  let isResync = resync;
+  incrementalChanges.forEach(c => {
+    const success = trackChanges(m, tracker, c.data.chs, c.data.user)
+    if (success === false) {
+      isResync = true;
+    }
+  });
   const consolidated = tracker.getConsolidated();
 
   // Apply it
   await dataService.runTransaction(async view => {
     await consolidateMapChangesTransaction(
-      view, logger, timestampProvider, baseChange, baseChangeRef, incrementalChanges ?? [], consolidated, m.owner, resync
+      view, logger, timestampProvider, baseChange, baseChangeRef, incrementalChanges ?? [], consolidated, m.owner, isResync
     );
   });
   

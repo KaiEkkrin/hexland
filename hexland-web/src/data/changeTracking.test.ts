@@ -4,13 +4,15 @@ import { IGridCoord, coordString, edgeString, IGridEdge } from './coord';
 import { FeatureDictionary, IFeature, IToken } from './feature';
 import { IMap, MapType } from './map';
 import { IAnnotation } from './annotation';
+import { IUserPolicy, standardUser } from './policy';
 
-function createChangeTracker() {
+function createChangeTracker(userPolicy?: IUserPolicy | undefined) {
   return new SimpleChangeTracker(
     new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
     new FeatureDictionary<IGridCoord, IToken>(coordString),
     new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
-    new FeatureDictionary<IGridCoord, IAnnotation>(coordString)
+    new FeatureDictionary<IGridCoord, IAnnotation>(coordString),
+    userPolicy
   );
 }
 
@@ -42,6 +44,7 @@ test('One area can be added and removed', () => {
 
   let ok = trackChanges(map, tracker, chs, ownerUid);
   expect(ok).toBeTruthy();
+  expect(tracker.objectCount).toBe(1);
 
   let chs2 = [{
     ty: ChangeType.Remove,
@@ -51,6 +54,7 @@ test('One area can be added and removed', () => {
 
   ok = trackChanges(map, tracker, chs2, ownerUid);
   expect(ok).toBeTruthy();
+  expect(tracker.objectCount).toBe(0);
 
   // ...but not twice
   ok = trackChanges(map, tracker, chs2, ownerUid);
@@ -85,6 +89,7 @@ test('Multiple areas can be added and removed', () => {
 
   let ok = trackChanges(map, tracker, chs, ownerUid);
   expect(ok).toBeTruthy();
+  expect(tracker.objectCount).toBe(3);
 
   let chs2 = [{
     ty: ChangeType.Remove,
@@ -98,6 +103,7 @@ test('Multiple areas can be added and removed', () => {
 
   ok = trackChanges(map, tracker, chs2, ownerUid);
   expect(ok).toBeTruthy();
+  expect(tracker.objectCount).toBe(1);
 });
 
 test('Areas cannot be added on top of each other', () => {
@@ -114,6 +120,7 @@ test('Areas cannot be added on top of each other', () => {
 
   let ok = trackChanges(map, tracker, chs, ownerUid);
   expect(ok).toBeTruthy();
+  expect(tracker.objectCount).toBe(1);
 
   let chs2 = [{
     ty: ChangeType.Add,
@@ -133,6 +140,7 @@ test('Areas cannot be added on top of each other', () => {
 
   ok = trackChanges(map, tracker, chs2, ownerUid);
   expect(ok).toBeFalsy();
+  expect(tracker.objectCount).toBe(1);
 
   // After that operation, we should still have the area added the first time
   // but not the other area added the second time -- the whole second operation
@@ -145,6 +153,7 @@ test('Areas cannot be added on top of each other', () => {
 
   ok = trackChanges(map, tracker, chs3, ownerUid);
   expect(ok).toBeTruthy();
+  expect(tracker.objectCount).toBe(0);
 
   let chs4 = [{
     ty: ChangeType.Remove,
@@ -1000,4 +1009,84 @@ test('In FFA mode, a non-owner can do all token operations', () => {
 
   ok = trackChanges(map, tracker, [remove(1, 1), remove(2, 1), remove(3, 1)], uid2);
   expect(ok).toBeFalsy();
+});
+
+// == POLICY ==
+
+test('Policy blocks us from adding too many objects', () => {
+  let map = createTestMap(false);
+  let tracker = createChangeTracker({
+    ...standardUser,
+    objects: 3 // a low limit makes it easy to test :)
+  });
+
+  // We should be able to add up to the limit
+  let chs = [{
+    ty: ChangeType.Add,
+    cat: ChangeCategory.Area,
+    feature: {
+      position: { x: 0, y: 0 },
+      colour: 2
+    }
+  }, {
+    ty: ChangeType.Add,
+    cat: ChangeCategory.Token,
+    feature: {
+      position: { x: 0, y: 0 },
+      colour: 1,
+      text: "a",
+      id: "token1"
+    }
+  }, {
+    ty: ChangeType.Add,
+    cat: ChangeCategory.Wall,
+    feature: {
+      position: { x: 0, y: 0, edge: 0 },
+      colour: 3
+    }
+  }];
+
+  let ok = trackChanges(map, tracker, chs, ownerUid);
+  expect(ok).toBeTruthy();
+  expect(tracker.objectCount).toBe(3);
+
+  // At this point we shouldn't be able to add any more...
+  let chs2 = [{
+    ty: ChangeType.Add,
+    cat: ChangeCategory.Token,
+    feature: {
+      position: { x: 0, y: 1 },
+      colour: 1,
+      text: "b",
+      id: "token2"
+    }
+  }];
+
+  ok = trackChanges(map, tracker, chs2, ownerUid);
+  expect(ok).toBeFalsy();
+  expect(tracker.objectCount).toBe(3);
+
+  // ...but we should still be able to move existing tokens...
+  let chs3 = [{
+    ty: ChangeType.Move,
+    cat: ChangeCategory.Token,
+    oldPosition: { x: 0, y: 0 },
+    newPosition: { x: 1, y: 0 },
+    tokenId: "token1"
+  }];
+
+  ok = trackChanges(map, tracker, chs3, ownerUid);
+  expect(ok).toBeTruthy();
+  expect(tracker.objectCount).toBe(3);
+
+  // ...and if we remove an existing object, we can add a new one
+  let chs4 = [{
+    ty: ChangeType.Remove,
+    cat: ChangeCategory.Wall,
+    position: { x: 0, y: 0, edge: 0 }
+  }, ...chs2];
+
+  ok = trackChanges(map, tracker, chs4, ownerUid);
+  expect(ok).toBeTruthy();
+  expect(tracker.objectCount).toBe(3);
 });

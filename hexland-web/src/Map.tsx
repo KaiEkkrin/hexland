@@ -12,6 +12,7 @@ import MapEditorModal from './components/MapEditorModal';
 import MapInfo from './components/MapInfo';
 import Navigation from './components/Navigation';
 import NoteEditorModal from './components/NoteEditorModal';
+import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { StatusContext } from './components/StatusContextProvider';
 import TokenDeletionModal from './components/TokenDeletionModal';
@@ -21,10 +22,12 @@ import { UserContext } from './components/UserContextProvider';
 import { IPlayer } from './data/adventure';
 import { IAnnotation } from './data/annotation';
 import { IChange } from './data/change';
-import { trackChanges } from './data/changeTracking';
+import { netObjectCount, trackChanges } from './data/changeTracking';
 import { IToken, ITokenProperties } from './data/feature';
 import { IAdventureIdentified } from './data/identified';
 import { IMap } from './data/map';
+import { getUserPolicy } from './data/policy';
+import { IProfile } from './data/profile';
 import { registerMapAsRecent, editMap, watchChangesAndConsolidate, removeMapFromRecent } from './services/extensions';
 import { IDataService, IFunctionsService } from './services/interfaces';
 
@@ -43,6 +46,7 @@ import { v4 as uuidv4 } from 'uuid';
 function Map(props: IMapPageProps) {
   const userContext = useContext(UserContext);
   const analyticsContext = useContext(AnalyticsContext);
+  const profile = useContext(ProfileContext);
   const statusContext = useContext(StatusContext);
   const history = useHistory();
 
@@ -53,19 +57,29 @@ function Map(props: IMapPageProps) {
   const [canDoAnything, setCanDoAnything] = useState(false);
   const [mapState, setMapState] = useState(createDefaultState());
 
+  // We only track a user policy if the user is the map owner
+  const userPolicy = useMemo(() => {
+    if (map?.record.owner !== userContext.user?.uid || profile === undefined) {
+      return undefined;
+    }
+
+    return getUserPolicy(profile.level);
+  }, [map, profile, userContext]);
+
   // Create a suitable title
   const title = useMemo(() => {
-    if (map === undefined) {
+    if (map === undefined || profile === undefined) {
       return undefined;
     }
 
     const adventureLink = "/adventure/" + props.adventureId;
+    const objectsString = userPolicy === undefined ? undefined : " (" + mapState.objectCount + "/" + userPolicy.objects + ")";
     return (
       <div>
-        <Link to={adventureLink}>{map.record.adventureName}</Link> | {map.record.name}
+        <Link to={adventureLink}>{map.record.adventureName}</Link> | {map.record.name}{objectsString}
       </div>
     );
-  }, [props.adventureId, map]);
+  }, [props.adventureId, profile, map, mapState, userPolicy]);
 
   // Track network status
   const [resyncCount, setResyncCount] = useState(0);
@@ -149,7 +163,15 @@ function Map(props: IMapPageProps) {
   // consolidate is done).
   // The "openMap" utility's dependencies are deliberately limited to prevent it from being
   // re-created and causing lots of extra Firebase work.
-  const openMap = useCallback(async (analyticsContext: IAnalyticsContext, dataService: IDataService, functionsService: IFunctionsService, uid: string, map: IAdventureIdentified<IMap>, mount: HTMLDivElement) => {
+  const openMap = useCallback(async (
+    analyticsContext: IAnalyticsContext,
+    dataService: IDataService,
+    functionsService: IFunctionsService,
+    uid: string,
+    profile: IProfile,
+    map: IAdventureIdentified<IMap>,
+    mount: HTMLDivElement
+  ) => {
     // These two calls are both done on a best-effort basis, because failing shouldn't
     // preclude us from opening the map (although hopefully they will succeed)
     try {
@@ -165,7 +187,8 @@ function Map(props: IMapPageProps) {
       analyticsContext.logError("Error consolidating map " + map.adventureId + "/" + map.id + " changes", e);
     }
 
-    setStateMachine(new MapStateMachine(map, uid, standardColours, mount, setMapState));
+    const userPolicy = uid === map.record.owner ? getUserPolicy(profile.level) : undefined;
+    setStateMachine(new MapStateMachine(map, uid, standardColours, mount, userPolicy, setMapState));
   }, [setMapState, setStateMachine]);
 
   useEffect(() => {
@@ -175,15 +198,16 @@ function Map(props: IMapPageProps) {
       userContext.functionsService === undefined ||
       map === undefined ||
       uid === undefined ||
+      profile === undefined ||
       drawingRef?.current === null
     ) {
       setStateMachine(undefined);
       return;
     }
 
-    openMap(analyticsContext, userContext.dataService, userContext.functionsService, uid, map, drawingRef?.current)
+    openMap(analyticsContext, userContext.dataService, userContext.functionsService, uid, profile, map, drawingRef?.current)
       .catch(e => analyticsContext.logError("Error opening map", e));
-  }, [analyticsContext, drawingRef, openMap, map, userContext]);
+  }, [analyticsContext, drawingRef, openMap, map, profile, userContext]);
 
   useEffect(() => {
     if (stateMachine === undefined) {
@@ -248,10 +272,27 @@ function Map(props: IMapPageProps) {
       return;
     }
 
+    if (mapState.objectCount !== undefined && userPolicy !== undefined) {
+      const expectedCount = mapState.objectCount + netObjectCount(changes);
+      if (expectedCount > userPolicy.objects) {
+        // Refuse to attempt these changes -- this would cause the map to be pruned on
+        // consolidate, with consequent desyncs
+        statusContext.toasts.next({ id: map?.id + "_hard_object_cap", record: {
+          title: 'Too many objects', message: 'You have reached the object limit for this map.'
+        }});
+        return;
+      } else if (expectedCount > userPolicy.objectsWarning) {
+        // Still attempt these changes, but show the soft-cap warning.
+        statusContext.toasts.next({ id: map?.id + "_soft_object_cap", record: {
+          title: 'Too many objects', message: 'You are approaching the object limit for this map.  Consider clearing some unused areas or moving to a new map.'
+        }});
+      }
+    }
+
     userContext.dataService.addChanges(props.adventureId, uid, props.mapId, changes)
       .then(() => console.log("Added " + changes.length + " changes"))
       .catch(e => analyticsContext.logError("Error adding " + changes.length + " changes", e));
-  }, [userContext.dataService, userContext.user, analyticsContext, props.adventureId, props.mapId]);
+  }, [userContext.dataService, userContext.user, analyticsContext, map, mapState, props.adventureId, props.mapId, statusContext.toasts, userPolicy]);
 
   // == UI STUFF ==
 

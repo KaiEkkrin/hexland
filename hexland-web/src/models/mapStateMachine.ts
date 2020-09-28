@@ -22,6 +22,7 @@ import { createDrawing } from './three/drawing';
 
 import fluent from 'fluent-iterable';
 import * as THREE from 'three';
+import { IUserPolicy } from '../data/policy';
 
 const noteAlpha = 0.9;
 const tokenNoteAlpha = 0.6;
@@ -45,6 +46,7 @@ export interface IMapState {
   seeEverything: boolean;
   annotations: IPositionedAnnotation[];
   tokens: (IToken & ISelectable)[];
+  objectCount?: number | undefined; // undefined for irrelevant (no policy)
 }
 
 export interface ISelectable {
@@ -56,6 +58,7 @@ export function createDefaultState(): IMapState {
     seeEverything: true,
     annotations: [],
     tokens: [],
+    objectCount: undefined
   };
 }
 
@@ -72,6 +75,7 @@ export function createDefaultState(): IMapState {
 export class MapStateMachine {
   private readonly _map: IAdventureIdentified<IMap>;
   private readonly _uid: string;
+  private readonly _userPolicy: IUserPolicy | undefined;
 
   private readonly _drawing: IDrawing;
   private readonly _gridGeometry: IGridGeometry;
@@ -127,16 +131,19 @@ export class MapStateMachine {
     uid: string,
     colours: FeatureColour[],
     mount: HTMLDivElement,
+    userPolicy: IUserPolicy | undefined,
     setState: (state: IMapState) => void
   ) {
     this._map = map;
     this._uid = uid;
+    this._userPolicy = userPolicy;
     this._setState = setState;
 
     this._state = {
       seeEverything: this.seeEverything,
       annotations: [],
-      tokens: []
+      tokens: [],
+      objectCount: undefined
     };
     this._setState(this._state);
 
@@ -179,8 +186,9 @@ export class MapStateMachine {
       this._drawing.tokens,
       this._drawing.walls,
       this._notes,
+      userPolicy,
       this._mapColouring,
-      (haveTokensChanged: boolean) => {
+      (haveTokensChanged: boolean, objectCount: number) => {
         this.withStateChange(getState => {
           let state = getState();
           if (haveTokensChanged) {
@@ -192,6 +200,7 @@ export class MapStateMachine {
           if (haveTokensChanged) {
             this.updateTokens(state);
           }
+          state.objectCount = this._userPolicy === undefined ? undefined : objectCount;
           return true;
         });
       }
@@ -250,7 +259,7 @@ export class MapStateMachine {
     }
 
     const changeTracker = new MapChangeTracker(
-      this._drawing.areas, this._drawing.tokens.clone(), this._drawing.walls, this._notes, this._mapColouring
+      this._drawing.areas, this._drawing.tokens.clone(), this._drawing.walls, this._notes, this._userPolicy, this._mapColouring
     );
     return trackChanges(this._map.record, changeTracker, changes, this._uid);
   }

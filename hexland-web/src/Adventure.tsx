@@ -100,10 +100,13 @@ function Adventure(props: IAdventureProps) {
       e => analyticsContext.logError("Error watching adventure " + props.adventureId + ": ", e));
   }, [userContext, analyticsContext, history, props.adventureId, statusContext]);
 
-  const title = useMemo(
-    () => (adventure?.record.name ?? "") + " (" + (adventure?.record.maps.length ?? 0) + "/" + (userPolicy?.maps ?? 0) + ")",
-    [adventure, userPolicy]
-  );
+  const title = useMemo(() => {
+    if (adventure?.record.owner !== userContext.user?.uid) {
+      return adventure?.record.name ?? "";
+    }
+
+    return (adventure?.record.name ?? "") + " (" + (adventure?.record.maps.length ?? 0) + "/" + (userPolicy?.maps ?? 0) + ")";
+  }, [adventure, userContext, userPolicy]);
 
   // Track changes to the adventure
   useEffect(() => {
@@ -172,10 +175,13 @@ function Adventure(props: IAdventureProps) {
     );
   }, [analyticsContext, userContext.dataService, props.adventureId]);
 
-  const playersTitle = useMemo(
-    () => "Players (" + players.filter(p => p.allowed !== false).length + "/" + (userPolicy?.players ?? 0) + ")",
-    [players, userPolicy]
-  );
+  const playersTitle = useMemo(() => {
+    if (adventure?.record.owner !== userContext.user?.uid) {
+      return "Players";
+    }
+    
+    return "Players (" + players.filter(p => p.allowed !== false).length + "/" + (userPolicy?.players ?? 0) + ")";
+  }, [adventure, players, userContext, userPolicy]);
 
   const canEditAdventure = useMemo(
     () => adventure?.record.owner === userContext.user?.uid,

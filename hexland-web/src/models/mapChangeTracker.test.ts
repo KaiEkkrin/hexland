@@ -57,7 +57,7 @@ test('Unprivileged users cannot move other users\' tokens', () => {
 
   const handleChangesApplied = jest.fn();
   const handleChangesAborted = jest.fn();
-  let changeTracker = new MapChangeTracker(areas, tokens, walls, notes, undefined,
+  let changeTracker = new MapChangeTracker(areas, tokens, walls, notes, undefined, undefined,
     handleChangesApplied, handleChangesAborted);
 
   // The walls should be irrelevant here :)
@@ -158,7 +158,7 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
 
   const handleChangesApplied = jest.fn();
   const handleChangesAborted = jest.fn();
-  let changeTracker = new MapChangeTracker(areas, tokens, walls, notes, colouring,
+  let changeTracker = new MapChangeTracker(areas, tokens, walls, notes, undefined, colouring,
     handleChangesApplied, handleChangesAborted);
 
   let ok = buildWallsOfThreeHexes(changeTracker);

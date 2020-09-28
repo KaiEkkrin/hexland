@@ -837,6 +837,11 @@ firebase-functions@^3.6.1:
     express "^4.17.1"
     lodash "^4.17.14"
 
+fluent-iterable@^0.1.6:
+  version "0.1.6"
+  resolved "https://registry.yarnpkg.com/fluent-iterable/-/fluent-iterable-0.1.6.tgz#d8ac795d9c91cb58644de4361afea728a697f7a4"
+  integrity sha512-M7okFjqX3E+6c6lKODTu3vnmb7ymhq3mzCDYdqnV9j7RyqbV95M+F4JxTrNEZZQ6WUjjwagwwb+wXr/K539DOg==
+
 foreach@^2.0.5:
   version "2.0.5"
   resolved "https://registry.yarnpkg.com/foreach/-/foreach-2.0.5.tgz#0bee005018aeb260d0a3af3ae658dd0136ec1b99"

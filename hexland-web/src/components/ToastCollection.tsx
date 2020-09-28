@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useReducer, useEffect } from 'react';
 import '../App.css';
 import { StatusContext } from './StatusContextProvider';
 import { IToast } from './interfaces';
@@ -28,24 +28,23 @@ function ToastElement(props: IToastElementProps) {
 
 function ToastCollection() {
   const statusContext = useContext(StatusContext);
-  const [toasts, setToasts] = useState([] as IIdentified<IToast>[]);
+  const [toasts, setToasts] = useReducer((state: IIdentified<IToast>[], action: IIdentified<IToast | undefined>) => {
+    const newState = state.filter(t => t.id !== action.id);
+    if (action.record !== undefined) {
+      newState.splice(0, 0, { id: action.id, record: action.record });
+    }
+    return newState;
+  }, []);
 
   useEffect(() => {
-    const sub = statusContext?.toasts.subscribe(t => {
-      if (t.record === undefined) {
-        setToasts(ts => ts.filter(t2 => t2.id !== t.id));
-      } else {
-        let newToast = { id: t.id, record: t.record };
-        setToasts(ts => [newToast, ...ts]);
-      }
-    });
+    const sub = statusContext?.toasts.subscribe(setToasts);
     return () => { sub?.unsubscribe(); };
   }, [statusContext]);
 
   return (
     <div className="App-toast-container">
       {toasts.map(t => (
-        <ToastElement key={t.id} toast={t.record} remove={() => setToasts(toasts.filter(t2 => t2.id !== t.id))} />
+        <ToastElement key={t.id} toast={t.record} remove={() => setToasts({ id: t.id, record: undefined })} />
       ))
       }
     </div>

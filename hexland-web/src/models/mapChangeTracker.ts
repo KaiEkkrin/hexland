@@ -4,13 +4,14 @@ import { SimpleChangeTracker } from "../data/changeTracking";
 import { IGridCoord, IGridEdge } from "../data/coord";
 import { IFeatureDictionary, IFeature, IToken } from "../data/feature";
 import { IMap } from "../data/map";
+import { IUserPolicy } from "../data/policy";
 
 // This change tracker supports all our map features.
 // The handleChangesApplied function receives true if there were any token changes
 // or false if not -- to help expose the current token list to the React UI.
 export class MapChangeTracker extends SimpleChangeTracker {
   private readonly _colouring: MapColouring | undefined;
-  private readonly _handleChangesApplied: ((haveTokensChanged: boolean) => void) | undefined;
+  private readonly _handleChangesApplied: ((haveTokensChanged: boolean, objectCount: number) => void) | undefined;
   private readonly _handleChangesAborted: (() => void) | undefined;
 
   private _haveTokensChanged = false;
@@ -20,11 +21,12 @@ export class MapChangeTracker extends SimpleChangeTracker {
     tokens: IFeatureDictionary<IGridCoord, IToken>,
     walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
     notes: IFeatureDictionary<IGridCoord, IAnnotation>,
+    userPolicy: IUserPolicy | undefined,
     colouring?: MapColouring | undefined,
-    handleChangesApplied?: ((haveTokensChanged: boolean) => void) | undefined,
+    handleChangesApplied?: ((haveTokensChanged: boolean, objectCount: number) => void) | undefined,
     handleChangesAborted?: (() => void) | undefined
   ) {
-    super(areas, tokens, walls, notes);
+    super(areas, tokens, walls, notes, userPolicy);
     this._colouring = colouring;
     this._handleChangesApplied = handleChangesApplied;
     this._handleChangesAborted = handleChangesAborted;
@@ -85,7 +87,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
   changesApplied() {
     super.changesApplied();
     this._colouring?.recalculate();
-    this._handleChangesApplied?.(this._haveTokensChanged);
+    this._handleChangesApplied?.(this._haveTokensChanged, this.objectCount);
     this._haveTokensChanged = false;
   }
 

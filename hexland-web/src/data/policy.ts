@@ -31,7 +31,7 @@ export enum UserLevel {
   Gold = "gold"
 }
 
-interface IUserPolicy { // one per user level
+export interface IUserPolicy { // one per user level
   adventures: number, // cap on adventures created
   maps: number, // cap on maps per adventure
   players: number, // cap on players per adventure
@@ -51,8 +51,8 @@ export const goldUser: IUserPolicy = {
   adventures: 15,
   maps: 100,
   players: 15,
-  objects: 20000,
-  objectsWarning: 18000
+  objects: 10000,
+  objectsWarning: 9000
 };
 
 export function getUserPolicy(level: UserLevel): IUserPolicy {
