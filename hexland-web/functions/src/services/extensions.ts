@@ -329,7 +329,9 @@ async function joinAdventureTransaction(
   adventureRef: IDataReference<IAdventure>,
   inviteRef: IDataReference<IInvite>,
   playerRef: IDataReference<IPlayer>,
+  otherPlayers: IDataAndReference<IPlayer>[],
   profileRef: IDataReference<IProfile>,
+  ownerProfileRef: IDataReference<IProfile>,
   policy: IInviteExpiryPolicy
 ): Promise<void> {
   const invite = await view.get(inviteRef);
@@ -343,6 +345,17 @@ async function joinAdventureTransaction(
     if (age >= policy.expiry) {
       throw new functions.https.HttpsError('deadline-exceeded', 'Invite has expired');
     }
+  }
+
+  const ownerProfile = await view.get(ownerProfileRef);
+  if (ownerProfile === undefined) {
+    throw new functions.https.HttpsError('not-found', 'No profile for the adventure owner');
+  }
+
+  // When counting joined players, blocked ones don't count.
+  const ownerPolicy = getUserPolicy(ownerProfile.level);
+  if (otherPlayers.filter(p => p.data.allowed !== false).length >= ownerPolicy.players) {
+    throw new functions.https.HttpsError('permission-denied', 'This adventure already has the maximum number of players');
   }
 
   const adventure = await view.get(adventureRef);
@@ -398,7 +411,23 @@ export async function joinAdventure(
   const inviteRef = dataService.getInviteRef(adventureId, inviteId);
   const playerRef = dataService.getPlayerRef(adventureId, uid);
   const profileRef = dataService.getProfileRef(uid);
+
+  // Before going any further we need to fish up what players are currently
+  // joined to that adventure, so that we can make the policy decision of
+  // whether to allow another.
+  // We can't do this in the transaction as it stands: I think it's okay
+  // to have a small window for a race condition here for now.  In future I
+  // can sync this with the adventures record or even merge the player list
+  // into the adventures record entirely, instead.
+  const otherPlayers = await dataService.getPlayerRefs(adventureId);
+
+  const adventure = await dataService.get(adventureRef);
+  if (adventure === undefined) {
+    throw new functions.https.HttpsError('not-found', 'No such adventure');
+  }
+
+  const ownerProfileRef = dataService.getProfileRef(adventure?.owner)
   await dataService.runTransaction(tr => joinAdventureTransaction(
-    tr, adventureRef, inviteRef, playerRef, profileRef, policy
+    tr, adventureRef, inviteRef, playerRef, otherPlayers, profileRef, ownerProfileRef, policy
   ));
 }

@@ -5,6 +5,7 @@ import { AnalyticsContext } from './components/AnalyticsContextProvider';
 import Navigation from './components/Navigation';
 import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
+import { StatusContext } from './components/StatusContextProvider';
 import { UserContext } from './components/UserContextProvider';
 
 import { IInvite } from './data/invite';
@@ -12,11 +13,13 @@ import { IInvite } from './data/invite';
 import Button from 'react-bootstrap/Button';
 
 import { RouteComponentProps, useHistory } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
 
 function Invite(props: IInvitePageProps) {
   const userContext = useContext(UserContext);
   const profile = useContext(ProfileContext);
   const analyticsContext = useContext(AnalyticsContext);
+  const statusContext = useContext(StatusContext);
   const history = useHistory();
 
   // Because the `joinAdventure` function is likely to be cold-started and may take a
@@ -54,8 +57,14 @@ function Invite(props: IInvitePageProps) {
       .catch(e => {
         setButtonDisabled(false);
         analyticsContext.logError("Failed to join adventure " + props.adventureId, e);
+        const message = String(e.message);
+        if (message) {
+          statusContext.toasts.next({ id: uuidv4(), record: {
+            title: "Error joining adventure", message: message
+          }});
+        }
       });
-  }, [analyticsContext, userContext, props.adventureId, props.inviteId, history, setButtonDisabled]);
+  }, [analyticsContext, userContext, props.adventureId, props.inviteId, history, setButtonDisabled, statusContext]);
 
   return (
     <div>
