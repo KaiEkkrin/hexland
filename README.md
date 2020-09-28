@@ -10,7 +10,7 @@ You will need:
 - The Google Firebase toolchain, and a Firebase project to host Hexland in.  I recommend following the [Firebase setup instructions](https://firebase.google.com/docs/web/setup).  The project will need to have the following enabled:
   - Authentication: Email/password, Google.
   - Firestore.
-  - Functions, with Node.js 12 support -- this means you need to upgrade your project to "Blaze" level from "Spark", and create yourself a billing account if you don't have one already.
+  - Functions, with Node.js 12 support -- this means you need to upgrade your project to "Blaze" level from "Spark", and create yourself a billing account if you don't have one already.  (You're quite unlikely to actually incur a bill.  The free quotas are plenty for most development usage.)
   - Google Analytics (optionally, I think.)
   - Hosting.
 - The Firebase emulator suite.
