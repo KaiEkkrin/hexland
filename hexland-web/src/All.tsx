@@ -23,6 +23,16 @@ function All() {
 
   const [adventures, setAdventures] = useState<IIdentified<IAdventure>[]>([]);
 
+  const userPolicy = useMemo(
+    () => profile === undefined ? undefined : getUserPolicy(profile.level),
+    [profile]
+  );
+
+  const title = useMemo(
+    () => "My adventures (" + adventures.length + "/" + (userPolicy?.adventures ?? 0) + ")",
+    [adventures, userPolicy]
+  );
+
   // Watch all adventures
   useEffect(() => {
     const uid = userContext.user?.uid;
@@ -38,14 +48,10 @@ function All() {
   }, [analyticsContext, userContext]);
 
   // I can create a new adventure if I'm not at cap
-  const showNewAdventure = useMemo(() => {
-    if (profile === undefined) {
-      return false;
-    }
-
-    const userPolicy = getUserPolicy(profile.level);
-    return adventures.length < userPolicy.adventures;
-  }, [adventures, profile]);
+  const showNewAdventure = useMemo(
+    () => adventures.length < (userPolicy?.adventures ?? 0),
+    [adventures, userPolicy]
+  );
 
   // Keep summaries of them
   const adventureSummaries = useMemo(
@@ -55,7 +61,7 @@ function All() {
 
   return (
     <RequireLoggedIn>
-      <Navigation>My adventures</Navigation>
+      <Navigation>{title}</Navigation>
       <Container>
         <Row>
           <Col>

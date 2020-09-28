@@ -39,6 +39,11 @@ function Adventure(props: IAdventureProps) {
   const statusContext = useContext(StatusContext);
   const history = useHistory();
 
+  const userPolicy = useMemo(
+    () => profile === undefined ? undefined : getUserPolicy(profile.level),
+    [profile]
+  );
+
   const [adventure, setAdventure] = useState<IIdentified<IAdventure> | undefined>(undefined);
   useEffect(() => {
     const uid = userContext.user?.uid;
@@ -94,6 +99,11 @@ function Adventure(props: IAdventureProps) {
       a => setAdventure(a === undefined ? undefined : { id: props.adventureId, record: a }),
       e => analyticsContext.logError("Error watching adventure " + props.adventureId + ": ", e));
   }, [userContext, analyticsContext, history, props.adventureId, statusContext]);
+
+  const title = useMemo(
+    () => (adventure?.record.name ?? "") + " (" + (adventure?.record.maps.length ?? 0) + "/" + (userPolicy?.maps ?? 0) + ")",
+    [adventure, userPolicy]
+  );
 
   // Track changes to the adventure
   useEffect(() => {
@@ -162,19 +172,23 @@ function Adventure(props: IAdventureProps) {
     );
   }, [analyticsContext, userContext.dataService, props.adventureId]);
 
+  const playersTitle = useMemo(
+    () => "Players (" + players.filter(p => p.allowed !== false).length + "/" + (userPolicy?.players ?? 0) + ")",
+    [players, userPolicy]
+  );
+
   const canEditAdventure = useMemo(
     () => adventure?.record.owner === userContext.user?.uid,
     [userContext.user, adventure]
   );
 
   const canCreateNewMap = useMemo(() => {
-    if (canEditAdventure === false || profile === undefined || adventure === undefined) {
+    if (canEditAdventure === false || userPolicy === undefined || adventure === undefined) {
       return false;
     }
 
-    const userPolicy = getUserPolicy(profile.level);
     return adventure.record.maps.length < userPolicy.maps;
-  }, [adventure, canEditAdventure, profile]);
+  }, [adventure, canEditAdventure, userPolicy]);
 
   const [showEditAdventure, setShowEditAdventure] = useState(false);
   const [editAdventureName, setEditAdventureName] = useState("");
@@ -297,7 +311,7 @@ function Adventure(props: IAdventureProps) {
 
   return (
     <div>
-      <Navigation>{adventure?.record.name}</Navigation>
+      <Navigation>{title}</Navigation>
       <Container>
         {adventure !== undefined ?
           <Row className="mt-4">
@@ -325,7 +339,7 @@ function Adventure(props: IAdventureProps) {
                 </Card>
                 <Card bg="dark" text="white">
                   <Card.Header className="card-body-spaced">
-                    <div>Players</div>
+                    <div>{playersTitle}</div>
                     {showShowBlockedToggle ?
                       <Button variant="secondary" onClick={toggleShowBlocked}>{showBlockedText}</Button> :
                       <div></div>
