@@ -17,6 +17,7 @@ import Modal from 'react-bootstrap/Modal';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 
+import Measure from 'react-measure';
 import { LinkContainer } from 'react-router-bootstrap';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -301,31 +302,45 @@ interface INavigationProps {
 
 function Navigation(props: INavigationProps) {
   const [expanded, setExpanded] = useState(false);
+  const [width, setWidth] = useState<number | undefined>(undefined);
+
+  // We don't want the children causing the nav bar to spill into extra lines, because those can
+  // easily devour the available map space on a small screen:
+  const childrenHidden = useMemo(
+    () => expanded === false && width !== undefined && width < 700,
+    [expanded, width]
+  );
 
   return (
-    <Navbar bg="dark" expand="lg" variant="dark" sticky="top" onToggle={setExpanded}>
-      <LinkContainer to="/">
-        <Navbar.Brand className="App-brand">
-          <img src="/32.png" alt="logo" />
-          <div className="App-brand-text">
-            <div className="App-brand-main">
-              wall &amp; shadow
+    <Measure bounds onResize={r => setWidth(r.bounds?.width)}>
+      {({ measureRef }) => (
+        <div ref={measureRef}>
+          <Navbar bg="dark" expand="lg" variant="dark" sticky="top" onToggle={setExpanded}>
+            <LinkContainer to="/">
+              <Navbar.Brand className="App-brand">
+                <img src="/32.png" alt="logo" />
+                <div className="App-brand-text">
+                  <div className="App-brand-main">
+                    wall &amp; shadow
             </div>
-            <div className="App-brand-shadow">
-              wall &amp; shadow
+                  <div className="App-brand-shadow">
+                    wall &amp; shadow
             </div>
-          </div>
-        </Navbar.Brand>
-      </LinkContainer>
-      <Navbar.Collapse id="basic-navbar-nav">
-        <NavPageLinks />
-      </Navbar.Collapse>
-      <Navbar.Text className="justify-content-centre" hidden={expanded}>{props.children}</Navbar.Text>
-      <Navbar.Collapse id="basic-navbar-nav" className="justify-content-end">
-        <NavLogin />
-      </Navbar.Collapse>
-      <Navbar.Toggle aria-controls="basic-navbar-nav" />
-    </Navbar>
+                </div>
+              </Navbar.Brand>
+            </LinkContainer>
+            <Navbar.Collapse id="basic-navbar-nav">
+              <NavPageLinks />
+            </Navbar.Collapse>
+            <Navbar.Text className="justify-content-centre" hidden={childrenHidden}>{props.children}</Navbar.Text>
+            <Navbar.Collapse id="basic-navbar-nav" className="justify-content-end">
+              <NavLogin />
+            </Navbar.Collapse>
+            <Navbar.Toggle aria-controls="basic-navbar-nav" />
+          </Navbar>
+        </div>
+      )}
+    </Measure>
   );
 }
 
