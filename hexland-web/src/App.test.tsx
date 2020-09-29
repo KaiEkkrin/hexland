@@ -183,16 +183,17 @@ describe('test app', () => {
 
   // Returns the history change of redirecting to the newly-made map.
   async function createMapFromAdventure(user: IUser, route: string): Promise<IHistoryChange> {
-    const { findByLabelText, findByRole, findByText } = render(
+    const { findByLabelText, findByRole, findByText, queryAllByText } = render(
       <App user={user} defaultRoute={route} />
     );
 
     // This should be showing the expected adventure name and description
-    const adventureNameElement = await findByText(/Test adventure/);
-    expect(adventureNameElement).toBeInTheDocument();
-
     const adventureDescriptionElement = await findByText(/Here be dragons/);
     expect(adventureDescriptionElement).toBeInTheDocument();
+
+    // The adventure name will be shown twice
+    const adventureNameElements = queryAllByText(/Test adventure/);
+    expect(adventureNameElements).toHaveLength(2);
 
     // and a "New map" button
     const newMapElement = await findByRole('button', { name: /New map/i });
