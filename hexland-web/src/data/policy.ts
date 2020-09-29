@@ -42,7 +42,7 @@ export interface IUserPolicy { // one per user level
 export const standardUser: IUserPolicy = {
   adventures: 3,
   maps: 12,
-  players: 6,
+  players: 8,
   objects: 10000,
   objectsWarning: 9000
 };
@@ -50,7 +50,7 @@ export const standardUser: IUserPolicy = {
 export const goldUser: IUserPolicy = {
   adventures: 15,
   maps: 100,
-  players: 15,
+  players: 16,
   objects: 10000,
   objectsWarning: 9000
 };
