@@ -46,12 +46,7 @@ function Introduction() {
           and keep things secret from them until you are ready.
         </dd>
       </dl>
-      <h5>And finally</h5>
-      <p>
-        Wall &amp; Shadow should run well in any reasonably modern browser with WebGL support.
-      </p>
-      <p>This web application was made possible by many free and open source projects, including Bootstrap, Font Awesome, Node, React, Three.js and TypeScript.</p>
-      <p>Happy gaming!</p>
+      <h5>Happy gaming!</h5>
     </div>
   );
 }

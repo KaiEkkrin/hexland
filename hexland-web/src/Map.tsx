@@ -75,7 +75,7 @@ function Map(props: IMapPageProps) {
     const adventureLink = "/adventure/" + props.adventureId;
     const objectsString = userPolicy === undefined ? undefined : " (" + mapState.objectCount + "/" + userPolicy.objects + ")";
     return (
-      <div>
+      <div style={{ overflowWrap: 'normal' }}>
         <Link to={adventureLink}>{map.record.adventureName}</Link> | {map.record.name}{objectsString}
       </div>
     );

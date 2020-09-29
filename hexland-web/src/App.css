@@ -97,6 +97,55 @@
   z-index: 4;
 }
 
+.App-status-card {
+  max-height: 90%;
+  max-width: 800px;
+  z-index: 104;
+}
+
+.App-status-card-body {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.App-status-card-container {
+  align-items: center;
+  display: flex;
+  position: absolute;
+  justify-content: space-around;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+}
+
+.App-status-card-footer {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.App-status-card-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.App-status-list {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: left;
+  flex-wrap: wrap;
+  list-style-type: none;
+}
+
+.App-status-list-item {
+  padding-right: 1rem;
+}
+
 .App-toast-container {
   position: fixed;
   left: 50%;

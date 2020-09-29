@@ -303,7 +303,7 @@ function Navigation(props: INavigationProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <Navbar bg="dark" expand="md" variant="dark" sticky="top" onToggle={setExpanded}>
+    <Navbar bg="dark" expand="lg" variant="dark" sticky="top" onToggle={setExpanded}>
       <LinkContainer to="/">
         <Navbar.Brand className="App-brand">
           <img src="/32.png" alt="logo" />
@@ -317,16 +317,14 @@ function Navigation(props: INavigationProps) {
           </div>
         </Navbar.Brand>
       </LinkContainer>
-      <Navbar.Toggle aria-controls="basic-navbar-nav" />
       <Navbar.Collapse id="basic-navbar-nav">
         <NavPageLinks />
       </Navbar.Collapse>
-      <Navbar.Collapse id="basic-navbar-nav" className="justify-content-center" hidden={expanded}>
-        <Navbar.Text className="mr-2">{props.children}</Navbar.Text>
-      </Navbar.Collapse>
+      <Navbar.Text className="justify-content-centre" hidden={expanded}>{props.children}</Navbar.Text>
       <Navbar.Collapse id="basic-navbar-nav" className="justify-content-end">
         <NavLogin />
       </Navbar.Collapse>
+      <Navbar.Toggle aria-controls="basic-navbar-nav" />
     </Navbar>
   );
 }
