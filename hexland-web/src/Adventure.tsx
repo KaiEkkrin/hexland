@@ -324,12 +324,15 @@ function Adventure(props: IAdventureProps) {
             <Col>
               <CardDeck>
                 <Card bg="dark" text="white">
-                  <Card.Body className="card-body-spaced">
-                    <Card.Text>{adventure.record.description}</Card.Text>
+                  <Card.Header className="card-header-spaced">
+                    {adventure.record.name}
                     {canEditAdventure === true ?
                       <Button className="ml-2" variant="primary" onClick={handleShowEditAdventure}>Edit</Button> :
                       <div></div>
                     }
+                  </Card.Header>
+                  <Card.Body>
+                    <Card.Text>{adventure.record.description}</Card.Text>
                   </Card.Body>
                   <Card.Footer className="card-footer-spaced">
                     {canEditAdventure !== true ? <div></div> : inviteLink === undefined ?
@@ -344,7 +347,7 @@ function Adventure(props: IAdventureProps) {
                   </Card.Footer>
                 </Card>
                 <Card bg="dark" text="white">
-                  <Card.Header className="card-body-spaced">
+                  <Card.Header className="card-header-spaced">
                     <div>{playersTitle}</div>
                     {showShowBlockedToggle ?
                       <Button variant="secondary" onClick={toggleShowBlocked}>{showBlockedText}</Button> :

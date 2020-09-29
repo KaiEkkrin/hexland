@@ -154,7 +154,7 @@
   z-index: 4;
 }
 
-.card-body-spaced {
+.card-header-spaced {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
