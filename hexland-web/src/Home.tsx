@@ -1,7 +1,8 @@
-import React, { useContext, useMemo } from 'react';
+import React, { useContext, useMemo, useReducer } from 'react';
 import './App.css';
 
 import AdventureCollection from './components/AdventureCollection';
+import ChangeList from './components/ChangeList';
 import Introduction from './components/Introduction';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
@@ -44,11 +45,18 @@ function LatestColumn() {
 function Home() {
   const userContext = useContext(UserContext);
 
+  // We keep the change list state here
+  const [changeCount, toggleChangeCount] = useReducer(
+    (state: number | undefined, action: void) => state === undefined ? 1 : undefined,
+    1
+  );
+
   // If we're logged in, we show both the introduction and our latest maps and adventures
   // in side-by-side columns.  Otherwise, we show just the introduction.
   const columns = useMemo(() => {
     const columnArray = [
       <Col key="intro">
+        <ChangeList count={changeCount} toggleCount={() => toggleChangeCount()} />
         <Introduction />
       </Col>
     ];
@@ -66,7 +74,7 @@ function Home() {
     }
 
     return columnArray;
-  }, [userContext.user]);
+  }, [changeCount, toggleChangeCount, userContext.user]);
 
   // Changing the container fluidity lets us take up more of the screen when we have two
   // TODO On narrower screens, make the latest column collapse into a side bar instead,
