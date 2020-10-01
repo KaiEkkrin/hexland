@@ -3,6 +3,7 @@ import '../App.css';
 
 import { AnalyticsContext } from './AnalyticsContextProvider';
 import MapCards from './MapCards';
+import MapCloneModal from './MapCloneModal';
 import MapEditorModal from './MapEditorModal';
 import { StatusContext } from './StatusContextProvider';
 import { UserContext } from './UserContextProvider';
@@ -16,6 +17,7 @@ import Modal from 'react-bootstrap/Modal';
 import { useHistory } from 'react-router-dom';
 
 import { v4 as uuidv4 } from 'uuid';
+import fluent from 'fluent-iterable';
 
 interface IMapCollectionProps {
   adventures: IAdventureSummary[];
@@ -30,8 +32,18 @@ function MapCollection(props: IMapCollectionProps) {
   const userContext = useContext(UserContext);
   const history = useHistory();
 
+  const [showCloneMap, setShowCloneMap] = useState(false);
   const [showDeleteMap, setShowDeleteMap] = useState(false);
   const [showEditMap, setShowEditMap] = useState(false);
+
+  // Clone map state
+  const cloneAdventure = useMemo(
+    () => fluent(props.adventures).first(),
+    [props.adventures]
+  );
+  const [cloneSourceMap, setCloneSourceMap] = useState<IMapSummary | undefined>(undefined);
+
+  // Edit map state
   const [editId, setEditId] = useState<string | undefined>(undefined);
   const [editName, setEditName] = useState("");
 
@@ -41,6 +53,11 @@ function MapCollection(props: IMapCollectionProps) {
     setShowEditMap(true);
   }, [setShowEditMap]);
 
+  const handleCloneMapClick = useCallback((m: IMapSummary) => {
+    setCloneSourceMap(m);
+    setShowCloneMap(true);
+  }, [setCloneSourceMap, setShowCloneMap]);
+
   const handleDeleteMapClick = useCallback((m: IMapSummary) => {
     setEditId(m.id);
     setEditName(m.name);
@@ -49,9 +66,10 @@ function MapCollection(props: IMapCollectionProps) {
 
   const handleModalClose = useCallback(() => {
     setEditId(undefined);
+    setShowCloneMap(false);
     setShowDeleteMap(false);
     setShowEditMap(false);
-  }, [setEditId, setShowDeleteMap, setShowEditMap]);
+  }, [setEditId, setShowCloneMap, setShowDeleteMap, setShowEditMap]);
 
   const handleNewMapSave = useCallback(async (adventureId: string, map: IMap) => {
     const functionsService = userContext.functionsService;
@@ -92,7 +110,10 @@ function MapCollection(props: IMapCollectionProps) {
     <div>
       <MapCards showNewMapCard={props.showNewMap} createMap={handleNewMapClick}
         adventures={props.adventures} maps={props.maps}
+        cloneMap={canDeleteMap ? handleCloneMapClick : undefined}
         deleteMap={canDeleteMap ? handleDeleteMapClick : undefined} />
+      <MapCloneModal show={showCloneMap} adventure={cloneAdventure} sourceMap={cloneSourceMap}
+        handleClose={handleModalClose} />
       <MapEditorModal show={showEditMap} adventures={newMapAdventures} map={undefined}
         handleClose={handleModalClose} handleSave={handleNewMapSave} />
       <Modal show={showDeleteMap} onHide={handleModalClose}>

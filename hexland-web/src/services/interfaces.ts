@@ -147,6 +147,9 @@ export interface IFunctionsService {
   // Creates a new map, returning its ID.
   createMap(adventureId: string, name: string, description: string, ty: MapType, ffa: boolean): Promise<string>;
 
+  // Clones a map in the same adventure, returning the new map ID.
+  cloneMap(adventureId: string, mapId: string, name: string, description: string): Promise<string>;
+
   // Consolidates changes in the given map.
   consolidateMapChanges(adventureId: string, mapId: string, resync: boolean): Promise<void>;
 

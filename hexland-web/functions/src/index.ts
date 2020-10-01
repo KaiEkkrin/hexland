@@ -68,9 +68,37 @@ export const createMap = functions.region(region).https.onCall(async (data, cont
   );
 });
 
+// Clones a map into a new one in the same adventure.
+
+export const cloneMap = functions.region(region).https.onCall(async (data, context) => {
+  const uid = context.auth?.uid;
+  if (uid === undefined) {
+    throw new functions.https.HttpsError('unauthenticated', 'No uid found');
+  }
+
+  // Get the submitted map data
+  const adventureId = data['adventureId'];
+  const mapId = data['mapId'];
+  const name = data['name'];
+  const description = data['description'];
+  if (!adventureId || !mapId || !name || !description) {
+    throw new functions.https.HttpsError('invalid-argument', 'Not all required parameters supplied');
+  }
+
+  return await Extensions.cloneMap(
+    dataService, functionLogger, admin.firestore.FieldValue.serverTimestamp,
+    uid, String(adventureId), String(mapId), String(name), String(description)
+  );
+});
+
 // Consolidates map changes.
 
 export const consolidateMapChanges = functions.region(region).https.onCall(async (data, context) => {
+  const uid = context.auth?.uid;
+  if (uid === undefined) {
+    throw new functions.https.HttpsError('unauthenticated', 'No uid found');
+  }
+
   // Fetch the map record in question
   const adventureId = data['adventureId'];
   const mapId = data['mapId'];

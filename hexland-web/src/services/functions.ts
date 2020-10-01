@@ -7,6 +7,7 @@ import * as firebase from 'firebase/app';
 export class FunctionsService implements IFunctionsService {
   private readonly _createAdventure: firebase.functions.HttpsCallable;
   private readonly _createMap: firebase.functions.HttpsCallable;
+  private readonly _cloneMap: firebase.functions.HttpsCallable;
   private readonly _consolidateMapChanges: firebase.functions.HttpsCallable;
   private readonly _inviteToAdventure: firebase.functions.HttpsCallable;
   private readonly _joinAdventure: firebase.functions.HttpsCallable;
@@ -14,6 +15,7 @@ export class FunctionsService implements IFunctionsService {
   constructor(functions: firebase.functions.Functions) {
     this._createAdventure = functions.httpsCallable('createAdventure');
     this._createMap = functions.httpsCallable('createMap');
+    this._cloneMap = functions.httpsCallable('cloneMap');
     this._consolidateMapChanges = functions.httpsCallable('consolidateMapChanges');
     this._inviteToAdventure = functions.httpsCallable('inviteToAdventure');
     this._joinAdventure = functions.httpsCallable('joinAdventure');
@@ -31,6 +33,16 @@ export class FunctionsService implements IFunctionsService {
       description: description,
       ty: ty,
       ffa: ffa
+    });
+    return String(result.data);
+  }
+
+  async cloneMap(adventureId: string, mapId: string, name: string, description: string): Promise<string> {
+    const result = await this._cloneMap({
+      adventureId: adventureId,
+      mapId: mapId,
+      name: name,
+      description: description
     });
     return String(result.data);
   }

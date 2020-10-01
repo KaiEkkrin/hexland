@@ -83,10 +83,9 @@ async function createMapTransaction(
   profileRef: IDataReference<IProfile>,
   adventureRef: IDataReference<IAdventure>,
   newMapRef: IDataReference<IMap>,
-  name: string,
-  description: string,
-  ty: MapType,
-  ffa: boolean
+  newMapRecord: IMap,
+  newBaseChangeRef?: IDataReference<IChanges> | undefined,
+  changes?: IChanges | undefined
 ): Promise<void> {
   // Fetch things
   const profile = await view.get(profileRef);
@@ -107,12 +106,9 @@ async function createMapTransaction(
 
   // If we reach here we can safely create that map:
   const record: IMap = {
+    ...newMapRecord,
     adventureName: adventure.name,
-    name: name,
-    description: description,
     owner: profileRef.id,
-    ty: ty,
-    ffa: ffa
   };
   await view.set(newMapRef, record);
 
@@ -125,6 +121,11 @@ async function createMapTransaction(
   const latestMaps = updateProfileMaps(profile.latestMaps, summary);
   if (latestMaps !== undefined) {
     await view.update(profileRef, { latestMaps: latestMaps });
+  }
+
+  // If an initial base change was supplied, add it now
+  if (newBaseChangeRef !== undefined && changes !== undefined) {
+    await view.set(newBaseChangeRef, changes);
   }
 }
 
@@ -145,10 +146,65 @@ export async function createMap(
   const id = uuidv4();
   const newMapRef = dataService.getMapRef(adventureId, id);
   await dataService.runTransaction(tr => createMapTransaction(
-    tr, profileRef, adventureRef, newMapRef, name, description, ty, ffa
+    tr, profileRef, adventureRef, newMapRef, {
+      adventureName: "", // to be replaced by the transaction
+      owner: uid,
+      name: name,
+      description: description,
+      ty: ty,
+      ffa: ffa
+    }
   ));
 
   return id;
+}
+
+// Clones a map as a new map (by the same user, in the same adventure, for now.)
+export async function cloneMap(
+  dataService: IDataService,
+  logger: ILogger,
+  timestampProvider: () => FirebaseFirestore.FieldValue,
+  uid: string,
+  adventureId: string,
+  mapId: string,
+  name: string,
+  description: string
+): Promise<string> {
+  // I'll need to edit the user's profile and the adventure record as well as
+  // create the map itself:
+  const profileRef = dataService.getProfileRef(uid);
+  const adventureRef = dataService.getAdventureRef(adventureId);
+  const existingMapRef = dataService.getMapRef(adventureId, mapId);
+
+  const id = uuidv4();
+  const newMapRef = dataService.getMapRef(adventureId, id);
+
+  const existingMap = await dataService.get(existingMapRef);
+  if (existingMap === undefined) {
+    throw new functions.https.HttpsError('not-found', 'Existing map not found.');
+  }
+
+  // We're going to need the consolidated base change from the existing map:
+  const baseChange = await consolidateMapChanges(
+    dataService, logger, timestampProvider, adventureId, mapId, existingMap, false
+  );
+
+  // Now we can create the new map:
+  const baseChangeRef = dataService.getMapBaseChangeRef(adventureId, id);
+  await dataService.runTransaction(
+    tr => createMapTransaction(tr, profileRef, adventureRef, newMapRef, {
+      ...existingMap,
+      name: name,
+      description: description
+    }, baseChangeRef, baseChange)
+  );
+
+  return id;
+}
+
+interface IConsolidateMapChangesResult {
+  baseChange: IChanges | undefined,
+  isNew: boolean // true if we wrote something, false if we just returned what was already there
 }
 
 async function consolidateMapChangesTransaction(
@@ -161,7 +217,7 @@ async function consolidateMapChangesTransaction(
   consolidated: IChange[],
   uid: string,
   resync: boolean
-) {
+): Promise<IConsolidateMapChangesResult> {
   // Check that the base change hasn't changed since we did the query.
   // If it has, we'll simply abort -- someone else has done this recently
   const latestBaseChange = await view.get(baseChangeRef);
@@ -176,30 +232,33 @@ async function consolidateMapChangesTransaction(
       const baseTimestamp = baseChange.timestamp as FirebaseFirestore.FieldValue;
       if (!latestTimestamp.isEqual(baseTimestamp)) {
         logger.logWarning("Map changes for " + baseChangeRef.id + " have already been consolidated");
-        return;
+        return { baseChange: latestBaseChange, isNew: false };
       }
     } else {
       if (latestBaseChange.timestamp !== baseChange.timestamp) {
         logger.logWarning("Map changes for " + baseChangeRef.id + " have already been consolidated");
-        return;
+        return { baseChange: latestBaseChange, isNew: false };
       }
     }
   }
 
   // Update the base change
-  await view.set<IChanges>(baseChangeRef, {
+  const newBaseChange = {
     chs: consolidated,
     timestamp: timestampProvider(),
     incremental: false,
     user: uid,
     resync: resync
-  });
+  };
+  await view.set<IChanges>(baseChangeRef, newBaseChange);
 
   // Delete all the others
   await Promise.all(incrementalChanges.map(c => view.delete(c)));
+  return { baseChange: newBaseChange, isNew: true };
 }
 
-// Returns true if finished, false to continue trying (e.g. more to be done.)
+// If the `isNew` field of the return value is false, we've finished -- otherwise, there is more
+// to be done.
 async function tryConsolidateMapChanges(
   dataService: IDataService,
   logger: ILogger,
@@ -208,14 +267,14 @@ async function tryConsolidateMapChanges(
   mapId: string,
   m: IMap,
   resync: boolean
-) {
+): Promise<IConsolidateMapChangesResult> {
   // Fetch all the current changes for this map, along with their refs
   const baseChangeRef = await dataService.getMapBaseChangeRef(adventureId, mapId);
   const baseChange = await dataService.get(baseChangeRef); // undefined in case of the first consolidate
   const incrementalChanges = await dataService.getMapIncrementalChangesRefs(adventureId, mapId, 499);
   if (incrementalChanges === undefined || incrementalChanges.length === 0) {
     // No changes to consolidate
-    return true;
+    return { baseChange: baseChange, isNew: false };
   }
 
   // Fetch the map owner's profile so I can figure out their user policy
@@ -253,36 +312,30 @@ async function tryConsolidateMapChanges(
   const consolidated = tracker.getConsolidated();
 
   // Apply it
-  await dataService.runTransaction(async view => {
-    await consolidateMapChangesTransaction(
+  return await dataService.runTransaction(view =>
+    consolidateMapChangesTransaction(
       view, logger, timestampProvider, baseChange, baseChangeRef, incrementalChanges ?? [], consolidated, m.owner, isResync
-    );
-  });
-  
-  // There may be more
-  return false;
+    )
+  );
 }
 
 export async function consolidateMapChanges(
-  dataService: IDataService | undefined,
+  dataService: IDataService,
   logger: ILogger,
-  timestampProvider: (() => FirebaseFirestore.FieldValue | number) | undefined,
+  timestampProvider: () => FirebaseFirestore.FieldValue,
   adventureId: string,
   mapId: string,
   m: IMap,
   resync: boolean
-): Promise<void> {
-  if (dataService === undefined || timestampProvider === undefined) {
-    return;
-  }
-
+): Promise<IChanges | undefined> {
   // Because we can consolidate at most 499 changes in one go due to the write limit,
   // we do this in a loop until we can't find any more:
   while (true) {
-    if (await tryConsolidateMapChanges(
+    const result = await tryConsolidateMapChanges(
       dataService, logger, timestampProvider, adventureId, mapId, m, resync
-    )) {
-      break;
+    );
+    if (result.isNew === false) {
+      return result.baseChange;
     }
   }
 }
