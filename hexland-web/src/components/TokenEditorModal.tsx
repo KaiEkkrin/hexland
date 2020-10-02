@@ -4,7 +4,7 @@ import ColourSelection from './ColourSelection';
 import TokenPlayerSelection from './TokenPlayerSelection';
 
 import { IPlayer } from '../data/adventure';
-import { ITokenProperties } from '../data/feature';
+import { ITokenProperties, TokenSize } from '../data/feature';
 
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
@@ -14,6 +14,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 interface ITokenEditorModalProps {
   selectedColour: number;
+  sizes: TokenSize[] | undefined;
   show: boolean;
   token: ITokenProperties | undefined;
   players: IPlayer[];
@@ -25,7 +26,7 @@ interface ITokenEditorModalProps {
 function TokenEditorModal(props: ITokenEditorModalProps) {
   const [text, setText] = useState("");
   const [colour, setColour] = useState(0);
-  const [size, setSize] = useState<1 | 3>(1);
+  const [size, setSize] = useState<TokenSize>("1");
   const [playerIds, setPlayerIds] = useState([] as string[]);
   const [note, setNote] = useState("");
   const [noteVisibleToPlayers, setNoteVisibleToPlayers] = useState(true);
@@ -34,7 +35,7 @@ function TokenEditorModal(props: ITokenEditorModalProps) {
     if (props.show) {
       setText(props.token?.text ?? "");
       setColour(props.token?.colour ?? props.selectedColour);
-      setSize(props.token?.size ?? 1);
+      setSize(props.token?.size ?? "1");
       setPlayerIds(props.token?.players ?? []);
       setNote(props.token?.note ?? "");
       setNoteVisibleToPlayers(props.token?.noteVisibleToPlayers ?? false);
@@ -46,10 +47,14 @@ function TokenEditorModal(props: ITokenEditorModalProps) {
     setSaveDisabled(text.length === 0);
   }, [text]);
 
+  const sizeOptions = useMemo(
+    () => props.sizes?.map(sz => (<option key={sz} value={sz}>{sz}</option>)),
+    [props.sizes]
+  );
   const sizeString = useMemo(() => String(size), [size]);
   const handleSizeChange = useCallback((e: React.FormEvent<HTMLSelectElement>) => {
     const option = e.currentTarget.selectedOptions[0];
-    setSize(option.value === '3' ? 3 : 1);
+    setSize(option.value as TokenSize);
   }, [setSize]);
 
   const handleVtoPChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,8 +105,7 @@ function TokenEditorModal(props: ITokenEditorModalProps) {
           <Form.Group>
             <Form.Label htmlFor="tokenSizeSelect">Size</Form.Label>
             <Form.Control id="tokenSizeSelect" as="select" value={sizeString} onChange={e => handleSizeChange(e as any)}>
-              <option key="size1" value="1">1</option>
-              <option key="size3" value="3">3</option>
+              {sizeOptions}
             </Form.Control>
           </Form.Group>
           <Form.Group>

@@ -25,7 +25,7 @@ import { IChange } from './data/change';
 import { netObjectCount, trackChanges } from './data/changeTracking';
 import { ITokenProperties } from './data/feature';
 import { IAdventureIdentified } from './data/identified';
-import { IMap } from './data/map';
+import { createTokenSizes, IMap } from './data/map';
 import { getUserPolicy } from './data/policy';
 import { IProfile } from './data/profile';
 import { registerMapAsRecent, editMap, watchChangesAndConsolidate, removeMapFromRecent } from './services/extensions';
@@ -345,6 +345,12 @@ function Map(props: IMapPageProps) {
   useEffect(() => {
     stateMachine?.setShowMapColourVisualisation(mapColourMode === MapColourVisualisationMode.Connectivity);
   }, [stateMachine, mapColourMode]);
+
+  // Our token sizes are map dependent
+  const tokenSizes = useMemo(
+    () => map === undefined ? undefined : createTokenSizes(map.record.ty),
+    [map]
+  );
 
   const handleMapEditorSave = useCallback(async (adventureId: string, updated: IMap) => {
     setShowMapEditor(false);
@@ -836,7 +842,7 @@ function Map(props: IMapPageProps) {
       <MapEditorModal show={showMapEditor} map={map}
         handleClose={() => setShowMapEditor(false)} handleSave={handleMapEditorSave} />
       <TokenEditorModal selectedColour={selectedColour} show={showTokenEditor}
-        token={tokenToEdit}
+        sizes={tokenSizes} token={tokenToEdit}
         players={players} handleClose={handleModalClose}
         handleDelete={handleTokenEditorDelete} handleSave={handleTokenEditorSave} />
       <TokenDeletionModal show={showTokenDeletion} tokens={tokensToDelete}

@@ -14,11 +14,12 @@ export interface IIdFeature<K> extends IFeature<K> {
 }
 
 // A token has some extra properties:
+export type TokenSize = "1" | "2" | "2 (left)" | "2 (right)" | "3" | "4" | "4 (left)" | "4 (right)";
 export interface ITokenProperties {
   id: string; // a UUID for this token, that follows it around
   colour: number;
   players: string[]; // the uids of the players that can move this token
-  size: 1 | 3; // TODO #119 Also add at least sizes 2 and 4, but these require a vertex coord
+  size: TokenSize;
   text: string; // maximum of three characters
   note: string; // shown in the annotations UI
   noteVisibleToPlayers: boolean; // as you'd expect
@@ -28,7 +29,7 @@ export const defaultTokenProperties: ITokenProperties = {
   colour: 0,
   id: uuidv4(),
   players: [],
-  size: 1,
+  size: "1",
   text: "",
   note: "",
   noteVisibleToPlayers: false
@@ -41,7 +42,7 @@ export const defaultArea: IFeature<IGridCoord> = {
   colour: 0
 };
 
-export const defaultFaceToken: IToken = {
+export const defaultToken: IToken = {
   position: defaultGridCoord,
   ...defaultTokenProperties
 };

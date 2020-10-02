@@ -14,16 +14,16 @@ import { IAnnotation, IPositionedAnnotation } from '../data/annotation';
 import { IChange, createTokenRemove, createTokenAdd, createNoteRemove, createNoteAdd, createTokenMove } from '../data/change';
 import { trackChanges } from '../data/changeTracking';
 import { IGridCoord, coordString, coordsEqual, coordSub, coordAdd } from '../data/coord';
-import { FeatureDictionary, IToken, ITokenDictionary, ITokenProperties } from '../data/feature';
+import { FeatureDictionary, IToken, ITokenDictionary, ITokenProperties, TokenSize } from '../data/feature';
 import { IAdventureIdentified } from '../data/identified';
 import { IMap, MapType } from '../data/map';
 import { IUserPolicy } from '../data/policy';
+import { createTokenDictionary } from '../data/tokens';
 
 import { createDrawing } from './three/drawing';
 
 import fluent from 'fluent-iterable';
 import * as THREE from 'three';
-import { createTokenDictionary } from '../data/tokens';
 
 const noteAlpha = 0.9;
 const tokenNoteAlpha = 0.6;
@@ -307,7 +307,7 @@ export class MapStateMachine {
     return trackChanges(this._map.record, changeTracker, changes, this._uid);
   }
 
-  private canResizeToken(token: IToken, newSize: 1 | 3): IGridCoord | undefined {
+  private canResizeToken(token: IToken, newSize: TokenSize): IGridCoord | undefined {
     // Checks whether we can resize this token to the given new size, returning the new position
     // that it would adopts, or, if the token doesn't exist already, whether we can place a new
     // token of the given size.

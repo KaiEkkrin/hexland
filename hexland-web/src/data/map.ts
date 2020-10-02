@@ -1,8 +1,25 @@
 import { IMapSummary } from "./adventure";
+import { TokenSize } from "./feature";
 
 export enum MapType {
   Hex = "hex",
   Square = "square",
+}
+
+export function createTokenSizes(ty: MapType): TokenSize[] {
+  return ty === MapType.Hex ? [
+    '1',
+    '2 (left)',
+    '2 (right)',
+    '3',
+    '4 (left)',
+    '4 (right)'
+  ] : [
+    '1',
+    '2',
+    '3',
+    '4'
+  ];
 }
 
 export interface IMap {

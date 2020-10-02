@@ -126,15 +126,56 @@ class TokensHex extends Tokens {
   *enumerateFacePositions(token: IToken) {
     // Always, the centre position:
     yield token.position;
+    if (token.size === "1") {
+      return;
+    }
 
-    // At size=3, the six tokens around it too:
-    if (token.size === 3) {
+    if (token.size.indexOf('l') >= 0) {
+      // The two left positions:
       yield { x: token.position.x - 1, y: token.position.y };
       yield { x: token.position.x - 1, y: token.position.y + 1 };
+      if (token.size[0] === '2') {
+        return;
+      }
+
+      // The rest of the 3
       yield { x: token.position.x, y: token.position.y + 1 };
       yield { x: token.position.x + 1, y: token.position.y };
       yield { x: token.position.x + 1, y: token.position.y - 1 };
       yield { x: token.position.x, y: token.position.y - 1 };
+      if (token.size === '3') {
+        return;
+      }
+
+      // The five further left positions:
+      yield { x: token.position.x - 1, y: token.position.y - 1 };
+      yield { x: token.position.x - 2, y: token.position.y };
+      yield { x: token.position.x - 2, y: token.position.y + 1 };
+      yield { x: token.position.x - 2, y: token.position.y + 2 };
+      yield { x: token.position.x - 1, y: token.position.y + 2 };
+    } else {
+      // The two top-left positions:
+      yield { x: token.position.x, y: token.position.y - 1 };
+      yield { x: token.position.x - 1, y: token.position.y };
+      if (token.size[0] === '2') {
+        return;
+      }
+
+      // The rest of the 3
+      yield { x: token.position.x - 1, y: token.position.y + 1 };
+      yield { x: token.position.x, y: token.position.y + 1 };
+      yield { x: token.position.x + 1, y: token.position.y };
+      yield { x: token.position.x + 1, y: token.position.y - 1 };
+      if (token.size === '3') {
+        return;
+      }
+
+      // The five further top-left positions:
+      yield { x: token.position.x + 1, y: token.position.y - 2 };
+      yield { x: token.position.x, y: token.position.y - 2 };
+      yield { x: token.position.x - 1, y: token.position.y - 1 };
+      yield { x: token.position.x - 2, y: token.position.y };
+      yield { x: token.position.x - 2, y: token.position.y + 1 };
     }
   }
 }
@@ -152,18 +193,36 @@ class TokensSquare extends Tokens {
   *enumerateFacePositions(token: IToken) {
     // Always, the centre position:
     yield token.position;
-
-    // At size=3, the eight tokens around it too:
-    if (token.size === 3) {
-      yield { x: token.position.x - 1, y: token.position.y };
-      yield { x: token.position.x - 1, y: token.position.y + 1 };
-      yield { x: token.position.x, y: token.position.y + 1 };
-      yield { x: token.position.x + 1, y: token.position.y + 1 };
-      yield { x: token.position.x + 1, y: token.position.y };
-      yield { x: token.position.x + 1, y: token.position.y - 1 };
-      yield { x: token.position.x, y: token.position.y - 1 };
-      yield { x: token.position.x - 1, y: token.position.y - 1 };
+    if (token.size === '1') {
+      return;
     }
+
+    // The three top-left positions:
+    yield { x: token.position.x, y: token.position.y - 1 };
+    yield { x: token.position.x - 1, y: token.position.y - 1 };
+    yield { x: token.position.x - 1, y: token.position.y };
+    if (token.size[0] === '2') {
+      return;
+    }
+
+    // Complete the 3:
+    yield { x: token.position.x - 1, y: token.position.y + 1 };
+    yield { x: token.position.x, y: token.position.y + 1 };
+    yield { x: token.position.x + 1, y: token.position.y + 1 };
+    yield { x: token.position.x + 1, y: token.position.y };
+    yield { x: token.position.x + 1, y: token.position.y - 1 };
+    if (token.size === '3') {
+      return;
+    }
+
+    // The seven further top-left positions:
+    yield { x: token.position.x + 1, y: token.position.y - 2 };
+    yield { x: token.position.x, y: token.position.y - 2 };
+    yield { x: token.position.x - 1, y: token.position.y - 2 };
+    yield { x: token.position.x - 2, y: token.position.y - 2 };
+    yield { x: token.position.x - 2, y: token.position.y - 1 };
+    yield { x: token.position.x - 2, y: token.position.y };
+    yield { x: token.position.x - 2, y: token.position.y + 1 };
   }
 }
 
