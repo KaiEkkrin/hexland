@@ -4,7 +4,7 @@ import ColourSelection from './ColourSelection';
 import TokenPlayerSelection from './TokenPlayerSelection';
 
 import { IPlayer } from '../data/adventure';
-import { IToken, ITokenProperties } from '../data/feature';
+import { ITokenProperties } from '../data/feature';
 
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
@@ -15,7 +15,7 @@ import { v4 as uuidv4 } from 'uuid';
 interface ITokenEditorModalProps {
   selectedColour: number;
   show: boolean;
-  token: IToken | undefined;
+  token: ITokenProperties | undefined;
   players: IPlayer[];
   handleClose: () => void;
   handleDelete: () => void;

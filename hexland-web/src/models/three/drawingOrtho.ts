@@ -5,14 +5,14 @@ import { IGridGeometry } from '../gridGeometry';
 import { IDrawing } from '../interfaces';
 import { RedrawFlag } from '../redrawFlag';
 
-import { Areas, createPaletteColouredAreaObject, createAreas, createSelectionColouredAreaObject } from './areas';
+import { Areas, createPaletteColouredAreaObject, createAreas, createSelectedAreas, createSelectionColouredAreaObject, SelectedAreas } from './areas';
 import { Grid, IGridLoSPreRenderParameters } from './grid';
 import { GridFilter } from './gridFilter';
 import { LoS } from './los';
 import { MapColourVisualisation } from './mapColourVisualisation';
 import { OutlinedRectangle } from './overlayRectangle';
 import textCreator from './textCreator';
-import { Tokens } from './tokens';
+import { TokenFaces } from './tokenFaces';
 import { Vertices, createVertices, createSelectionColouredVertexObject } from './vertices';
 import { Walls, createPaletteColouredWallObject, createSelectionColouredWallObject } from './walls';
 
@@ -67,10 +67,10 @@ export class DrawingOrtho implements IDrawing {
   private readonly _highlightedWalls: Walls;
   private readonly _los: LoS;
   private readonly _losParameters: IGridLoSPreRenderParameters;
-  private readonly _selection: Areas;
-  private readonly _selectionDrag: Areas; // a copy of the selection shown only while dragging it
-  private readonly _selectionDragRed: Areas; // likewise, but shown if the selection couldn't be dropped there
-  private readonly _tokens: Tokens;
+  private readonly _selectionFaces: SelectedAreas;
+  private readonly _selectionDragFaces: SelectedAreas; // a copy of the selection shown only while dragging it
+  private readonly _selectionDragRedFaces: SelectedAreas; // likewise, but shown if the selection couldn't be dropped there
+  private readonly _tokenFaces: TokenFaces;
   private readonly _walls: Walls;
   private readonly _mapColourVisualisation: MapColourVisualisation;
 
@@ -195,31 +195,31 @@ export class DrawingOrtho implements IDrawing {
     this._highlightedWalls.addToScene(this._filterScene);
 
     // The selection
-    this._selection = createAreas(
+    this._selectionFaces = createSelectedAreas(
       this._gridGeometry, this._needsRedraw,
       createSelectionColouredAreaObject(this._gridGeometry, selectionAlpha, selectionZ),
       100
     );
-    this._selection.addToScene(this._filterScene);
-    this._selectionDrag = createAreas(
+    this._selectionFaces.addToScene(this._filterScene);
+    this._selectionDragFaces = createSelectedAreas(
       this._gridGeometry, this._needsRedraw,
       createSelectionColouredAreaObject(this._gridGeometry, selectionAlpha, selectionZ),
       100
     );
-    this._selectionDrag.addToScene(this._filterScene);
-    this._selectionDragRed = createAreas(
+    this._selectionDragFaces.addToScene(this._filterScene);
+    this._selectionDragRedFaces = createSelectedAreas(
       this._gridGeometry, this._needsRedraw,
       createPaletteColouredAreaObject(this._gridGeometry, selectionAlpha, invalidSelectionZ, invalidSelectionColourParameters),
       100
     );
-    this._selectionDragRed.addToScene(this._filterScene);
+    this._selectionDragRedFaces.addToScene(this._filterScene);
 
     // The tokens
-    this._tokens = new Tokens(
+    this._tokenFaces = new TokenFaces(
       this._gridGeometry, this._needsRedraw, textCreator, this._textMaterial,
       tokenAlpha, tokenZ, textZ, lightColourParameters
     );
-    this._tokens.addToScene(this._mapScene);
+    this._tokenFaces.addToScene(this._mapScene);
 
     // The walls
     this._walls = new Walls(
@@ -246,16 +246,16 @@ export class DrawingOrtho implements IDrawing {
   }
 
   get areas() { return this._areas; }
-  get tokens() { return this._tokens; }
+  get tokenFaces() { return this._tokenFaces; }
   get walls() { return this._walls; }
 
   get highlightedAreas() { return this._highlightedAreas; }
   get highlightedVertices() { return this._highlightedVertices; }
   get highlightedWalls() { return this._highlightedWalls; }
 
-  get selection() { return this._selection; }
-  get selectionDrag() { return this._selectionDrag; }
-  get selectionDragRed() { return this._selectionDragRed; }
+  get selectionFaces() { return this._selectionFaces; }
+  get selectionDragFaces() { return this._selectionDragFaces; }
+  get selectionDragRedFaces() { return this._selectionDragRedFaces; }
 
   get los() { return this._los; }
 
@@ -435,10 +435,10 @@ export class DrawingOrtho implements IDrawing {
     this._walls.dispose();
     this._highlightedAreas.dispose();
     this._highlightedWalls.dispose();
-    this._selection.dispose();
-    this._selectionDrag.dispose();
-    this._selectionDragRed.dispose();
-    this._tokens.dispose();
+    this._selectionFaces.dispose();
+    this._selectionDragFaces.dispose();
+    this._selectionDragRedFaces.dispose();
+    this._tokenFaces.dispose();
     this._walls.dispose();
     this._los.dispose();
     this._mapColourVisualisation.dispose();

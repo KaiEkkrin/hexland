@@ -2,7 +2,7 @@ import { IAdventure, IPlayer } from '../data/adventure';
 import { IAnnotation, defaultAnnotation } from '../data/annotation';
 import { IChange, IChanges, ChangeType, ChangeCategory, ITokenAdd, ITokenMove, ITokenRemove, IAreaAdd, IAreaRemove, INoteAdd, INoteRemove, IWallAdd, IWallRemove } from '../data/change';
 import { IGridCoord, defaultGridCoord, IGridEdge, defaultGridEdge } from '../data/coord';
-import { IToken, defaultToken, IFeature, defaultArea, defaultWall } from '../data/feature';
+import { IToken, defaultFaceToken, IFeature, defaultArea, defaultWall } from '../data/feature';
 import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
 import { IProfile } from '../data/profile';
@@ -153,7 +153,7 @@ const noteRemoveConverter = new RecursingConverter<INoteRemove>({
 const tokenAddConverter = new RecursingConverter<ITokenAdd>({
   ty: ChangeType.Add,
   cat: ChangeCategory.Token,
-  feature: defaultToken
+  feature: defaultFaceToken
 }, {
   "feature": (conv, raw) => {
     conv.feature = tokenConverter.convert(raw);
@@ -226,7 +226,7 @@ const areaConverter = new RecursingConverter<IFeature<IGridCoord>>(defaultArea, 
   },
 });
 
-const tokenConverter = new RecursingConverter<IToken>(defaultToken, {
+const tokenConverter = new RecursingConverter<IToken<IGridCoord>>(defaultFaceToken, {
   "position": (conv, raw) => {
     conv.position = gridCoordConverter.convert(raw);
     return conv;

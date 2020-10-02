@@ -1,7 +1,7 @@
 import { FeatureColour } from "../../featureColour";
 import { IGridGeometry } from "../../gridGeometry";
 import { IDrawing, IGridBounds } from "../../interfaces";
-import { FeatureDictionary, IFeature, IToken } from "../../../data/feature";
+import { FeatureDictionary, IFeature, IIdFeature, IToken } from "../../../data/feature";
 import { IGridCoord, coordString, IGridEdge, edgeString, IGridVertex, vertexString } from "../../../data/coord";
 import { OutlinedRectangle } from "./overlayRectangle";
 
@@ -29,16 +29,16 @@ export function createDrawing(
     seeEverything: seeEverything,
 
     areas: new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
-    tokens: new FeatureDictionary<IGridCoord, IToken>(coordString),
+    tokenFaces: new FeatureDictionary<IGridCoord, IToken<IGridCoord>>(coordString),
     walls: new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
 
     highlightedAreas: new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
     highlightedVertices: new FeatureDictionary<IGridVertex, IFeature<IGridVertex>>(vertexString),
     highlightedWalls: new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
 
-    selection: new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
-    selectionDrag: new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
-    selectionDragRed: new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
+    selectionFaces: new FeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>(coordString),
+    selectionDragFaces: new FeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>(coordString),
+    selectionDragRedFaces: new FeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>(coordString),
 
     boundsChanged: __mockBoundsChanged,
     outlinedRectangle: OutlinedRectangle(),

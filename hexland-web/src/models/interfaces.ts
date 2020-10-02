@@ -1,6 +1,6 @@
 import { MapColouring } from "./colouring";
 import { IGridCoord, IGridEdge, IGridVertex } from "../data/coord";
-import { IFeature, IToken, IFeatureDictionary } from "../data/feature";
+import { IFeature, IToken, IFeatureDictionary, IIdFeature } from "../data/feature";
 
 // Describes the interface to our drawing subsystem,
 // which could be substituted out, won't exist in auto tests, etc.
@@ -8,16 +8,16 @@ import { IFeature, IToken, IFeatureDictionary } from "../data/feature";
 // editing these should update the drawing upon the next animation frame.
 export interface IDrawing {
   areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
-  tokens: IFeatureDictionary<IGridCoord, IToken>;
+  tokenFaces: IFeatureDictionary<IGridCoord, IToken<IGridCoord>>;
   walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
 
   highlightedAreas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
   highlightedVertices: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>>;
   highlightedWalls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
 
-  selection: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
-  selectionDrag: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
-  selectionDragRed: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
+  selectionFaces: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>;
+  selectionDragFaces: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>;
+  selectionDragRedFaces: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>;
 
   // A drawing always exposes a single outlined rectangle that can be used
   // for drag-boxes etc.  This object will be drawn separately and will not

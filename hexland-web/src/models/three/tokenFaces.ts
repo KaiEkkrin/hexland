@@ -11,13 +11,15 @@ import * as THREE from 'three';
 
 // We store text meshes along with our tokens so that they can be propagated
 // upon token move rather than re-created:
-export interface IInstancedToken extends IToken {
+export interface IInstancedToken<K extends IGridCoord> extends IToken<K> {
   textMesh: THREE.Mesh | undefined; // so that a mesh already created can be re-used
 }
 
 // The "tokens" are moveable objects that occupy a face of the map.
-// This object also manages the selection of tokens.
-export class Tokens extends InstancedFeatures<IGridCoord, IInstancedToken> {
+// This object manages a collection of single grid faces that are drawn to represent
+// whole small tokens or parts of large ones.  It will be used by the implementation
+// of ITokenDictionary, which is aware of the whole tokens.
+export class TokenFaces extends InstancedFeatures<IGridCoord, IInstancedToken<IGridCoord>> {
   private readonly _textCreator: TextCreator;
   private readonly _textMaterial: THREE.Material;
   private readonly _textZ: number;
@@ -69,7 +71,7 @@ export class Tokens extends InstancedFeatures<IGridCoord, IInstancedToken> {
     super.removeFromScene();
   }
 
-  add(f: IInstancedToken): boolean {
+  add(f: IInstancedToken<IGridCoord>): boolean {
     if (!super.add(f)) {
       return false;
     }
@@ -103,7 +105,7 @@ export class Tokens extends InstancedFeatures<IGridCoord, IInstancedToken> {
     super.clear();
   }
 
-  remove(oldPosition: IGridCoord): IInstancedToken | undefined {
+  remove(oldPosition: IGridCoord): IInstancedToken<IGridCoord> | undefined {
     let f = super.remove(oldPosition);
     if (f === undefined) {
       return undefined;

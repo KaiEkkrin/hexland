@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
 
 import { IPlayer } from '../data/adventure';
-import { IGridCoord } from '../data/coord';
-import { IToken } from '../data/feature';
+import { ITokenProperties } from '../data/feature';
 import { hexColours } from '../models/featureColour';
 
 import Badge from 'react-bootstrap/Badge';
@@ -11,13 +10,13 @@ import ListGroup from 'react-bootstrap/ListGroup';
 
 interface IPlayerInfoListPropsBase {
   ownerUid: string | undefined;
-  tokens: IToken[];
+  tokens: ITokenProperties[];
   showBlockedPlayers?: boolean | undefined;
   showBlockButtons?: boolean | undefined;
   showNoTokenWarning?: boolean | undefined;
   blockPlayer?: ((player: IPlayer) => void) | undefined;
   unblockPlayer?: ((player: IPlayer) => void) | undefined;
-  resetView?: ((centreOn?: IGridCoord | undefined) => void) | undefined;
+  resetView?: ((centreOn?: string | undefined) => void) | undefined; // centres on the token with the given id
 }
 
 interface IPlayerInfoListItemProps extends IPlayerInfoListPropsBase {
@@ -61,7 +60,7 @@ function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
         <Badge key={"badge_" + t.id} className="ml-2 mt-1"
           title={"Player " + props.player.playerName + " has token " + t.text}
           style={{ backgroundColor: hexColours[t.colour], color: "black", userSelect: "none" }}
-          onClick={() => props.resetView?.(t.position)}
+          onClick={() => props.resetView?.(t.id)}
         >{t.text}</Badge>
       ));
     } else if (props.showNoTokenWarning === true) {

@@ -1,13 +1,13 @@
 import React from 'react';
 
-import { IToken } from '../data/feature';
+import { ITokenProperties } from '../data/feature';
 
 import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 
 interface ITokenDeletionModalProps {
   show: boolean;
-  tokens: IToken[];
+  tokens: ITokenProperties[];
   handleClose: () => void;
   handleDelete: () => void;
 }

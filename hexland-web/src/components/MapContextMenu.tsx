@@ -2,7 +2,7 @@ import React, { useMemo, useCallback } from 'react';
 
 import { EditMode } from './MapControls'; // TODO remove it from there entirely and prune some?
 import { IAnnotation } from '../data/annotation';
-import { IToken } from '../data/feature';
+import { ITokenProperties } from '../data/feature';
 
 import Card from 'react-bootstrap/Card';
 import ListGroup from 'react-bootstrap/ListGroup';
@@ -35,7 +35,7 @@ interface IMapContextMenuProps {
   pageBottom: number;
 
   // What was here in the map (if anything)
-  token: IToken | undefined;
+  token: ITokenProperties | undefined;
   note: IAnnotation | undefined;
   editToken: () => void;
   editNote: () => void;

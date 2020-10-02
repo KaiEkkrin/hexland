@@ -44,7 +44,7 @@ export interface IAreaRemove extends IChange {
 }
 
 export interface ITokenAdd extends IChange {
-  feature: IToken;
+  feature: IToken<IGridCoord>;
 }
 
 export interface ITokenMove extends IChange {
@@ -90,7 +90,7 @@ export function createAreaRemove(position: IGridCoord): IAreaRemove {
   };
 }
 
-export function createTokenAdd(feature: IToken): ITokenAdd {
+export function createTokenAdd(feature: IToken<IGridCoord>): ITokenAdd {
   return {
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,

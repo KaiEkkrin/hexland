@@ -1,4 +1,5 @@
-import { IGridCoord, defaultGridCoord, IGridEdge, defaultGridEdge } from './coord';
+import { IGridCoord, defaultGridCoord, IGridEdge, defaultGridEdge, IGridVertex, defaultGridVertex } from './coord';
+import { v4 as uuidv4 } from 'uuid';
 
 // Describes an instanced feature:
 // (Must be possible to copy this with Object.assign)
@@ -7,9 +8,14 @@ export interface IFeature<K> {
   colour: number;
 }
 
+// Some features have a string id
+export interface IIdFeature<K> extends IFeature<K> {
+  id: string;
+}
+
 // A token has some extra properties:
 export interface ITokenProperties {
-  id: string | undefined; // a UUID for this token, that follows it around
+  id: string; // a UUID for this token, that follows it around
   colour: number;
   players: string[]; // the uids of the players that can move this token
   size: 1 | 3; // TODO #119 Also add at least sizes 2 and 4, but these require a vertex coord
@@ -18,22 +24,32 @@ export interface ITokenProperties {
   noteVisibleToPlayers: boolean; // as you'd expect
 }
 
-export interface IToken extends IFeature<IGridCoord>, ITokenProperties {}
+export const defaultTokenProperties: ITokenProperties = {
+  colour: 0,
+  id: uuidv4(),
+  players: [],
+  size: 1,
+  text: "",
+  note: "",
+  noteVisibleToPlayers: false
+};
+
+// #119: A token can use a face as its position, but also a vertex
+export interface IToken<K extends IGridCoord> extends IIdFeature<K>, ITokenProperties {}
 
 export const defaultArea: IFeature<IGridCoord> = {
   position: defaultGridCoord,
   colour: 0
 };
 
-export const defaultToken: IToken = {
+export const defaultFaceToken: IToken<IGridCoord> = {
   position: defaultGridCoord,
-  colour: 0,
-  id: undefined,
-  players: [],
-  size: 1,
-  text: "",
-  note: "",
-  noteVisibleToPlayers: false
+  ...defaultTokenProperties
+};
+
+export const defaultVertexToken: IToken<IGridVertex> = {
+  position: defaultGridVertex,
+  ...defaultTokenProperties
 };
 
 export const defaultWall: IFeature<IGridEdge> = {
@@ -75,6 +91,8 @@ export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> impl
     this._toIndex = toIndex;
     this._values = values ?? {};
   }
+
+  protected get values() { return this._values; }
 
   [Symbol.iterator](): Iterator<F> {
     return this.iterate();
@@ -135,4 +153,23 @@ export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> impl
     const i = this._toIndex(f.position);
     this._values[i] = f;
   }
+}
+
+// #119: A token dictionary provides a distinction between:
+// - The coords that tokens are homed at (denoted by the inherited dictionary, and using
+// positions that could be face or vertex), and
+// - The coords that are *occupied* by tokens, which is more in the case of larger tokens.
+// Here we provide the latter in the form of the `at` method.  We also make it possible to
+// look up tokens by id, which allows us to decouple a lot of the UI from token positioning.
+export interface ITokenDictionary<K extends IGridCoord> extends IFeatureDictionary<K, IToken<K>> {
+  // Returns the token that occupies this grid face, or undefined if none.
+  // (Distinct from `get` which will only return a token if its native
+  // position is the given one.)
+  at(face: IGridCoord): IToken<K> | undefined;
+
+  // Returns all the face positions of a given token.
+  enumerateFacePositions(token: IToken<K>): Iterable<IGridCoord>;
+
+  // Returns the token with the given id, or undefined for none.
+  ofId(id: string): IToken<K> | undefined;
 }

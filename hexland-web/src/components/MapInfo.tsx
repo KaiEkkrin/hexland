@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
 
 import { IPlayer } from '../data/adventure';
-import { IGridCoord } from '../data/coord';
-import { IToken } from '../data/feature';
+import { ITokenProperties } from '../data/feature';
 import { IMap } from '../data/map';
 import MapInfoCard from './MapInfoCard';
 import NetworkStatus, { INetworkStatusProps } from './NetworkStatus';
@@ -19,7 +18,7 @@ import fluent from 'fluent-iterable';
 // A quick utility function for figuring out whether a player has any
 // tokens assigned to them so we can show status.
 // Returns undefined for the owner, who is a special case (we don't care.)
-function hasAnyTokens(map: IMap | undefined, player: IPlayer, tokens: IToken[]) {
+function hasAnyTokens(map: IMap | undefined, player: IPlayer, tokens: ITokenProperties[]) {
   if (player.playerId === map?.owner) {
     return undefined;
   }
@@ -36,9 +35,9 @@ function hasAnyTokens(map: IMap | undefined, player: IPlayer, tokens: IToken[]) 
 interface IMapInfoProps extends INetworkStatusProps {
   map: IMap | undefined;
   players: IPlayer[];
-  tokens: IToken[];
+  tokens: ITokenProperties[];
   canDoAnything: boolean;
-  resetView: (centreOn?: IGridCoord | undefined) => void;
+  resetView: (centreOn?: string | undefined) => void;
 }
 
 function MapInfo(props: IMapInfoProps) {

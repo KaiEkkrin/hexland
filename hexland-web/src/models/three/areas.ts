@@ -1,5 +1,5 @@
 import { coordString, IGridCoord } from '../../data/coord';
-import { IFeature } from '../../data/feature';
+import { IFeature, IIdFeature } from '../../data/feature';
 import { IGridGeometry } from "../gridGeometry";
 import { IInstancedFeatureObject } from './instancedFeatureObject';
 import { InstancedFeatures } from './instancedFeatures';
@@ -60,4 +60,16 @@ export function createAreas(
   );
 }
 
+export function createSelectedAreas(
+  gridGeometry: IGridGeometry,
+  needsRedraw: RedrawFlag,
+  createFeatureObject: (maxInstances: number) => IInstancedFeatureObject<IGridCoord, IIdFeature<IGridCoord>>,
+  maxInstances?: number | undefined
+) {
+  return new InstancedFeatures<IGridCoord, IIdFeature<IGridCoord>>(
+    gridGeometry, needsRedraw, coordString, createFeatureObject, maxInstances
+  );
+}
+
 export type Areas = InstancedFeatures<IGridCoord, IFeature<IGridCoord>>;
+export type SelectedAreas = InstancedFeatures<IGridCoord, IIdFeature<IGridCoord>>; // so we can look up which token was selected

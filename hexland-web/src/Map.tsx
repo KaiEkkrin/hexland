@@ -23,7 +23,7 @@ import { IPlayer } from './data/adventure';
 import { IAnnotation } from './data/annotation';
 import { IChange } from './data/change';
 import { netObjectCount, trackChanges } from './data/changeTracking';
-import { IToken, ITokenProperties } from './data/feature';
+import { ITokenProperties } from './data/feature';
 import { IAdventureIdentified } from './data/identified';
 import { IMap } from './data/map';
 import { getUserPolicy } from './data/policy';
@@ -306,7 +306,7 @@ function Map(props: IMapPageProps) {
   const [contextMenuY, setContextMenuY] = useState(0);
   const [contextMenuPageRight, setContextMenuPageRight] = useState(0);
   const [contextMenuPageBottom, setContextMenuPageBottom] = useState(0);
-  const [contextMenuToken, setContextMenuToken] = useState<IToken | undefined>(undefined);
+  const [contextMenuToken, setContextMenuToken] = useState<ITokenProperties | undefined>(undefined);
   const [contextMenuNote, setContextMenuNote] = useState<IAnnotation | undefined>(undefined);
 
   const [showMapEditor, setShowMapEditor] = useState(false);
@@ -314,11 +314,11 @@ function Map(props: IMapPageProps) {
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [showTokenDeletion, setShowTokenDeletion] = useState(false);
 
-  const [tokenToEdit, setTokenToEdit] = useState(undefined as IToken | undefined);
+  const [tokenToEdit, setTokenToEdit] = useState(undefined as ITokenProperties | undefined);
   const [tokenToEditPosition, setTokenToEditPosition] = useState(undefined as THREE.Vector3 | undefined);
   const [noteToEdit, setNoteToEdit] = useState(undefined as IAnnotation | undefined);
   const [noteToEditPosition, setNoteToEditPosition] = useState(undefined as THREE.Vector3 | undefined);
-  const [tokensToDelete, setTokensToDelete] = useState<IToken[]>([]);
+  const [tokensToDelete, setTokensToDelete] = useState<ITokenProperties[]>([]);
 
   const [isDraggingView, setIsDraggingView] = useState(false);
 
@@ -408,9 +408,9 @@ function Map(props: IMapPageProps) {
   }, [addChanges, handleModalClose, noteToEditPosition, stateMachine]);
 
   const handleTokenDeletion = useCallback(() => {
-    let changes: IChange[] = [];
-    for (let t of tokensToDelete) {
-      let chs = stateMachine?.setTokenPosition(t.position, undefined);
+    const changes: IChange[] = [];
+    for (const t of tokensToDelete) {
+      const chs = stateMachine?.setTokenById(t.id, undefined);
       if (chs !== undefined) {
         changes.push(...chs);
       }
@@ -461,7 +461,7 @@ function Map(props: IMapPageProps) {
     setNoteToEditPosition(cp);
   }, [setShowNoteEditor, setNoteToEdit, setNoteToEditPosition]);
 
-  const editToken = useCallback((cp: THREE.Vector3, token: IToken | undefined) => {
+  const editToken = useCallback((cp: THREE.Vector3, token: ITokenProperties | undefined) => {
     setShowTokenEditor(true);
     setTokenToEdit(token);
     setTokenToEditPosition(cp);
