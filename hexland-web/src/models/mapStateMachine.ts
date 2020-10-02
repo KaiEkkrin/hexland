@@ -324,7 +324,7 @@ export class MapStateMachine {
     );
 
     const removeToken = existingToken === undefined ? [] : [createTokenRemove(token.position, token.id)];
-    for (const face of this._tokens.enumerateFacePositions(token)) {
+    for (const face of this._tokens.enumerateFacePositions({ ...token, size: newSize })) {
       const addToken = createTokenAdd({ ...token, size: newSize, position: face });
       if (trackChanges(this._map.record, changeTracker, [...removeToken, addToken], this._uid) === true) {
         return face;
