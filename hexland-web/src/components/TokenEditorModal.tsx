@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import ColourSelection from './ColourSelection';
 import TokenPlayerSelection from './TokenPlayerSelection';
@@ -44,21 +44,22 @@ function TokenEditorModal(props: ITokenEditorModalProps) {
     setSaveDisabled(text.length === 0);
   }, [text]);
 
-  function handleVtoPChange(e: React.ChangeEvent<HTMLInputElement>) {
+  const handleVtoPChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setNoteVisibleToPlayers(e.currentTarget.checked);
-  }
+  }, [setNoteVisibleToPlayers]);
 
-  function handleSave() {
+  const handleSave = useCallback(() => {
     props.handleSave({
       colour: colour,
       // If this was a new token, make a new id for it
       id: props.token === undefined ? uuidv4() : props.token.id,
       text: text,
       players: playerIds,
+      size: 1, // TODO #116 Add in a token size slider thingy
       note: note,
       noteVisibleToPlayers: noteVisibleToPlayers
     });
-  }
+  }, [colour, note, noteVisibleToPlayers, playerIds, props, text]);
 
   return (
     <Modal show={props.show} onHide={props.handleClose}>

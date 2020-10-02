@@ -12,6 +12,7 @@ export interface ITokenProperties {
   id: string | undefined; // a UUID for this token, that follows it around
   colour: number;
   players: string[]; // the uids of the players that can move this token
+  size: 1 | 3; // TODO #119 Also add at least sizes 2 and 4, but these require a vertex coord
   text: string; // maximum of three characters
   note: string; // shown in the annotations UI
   noteVisibleToPlayers: boolean; // as you'd expect
@@ -29,6 +30,7 @@ export const defaultToken: IToken = {
   colour: 0,
   id: undefined,
   players: [],
+  size: 1,
   text: "",
   note: "",
   noteVisibleToPlayers: false
