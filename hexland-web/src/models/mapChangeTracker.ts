@@ -18,7 +18,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
 
   constructor(
     areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
-    tokens: IFeatureDictionary<IGridCoord, IToken<IGridCoord>>,
+    tokens: IFeatureDictionary<IGridCoord, IToken>,
     walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
     notes: IFeatureDictionary<IGridCoord, IAnnotation>,
     userPolicy: IUserPolicy | undefined,
@@ -37,7 +37,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
     this._colouring?.clear();
   }
 
-  tokenAdd(map: IMap, user: string, feature: IToken<IGridCoord>, oldPosition: IGridCoord | undefined) {
+  tokenAdd(map: IMap, user: string, feature: IToken, oldPosition: IGridCoord | undefined) {
     // If this is a move, `oldPosition` will be set.
     // In non-FFA mode, non-owners can only move a token within its bounded
     // map area (the map colour of the old position must be the same as the

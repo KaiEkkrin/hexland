@@ -14,7 +14,7 @@ import { IAnnotation, IPositionedAnnotation } from '../data/annotation';
 import { IChange, createTokenRemove, createTokenAdd, createNoteRemove, createNoteAdd, createTokenMove } from '../data/change';
 import { trackChanges } from '../data/changeTracking';
 import { IGridCoord, coordString, coordsEqual, coordSub, coordAdd } from '../data/coord';
-import { FeatureDictionary, IIdFeature, IToken, ITokenDictionary, ITokenProperties } from '../data/feature';
+import { FeatureDictionary, IToken, ITokenDictionary, ITokenProperties } from '../data/feature';
 import { IAdventureIdentified } from '../data/identified';
 import { IMap, MapType } from '../data/map';
 import { IUserPolicy } from '../data/policy';
@@ -87,10 +87,10 @@ export class MapStateMachine {
   // TODO #119 Perhaps I can roll this into its own management object, so that
   // when it comes to adding vertex tokens too, I can simply instantiate another
   // copy ...?
-  private readonly _selection: ITokenDictionary<IGridCoord>;
-  private readonly _selectionDrag: ITokenDictionary<IGridCoord>;
-  private readonly _selectionDragRed: ITokenDictionary<IGridCoord>;
-  private readonly _tokens: ITokenDictionary<IGridCoord>;
+  private readonly _selection: ITokenDictionary;
+  private readonly _selectionDrag: ITokenDictionary;
+  private readonly _selectionDragRed: ITokenDictionary;
+  private readonly _tokens: ITokenDictionary;
 
   private readonly _changeTracker: MapChangeTracker;
 
@@ -191,22 +191,22 @@ export class MapStateMachine {
     this._notes = new FeatureDictionary<IGridCoord, IAnnotation>(coordString);
 
     // Here is our higher-level token tracking:
-    this._selection = createTokenDictionary<IIdFeature<IGridCoord>>(
+    this._selection = createTokenDictionary(
       map.record.ty, this._drawing.selectionFaces,
       (token: ITokenProperties, position: IGridCoord) => ({ position: position, colour: 0, id: token.id })
     );
 
-    this._selectionDrag = createTokenDictionary<IIdFeature<IGridCoord>>(
+    this._selectionDrag = createTokenDictionary(
       map.record.ty, this._drawing.selectionDragFaces,
       (token: ITokenProperties, position: IGridCoord) => ({ position: position, colour: 0, id: token.id })
     );
 
-    this._selectionDragRed = createTokenDictionary<IIdFeature<IGridCoord>>(
+    this._selectionDragRed = createTokenDictionary(
       map.record.ty, this._drawing.selectionDragRedFaces,
       (token: ITokenProperties, position: IGridCoord) => ({ position: position, colour: 0, id: token.id })
     );
 
-    this._tokens = createTokenDictionary<IToken<IGridCoord>>(
+    this._tokens = createTokenDictionary(
       map.record.ty, this._drawing.tokenFaces,
       // TODO #119 Provide a way to separately mark which face gets the text written on...?
       (token: ITokenProperties, position: IGridCoord) => ({ ...token, position: position })
@@ -307,7 +307,7 @@ export class MapStateMachine {
     return trackChanges(this._map.record, changeTracker, changes, this._uid);
   }
 
-  private canResizeToken(token: IToken<IGridCoord>, newSize: 1 | 3): IGridCoord | undefined {
+  private canResizeToken(token: IToken, newSize: 1 | 3): IGridCoord | undefined {
     // Checks whether we can resize this token to the given new size, returning the new position
     // that it would adopts, or, if the token doesn't exist already, whether we can place a new
     // token of the given size.
@@ -514,7 +514,7 @@ export class MapStateMachine {
     }
   }
 
-  private setTokenProperties(token: IToken<IGridCoord>, properties: ITokenProperties): IChange[] {
+  private setTokenProperties(token: IToken, properties: ITokenProperties): IChange[] {
     if (properties.id !== token.id) {
       throw RangeError("Cannot change a token's id after creation");
     }

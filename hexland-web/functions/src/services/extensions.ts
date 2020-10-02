@@ -295,7 +295,7 @@ async function tryConsolidateMapChanges(
   // technically cheat and non-owners would believe them), but it will save huge amounts of
   // CPU time (especially valuable if this is going to be called in a Firebase Function.)
   const ownerPolicy = getUserPolicy(ownerProfile.level);
-  const tokenFaces = new FeatureDictionary<IGridCoord, IToken<IGridCoord>>(coordString);
+  const tokenFaces = new FeatureDictionary<IGridCoord, IToken>(coordString);
   const tracker = new SimpleChangeTracker(
     new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
     createTokenDictionary(m.ty, tokenFaces, (token: ITokenProperties, position: IGridCoord) => ({ ...token, position: position })),

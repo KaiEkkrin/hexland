@@ -29,7 +29,7 @@ export function createDrawing(
     seeEverything: seeEverything,
 
     areas: new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
-    tokenFaces: new FeatureDictionary<IGridCoord, IToken<IGridCoord>>(coordString),
+    tokenFaces: new FeatureDictionary<IGridCoord, IToken>(coordString),
     walls: new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
 
     highlightedAreas: new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),

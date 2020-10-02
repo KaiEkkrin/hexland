@@ -7,19 +7,18 @@ import { MapType } from "./map";
 // Note that cloning this creates an internal clone of the faces dictionary too,
 // which won't be attached to anything else.  (Concrete subclasses must override
 // the `clone` method.)
-abstract class Tokens<K extends IGridCoord, F extends IIdFeature<IGridCoord>> extends FeatureDictionary<K, IToken<K>> implements ITokenDictionary<K> {
-  private _faces: IFeatureDictionary<IGridCoord, F>;
-  private readonly _createFace: (token: ITokenProperties, position: IGridCoord) => F;
-  private _byId: { [id: string]: IToken<K> };
+abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements ITokenDictionary {
+  private _faces: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>;
+  private readonly _createFace: (token: ITokenProperties, position: IGridCoord) => IIdFeature<IGridCoord>;
+  private _byId: { [id: string]: IToken };
 
   constructor(
-    toIndex: (coord: K) => string,
-    faces: IFeatureDictionary<IGridCoord, F>,
-    createFace: (token: ITokenProperties, position: IGridCoord) => F,
-    values?: { [key: string]: IToken<K> } | undefined,
-    byId?: { [id: string]: IToken<K> } | undefined
+    faces: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>,
+    createFace: (token: ITokenProperties, position: IGridCoord) => IIdFeature<IGridCoord>,
+    values?: { [key: string]: IToken } | undefined,
+    byId?: { [id: string]: IToken } | undefined
   ) {
-    super(toIndex, values);
+    super(coordString, values);
     this._faces = faces;
     this._createFace = createFace;
     this._byId = byId ?? {};
@@ -29,7 +28,7 @@ abstract class Tokens<K extends IGridCoord, F extends IIdFeature<IGridCoord>> ex
   protected get createFace() { return this._createFace; }
   protected get byId() { return this._byId; }
 
-  private revertAdd(token: IToken<K>, faces: IGridCoord[]) {
+  private revertAdd(token: IToken, faces: IGridCoord[]) {
     for (const face of faces) {
       this._faces.remove(face);
     }
@@ -37,7 +36,7 @@ abstract class Tokens<K extends IGridCoord, F extends IIdFeature<IGridCoord>> ex
     super.remove(token.position);
   }
 
-  add(token: IToken<K>) {
+  add(token: IToken) {
     if (super.add(token) === true) {
       // Record the token faces we added -- if we get a failure we want to be
       // able to roll this back
@@ -91,13 +90,13 @@ abstract class Tokens<K extends IGridCoord, F extends IIdFeature<IGridCoord>> ex
     this._byId = {};
   }
 
-  abstract enumerateFacePositions(token: IToken<K>): Iterable<IGridCoord>;
+  abstract enumerateFacePositions(token: IToken): Iterable<IGridCoord>;
 
   ofId(id: string) {
     return this._byId[id];
   }
 
-  remove(k: K): IToken<K> | undefined {
+  remove(k: IGridCoord): IToken | undefined {
     const removed = super.remove(k);
     if (removed !== undefined) {
       for (const face of this.enumerateFacePositions(removed)) {
@@ -114,18 +113,9 @@ abstract class Tokens<K extends IGridCoord, F extends IIdFeature<IGridCoord>> ex
 
 // #119: We define concretes for face and vertex tokens for each of the map types.
 
-class TokensHex<F extends IIdFeature<IGridCoord>> extends Tokens<IGridCoord, F> {
-  constructor(
-    faces: IFeatureDictionary<IGridCoord, F>,
-    createFace: (token: ITokenProperties, position: IGridCoord) => F,
-    values?: { [index: string]: IToken<IGridCoord> } | undefined,
-    byId?: { [id: string]: IToken<IGridCoord> } | undefined
-  ) {
-    super(coordString, faces, createFace, values, byId);
-  }
-
+class TokensHex extends Tokens {
   clone() {
-    return new TokensHex<F>(
+    return new TokensHex(
       this.faces.clone(),
       this.createFace,
       { ...this.values },
@@ -133,7 +123,7 @@ class TokensHex<F extends IIdFeature<IGridCoord>> extends Tokens<IGridCoord, F> 
     );
   }
 
-  *enumerateFacePositions(token: IToken<IGridCoord>) {
+  *enumerateFacePositions(token: IToken) {
     // Always, the centre position:
     yield token.position;
 
@@ -149,18 +139,9 @@ class TokensHex<F extends IIdFeature<IGridCoord>> extends Tokens<IGridCoord, F> 
   }
 }
 
-class TokensSquare<F extends IIdFeature<IGridCoord>> extends Tokens<IGridCoord, F> {
-  constructor(
-    faces: IFeatureDictionary<IGridCoord, F>,
-    createFace: (token: ITokenProperties, position: IGridCoord) => F,
-    values?: { [index: string]: IToken<IGridCoord> } | undefined,
-    byId?: { [id: string]: IToken<IGridCoord> } | undefined
-  ) {
-    super(coordString, faces, createFace, values, byId);
-  }
-
+class TokensSquare extends Tokens {
   clone() {
-    return new TokensSquare<F>(
+    return new TokensSquare(
       this.faces.clone(),
       this.createFace,
       { ...this.values },
@@ -168,7 +149,7 @@ class TokensSquare<F extends IIdFeature<IGridCoord>> extends Tokens<IGridCoord, 
     );
   }
 
-  *enumerateFacePositions(token: IToken<IGridCoord>) {
+  *enumerateFacePositions(token: IToken) {
     // Always, the centre position:
     yield token.position;
 
@@ -186,14 +167,14 @@ class TokensSquare<F extends IIdFeature<IGridCoord>> extends Tokens<IGridCoord, 
   }
 }
 
-export function createTokenDictionary<F extends IIdFeature<IGridCoord>>(
+export function createTokenDictionary(
   mapType: MapType,
-  faces: IFeatureDictionary<IGridCoord, F>,
-  createFace: (token: ITokenProperties, position: IGridCoord) => F
+  faces: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>,
+  createFace: (token: ITokenProperties, position: IGridCoord) => IIdFeature<IGridCoord>
 ) {
   switch (mapType) {
-    case MapType.Hex: return new TokensHex<F>(faces, createFace);
-    case MapType.Square: return new TokensSquare<F>(faces, createFace);
+    case MapType.Hex: return new TokensHex(faces, createFace);
+    case MapType.Square: return new TokensSquare(faces, createFace);
     default: throw RangeError("Map type not recognised");
   }
 }

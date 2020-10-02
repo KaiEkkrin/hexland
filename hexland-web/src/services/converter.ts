@@ -53,7 +53,7 @@ class RecursingConverter<T> extends ShallowConverter<T> {
 
 // We provide some special conversion for raw data that lacks token ids, which attempts
 // to assign unique ids to them based on position tracking:
-class AddTokenFeatureConverter extends RecursingConverter<IToken<IGridCoord>> {
+class AddTokenFeatureConverter extends RecursingConverter<IToken> {
   private readonly _newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>;
 
   constructor(newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>) {
@@ -66,7 +66,7 @@ class AddTokenFeatureConverter extends RecursingConverter<IToken<IGridCoord>> {
     this._newTokenDict = newTokenDict;
   }
 
-  convert(rawData: any): IToken<IGridCoord> {
+  convert(rawData: any): IToken {
     const feature = super.convert(rawData);
     if (feature.id === defaultFaceToken.id) {
       // This is an add; we generate a new id and add it to the dictionary.

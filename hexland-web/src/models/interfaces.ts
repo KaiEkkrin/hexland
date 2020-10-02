@@ -8,7 +8,7 @@ import { IFeature, IToken, IFeatureDictionary, IIdFeature } from "../data/featur
 // editing these should update the drawing upon the next animation frame.
 export interface IDrawing {
   areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
-  tokenFaces: IFeatureDictionary<IGridCoord, IToken<IGridCoord>>;
+  tokenFaces: IFeatureDictionary<IGridCoord, IToken>;
   walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
 
   highlightedAreas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;

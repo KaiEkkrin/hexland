@@ -13,8 +13,8 @@ export interface IChangeTracker {
 
   areaAdd: (feature: IFeature<IGridCoord>) => boolean;
   areaRemove: (position: IGridCoord) => IFeature<IGridCoord> | undefined;
-  tokenAdd: (map: IMap, user: string, feature: IToken<IGridCoord>, oldPosition: IGridCoord | undefined) => boolean;
-  tokenRemove: (map: IMap, user: string, position: IGridCoord, tokenId: string | undefined) => IToken<IGridCoord> | undefined;
+  tokenAdd: (map: IMap, user: string, feature: IToken, oldPosition: IGridCoord | undefined) => boolean;
+  tokenRemove: (map: IMap, user: string, position: IGridCoord, tokenId: string | undefined) => IToken | undefined;
   wallAdd: (feature: IFeature<IGridEdge>) => boolean;
   wallRemove: (position: IGridEdge) => IFeature<IGridEdge> | undefined;
   noteAdd: (feature: IAnnotation) => boolean;
@@ -33,7 +33,7 @@ export interface IChangeTracker {
 // A simple implementation for testing, etc.
 export class SimpleChangeTracker implements IChangeTracker {
   private readonly _areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
-  private readonly _tokens: IFeatureDictionary<IGridCoord, IToken<IGridCoord>>;
+  private readonly _tokens: IFeatureDictionary<IGridCoord, IToken>;
   private readonly _walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
   private readonly _notes: IFeatureDictionary<IGridCoord, IAnnotation>;
   private readonly _userPolicy: IUserPolicy | undefined;
@@ -42,7 +42,7 @@ export class SimpleChangeTracker implements IChangeTracker {
 
   constructor(
     areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
-    tokens: IFeatureDictionary<IGridCoord, IToken<IGridCoord>>,
+    tokens: IFeatureDictionary<IGridCoord, IToken>,
     walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
     notes: IFeatureDictionary<IGridCoord, IAnnotation>,
     userPolicy: IUserPolicy | undefined
@@ -101,7 +101,7 @@ export class SimpleChangeTracker implements IChangeTracker {
     this._objectCount = 0;
   }
 
-  tokenAdd(map: IMap, user: string, feature: IToken<IGridCoord>, oldPosition: IGridCoord | undefined) {
+  tokenAdd(map: IMap, user: string, feature: IToken, oldPosition: IGridCoord | undefined) {
     return this.policyAdd(this._tokens, feature);
   }
 
@@ -330,7 +330,7 @@ function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: IChange, user:
           }
 
           const toAdd = { ...moved, position: chMove.newPosition };
-          const added = tracker.tokenAdd(map, user, toAdd as IToken<IGridCoord>, chMove.oldPosition);
+          const added = tracker.tokenAdd(map, user, toAdd as IToken, chMove.oldPosition);
           return added ? {
             revert: function revert() {
               tracker.tokenRemove(map, user, chMove.newPosition, chMove.tokenId);

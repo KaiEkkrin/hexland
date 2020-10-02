@@ -1,4 +1,4 @@
-import { IGridCoord, defaultGridCoord, IGridEdge, defaultGridEdge, IGridVertex, defaultGridVertex } from './coord';
+import { IGridCoord, defaultGridCoord, IGridEdge, defaultGridEdge } from './coord';
 import { v4 as uuidv4 } from 'uuid';
 
 // Describes an instanced feature:
@@ -34,21 +34,15 @@ export const defaultTokenProperties: ITokenProperties = {
   noteVisibleToPlayers: false
 };
 
-// #119: A token can use a face as its position, but also a vertex
-export interface IToken<K extends IGridCoord> extends IIdFeature<K>, ITokenProperties {}
+export interface IToken extends IIdFeature<IGridCoord>, ITokenProperties {}
 
 export const defaultArea: IFeature<IGridCoord> = {
   position: defaultGridCoord,
   colour: 0
 };
 
-export const defaultFaceToken: IToken<IGridCoord> = {
+export const defaultFaceToken: IToken = {
   position: defaultGridCoord,
-  ...defaultTokenProperties
-};
-
-export const defaultVertexToken: IToken<IGridVertex> = {
-  position: defaultGridVertex,
   ...defaultTokenProperties
 };
 
@@ -156,20 +150,19 @@ export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> impl
 }
 
 // #119: A token dictionary provides a distinction between:
-// - The coords that tokens are homed at (denoted by the inherited dictionary, and using
-// positions that could be face or vertex), and
+// - The coords that tokens are homed at, and
 // - The coords that are *occupied* by tokens, which is more in the case of larger tokens.
 // Here we provide the latter in the form of the `at` method.  We also make it possible to
 // look up tokens by id, which allows us to decouple a lot of the UI from token positioning.
-export interface ITokenDictionary<K extends IGridCoord> extends IFeatureDictionary<K, IToken<K>> {
+export interface ITokenDictionary extends IFeatureDictionary<IGridCoord, IToken> {
   // Returns the token that occupies this grid face, or undefined if none.
   // (Distinct from `get` which will only return a token if its native
   // position is the given one.)
-  at(face: IGridCoord): IToken<K> | undefined;
+  at(face: IGridCoord): IToken | undefined;
 
   // Returns all the face positions of a given token.
-  enumerateFacePositions(token: IToken<K>): Iterable<IGridCoord>;
+  enumerateFacePositions(token: IToken): Iterable<IGridCoord>;
 
   // Returns the token with the given id, or undefined for none.
-  ofId(id: string): IToken<K> | undefined;
+  ofId(id: string): IToken | undefined;
 }
