@@ -5,6 +5,7 @@ import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
 import { IInviteExpiryPolicy } from '../data/policy';
 import { IProfile } from '../data/profile';
+import { IConverter } from './converter';
 
 // Abstracts the Firebase authentication stuff, which isn't supported by the
 // simulator.
@@ -68,8 +69,8 @@ export interface IDataService extends IDataView {
 
   // Gets a map.
   getMapRef(adventureId: string, id: string): IDataReference<IMap>;
-  getMapBaseChangeRef(adventureId: string, id: string): IDataReference<IChanges>;
-  getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number): Promise<IDataAndReference<IChanges>[] | undefined>;
+  getMapBaseChangeRef(adventureId: string, id: string, converter: IConverter<IChanges>): IDataReference<IChanges>;
+  getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number, converter: IConverter<IChanges>): Promise<IDataAndReference<IChanges>[] | undefined>;
 
   // Gets all my adventures, invites, and player records.
   getMyAdventures(uid: string): Promise<IDataAndReference<IAdventure>[]>;

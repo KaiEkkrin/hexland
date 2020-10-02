@@ -381,17 +381,31 @@ function Map(props: IMapPageProps) {
 
   const handleTokenEditorDelete = useCallback(() => {
     if (tokenToEditPosition !== undefined) {
-      addChanges(stateMachine?.setToken(tokenToEditPosition, undefined));
+      try {
+        addChanges(stateMachine?.setToken(tokenToEditPosition, undefined));
+      } catch (e) {
+        statusContext.toasts.next({ id: uuidv4(), record: {
+          title: "Failed to delete token",
+          message: String(e.message)
+        }});
+      }
     }
     handleModalClose();
-  }, [addChanges, handleModalClose, stateMachine, tokenToEditPosition]);
+  }, [addChanges, handleModalClose, stateMachine, statusContext.toasts, tokenToEditPosition]);
 
   const handleTokenEditorSave = useCallback((properties: ITokenProperties) => {
     if (tokenToEditPosition !== undefined) {
-      addChanges(stateMachine?.setToken(tokenToEditPosition, properties));
+      try {
+        addChanges(stateMachine?.setToken(tokenToEditPosition, properties));
+      } catch (e) {
+        statusContext.toasts.next({ id: uuidv4(), record: {
+          title: "Failed to save token",
+          message: String(e.message)
+        }});
+      }
     }
     handleModalClose();
-  }, [addChanges, handleModalClose, stateMachine, tokenToEditPosition]);
+  }, [addChanges, handleModalClose, stateMachine, statusContext.toasts, tokenToEditPosition]);
 
   const handleNoteEditorDelete = useCallback(() => {
     if (noteToEditPosition !== undefined) {

@@ -50,12 +50,12 @@ export interface ITokenAdd extends IChange {
 export interface ITokenMove extends IChange {
   newPosition: IGridCoord;
   oldPosition: IGridCoord;
-  tokenId: string | undefined; // must match what's currently there
+  tokenId: string; // must match what's currently there
 }
 
 export interface ITokenRemove extends IChange {
   position: IGridCoord;
-  tokenId: string | undefined; // must match what's currently there
+  tokenId: string; // must match what's currently there
 }
 
 export interface IWallAdd extends IChange {
@@ -98,7 +98,7 @@ export function createTokenAdd(feature: IToken<IGridCoord>): ITokenAdd {
   };
 }
 
-export function createTokenMove(oldPosition: IGridCoord, newPosition: IGridCoord, tokenId: string | undefined): ITokenMove {
+export function createTokenMove(oldPosition: IGridCoord, newPosition: IGridCoord, tokenId: string): ITokenMove {
   return {
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
@@ -108,7 +108,7 @@ export function createTokenMove(oldPosition: IGridCoord, newPosition: IGridCoord
   };
 }
 
-export function createTokenRemove(position: IGridCoord, tokenId: string | undefined): ITokenRemove {
+export function createTokenRemove(position: IGridCoord, tokenId: string): ITokenRemove {
   return {
     ty: ChangeType.Remove,
     cat: ChangeCategory.Token,

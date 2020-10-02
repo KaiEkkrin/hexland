@@ -131,20 +131,20 @@ export class DataService implements IDataService {
     return new DataReference<IMap>(d, Convert.mapConverter);
   }
 
-  getMapBaseChangeRef(adventureId: string, id: string): IDataReference<IChanges> {
+  getMapBaseChangeRef(adventureId: string, id: string, converter: Convert.IConverter<IChanges>): IDataReference<IChanges> {
     let d = this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(id).collection(changes).doc(baseChange);
-    return new DataReference<IChanges>(d, Convert.changesConverter);
+    return new DataReference<IChanges>(d, converter);
   }
 
-  async getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number): Promise<IDataAndReference<IChanges>[] | undefined> {
+  async getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number, converter: Convert.IConverter<IChanges>): Promise<IDataAndReference<IChanges>[] | undefined> {
     let s = await this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(id).collection(changes)
       .where("incremental", "==", true)
       .orderBy("timestamp")
       .limit(limit)
       .get();
-    return s.empty ? undefined : s.docs.map(d => new DataAndReference(d.ref, d.data(), Convert.changesConverter));
+    return s.empty ? undefined : s.docs.map(d => new DataAndReference(d.ref, d.data(), converter));
   }
 
   async getMyAdventures(uid: string): Promise<IDataAndReference<IAdventure>[]> {
@@ -223,6 +223,7 @@ export class DataService implements IDataService {
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ) {
+    const converter = Convert.createChangesConverter();
     const baseChangeRef = this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(mapId).collection(changes).doc(baseChange);
     return this._db.collection(adventures).doc(adventureId)
@@ -235,7 +236,7 @@ export class DataService implements IDataService {
           // - newly added documents -- these are new changes for the map
           // - updates to the base change *only*, to act on a resync
           if (d.doc.exists && (d.doc.ref.isEqual(baseChangeRef) || d.oldIndex === -1)) {
-            let chs = Convert.changesConverter.convert(d.doc.data());
+            let chs = converter.convert(d.doc.data());
             onNext(chs);
           }
         });

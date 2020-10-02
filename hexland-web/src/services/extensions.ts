@@ -3,6 +3,7 @@ import { IChanges } from '../data/change';
 import { IMap, summariseMap } from '../data/map';
 import { UserLevel } from '../data/policy';
 import { IAdventureSummary, IProfile } from '../data/profile';
+import * as Convert from './converter';
 import { updateProfileAdventures, updateAdventureMaps, updateProfileMaps } from './helpers';
 import { IDataService, IDataView, IDataReference, IDataAndReference, IUser, IAnalytics, IFunctionsService } from './interfaces';
 
@@ -508,9 +509,10 @@ export async function getAllMapChanges(
     return;
   }
 
-  const baseChangeRef = dataService.getMapBaseChangeRef(adventureId, mapId);
+  const converter = Convert.createChangesConverter();
+  const baseChangeRef = dataService.getMapBaseChangeRef(adventureId, mapId, converter);
   const baseChange = await dataService.get(baseChangeRef);
-  const incrementalChanges = await dataService.getMapIncrementalChangesRefs(adventureId, mapId, limit);
+  const incrementalChanges = await dataService.getMapIncrementalChangesRefs(adventureId, mapId, limit, converter);
 
   let changes = [];
   if (baseChange !== undefined) {

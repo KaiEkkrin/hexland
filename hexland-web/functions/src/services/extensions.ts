@@ -9,6 +9,7 @@ import { IMap, MapType, summariseMap } from '../data/map';
 import { getUserPolicy, IInviteExpiryPolicy } from '../data/policy';
 import { IAdventureSummary, IProfile } from '../data/profile';
 import { createTokenDictionary } from '../data/tokens';
+import * as Convert from './converter';
 import { updateProfileAdventures, updateProfileMaps, updateAdventureMaps } from './helpers';
 import { IDataService, IDataView, IDataReference, IDataAndReference, ILogger } from './interfaces';
 
@@ -191,7 +192,8 @@ export async function cloneMap(
   );
 
   // Now we can create the new map:
-  const baseChangeRef = dataService.getMapBaseChangeRef(adventureId, id);
+  const converter = Convert.createChangesConverter();
+  const baseChangeRef = dataService.getMapBaseChangeRef(adventureId, id, converter);
   await dataService.runTransaction(
     tr => createMapTransaction(tr, profileRef, adventureRef, newMapRef, {
       ...existingMap,
@@ -269,10 +271,14 @@ async function tryConsolidateMapChanges(
   m: IMap,
   resync: boolean
 ): Promise<IConsolidateMapChangesResult> {
-  // Fetch all the current changes for this map, along with their refs
-  const baseChangeRef = await dataService.getMapBaseChangeRef(adventureId, mapId);
+  // Fetch all the current changes for this map, along with their refs.
+  // It's important to use the same converter for the base and incremental changes so that any
+  // legacy maps with the same kinds of context-dependent things needing converting in both get
+  // rolled through properly.
+  const converter = Convert.createChangesConverter();
+  const baseChangeRef = await dataService.getMapBaseChangeRef(adventureId, mapId, converter);
   const baseChange = await dataService.get(baseChangeRef); // undefined in case of the first consolidate
-  const incrementalChanges = await dataService.getMapIncrementalChangesRefs(adventureId, mapId, 499);
+  const incrementalChanges = await dataService.getMapIncrementalChangesRefs(adventureId, mapId, 499, converter);
   if (incrementalChanges === undefined || incrementalChanges.length === 0) {
     // No changes to consolidate
     return { baseChange: baseChange, isNew: false };

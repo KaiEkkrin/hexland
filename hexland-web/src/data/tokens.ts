@@ -172,12 +172,16 @@ class TokensSquare<F extends IIdFeature<IGridCoord>> extends Tokens<IGridCoord, 
     // Always, the centre position:
     yield token.position;
 
-    // At size=3, the six tokens around it too:
+    // At size=3, the eight tokens around it too:
     if (token.size === 3) {
       yield { x: token.position.x - 1, y: token.position.y };
+      yield { x: token.position.x - 1, y: token.position.y + 1 };
       yield { x: token.position.x, y: token.position.y + 1 };
+      yield { x: token.position.x + 1, y: token.position.y + 1 };
       yield { x: token.position.x + 1, y: token.position.y };
+      yield { x: token.position.x + 1, y: token.position.y - 1 };
       yield { x: token.position.x, y: token.position.y - 1 };
+      yield { x: token.position.x - 1, y: token.position.y - 1 };
     }
   }
 }

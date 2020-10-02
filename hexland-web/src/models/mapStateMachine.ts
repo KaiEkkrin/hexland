@@ -246,6 +246,16 @@ export class MapStateMachine {
 
   private get seeEverything() { return this._uid === this._map.record.owner || this._map.record.ffa === true; }
 
+  private addTokenWithProperties(target: IGridCoord, properties: ITokenProperties): IChange[] {
+    // Work out a place around this target where the token will fit
+    const newPosition = this.canResizeToken({ ...properties, position: target }, properties.size);
+    if (newPosition === undefined) {
+      throw Error("No space available to add this token");
+    }
+
+    return [createTokenAdd({ ...properties, position: newPosition })];
+  }
+
   private buildLoS(state: IMapState) {
     this._drawing.setLoSPositions(this.getLoSPositions(), this.seeEverything);
 
@@ -297,6 +307,33 @@ export class MapStateMachine {
     return trackChanges(this._map.record, changeTracker, changes, this._uid);
   }
 
+  private canResizeToken(token: IToken<IGridCoord>, newSize: 1 | 3): IGridCoord | undefined {
+    // Checks whether we can resize this token to the given new size, returning the new position
+    // that it would adopts, or, if the token doesn't exist already, whether we can place a new
+    // token of the given size.
+    // We'll try all possible positions that would retain some of the old token's position.
+    const existingToken = this._tokens.get(token.position);
+    if (newSize === existingToken?.size) {
+      return token.position;
+    }
+
+    // I only need to clone the tokens for this experimental change tracker because the other
+    // things definitely won't change
+    const changeTracker = new MapChangeTracker(
+      this._drawing.areas, this._tokens.clone(), this._drawing.walls, this._notes, this._userPolicy, this._mapColouring
+    );
+
+    const removeToken = existingToken === undefined ? [] : [createTokenRemove(token.position, token.id)];
+    for (const face of this._tokens.enumerateFacePositions(token)) {
+      const addToken = createTokenAdd({ ...token, size: newSize, position: face });
+      if (trackChanges(this._map.record, changeTracker, [...removeToken, addToken], this._uid) === true) {
+        return face;
+      }
+    }
+
+    return undefined;
+  }
+
   private canSelectToken(t: ITokenProperties) {
     return this.seeEverything || t.players.find(p => this._uid === p) !== undefined;
   }
@@ -304,16 +341,13 @@ export class MapStateMachine {
   private cleanUpSelection() {
     // This function makes sure that the selection doesn't contain anything we
     // couldn't have selected -- call this after changes are applied.
-    const toDelete: IGridCoord[] = [];
-    for (const s of this._selection) {
-      const token = this._tokens.get(s.position);
-      if (token === undefined || !this.canSelectToken(token)) {
-        toDelete.push(s.position);
+    const selectedTokenIds = [...fluent(this._selection).map(s => s.id)];
+    this._selection.clear();
+    for (const id of selectedTokenIds) {
+      const token = this._tokens.ofId(id);
+      if (token !== undefined) {
+        this._selection.add(token);
       }
-    }
-
-    for (const c of toDelete) {
-      this._selection.remove(c);
     }
   }
 
@@ -474,10 +508,27 @@ export class MapStateMachine {
       // TODO Possible optimisation here rejecting tokens that are definitely too far away
       for (const facePosition of this._tokens.enumerateFacePositions(token)) {
         if (inDragRectangle(facePosition)) {
-          this._selection.add({ ...token, position: facePosition });
+          this._selection.add({ ...token, position: token.position });
         }
       }
     }
+  }
+
+  private setTokenProperties(token: IToken<IGridCoord>, properties: ITokenProperties): IChange[] {
+    if (properties.id !== token.id) {
+      throw RangeError("Cannot change a token's id after creation");
+    }
+
+    const newPosition = properties.size === token.size ? token.position :
+      this.canResizeToken(token, properties.size);
+    if (newPosition === undefined) {
+      throw Error("No space available for this change");
+    }
+
+    return [
+      createTokenRemove(token.position, token.id),
+      createTokenAdd({ ...properties, position: newPosition })
+    ];
   }
 
   private tokenMoveDragEnd(position: IGridCoord, chs: IChange[]) {
@@ -987,38 +1038,29 @@ export class MapStateMachine {
 
   setToken(cp: THREE.Vector3, properties: ITokenProperties | undefined) {
     const position = this._drawing.getGridCoordAt(cp);
-    return this.setTokenPosition(position, properties);
+    if (position !== undefined) {
+      const token = this._tokens.at(position);
+      if (token !== undefined && properties !== undefined) {
+        return this.setTokenProperties(token, properties);
+      } else if (token !== undefined) {
+        return [createTokenRemove(token.position, token.id)];
+      } else if (properties !== undefined) {
+        return this.addTokenWithProperties(position, properties);
+      }
+    }
+
+    return [];
   }
 
   setTokenById(tokenId: string, properties: ITokenProperties | undefined) {
-    const chs: IChange[] = [];
     const token = this._tokens.ofId(tokenId);
-    if (token !== undefined) {
-      // Replace the existing token
-      chs.push(createTokenRemove(token.position, token.id));
-      if (properties !== undefined) {
-        chs.push(createTokenAdd({ ...properties, position: token.position }));
-      }
+    if (token !== undefined && properties !== undefined) {
+      return this.setTokenProperties(token, properties);
+    } else if (token !== undefined) {
+      return [createTokenRemove(token.position, token.id)];
+    } else {
+      return [];
     }
-
-    return chs;
-  }
-
-  setTokenPosition(position: IGridCoord | undefined, properties: ITokenProperties | undefined) {
-    const chs: IChange[] = [];
-    if (position !== undefined) {
-      const token = this._tokens.at(position);
-      if (token !== undefined) {
-        // Replace the existing token
-        chs.push(createTokenRemove(token.position, token.id));
-      }
-
-      if (properties !== undefined && properties.colour >= 0) {
-        chs.push(createTokenAdd({ ...properties, position: token?.position ?? position }));
-      }
-    }
-
-    return chs;
   }
 
   wallDragEnd(cp: THREE.Vector3, colour: number): IChange[] {

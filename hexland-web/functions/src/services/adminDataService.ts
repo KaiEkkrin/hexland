@@ -130,20 +130,20 @@ export class AdminDataService implements IDataService {
     return new DataReference<IMap>(d, Convert.mapConverter);
   }
 
-  getMapBaseChangeRef(adventureId: string, id: string): IDataReference<IChanges> {
+  getMapBaseChangeRef(adventureId: string, id: string, converter: Convert.IConverter<IChanges>): IDataReference<IChanges> {
     const d = this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(id).collection(changes).doc(baseChange);
-    return new DataReference<IChanges>(d, Convert.changesConverter);
+    return new DataReference<IChanges>(d, converter);
   }
 
-  async getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number): Promise<IDataAndReference<IChanges>[] | undefined> {
+  async getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number, converter: Convert.IConverter<IChanges>): Promise<IDataAndReference<IChanges>[] | undefined> {
     const s = await this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(id).collection(changes)
       .where("incremental", "==", true)
       .orderBy("timestamp")
       .limit(limit)
       .get();
-    return s.empty ? undefined : s.docs.map(d => new DataAndReference(d.ref, d.data(), Convert.changesConverter));
+    return s.empty ? undefined : s.docs.map(d => new DataAndReference(d.ref, d.data(), converter));
   }
 
   async getMyAdventures(uid: string): Promise<IDataAndReference<IAdventure>[]> {
@@ -219,6 +219,7 @@ export class AdminDataService implements IDataService {
     onNext: (chs: IChanges) => void,
     onError?: ((error: Error) => void) | undefined
   ) {
+    const converter = Convert.createChangesConverter();
     return this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(mapId).collection(changes)
       .orderBy("incremental") // base change must always be first even if it has a later timestamp
@@ -228,7 +229,7 @@ export class AdminDataService implements IDataService {
           // We're only interested in newly added documents -- these are new
           // changes to the map
           if (d.doc.exists && d.oldIndex === -1) {
-            const chs = Convert.changesConverter.convert(d.doc.data());
+            const chs = converter.convert(d.doc.data());
             onNext(chs);
           }
         });

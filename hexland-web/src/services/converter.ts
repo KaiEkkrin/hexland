@@ -1,12 +1,14 @@
 import { IAdventure, IPlayer } from '../data/adventure';
 import { IAnnotation, defaultAnnotation } from '../data/annotation';
 import { IChange, IChanges, ChangeType, ChangeCategory, ITokenAdd, ITokenMove, ITokenRemove, IAreaAdd, IAreaRemove, INoteAdd, INoteRemove, IWallAdd, IWallRemove } from '../data/change';
-import { IGridCoord, defaultGridCoord, IGridEdge, defaultGridEdge } from '../data/coord';
-import { IToken, defaultFaceToken, IFeature, defaultArea, defaultWall } from '../data/feature';
+import { IGridCoord, defaultGridCoord, IGridEdge, defaultGridEdge, coordString } from '../data/coord';
+import { IToken, defaultFaceToken, IFeature, defaultArea, defaultWall, IFeatureDictionary, IIdFeature, FeatureDictionary } from '../data/feature';
 import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
 import { IProfile } from '../data/profile';
 import { UserLevel } from '../data/policy';
+
+import { v4 as uuidv4 } from 'uuid';
 
 // Converts raw data from Firestore to data matching the given interface,
 // filling in the missing properties with default values.
@@ -49,14 +51,121 @@ class RecursingConverter<T> extends ShallowConverter<T> {
   }
 }
 
+// We provide some special conversion for raw data that lacks token ids, which attempts
+// to assign unique ids to them based on position tracking:
+class AddTokenFeatureConverter extends RecursingConverter<IToken<IGridCoord>> {
+  private readonly _newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>;
+
+  constructor(newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>) {
+    super(defaultFaceToken, {
+      "position": (conv, raw) => {
+        conv.position = gridCoordConverter.convert(raw);
+        return conv;
+      }
+    });
+    this._newTokenDict = newTokenDict;
+  }
+
+  convert(rawData: any): IToken<IGridCoord> {
+    const feature = super.convert(rawData);
+    if (feature.id === defaultFaceToken.id) {
+      // This is an add; we generate a new id and add it to the dictionary.
+      feature.id = uuidv4();
+      this._newTokenDict.add(feature);
+    }
+
+    return feature;
+  }
+}
+
+class TokenMoveConverter extends RecursingConverter<ITokenMove> {
+  private readonly _newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>;
+
+  constructor(newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>) {
+    super({
+      ty: ChangeType.Move,
+      cat: ChangeCategory.Token,
+      newPosition: defaultGridCoord,
+      oldPosition: defaultGridCoord,
+      tokenId: "",
+    }, {
+      "newPosition": (conv, raw) => {
+        conv.newPosition = gridCoordConverter.convert(raw);
+        return conv;
+      },
+      "oldPosition": (conv, raw) => {
+        conv.oldPosition = gridCoordConverter.convert(raw);
+        return conv;
+      }
+    });
+    this._newTokenDict = newTokenDict;
+  }
+
+  convert(rawData: any): ITokenMove {
+    const move = super.convert(rawData);
+    if (move.tokenId === "") {
+      // We should be able to find a token id for the old position in the new
+      // token dictionary.  We'll move it to the new position:
+      const newToken = this._newTokenDict.remove(move.oldPosition);
+      if (newToken !== undefined) {
+        move.tokenId = newToken.id;
+        this._newTokenDict.add({ ...newToken, position: move.newPosition });
+      }
+    }
+
+    return move;
+  }
+}
+
+class TokenRemoveConverter extends RecursingConverter<ITokenRemove> {
+  private readonly _newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>;
+
+  constructor(newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>) {
+    super({
+      ty: ChangeType.Remove,
+      cat: ChangeCategory.Token,
+      position: defaultGridCoord,
+      tokenId: ""
+    }, {
+      "position": (conv, raw) => {
+        conv.position = gridCoordConverter.convert(raw);
+        return conv;
+      }
+    });
+    this._newTokenDict = newTokenDict;
+  }
+
+  convert(rawData: any): ITokenRemove {
+    const remove = super.convert(rawData);
+    if (remove.tokenId === "") {
+      // We should be able to find a token id for this position in the new
+      // token dictionary.  We remove it, so that any other token added or moved
+      // there later gets its own new id
+      const newToken = this._newTokenDict.remove(remove.position);
+      if (newToken !== undefined) {
+        remove.tokenId = newToken.id;
+      }
+    }
+
+    return remove;
+  }
+}
+
 // The change converter does different things depending on the flags.
 // I've been super pedantic here, which I don't technically need to be right now
 // (except for the token id), but it will prove helpful later on if I alter
 // more things (and should also be good for security, because it will make a
 // well-behaving client less inclined to believe a malicious one.)
 class ChangeConverter extends ShallowConverter<IChange> {
-  constructor() {
+  private readonly _tokenAddConverter: IConverter<ITokenAdd>;
+  private readonly _tokenMoveConverter: IConverter<ITokenMove>;
+  private readonly _tokenRemoveConverter: IConverter<ITokenRemove>;
+
+  constructor(newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>) {
     super({ ty: ChangeType.Add, cat: ChangeCategory.Undefined });
+    this._tokenAddConverter = createTokenAddConverter(newTokenDict);
+    this._tokenMoveConverter = new TokenMoveConverter(newTokenDict);
+    this._tokenRemoveConverter = new TokenRemoveConverter(newTokenDict);
   }
 
   private convertArea(converted: IChange, rawData: any): IChange {
@@ -77,9 +186,9 @@ class ChangeConverter extends ShallowConverter<IChange> {
 
   private convertToken(converted: IChange, rawData: any): IChange {
     switch (converted.ty) {
-      case ChangeType.Add: return tokenAddConverter.convert(rawData);
-      case ChangeType.Move: return tokenMoveConverter.convert(rawData);
-      case ChangeType.Remove: return tokenRemoveConverter.convert(rawData);
+      case ChangeType.Add: return this._tokenAddConverter.convert(rawData);
+      case ChangeType.Move: return this._tokenMoveConverter.convert(rawData);
+      case ChangeType.Remove: return this._tokenRemoveConverter.convert(rawData);
       default: return converted;
     }
   }
@@ -103,8 +212,6 @@ class ChangeConverter extends ShallowConverter<IChange> {
     }
   }
 }
-
-const changeConverter = new ChangeConverter();
 
 const areaAddConverter = new RecursingConverter<IAreaAdd>({
   ty: ChangeType.Add,
@@ -150,45 +257,19 @@ const noteRemoveConverter = new RecursingConverter<INoteRemove>({
   }
 });
 
-const tokenAddConverter = new RecursingConverter<ITokenAdd>({
-  ty: ChangeType.Add,
-  cat: ChangeCategory.Token,
-  feature: defaultFaceToken
-}, {
-  "feature": (conv, raw) => {
-    conv.feature = tokenConverter.convert(raw);
-    return conv;
-  }
-});
-
-const tokenMoveConverter = new RecursingConverter<ITokenMove>({
-  ty: ChangeType.Move,
-  cat: ChangeCategory.Token,
-  newPosition: defaultGridCoord,
-  oldPosition: defaultGridCoord,
-  tokenId: undefined,
-}, {
-  "newPosition": (conv, raw) => {
-    conv.newPosition = gridCoordConverter.convert(raw);
-    return conv;
-  },
-  "oldPosition": (conv, raw) => {
-    conv.oldPosition = gridCoordConverter.convert(raw);
-    return conv;
-  }
-});
-
-const tokenRemoveConverter = new RecursingConverter<ITokenRemove>({
-  ty: ChangeType.Remove,
-  cat: ChangeCategory.Token,
-  position: defaultGridCoord,
-  tokenId: undefined
-}, {
-  "position": (conv, raw) => {
-    conv.position = gridCoordConverter.convert(raw);
-    return conv;
-  }
-});
+function createTokenAddConverter(newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>) {
+  const featureConverter = new AddTokenFeatureConverter(newTokenDict);
+  return new RecursingConverter<ITokenAdd>({
+    ty: ChangeType.Add,
+    cat: ChangeCategory.Token,
+    feature: defaultFaceToken
+  }, {
+    "feature": (conv, raw) => {
+      conv.feature = featureConverter.convert(raw);
+      return conv;
+    }
+  });
+}
 
 const wallAddConverter = new RecursingConverter<IWallAdd>({
   ty: ChangeType.Add,
@@ -220,13 +301,6 @@ const annotationConverter = new RecursingConverter<IAnnotation>(defaultAnnotatio
 });
 
 const areaConverter = new RecursingConverter<IFeature<IGridCoord>>(defaultArea, {
-  "position": (conv, raw) => {
-    conv.position = gridCoordConverter.convert(raw);
-    return conv;
-  },
-});
-
-const tokenConverter = new RecursingConverter<IToken<IGridCoord>>(defaultFaceToken, {
   "position": (conv, raw) => {
     conv.position = gridCoordConverter.convert(raw);
     return conv;
@@ -287,15 +361,19 @@ export const profileConverter = new ShallowConverter<IProfile>({
   latestMaps: undefined
 });
 
-export const changesConverter = new RecursingConverter<IChanges>({
-  chs: [],
-  timestamp: 0,
-  incremental: true,
-  resync: false,
-  user: ""
-}, {
-  "chs": (conv, raw) => {
-    conv.chs = Array.isArray(raw) ? raw.map(r => changeConverter.convert(r)) : [];
-    return conv;
-  }
-});
+export function createChangesConverter() {
+  const newTokenDict = new FeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>(coordString);
+  const changeConverter = new ChangeConverter(newTokenDict);
+  return new RecursingConverter<IChanges>({
+    chs: [],
+    timestamp: 0,
+    incremental: true,
+    resync: false,
+    user: ""
+  }, {
+    "chs": (conv, raw) => {
+      conv.chs = Array.isArray(raw) ? raw.map(r => changeConverter.convert(r)) : [];
+      return conv;
+    }
+  });
+}

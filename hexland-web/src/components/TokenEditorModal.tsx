@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import ColourSelection from './ColourSelection';
 import TokenPlayerSelection from './TokenPlayerSelection';
@@ -25,6 +25,7 @@ interface ITokenEditorModalProps {
 function TokenEditorModal(props: ITokenEditorModalProps) {
   const [text, setText] = useState("");
   const [colour, setColour] = useState(0);
+  const [size, setSize] = useState<1 | 3>(1);
   const [playerIds, setPlayerIds] = useState([] as string[]);
   const [note, setNote] = useState("");
   const [noteVisibleToPlayers, setNoteVisibleToPlayers] = useState(true);
@@ -33,6 +34,7 @@ function TokenEditorModal(props: ITokenEditorModalProps) {
     if (props.show) {
       setText(props.token?.text ?? "");
       setColour(props.token?.colour ?? props.selectedColour);
+      setSize(props.token?.size ?? 1);
       setPlayerIds(props.token?.players ?? []);
       setNote(props.token?.note ?? "");
       setNoteVisibleToPlayers(props.token?.noteVisibleToPlayers ?? false);
@@ -43,6 +45,12 @@ function TokenEditorModal(props: ITokenEditorModalProps) {
   useEffect(() => {
     setSaveDisabled(text.length === 0);
   }, [text]);
+
+  const sizeString = useMemo(() => String(size), [size]);
+  const handleSizeChange = useCallback((e: React.FormEvent<HTMLSelectElement>) => {
+    const option = e.currentTarget.selectedOptions[0];
+    setSize(option.value === '3' ? 3 : 1);
+  }, [setSize]);
 
   const handleVtoPChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setNoteVisibleToPlayers(e.currentTarget.checked);
@@ -55,11 +63,11 @@ function TokenEditorModal(props: ITokenEditorModalProps) {
       id: props.token === undefined ? uuidv4() : props.token.id,
       text: text,
       players: playerIds,
-      size: 1, // TODO #116 Add in a token size slider thingy
+      size: size,
       note: note,
       noteVisibleToPlayers: noteVisibleToPlayers
     });
-  }, [colour, note, noteVisibleToPlayers, playerIds, props, text]);
+  }, [colour, note, noteVisibleToPlayers, playerIds, props, size, text]);
 
   return (
     <Modal show={props.show} onHide={props.handleClose}>
@@ -88,6 +96,13 @@ function TokenEditorModal(props: ITokenEditorModalProps) {
                 selectedColour={colour}
                 setSelectedColour={setColour} />
             </Form.Row>
+          </Form.Group>
+          <Form.Group>
+            <Form.Label htmlFor="tokenSizeSelect">Size</Form.Label>
+            <Form.Control id="tokenSizeSelect" as="select" value={sizeString} onChange={e => handleSizeChange(e as any)}>
+              <option key="size1" value="1">1</option>
+              <option key="size3" value="3">3</option>
+            </Form.Control>
           </Form.Group>
           <Form.Group>
             <Form.Label htmlFor="tokenPlayerSelect">Assigned to players</Form.Label>
