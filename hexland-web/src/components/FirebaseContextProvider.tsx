@@ -14,12 +14,27 @@ const region = 'europe-west2';
 export const FirebaseContext = React.createContext<IFirebaseContext>({});
 
 async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => void) {
-  let response = await fetch('/__/firebase/init.json');
-  let app = firebase.initializeApp(await response.json());
+  // Get app config and use it to create the Firebase app
+  const response = await fetch('/__/firebase/init.json');
+  const app = firebase.initializeApp(await response.json());
+  const db = app.firestore();
+  const functions = app.functions(region);
+
+  // Configure to use local emulators when running locally with webpack hot-plugging
+  if ('webpackHotUpdate' in window) {
+    const hostname = document.location.hostname;
+    db.settings({
+      host: `${hostname}:8080`,
+      ssl: false
+    });
+    functions.useFunctionsEmulator(`http://${hostname}:5001`);
+    console.log("Running with local emulators");
+  }
+
   setFirebaseContext({
     auth: new Auth.FirebaseAuth(app.auth()),
-    db: app.firestore(),
-    functions: app.functions(region),
+    db: db,
+    functions: functions,
     googleAuthProvider: Auth.googleAuthProviderWrapper,
     timestampProvider: firebase.firestore.FieldValue.serverTimestamp,
     createAnalytics: () => app.analytics()

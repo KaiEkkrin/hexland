@@ -22,5 +22,25 @@
       "npm --prefix \"$RESOURCE_DIR\" run lint",
       "npm --prefix \"$RESOURCE_DIR\" run build"
     ]
+  },
+  "emulators": {
+    "firestore": {
+      "host": "0.0.0.0",
+      "port": "8080"
+    },
+    "functions": {
+      "host": "0.0.0.0",
+      "port": "5001"
+    },
+    "hosting": {
+      "enabled": false,
+      "host": "0.0.0.0",
+      "port": "3400"
+    },
+    "ui": {
+      "enabled": true,
+      "host": "0.0.0.0",
+      "port": "4000"
+    }
   }
 }

@@ -62,3 +62,53 @@ yarn start
 ```
 
 to load the local debug Web application.
+
+## Running locally with Docker
+
+Docker can be used to run the web application locally with emulators for Firebase Functions and
+Firestore. With this development flow, the Firebase project associated with the application only
+needs to be set to the "Spark" level rather than the "Blaze" level.
+
+To start, run the following:
+
+```bash
+./run_docker.sh
+```
+
+This will build a Docker image containing build tools and the emulators, and then start a
+container that runs the emulators and builds the web application (rebuilding when source file
+changes are detected). The web application can then be accessed at:
+
+http://localhost:5000
+
+Note that the web application may take a minute or more to build, although subsequent source file
+changes should result in a much faster rebuild.
+
+The first time this script is run, you will have to follow the generated browser link in order to
+authorise the Firebase CLI to access Firebase resources via your Google account. After
+successful authorisation, the script will create a default Firebase project with the name
+`hexland-test-<username>` and create an associated Firebase web app resource. You will then see
+the message:
+
+```shell
+Error: Failed to read credentials from file /usr/src/app/hexland-web/firebase-admin-credentials.json
+```
+
+This means that you must supply Firebase admin SDK service account credentials for the Firebase
+Function and Firestore emulators. You can provide these by accessing the
+[Firebase console](https://console.firebase.google.com/), navigating to "Project settings"
+(found by clicking the cog-wheel at the top-left of the Firebase console page) and selecting the
+"Service accounts" tab. Make sure the "Firebase Admin SDK" is selected and then click "Generate
+new private key". Save the generated JSON file to:
+
+```
+hexland-web/firebase-admin-credentials.json
+```
+
+Then re-run `run_docker.sh` (Ctrl-C any existing run first) to use the credentials.
+
+To run tests inside the container, run:
+
+```shell
+./run_docker.sh test
+```
