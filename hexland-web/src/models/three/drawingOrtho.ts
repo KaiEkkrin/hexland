@@ -1,9 +1,10 @@
 import { IGridCoord, IGridVertex } from '../../data/coord';
 import { IIdFeature, IToken } from '../../data/feature';
+import { ITokenDrawing } from '../../data/tokens';
 import { MapColouring } from '../colouring';
 import { FeatureColour } from '../featureColour';
 import { IGridGeometry } from '../gridGeometry';
-import { IDrawing, ITokenDrawing } from '../interfaces';
+import { IDrawing } from '../interfaces';
 import { RedrawFlag } from '../redrawFlag';
 
 import { Areas, createPaletteColouredAreaObject, createAreas, createSelectionColouredAreaObject } from './areas';
@@ -12,11 +13,11 @@ import { GridFilter } from './gridFilter';
 import { LoS } from './los';
 import { MapColourVisualisation } from './mapColourVisualisation';
 import { OutlinedRectangle } from './overlayRectangle';
+import { createSelectionDrawing, TokenDrawing } from './tokenDrawingOrtho';
 import { Vertices, createVertices, createSelectionColouredVertexObject, createSingleVertexGeometry, createTokenFillVertexGeometry, createPaletteColouredVertexObject } from './vertices';
 import { Walls, createPaletteColouredWallObject, createSelectionColouredWallObject, createWallGeometry, createTokenFillEdgeGeometry } from './walls';
 
 import * as THREE from 'three';
-import { SelectionDrawing, TokenDrawing } from './tokenDrawingOrtho';
 
 // Our Z values are in the range -1..1 so that they're the same in the shaders
 const areaZ = -0.5;
@@ -202,10 +203,10 @@ export class DrawingOrtho implements IDrawing {
     const createSelectedAreaObject = createSelectionColouredAreaObject(gridGeometry, selectionAlpha, selectionZ);
     const createSelectedWallObject = createSelectionColouredWallObject(tokenFillEdgeGeometry, gridGeometry);
     const createSelectedVertexObject = createSelectionColouredVertexObject(tokenFillVertexGeometry, gridGeometry);
-    this._selection = new SelectionDrawing(
+    this._selection = createSelectionDrawing(
       gridGeometry, this._needsRedraw, createSelectedAreaObject, createSelectedWallObject, createSelectedVertexObject, this._filterScene
     );
-    this._selectionDrag = new SelectionDrawing(
+    this._selectionDrag = createSelectionDrawing(
       gridGeometry, this._needsRedraw, createSelectedAreaObject, createSelectedWallObject, createSelectedVertexObject, this._filterScene
     );
 
@@ -218,7 +219,7 @@ export class DrawingOrtho implements IDrawing {
     const createSelectedRedVertexObject = createPaletteColouredVertexObject(
       tokenFillVertexGeometry, gridGeometry, invalidSelectionColourParameters
     );
-    this._selectionDragRed = new SelectionDrawing(
+    this._selectionDragRed = createSelectionDrawing(
       gridGeometry, this._needsRedraw, createSelectedRedAreaObject, createSelectedRedWallObject, createSelectedRedVertexObject, this._filterScene
     );
 

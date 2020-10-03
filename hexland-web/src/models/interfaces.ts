@@ -1,6 +1,7 @@
 import { MapColouring } from "./colouring";
 import { IGridCoord, IGridEdge, IGridVertex } from "../data/coord";
 import { IFeature, IToken, IFeatureDictionary, IIdFeature } from "../data/feature";
+import { ITokenDrawing } from "../data/tokens";
 
 // Describes the interface to our drawing subsystem,
 // which could be substituted out, won't exist in auto tests, etc.
@@ -56,17 +57,6 @@ export interface IDrawing {
 
   // Sets whether or not to show the map colour visualisation.
   setShowMapColourVisualisation(show: boolean, mapColouring: MapColouring): void;
-
-  // Cleans up and releases all resources.
-  dispose(): void;
-}
-
-// Describes how to draw a collection of tokens, complete with fill-in edges and vertices
-// for larger ones.
-export interface ITokenDrawing<F extends IFeature<IGridCoord>> {
-  faces: IFeatureDictionary<IGridCoord, F>;
-  fillEdges: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
-  fillVertices: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>>;
 
   // Cleans up and releases all resources.
   dispose(): void;

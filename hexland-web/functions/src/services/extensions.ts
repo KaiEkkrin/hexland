@@ -3,12 +3,12 @@ import { IAnnotation } from '../data/annotation';
 import { IChange, IChanges } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
 import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
-import { FeatureDictionary, IToken, IFeature, ITokenProperties } from '../data/feature';
+import { FeatureDictionary, IFeature } from '../data/feature';
 import { IInvite } from '../data/invite';
 import { IMap, MapType, summariseMap } from '../data/map';
 import { getUserPolicy, IInviteExpiryPolicy } from '../data/policy';
 import { IAdventureSummary, IProfile } from '../data/profile';
-import { createTokenDictionary } from '../data/tokens';
+import { createTokenDictionary, SimpleTokenDrawing } from '../data/tokens';
 import * as Convert from './converter';
 import { updateProfileAdventures, updateProfileMaps, updateAdventureMaps } from './helpers';
 import { IDataService, IDataView, IDataReference, IDataAndReference, ILogger } from './interfaces';
@@ -295,10 +295,9 @@ async function tryConsolidateMapChanges(
   // technically cheat and non-owners would believe them), but it will save huge amounts of
   // CPU time (especially valuable if this is going to be called in a Firebase Function.)
   const ownerPolicy = getUserPolicy(ownerProfile.level);
-  const tokenFaces = new FeatureDictionary<IGridCoord, IToken>(coordString);
   const tracker = new SimpleChangeTracker(
     new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
-    createTokenDictionary(m.ty, tokenFaces, (token: ITokenProperties, position: IGridCoord) => ({ ...token, position: position })),
+    createTokenDictionary(m.ty, new SimpleTokenDrawing()),
     new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
     new FeatureDictionary<IGridCoord, IAnnotation>(coordString),
     ownerPolicy

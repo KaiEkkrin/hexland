@@ -1,6 +1,70 @@
-import { coordString, IGridCoord } from "./coord";
-import { FeatureDictionary, IFeatureDictionary, IIdFeature, IToken, ITokenDictionary, ITokenProperties } from "./feature";
+import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from "./coord";
+import { FeatureDictionary, IFeature, IFeatureDictionary, IIdFeature, IToken, ITokenDictionary, ITokenProperties } from "./feature";
 import { MapType } from "./map";
+
+// Describes how to draw a collection of tokens, complete with fill-in edges and vertices
+// for larger ones.
+export interface ITokenDrawing<F extends IFeature<IGridCoord>> {
+  faces: IFeatureDictionary<IGridCoord, F>;
+  fillEdges: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
+  fillVertices: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>>;
+
+  // Makes a clone of this object.
+  clone(): ITokenDrawing<F>;
+
+  // How to create suitable faces, fill edges and fill vertices.
+  createFace(token: ITokenProperties, position: IGridCoord): F;
+  createFillEdge(token: ITokenProperties, position: IGridEdge): IFeature<IGridEdge>;
+  createFillVertex(token: ITokenProperties, position: IGridVertex): IFeature<IGridVertex>;
+
+  // Cleans up (may be unnecessary.)
+  dispose(): void;
+}
+
+// A super basic one for non-displayed use
+export abstract class BaseTokenDrawing<F extends IFeature<IGridCoord>> implements ITokenDrawing<F> {
+  private readonly _faces: IFeatureDictionary<IGridCoord, F>;
+  private readonly _fillEdges: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
+  private readonly _fillVertices: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>>;
+
+  constructor(
+    faces?: IFeatureDictionary<IGridCoord, F> | undefined,
+    fillEdges?: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>> | undefined,
+    fillVertices?: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>> | undefined
+  ) {
+    this._faces = faces ?? new FeatureDictionary<IGridCoord, F>(coordString);
+    this._fillEdges = fillEdges ?? new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
+    this._fillVertices = fillVertices ?? new FeatureDictionary<IGridVertex, IFeature<IGridVertex>>(vertexString);
+  }
+
+  get faces() { return this._faces; }
+  get fillEdges() { return this._fillEdges; }
+  get fillVertices() { return this._fillVertices; }
+
+  abstract clone(): ITokenDrawing<F>;
+  abstract createFace(token: ITokenProperties, position: IGridCoord): F;
+
+  createFillEdge(token: ITokenProperties, position: IGridEdge): IFeature<IGridEdge> {
+    return { position: position, colour: token.colour };
+  }
+
+  createFillVertex(token: ITokenProperties, position: IGridVertex): IFeature<IGridVertex> {
+    return { position: position, colour: token.colour };
+  }
+
+  dispose() {
+  }
+}
+
+export class SimpleTokenDrawing extends BaseTokenDrawing<IToken> {
+  clone() {
+    return new SimpleTokenDrawing(this.faces.clone(), this.fillEdges.clone(), this.fillVertices.clone());
+  }
+
+  createFace(token: ITokenProperties, position: IGridCoord) {
+    return { ...token, position: position };
+  }
+}
 
 // Implements the tokens dictionary, using one or more token faces to
 // draw each token.
@@ -8,29 +72,25 @@ import { MapType } from "./map";
 // which won't be attached to anything else.  (Concrete subclasses must override
 // the `clone` method.)
 abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements ITokenDictionary {
-  private _faces: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>;
-  private readonly _createFace: (token: ITokenProperties, position: IGridCoord) => IIdFeature<IGridCoord>;
+  private readonly _drawing: ITokenDrawing<IIdFeature<IGridCoord>>;
   private _byId: { [id: string]: IToken };
 
   constructor(
-    faces: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>,
-    createFace: (token: ITokenProperties, position: IGridCoord) => IIdFeature<IGridCoord>,
+    drawing: ITokenDrawing<IIdFeature<IGridCoord>>,
     values?: { [key: string]: IToken } | undefined,
     byId?: { [id: string]: IToken } | undefined
   ) {
     super(coordString, values);
-    this._faces = faces;
-    this._createFace = createFace;
+    this._drawing = drawing;
     this._byId = byId ?? {};
   }
 
-  protected get faces() { return this._faces; }
-  protected get createFace() { return this._createFace; }
+  protected get drawing() { return this._drawing; }
   protected get byId() { return this._byId; }
 
-  private revertAdd(token: IToken, faces: IGridCoord[]) {
+  private revertAdd(token: IToken, faces: IGridCoord[], edges: IGridEdge[], vertices: IGridVertex[]) {
     for (const face of faces) {
-      this._faces.remove(face);
+      this._drawing.faces.remove(face);
     }
 
     super.remove(token.position);
@@ -38,27 +98,29 @@ abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements I
 
   add(token: IToken) {
     if (super.add(token) === true) {
-      // Record the token faces we added -- if we get a failure we want to be
+      // Record the things we added -- if we get a failure we want to be
       // able to roll this back
-      const added: IGridCoord[] = [];
+      const addedFaces: IGridCoord[] = [];
+      const addedEdges: IGridEdge[] = [];
+      const addedVertices: IGridVertex[] = [];
 
       // Add the token's faces
       for (const face of this.enumerateFacePositions(token)) {
-        const faceToken = this._createFace(token, face);
-        if (this._faces.add(faceToken) === false) {
+        const faceToken = this._drawing.createFace(token, face);
+        if (this._drawing.faces.add(faceToken) === false) {
           // This token doesn't fit here.  Roll back any changes we've already
           // made:
-          this.revertAdd(token, added);
+          this.revertAdd(token, addedFaces, addedEdges, addedVertices);
           return false;
         } else {
           // This token fits here -- note that we added this face and continue
-          added.push(face);
+          addedFaces.push(face);
         }
       }
 
       // If the token's ID is already in use that's also a rollback
       if (token.id in this._byId) {
-        this.revertAdd(token, added);
+        this.revertAdd(token, addedFaces, addedEdges, addedVertices);
         return false;
       }
 
@@ -70,7 +132,7 @@ abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements I
   }
 
   at(face: IGridCoord) {
-    const faceToken = this._faces.get(face);
+    const faceToken = this._drawing.faces.get(face);
     return faceToken !== undefined ? this._byId[faceToken.id] : undefined;
   }
 
@@ -81,7 +143,7 @@ abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements I
     // Don't worry, I doubt this method will ever be performance-critical...
     for (const token of this.iterate()) {
       for (const face of this.enumerateFacePositions(token)) {
-        this._faces.remove(face);
+        this._drawing.faces.remove(face);
       }
     }
 
@@ -91,6 +153,8 @@ abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements I
   }
 
   abstract enumerateFacePositions(token: IToken): Iterable<IGridCoord>;
+  abstract enumerateFillEdgePositions(token: IToken): Iterable<IGridEdge>;
+  abstract enumerateFillVertexPositions(token: IToken): Iterable<IGridVertex>;
 
   ofId(id: string) {
     return this._byId[id];
@@ -100,7 +164,7 @@ abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements I
     const removed = super.remove(k);
     if (removed !== undefined) {
       for (const face of this.enumerateFacePositions(removed)) {
-        this._faces.remove(face);
+        this._drawing.faces.remove(face);
       }
 
       delete this._byId[removed.id];
@@ -116,8 +180,7 @@ abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements I
 class TokensHex extends Tokens {
   clone() {
     return new TokensHex(
-      this.faces.clone(),
-      this.createFace,
+      this.drawing.clone(),
       { ...this.values },
       { ...this.byId }
     );
@@ -178,13 +241,20 @@ class TokensHex extends Tokens {
       yield { x: token.position.x - 2, y: token.position.y + 1 };
     }
   }
+
+  *enumerateFillEdgePositions(token: IToken): Iterable<IGridEdge> {
+    // TODO #119
+  }
+
+  *enumerateFillVertexPositions(token: IToken): Iterable<IGridVertex> {
+    // TODO #119
+  }
 }
 
 class TokensSquare extends Tokens {
   clone() {
     return new TokensSquare(
-      this.faces.clone(),
-      this.createFace,
+      this.drawing.clone(),
       { ...this.values },
       { ...this.byId }
     );
@@ -224,16 +294,23 @@ class TokensSquare extends Tokens {
     yield { x: token.position.x - 2, y: token.position.y };
     yield { x: token.position.x - 2, y: token.position.y + 1 };
   }
+
+  *enumerateFillEdgePositions(token: IToken): Iterable<IGridEdge> {
+    // TODO #119
+  }
+
+  *enumerateFillVertexPositions(token: IToken): Iterable<IGridVertex> {
+    // TODO #119
+  }
 }
 
 export function createTokenDictionary(
   mapType: MapType,
-  faces: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>,
-  createFace: (token: ITokenProperties, position: IGridCoord) => IIdFeature<IGridCoord>
+  drawing: ITokenDrawing<IIdFeature<IGridCoord>>
 ) {
   switch (mapType) {
-    case MapType.Hex: return new TokensHex(faces, createFace);
-    case MapType.Square: return new TokensSquare(faces, createFace);
+    case MapType.Hex: return new TokensHex(drawing);
+    case MapType.Square: return new TokensSquare(drawing);
     default: throw RangeError("Map type not recognised");
   }
 }

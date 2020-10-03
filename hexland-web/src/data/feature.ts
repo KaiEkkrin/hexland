@@ -1,4 +1,4 @@
-import { IGridCoord, defaultGridCoord, IGridEdge, defaultGridEdge } from './coord';
+import { IGridCoord, defaultGridCoord, IGridEdge, IGridVertex, defaultGridEdge } from './coord';
 import { v4 as uuidv4 } from 'uuid';
 
 // Describes an instanced feature:
@@ -163,6 +163,14 @@ export interface ITokenDictionary extends IFeatureDictionary<IGridCoord, IToken>
 
   // Returns all the face positions of a given token.
   enumerateFacePositions(token: IToken): Iterable<IGridCoord>;
+
+  // Returns all the fill edge positions of a given token.
+  // (Probably won't need calling externally.)
+  enumerateFillEdgePositions(token: IToken): Iterable<IGridEdge>;
+
+  // Returns all the fill vertex positions of a given token.
+  // (Probably won't need calling externally.)
+  enumerateFillVertexPositions(token: IToken): Iterable<IGridVertex>;
 
   // Returns the token with the given id, or undefined for none.
   ofId(id: string): IToken | undefined;

@@ -191,25 +191,12 @@ export class MapStateMachine {
     this._notes = new FeatureDictionary<IGridCoord, IAnnotation>(coordString);
 
     // Here is our higher-level token tracking:
-    this._selection = createTokenDictionary(
-      map.record.ty, this._drawing.selection.faces,
-      (token: ITokenProperties, position: IGridCoord) => ({ position: position, colour: 0, id: token.id })
-    );
-
-    this._selectionDrag = createTokenDictionary(
-      map.record.ty, this._drawing.selectionDrag.faces,
-      (token: ITokenProperties, position: IGridCoord) => ({ position: position, colour: 0, id: token.id })
-    );
-
-    this._selectionDragRed = createTokenDictionary(
-      map.record.ty, this._drawing.selectionDragRed.faces,
-      (token: ITokenProperties, position: IGridCoord) => ({ position: position, colour: 0, id: token.id })
-    );
-
+    this._selection = createTokenDictionary(map.record.ty, this._drawing.selection);
+    this._selectionDrag = createTokenDictionary(map.record.ty, this._drawing.selectionDrag);
+    this._selectionDragRed = createTokenDictionary(map.record.ty, this._drawing.selectionDragRed);
     this._tokens = createTokenDictionary(
-      map.record.ty, this._drawing.tokens.faces,
+      map.record.ty, this._drawing.tokens,
       // TODO #119 Provide a way to separately mark which face gets the text written on...?
-      (token: ITokenProperties, position: IGridCoord) => ({ ...token, position: position })
     );
 
     this._changeTracker = new MapChangeTracker(
