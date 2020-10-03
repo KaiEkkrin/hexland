@@ -1,6 +1,6 @@
 import { FeatureColour } from "../../featureColour";
 import { IGridGeometry } from "../../gridGeometry";
-import { IDrawing, IGridBounds } from "../../interfaces";
+import { IDrawing, IGridBounds, ITokenDrawing } from "../../interfaces";
 import { FeatureDictionary, IFeature, IIdFeature, IToken } from "../../../data/feature";
 import { IGridCoord, coordString, IGridEdge, edgeString, IGridVertex, vertexString } from "../../../data/coord";
 import { OutlinedRectangle } from "./overlayRectangle";
@@ -16,6 +16,15 @@ export const __mockDrawings: any[] = [];
 // A test harness could action this subject to emulate bounds changes
 export const __mockBoundsChanged = new Subject<IGridBounds>();
 
+function createTokenDrawing<F extends IFeature<IGridCoord>>(): ITokenDrawing<F> {
+  return {
+    faces: new FeatureDictionary<IGridCoord, F>(coordString),
+    fillEdges: new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
+    fillVertices: new FeatureDictionary<IGridVertex, IFeature<IGridVertex>>(vertexString),
+    dispose: jest.fn()
+  };
+}
+
 export function createDrawing(
   gridGeometry: IGridGeometry,
   colours: FeatureColour[],
@@ -29,16 +38,16 @@ export function createDrawing(
     seeEverything: seeEverything,
 
     areas: new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
-    tokenFaces: new FeatureDictionary<IGridCoord, IToken>(coordString),
+    tokens: createTokenDrawing<IToken>(),
     walls: new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
 
     highlightedAreas: new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
     highlightedVertices: new FeatureDictionary<IGridVertex, IFeature<IGridVertex>>(vertexString),
     highlightedWalls: new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
 
-    selectionFaces: new FeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>(coordString),
-    selectionDragFaces: new FeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>(coordString),
-    selectionDragRedFaces: new FeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>(coordString),
+    selection: createTokenDrawing<IIdFeature<IGridCoord>>(),
+    selectionDrag: createTokenDrawing<IIdFeature<IGridCoord>>(),
+    selectionDragRed: createTokenDrawing<IIdFeature<IGridCoord>>(),
 
     boundsChanged: __mockBoundsChanged,
     outlinedRectangle: OutlinedRectangle(),

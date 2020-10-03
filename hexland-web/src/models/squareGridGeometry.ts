@@ -147,6 +147,36 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     }
   }
 
+  *createTokenFillEdgeVertices(alpha: number, z: number): Iterable<THREE.Vector3> {
+    // Our edge 0 fills the space between
+    // - face (-1, 0) (top right and bottom right), and
+    // - face (0, 0) (top left and bottom left)
+    const invAlpha = 1 - alpha;
+    const centreLeft = this.createCentre(new THREE.Vector3(), -1, 0, z);
+    const centreRight = this.createCentre(new THREE.Vector3(), 0, 0, z);
+    yield this.createTopRight(new THREE.Vector3(), centreLeft).lerp(centreLeft, invAlpha);
+    yield this.createBottomRight(new THREE.Vector3(), centreLeft).lerp(centreLeft, invAlpha);
+    yield this.createTopLeft(new THREE.Vector3(), centreRight).lerp(centreRight, invAlpha);
+    yield this.createBottomRight(new THREE.Vector3(), centreRight).lerp(centreRight, invAlpha);
+  }
+
+  *createTokenFillVertexVertices(alpha: number, z: number): Iterable<THREE.Vector3> {
+    // Our vertex 0 fills the space between
+    // - face (-1, -1) (bottom right),
+    // - face (-1, 0) (top right),
+    // - face (0, -1) (bottom left), and
+    // - face (0, 0) (top left)
+    const invAlpha = 1 - alpha;
+    const centreTopLeft = this.createCentre(new THREE.Vector3(), -1, -1, z);
+    const centreBottomLeft = this.createCentre(new THREE.Vector3(), -1, 0, z);
+    const centreTopRight = this.createCentre(new THREE.Vector3(), 0, -1, z);
+    const centreBottomRight = this.createCentre(new THREE.Vector3(), 0, 0, z);
+    yield this.createBottomRight(new THREE.Vector3(), centreTopLeft).lerp(centreTopLeft, invAlpha);
+    yield this.createTopRight(new THREE.Vector3(), centreBottomLeft).lerp(centreBottomLeft, invAlpha);
+    yield this.createBottomLeft(new THREE.Vector3(), centreTopRight).lerp(centreTopRight, invAlpha);
+    yield this.createTopLeft(new THREE.Vector3(), centreBottomRight).lerp(centreBottomRight, invAlpha);
+  }
+
   forEachAdjacentFace(coord: IGridCoord, fn: (face: IGridCoord, edge: IGridEdge) => void) {
     // Left
     fn(

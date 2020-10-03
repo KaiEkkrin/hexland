@@ -188,6 +188,33 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     }
   }
 
+  *createTokenFillEdgeVertices(alpha: number, z: number): Iterable<THREE.Vector3> {
+    // Our edge 0 fills the space between
+    // - face (-1, -1) (right and bottom right), and
+    // - face (0, 0) (top left and left)
+    const invAlpha = 1 - alpha;
+    const centre11 = this.createCentre(new THREE.Vector3(), -1, -1, z);
+    const centre00 = this.createCentre(new THREE.Vector3(), 0, 0, z);
+    yield this.createRight(new THREE.Vector3(), centre11).lerp(centre11, invAlpha);
+    yield this.createBottomRight(new THREE.Vector3(), centre11).lerp(centre11, invAlpha);
+    yield this.createTopLeft(new THREE.Vector3(), centre00).lerp(centre00, invAlpha);
+    yield this.createLeft(new THREE.Vector3(), centre00).lerp(centre00, invAlpha);
+  }
+
+  *createTokenFillVertexVertices(alpha: number, z: number): Iterable<THREE.Vector3> {
+    // Our vertex 0 fills the space between
+    // - face (-1, -1) (bottom right),
+    // - face (-1, 0) (top right), and
+    // - face (0, 0) (left)
+    const invAlpha = 1 - alpha;
+    const centre11 = this.createCentre(new THREE.Vector3(), -1, -1, z);
+    const centre10 = this.createCentre(new THREE.Vector3(), -1, 0, z);
+    const centre00 = this.createCentre(new THREE.Vector3(), 0, 0, z);
+    yield this.createBottomRight(new THREE.Vector3(), centre11).lerp(centre11, invAlpha);
+    yield this.createTopRight(new THREE.Vector3(), centre10).lerp(centre10, invAlpha);
+    yield this.createLeft(new THREE.Vector3(), centre00).lerp(centre00, invAlpha);
+  }
+
   forEachAdjacentFace(coord: IGridCoord, fn: (face: IGridCoord, edge: IGridEdge) => void) {
     // Top left
     fn(

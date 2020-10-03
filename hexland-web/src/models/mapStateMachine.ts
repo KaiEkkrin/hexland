@@ -192,22 +192,22 @@ export class MapStateMachine {
 
     // Here is our higher-level token tracking:
     this._selection = createTokenDictionary(
-      map.record.ty, this._drawing.selectionFaces,
+      map.record.ty, this._drawing.selection.faces,
       (token: ITokenProperties, position: IGridCoord) => ({ position: position, colour: 0, id: token.id })
     );
 
     this._selectionDrag = createTokenDictionary(
-      map.record.ty, this._drawing.selectionDragFaces,
+      map.record.ty, this._drawing.selectionDrag.faces,
       (token: ITokenProperties, position: IGridCoord) => ({ position: position, colour: 0, id: token.id })
     );
 
     this._selectionDragRed = createTokenDictionary(
-      map.record.ty, this._drawing.selectionDragRedFaces,
+      map.record.ty, this._drawing.selectionDragRed.faces,
       (token: ITokenProperties, position: IGridCoord) => ({ position: position, colour: 0, id: token.id })
     );
 
     this._tokens = createTokenDictionary(
-      map.record.ty, this._drawing.tokenFaces,
+      map.record.ty, this._drawing.tokens.faces,
       // TODO #119 Provide a way to separately mark which face gets the text written on...?
       (token: ITokenProperties, position: IGridCoord) => ({ ...token, position: position })
     );
@@ -276,7 +276,7 @@ export class MapStateMachine {
     if (this.seeEverything === false) {
       // We draw the LoS from the point of view of all selected faces, so that a large token
       // gets to see around small things
-      const withinLoS = fluent(this._drawing.selectionFaces).map(f => {
+      const withinLoS = fluent(this._drawing.selection.faces).map(f => {
         this._gridGeometry.createCoordCentre(this._scratchVector1, coordAdd(f.position, delta), 0);
         this._scratchVector1.applyMatrix4(worldToViewport);
         return this._drawing.checkLoS(this._scratchVector1);
@@ -374,8 +374,8 @@ export class MapStateMachine {
   private getLoSPositions() {
     // These are the positions we should be projecting line-of-sight from.
     // For large tokens, we project a separate LoS from every face and merge them together
-    let myTokens = Array.from(this._drawing.tokenFaces).filter(t => this.canSelectToken(t));
-    let selectedFaces = myTokens.filter(t => this._drawing.selectionFaces.get(t.position) !== undefined);
+    let myTokens = Array.from(this._drawing.tokens.faces).filter(t => this.canSelectToken(t));
+    let selectedFaces = myTokens.filter(t => this._drawing.selection.faces.get(t.position) !== undefined);
     if (selectedFaces.length === 0) {
       if (this.seeEverything) {
         // Render no LoS at all

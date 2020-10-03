@@ -66,6 +66,15 @@ export interface IGridGeometry {
   // suitable for drawing the vertex blobs onto the grid.
   createSolidVertexIndices(maxVertex?: number | undefined): Iterable<number>;
 
+  // Creates the vertices for the token fill edge mesh.  This will only have edge 0,
+  // just like the wall vertices.
+  // We make only 1 (presuming tile 0 and tileDim 1).
+  createTokenFillEdgeVertices(alpha: number, z: number): Iterable<THREE.Vector3>;
+
+  // Creates the vertices for the token fill vertex mesh.
+  // We make only 1 (presuming tile 0 and tileDim 1).
+  createTokenFillVertexVertices(alpha: number, z: number): Iterable<THREE.Vector3>;
+
   // Creates the 'face' attribute array that matches `createSolidVertexVertices` when used
   // for the grid colours.
   createVertexAttributes(maxVertex?: number | undefined): Float32Array;

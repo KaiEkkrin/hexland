@@ -9,6 +9,15 @@ import { RedrawFlag } from '../redrawFlag';
 
 import * as THREE from 'three';
 
+export function createTokenFillVertexGeometry(gridGeometry: IGridGeometry, alpha: number, z: number) {
+  const vertices = [...gridGeometry.createTokenFillVertexVertices(alpha, z)];
+  return () => {
+    const geometry = new THREE.InstancedBufferGeometry();
+    geometry.setFromPoints(vertices);
+    return geometry;
+  };
+}
+
 export function createVertexGeometry(gridGeometry: IGridGeometry, alpha: number, z: number, maxVertex?: number | undefined) {
   const vertices = [...gridGeometry.createSolidVertexVertices(new THREE.Vector2(0, 0), alpha, z, maxVertex)];
   const indices = [...gridGeometry.createSolidVertexIndices()];
@@ -20,28 +29,27 @@ export function createVertexGeometry(gridGeometry: IGridGeometry, alpha: number,
   };
 }
 
-function createSingleVertexGeometry(gridGeometry: IGridGeometry, alpha: number, z: number) {
+export function createSingleVertexGeometry(gridGeometry: IGridGeometry, alpha: number, z: number) {
   return createVertexGeometry(gridGeometry.toSingle(), alpha, z, 1);
 }
 
-export function createPaletteColouredVertexObject(gridGeometry: IGridGeometry, alpha: number, z: number, colourParameters: IColourParameters) {
+export function createPaletteColouredVertexObject(createGeometry: () => THREE.InstancedBufferGeometry, gridGeometry: IGridGeometry, colourParameters: IColourParameters) {
   return (maxInstances: number) => new PaletteColouredFeatureObject(
     vertexString,
     (o, p) => gridGeometry.transformToVertex(o, p),
     maxInstances,
-    createSingleVertexGeometry(gridGeometry, alpha, z),
+    createGeometry,
     colourParameters
   );
 }
 
-export function createSelectionColouredVertexObject(gridGeometry: IGridGeometry, alpha: number, z: number) {
-  const vertexGeometry = createSingleVertexGeometry(gridGeometry, alpha, z);
+export function createSelectionColouredVertexObject(createGeometry: () => THREE.InstancedBufferGeometry, gridGeometry: IGridGeometry) {
   return (maxInstances: number) => new MultipleFeatureObject<IGridVertex, IFeature<IGridVertex>>(
     (i: number, maxInstances: number) => new PaletteColouredFeatureObject(
       vertexString,
       (o, p) => gridGeometry.transformToVertex(o, p),
       maxInstances,
-      vertexGeometry,
+      createGeometry,
       createSelectionColourParameters(i)
     ),
     f => f.colour,

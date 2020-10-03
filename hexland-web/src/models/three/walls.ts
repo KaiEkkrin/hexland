@@ -9,7 +9,16 @@ import { RedrawFlag } from '../redrawFlag';
 import * as THREE from 'three';
 import { IInstancedFeatureObject } from './instancedFeatureObject';
 
-function createWallGeometry(gridGeometry: IGridGeometry, alpha: number, z: number) {
+export function createTokenFillEdgeGeometry(gridGeometry: IGridGeometry, alpha: number, z: number) {
+  const vertices = [...gridGeometry.createTokenFillEdgeVertices(alpha, z)];
+  return () => {
+    const geometry = new THREE.InstancedBufferGeometry();
+    geometry.setFromPoints(vertices);
+    return geometry;
+  };
+}
+
+export function createWallGeometry(gridGeometry: IGridGeometry, alpha: number, z: number) {
   const single = gridGeometry.toSingle();
   const vertices = [...single.createWallVertices(alpha, z)];
   return () => {
@@ -19,30 +28,31 @@ function createWallGeometry(gridGeometry: IGridGeometry, alpha: number, z: numbe
   };
 }
 
-export function createPaletteColouredWallObject(gridGeometry: IGridGeometry, alpha: number, wallZ: number, colourParameters: IColourParameters) {
+export function createPaletteColouredWallObject(createGeometry: () => THREE.InstancedBufferGeometry, gridGeometry: IGridGeometry, colourParameters: IColourParameters) {
   return (maxInstances: number) => new PaletteColouredFeatureObject(
     edgeString,
     (o, p) => gridGeometry.transformToEdge(o, p),
     maxInstances,
-    createWallGeometry(gridGeometry, alpha, wallZ),
+    createGeometry,
     colourParameters
   );
 }
 
-export function createSelectionColouredWallObject(gridGeometry: IGridGeometry, alpha: number, wallZ: number) {
-  const wallGeometry = createWallGeometry(gridGeometry, alpha, wallZ);
+export function createSelectionColouredWallObject(createGeometry: () => THREE.InstancedBufferGeometry, gridGeometry: IGridGeometry) {
   return (maxInstances: number) => new MultipleFeatureObject<IGridEdge, IFeature<IGridEdge>>(
     (i: number, maxInstances: number) => new PaletteColouredFeatureObject(
       edgeString,
       (o, p) => gridGeometry.transformToEdge(o, p),
       maxInstances,
-      wallGeometry,
+      createGeometry,
       createSelectionColourParameters(i)
     ),
     f => f.colour,
     maxInstances
   );
 }
+
+export type Edges = InstancedFeatures<IGridEdge, IFeature<IGridEdge>>;
 
 // The "walls" are the edges of the map that are coloured in one of our
 // known colours.  To implement line-of-sight, we synchronise this object with

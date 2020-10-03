@@ -8,16 +8,16 @@ import { IFeature, IToken, IFeatureDictionary, IIdFeature } from "../data/featur
 // editing these should update the drawing upon the next animation frame.
 export interface IDrawing {
   areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
-  tokenFaces: IFeatureDictionary<IGridCoord, IToken>;
+  tokens: ITokenDrawing<IToken>;
   walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
 
   highlightedAreas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
   highlightedVertices: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>>;
   highlightedWalls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
 
-  selectionFaces: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>;
-  selectionDragFaces: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>;
-  selectionDragRedFaces: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>;
+  selection: ITokenDrawing<IIdFeature<IGridCoord>>;
+  selectionDrag: ITokenDrawing<IIdFeature<IGridCoord>>;
+  selectionDragRed: ITokenDrawing<IIdFeature<IGridCoord>>;
 
   // A drawing always exposes a single outlined rectangle that can be used
   // for drag-boxes etc.  This object will be drawn separately and will not
@@ -56,6 +56,17 @@ export interface IDrawing {
 
   // Sets whether or not to show the map colour visualisation.
   setShowMapColourVisualisation(show: boolean, mapColouring: MapColouring): void;
+
+  // Cleans up and releases all resources.
+  dispose(): void;
+}
+
+// Describes how to draw a collection of tokens, complete with fill-in edges and vertices
+// for larger ones.
+export interface ITokenDrawing<F extends IFeature<IGridCoord>> {
+  faces: IFeatureDictionary<IGridCoord, F>;
+  fillEdges: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
+  fillVertices: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>>;
 
   // Cleans up and releases all resources.
   dispose(): void;
