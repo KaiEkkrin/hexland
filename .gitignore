@@ -1,0 +1,7 @@
+# user home directory in Docker container
+/.usercache/.bash_history
+/.usercache/.cache
+/.usercache/.config
+/.usercache/.lesshst
+/.usercache/.yarn
+/.usercache/.yarnrc
