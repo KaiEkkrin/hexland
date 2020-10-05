@@ -84,9 +84,6 @@ export class MapStateMachine {
   private readonly _notes: FeatureDictionary<IGridCoord, IAnnotation>;
   private readonly _notesNeedUpdate = new RedrawFlag();
 
-  // TODO #119 Perhaps I can roll this into its own management object, so that
-  // when it comes to adding vertex tokens too, I can simply instantiate another
-  // copy ...?
   private readonly _selection: ITokenDictionary;
   private readonly _selectionDrag: ITokenDictionary;
   private readonly _selectionDragRed: ITokenDictionary;
@@ -952,7 +949,7 @@ export class MapStateMachine {
       });
     }
 
-    this.tokenMoveDragStart(token.position);
+    this.tokenMoveDragStart(position);
     return true;
   }
 
