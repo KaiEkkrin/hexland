@@ -88,48 +88,42 @@ function removeAll<K extends IGridCoord, F extends IFeature<K>>(
 // the `clone` method.)
 abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements ITokenDictionary {
   private readonly _drawing: ITokenDrawing<IIdFeature<IGridCoord>>;
-
-  // For tracking what things we added during an add operation so that we can roll back on failure
-  private readonly _addedFaces: IGridCoord[] = [];
-  private readonly _addedEdges: IGridEdge[] = [];
-  private readonly _addedVertices: IGridVertex[] = [];
-
-  private _byId: { [id: string]: IToken };
+  private readonly _byId: Map<string, IToken>;
 
   constructor(
     drawing: ITokenDrawing<IIdFeature<IGridCoord>>,
-    values?: { [key: string]: IToken } | undefined,
-    byId?: { [id: string]: IToken } | undefined
+    values?: Map<string, IToken> | undefined,
+    byId?: Map<string, IToken> | undefined
   ) {
     super(coordString, values);
     this._drawing = drawing;
-    this._byId = byId ?? {};
+    this._byId = byId !== undefined ? new Map<string, IToken>(byId) : new Map<string, IToken>();
   }
 
   protected get drawing() { return this._drawing; }
   protected get byId() { return this._byId; }
 
-  private revertAdd(token: IToken) {
-    removeAll(this._drawing.fillVertices, this._addedVertices);
-    removeAll(this._drawing.fillEdges, this._addedEdges);
-    removeAll(this._drawing.faces, this._addedFaces);
-    if (token.id in this._byId) {
-      delete this._byId[token.id];
-    }
+  private revertAdd(token: IToken, addedFaces: IGridCoord[], addedEdges: IGridEdge[], addedVertices: IGridVertex[]) {
+    removeAll(this._drawing.fillVertices, addedVertices);
+    removeAll(this._drawing.fillEdges, addedEdges);
+    removeAll(this._drawing.faces, addedFaces);
+    this._byId.delete(token.id);
     super.remove(token.position);
   }
 
-  // This add() can't be called concurrently because of the use of member variables for the revert --
-  // that should be fine and it gives the runtime the opportunity to reduce the amount of allocation it does
   add(token: IToken) {
     if (super.add(token) === true) {
+      const addedFaces: IGridCoord[] = [];
+      const addedEdges: IGridEdge[] = [];
+      const addedVertices: IGridVertex[] = [];
+
       try { // paranoia ;) I'm not going to use exception driven logic on purpose, hopefully this won't cost
         // Make sure the token's id isn't already in use
-        if (token.id in this._byId) {
-          this.revertAdd(token);
+        if (this._byId.has(token.id)) {
+          this.revertAdd(token, addedFaces, addedEdges, addedVertices);
           return false;
         }
-        this._byId[token.id] = token;
+        this._byId.set(token.id, token);
 
         // Add the token's faces
         for (const face of this.enumerateFacePositions(token)) {
@@ -137,11 +131,11 @@ abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements I
           if (this._drawing.faces.add(faceToken) === false) {
             // This token doesn't fit here.  Roll back any changes we've already
             // made:
-            this.revertAdd(token);
+            this.revertAdd(token, addedFaces, addedEdges, addedVertices);
             return false;
           } else {
             // This token fits here -- note that we added this face and continue
-            this._addedFaces.push(face);
+            addedFaces.push(face);
           }
         }
 
@@ -151,10 +145,10 @@ abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements I
           if (this._drawing.fillEdges.add(edgeToken) === false) {
             // This token doesn't fit here.  Roll back any changes we've already
             // made:
-            this.revertAdd(token);
+            this.revertAdd(token, addedFaces, addedEdges, addedVertices);
             return false;
           } else {
-            this._addedEdges.push(edge);
+            addedEdges.push(edge);
           }
         }
 
@@ -164,16 +158,16 @@ abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements I
           if (this._drawing.fillVertices.add(vertexToken) === false) {
             // This token doesn't fit here.  Roll back any changes we've already
             // made:
-            this.revertAdd(token);
+            this.revertAdd(token, addedFaces, addedEdges, addedVertices);
             return false;
           } else {
-            this._addedVertices.push(vertex);
+            addedVertices.push(vertex);
           }
         }
 
         return true;
       } catch (e) {
-        this.revertAdd(token);
+        this.revertAdd(token, addedFaces, addedEdges, addedVertices);
         throw e;
       }
     } else {
@@ -183,7 +177,7 @@ abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements I
 
   at(face: IGridCoord) {
     const faceToken = this._drawing.faces.get(face);
-    return faceToken !== undefined ? this._byId[faceToken.id] : undefined;
+    return faceToken !== undefined ? this._byId.get(faceToken.id) : undefined;
   }
 
   clear() {
@@ -207,7 +201,7 @@ abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements I
 
     // Now we can clear the rest
     super.clear();
-    this._byId = {};
+    this._byId.clear();
   }
 
   abstract enumerateFacePositions(token: IToken): Iterable<IGridCoord>;
@@ -215,7 +209,7 @@ abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements I
   abstract enumerateFillVertexPositions(token: IToken): Iterable<IGridVertex>;
 
   ofId(id: string) {
-    return this._byId[id];
+    return this._byId.get(id);
   }
 
   remove(k: IGridCoord): IToken | undefined {
@@ -233,7 +227,7 @@ abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements I
         this._drawing.faces.remove(face);
       }
 
-      delete this._byId[removed.id];
+      this._byId.delete(removed.id);
       return removed;
     } else {
       return undefined;
@@ -245,11 +239,7 @@ abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements I
 
 class TokensHex extends Tokens {
   clone() {
-    return new TokensHex(
-      this.drawing.clone(),
-      { ...this.values },
-      { ...this.byId }
-    );
+    return new TokensHex(this.drawing.clone(), this.values, this.byId);
   }
 
   *enumerateFacePositions(token: IToken) {
@@ -449,11 +439,7 @@ class TokensHex extends Tokens {
 
 class TokensSquare extends Tokens {
   clone() {
-    return new TokensSquare(
-      this.drawing.clone(),
-      { ...this.values },
-      { ...this.byId }
-    );
+    return new TokensSquare(this.drawing.clone(), this.values, this.byId);
   }
 
   *enumerateFacePositions(token: IToken) {

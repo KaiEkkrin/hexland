@@ -8,7 +8,7 @@ import * as THREE from 'three';
 export class MultipleFeatureObject<K extends IGridCoord, F extends IFeature<K>> implements IInstancedFeatureObject<K, F> {
   private readonly _createFeatureObj: (index: number, maxInstances: number) => IInstancedFeatureObject<K, F>;
   private readonly _getIndex: (f: F) => number;
-  private readonly _featureObjs: { [index: number]: IInstancedFeatureObject<K, F> } = {};
+  private readonly _featureObjs = new Map<number, IInstancedFeatureObject<K, F>>();
   private readonly _maxInstances: number;
 
   private _scene: THREE.Scene | undefined;
@@ -24,14 +24,15 @@ export class MultipleFeatureObject<K extends IGridCoord, F extends IFeature<K>> 
   }
 
   private getFeatureObj(index: number) {
-    if (index in this._featureObjs) {
-      return this._featureObjs[index];
+    const obj = this._featureObjs.get(index);
+    if (obj !== undefined) {
+      return obj;
     }
 
     // When we create a new feature object, we should immediately add it to the
     // scene if we have one:
     const newFeatureObj = this._createFeatureObj(index, this._maxInstances);
-    this._featureObjs[index] = newFeatureObj;
+    this._featureObjs.set(index, newFeatureObj);
     if (this._scene !== undefined) {
       newFeatureObj.addToScene(this._scene);
     }
@@ -46,9 +47,7 @@ export class MultipleFeatureObject<K extends IGridCoord, F extends IFeature<K>> 
     }
 
     this._scene = scene;
-    for (let i in this._featureObjs) {
-      this._featureObjs[i].addToScene(scene);
-    }
+    this._featureObjs.forEach(o => o.addToScene(scene));
   }
 
   removeFromScene(scene: THREE.Scene) {
@@ -57,9 +56,7 @@ export class MultipleFeatureObject<K extends IGridCoord, F extends IFeature<K>> 
     }
 
     this._scene = undefined;
-    for (let i in this._featureObjs) {
-      this._featureObjs[i].removeFromScene(scene);
-    }
+    this._featureObjs.forEach(o => o.removeFromScene(scene));
   }
 
   add(f: F) {
@@ -67,9 +64,7 @@ export class MultipleFeatureObject<K extends IGridCoord, F extends IFeature<K>> 
   }
 
   clear() {
-    for (let i in this._featureObjs) {
-      this._featureObjs[i].clear();
-    }
+    this._featureObjs.forEach(o => o.clear());
   }
 
   remove(f: F) {
@@ -77,8 +72,7 @@ export class MultipleFeatureObject<K extends IGridCoord, F extends IFeature<K>> 
   }
 
   dispose() {
-    for (let i in this._featureObjs) {
-      this._featureObjs[i].dispose();
-    }
+    this._featureObjs.forEach(o => o.dispose());
+    this._featureObjs.clear();
   }
 }

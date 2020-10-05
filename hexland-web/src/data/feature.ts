@@ -80,11 +80,12 @@ export interface IFeatureDictionary<K extends IGridCoord, F extends IFeature<K>>
 // A basic feature dictionary that can be re-used or extended
 export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> implements IFeatureDictionary<K, F> {
   private readonly _toIndex: (coord: K) => string;
-  private _values: { [index: string]: F };
+  private readonly _values: Map<string, F>;
 
-  constructor(toIndex: (coord: K) => string, values?: { [index: string]: F } | undefined) {
+  // This constructor copies the given values if defined.
+  constructor(toIndex: (coord: K) => string, values?: Map<string, F> | undefined) {
     this._toIndex = toIndex;
-    this._values = values ?? {};
+    this._values = values !== undefined ? new Map<string, F>(values) : new Map<string, F>();
   }
 
   protected get values() { return this._values; }
@@ -95,47 +96,43 @@ export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> impl
 
   add(f: F) {
     const i = this._toIndex(f.position);
-    if (i in this._values) {
+    if (this._values.has(i)) {
       return false;
     }
 
-    this._values[i] = f;
+    this._values.set(i, f);
     return true;
   }
 
   clear() {
-    this._values = {};
+    this._values.clear();
   }
 
   clone() {
-    const clonedValues: { [index: string]: F } = {};
-    Object.assign(clonedValues, this._values);
-    return new FeatureDictionary<K, F>(this._toIndex, clonedValues);
+    return new FeatureDictionary<K, F>(this._toIndex, this._values);
   }
 
   forEach(fn: (f: F) => void) {
-    for (const i in this._values) {
-      fn(this._values[i]);
-    }
+    this._values.forEach(fn);
   }
 
   get(k: K): F | undefined {
     const i = this._toIndex(k);
-    return (i in this._values) ? this._values[i] : undefined;
+    return this._values.get(i);
   }
 
   *iterate() {
-    for (const i in this._values) {
-      yield this._values[i];
+    for (const v of this._values) {
+      yield v[1];
     }
   }
 
   remove(k: K): F | undefined {
     const i = this._toIndex(k);
-    if (i in this._values) {
-      const f = this._values[i];
-      delete this._values[i];
-      return f;
+    const value = this._values.get(i);
+    if (value !== undefined) {
+      this._values.delete(i);
+      return value;
     }
 
     return undefined;
@@ -146,7 +143,7 @@ export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> impl
   // update themselves
   set(f: F) {
     const i = this._toIndex(f.position);
-    this._values[i] = f;
+    this._values.set(i, f);
   }
 }
 

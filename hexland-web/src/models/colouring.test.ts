@@ -227,11 +227,11 @@ test('Surround lots of 3-square rooms on a square grid', () => {
 
   // Each of the faces at offset (0, 0) and (1, 2) should be in the same colour
   // as each other and different to all the other ones
-  let innerColours: { [c: number]: number } = {};
+  let innerColours = new Map<number, number>();
   for (let sq of enumerateSquares(radius, step)) {
     let atZero = colouring.colourOf(sq);
-    expect(atZero in innerColours).toBeFalsy();
-    innerColours[atZero] = 0;
+    expect(innerColours.has(atZero)).toBeFalsy();
+    innerColours.set(atZero, 0);
 
     let atOneTwo = colouring.colourOf({ x: sq.x + 1, y: sq.y + 2 });
     expect(atOneTwo).toBe(atZero);

@@ -260,7 +260,7 @@ export class MapColouring {
 
   recalculate() {
     this._toFill.clear();
-    let newColours: { [colour: number]: boolean } = {};
+    const newColours = new Set<number>();
 
     // Make all the wall edits, and populate our dictionary of things to fill
     let addedLowerWallBounds = new THREE.Vector2(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
@@ -289,7 +289,7 @@ export class MapColouring {
         adjacentFaces.forEach(a => {
           let newColour = this._nextColour++;
           this._toFill.set({ position: a, colour: newColour });
-          newColours[newColour] = true;
+          newColours.add(newColour);
 
           // Update the bounds of our added walls
           addedLowerWallBounds.x = Math.min(addedLowerWallBounds.x, a.x);
@@ -321,7 +321,7 @@ export class MapColouring {
       // If this square is already filled in its target colour or in another new colour,
       // I have nothing more to do with it
       const currentColour = this.colourOf(f.position);
-      if (currentColour === f.colour || currentColour in newColours) {
+      if (currentColour === f.colour || newColours.has(currentColour)) {
         return;
       }
 
@@ -347,22 +347,22 @@ export class MapColouring {
   ) {
     // Count the number of unique map colours
     // TODO would it be better to be maintaining this dictionary as we go?
-    let colourUsage: { [colour: number]: number } = {};
+    const colourUsage = new Map<number, number>();
     this._faces.forEach(f => {
-      colourUsage[f.colour] = 0;
+      colourUsage.set(f.colour, 0);
     });
 
     // Assign them all hues in the range [0..mapColourCount]
-    let hues: { [colour: number]: number } = {};
-    let mapColourCount = [0];
-    for (let c in colourUsage) {
-      hues[c] = mapColourCount[0]++;
+    const hues = new Map<number, number>();
+    let mapColourCount = 0;
+    for (const c of colourUsage) {
+      hues.set(c[0], mapColourCount++);
     }
 
     // Clear the target, and add all the features to it
     target.clear();
     this._faces.forEach(f => {
-      target.add(createFeature(f.position, hues[f.colour], mapColourCount[0]));
+      target.add(createFeature(f.position, hues.get(f.colour) ?? 0, mapColourCount));
     });
   }
 }

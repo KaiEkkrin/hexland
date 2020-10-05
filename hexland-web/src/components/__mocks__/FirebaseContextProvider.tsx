@@ -64,9 +64,10 @@ function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) 
 }
 
 // Simulates the authentication subsystem, which the Firebase emulator doesn't provide.
+type UserHandler = (user: IUser | null) => void;
 class SimulatedAuth implements IAuth {
   private _user: IUser | null;
-  private readonly _userHandlers: { [id: string]: ((user: IUser | null) => void) } = {};
+  private readonly _userHandlers = new Map<string, UserHandler>();
   private _isLoggedIn = false;
 
   constructor(user: IUser | null) {
@@ -76,9 +77,7 @@ class SimulatedAuth implements IAuth {
   private signInSync() {
     if (this._isLoggedIn !== true) {
       this._isLoggedIn = true;
-      for (let id in this._userHandlers) {
-        this._userHandlers[id](this._user);
-      }
+      this._userHandlers.forEach(h => h(this._user));
     }
     return Promise.resolve(this._user);
   }
@@ -86,9 +85,7 @@ class SimulatedAuth implements IAuth {
   private signOutSync() {
     if (this._isLoggedIn !== false) {
       this._isLoggedIn = false;
-      for (let id in this._userHandlers) {
-        this._userHandlers[id](null);
-      }
+      this._userHandlers.forEach(h => h(null));
     }
   }
 
@@ -131,9 +128,9 @@ class SimulatedAuth implements IAuth {
     onNext(this._isLoggedIn ? this._user : null);
 
     let id = uuidv4();
-    this._userHandlers[id] = onNext;
+    this._userHandlers.set(id, onNext);
     return () => {
-      delete this._userHandlers[id];
+      this._userHandlers.delete(id);
     }
   }
 }
