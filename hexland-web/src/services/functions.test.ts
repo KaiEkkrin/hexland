@@ -21,6 +21,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { createTokenDictionary, SimpleTokenDrawing } from '../data/tokens';
 import { createChangesConverter } from './converter';
 
+const adminCredentials = require('../../firebase-admin-credentials.json');
+
 export function createTestUser(
   displayName: string | null,
   email: string | null,
@@ -52,7 +54,7 @@ interface IChangesEvent {
 
 describe('test functions', () => {
   // We must use a fixed project ID here, it seems
-  const projectId = 'hexland-test';
+  const projectId = String(adminCredentials?.project_id ?? 'hexland-test');
   const region = 'europe-west2';
   const emul: { [uid: string]: IEmul } = {};
 

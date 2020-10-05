@@ -27,3 +27,6 @@ yarn-error.log*
 /.firebase
 /firebase-debug.log*
 /firestore-debug.log*
+
+# firebase admin credentials for emulators
+firebase-admin-credentials.json

@@ -6,6 +6,10 @@ import * as serviceWorker from './serviceWorker';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 
+// Delete the static banner made to appease non-React-aware search engines
+const staticBanner = document.getElementById('static_banner');
+staticBanner?.remove();
+
 ReactDOM.render(
   <React.StrictMode>
     <App />
