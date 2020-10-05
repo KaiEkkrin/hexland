@@ -581,7 +581,6 @@ export class MapStateMachine {
       return;
     }
 
-    console.log("checking if we can drop selection at " + coordString(target));
     const selectionDrag = this.canDropSelectionAt(position) ? this._selectionDrag : this._selectionDragRed;
     this._selectionDrag.clear();
     this._selectionDragRed.clear();

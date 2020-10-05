@@ -119,12 +119,13 @@ class LoSFeatures extends InstancedFeatures<IGridEdge, IFeature<IGridEdge>> {
 }
 
 // This class encapsulates the LoS drawing along with its intermediate surfaces.
+const maxComposeCount = 8;
 export class LoS extends Drawn {
   private readonly _featureClearColour: THREE.Color;
   private readonly _features: LoSFeatures;
 
   private readonly _featureMaterial: THREE.ShaderMaterial;
-  private readonly _featureRenderTarget: THREE.WebGLRenderTarget;
+  private readonly _featureRenderTargets: THREE.WebGLRenderTarget[];
   private readonly _featureScene: THREE.Scene;
   private readonly _featureUniforms: any;
 
@@ -164,12 +165,15 @@ export class LoS extends Drawn {
     });
 
     this._features = new LoSFeatures(geometry, redrawFlag, z, q, this._featureMaterial, maxInstances);
-    this._featureRenderTarget = this.createRenderTarget(renderWidth, renderHeight);
+    this._featureRenderTargets = [];
+    for (let i = 0; i < maxComposeCount; ++i) {
+      this._featureRenderTargets.push(this.createRenderTarget(renderWidth, renderHeight));
+    }
+
     this._featureScene = new THREE.Scene();
     this._features.addToScene(this._featureScene);
 
     this._composeClearColour = new THREE.Color(0, 0, 0); // invisible unless seen by something
-
     this._composeRenderTarget = this.createRenderTarget(renderWidth, renderHeight);
     this._composeScene = new THREE.Scene();
 
@@ -192,32 +196,40 @@ export class LoS extends Drawn {
     ]), 2));
   }
 
-  private composeOne(camera: THREE.Camera, renderer: THREE.WebGLRenderer, zOffset: number) {
-    // Composes the contents of the current feature render onto the compose target.
+  private compose(camera: THREE.Camera, renderer: THREE.WebGLRenderer, count: number) {
+    // Composes the contents of the given number of feature renders onto the compose target.
     // TODO #52 To successfully down-scale the LoS, this here needs its own camera
     renderer.setRenderTarget(this._composeRenderTarget);
-    const material = new THREE.MeshBasicMaterial({
-      blending: THREE.AdditiveBlending,
-      map: this._featureRenderTarget.texture,
-      side: THREE.DoubleSide,
-      transparent: true
-    });
+    const materials: THREE.MeshBasicMaterial[] = [];
+    const meshes: THREE.Mesh[] = [];
+    for (let i = 0; i < count; ++i) {
+      const material = new THREE.MeshBasicMaterial({
+        blending: THREE.AdditiveBlending,
+        map: this._featureRenderTargets[i].texture,
+        side: THREE.DoubleSide,
+        transparent: true
+      });
+      materials.push(material);
 
-    const mesh = new THREE.Mesh(this._composeGeometry, material);
-    this._composeScene.add(mesh);
+      const mesh = new THREE.Mesh(this._composeGeometry, material);
+      meshes.push(mesh);
+      this._composeScene.add(mesh);
+    }
+
     renderer.render(this._composeScene, camera);
 
     // Put settings back
-    this._composeScene.remove(mesh);
-    material.dispose();
+    meshes.forEach(m => this._composeScene.remove(m));
+    materials.forEach(m => m.dispose());
   }
 
   private createRenderTarget(renderWidth: number, renderHeight: number) {
     return new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
+      depthBuffer: false,
       minFilter: THREE.NearestFilter,
       magFilter: THREE.NearestFilter,
       wrapS: THREE.ClampToEdgeWrapping,
-      wrapT: THREE.ClampToEdgeWrapping
+      wrapT: THREE.ClampToEdgeWrapping,
     });
   }
 
@@ -254,8 +266,6 @@ export class LoS extends Drawn {
   // Renders the LoS frames.  Overwrites the render target and clear colours.
   // TODO Can I sometimes avoid re-rendering these?  Separate the `needsRedraw` flags?
   render(camera: THREE.Camera, fixedCamera: THREE.Camera, renderer: THREE.WebGLRenderer) {
-    let zOffset = 0;
-
     // Always clear the composed target to begin with (otherwise, with 0 token positions to
     // render, we'll end up returning the old composed target!)
     renderer.setRenderTarget(this._composeRenderTarget);
@@ -263,34 +273,40 @@ export class LoS extends Drawn {
     renderer.clear();
 
     // Render the LoS features for each token position
-    this._tokenPositions.forEach(c => {
+    let lastRenderedIndex = maxComposeCount;
+    this._tokenPositions.forEach((c, i) => {
+      const targetIndex = (i % maxComposeCount);
       this.geometry.createCoordCentre(
         this._featureUniforms[tokenCentre].value,
         c,
         this._featureUniforms[zValue].value
       );
 
-      renderer.setRenderTarget(this._featureRenderTarget);
+      renderer.setRenderTarget(this._featureRenderTargets[targetIndex]);
       renderer.setClearColor(this._featureClearColour);
       renderer.clear();
       renderer.render(this._featureScene, camera);
+      lastRenderedIndex = targetIndex;
 
-      // Compose these into the overall scene.
-      // Each composition must go on top of the previous one, hence the z offset.
-      // TODO This may turn out to be slow when there are large numbers of targets;
-      // I could squash these steps together if I write a shader that samples 4 or so
-      // textures simultaneously and combines them into an output.  However, I expect
-      // that scenario to be rare, so I won't for now.
-      this.composeOne(fixedCamera, renderer, zOffset);
-      zOffset += 0.01;
+      if (targetIndex === (maxComposeCount - 1)) {
+        // We've filled all our feature render targets; we must compose these down
+        // before we can continue.
+        this.compose(fixedCamera, renderer, maxComposeCount);
+        lastRenderedIndex = maxComposeCount;
+      }
     });
+
+    // Complete any composition we might need to do
+    if (lastRenderedIndex < maxComposeCount) {
+      this.compose(fixedCamera, renderer, lastRenderedIndex + 1);
+    }
 
     renderer.setRenderTarget(null);
     this._composedTargetReader.refresh(renderer);
   }
 
   resize(width: number, height: number) {
-    this._featureRenderTarget.setSize(width, height);
+    this._featureRenderTargets.forEach(t => t.setSize(width, height));
     this._composeRenderTarget.setSize(width, height);
   }
 
@@ -312,7 +328,7 @@ export class LoS extends Drawn {
     if (this._isDisposed === false) {
       this._features.dispose();
       this._featureMaterial.dispose();
-      this._featureRenderTarget.dispose();
+      this._featureRenderTargets.forEach(t => t.dispose());
 
       this._composeGeometry.dispose();
       this._composeRenderTarget.dispose();
