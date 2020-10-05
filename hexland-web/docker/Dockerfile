@@ -25,4 +25,4 @@ USER ${UID}:${GID}
 
 WORKDIR /usr/src/app
 ENTRYPOINT ["/bin/bash", "-c"]
-CMD ["/usr/src/scripts/watch_and_serve.sh"]
+CMD ["/usr/src/scripts/dev.sh"]
