@@ -2,7 +2,7 @@ import { MapColouring } from "./colouring";
 import { IAnnotation } from "../data/annotation";
 import { SimpleChangeTracker } from "../data/changeTracking";
 import { IGridCoord, IGridEdge } from "../data/coord";
-import { IFeatureDictionary, IFeature, IToken } from "../data/feature";
+import { IFeatureDictionary, IFeature, IToken, ITokenDictionary } from "../data/feature";
 import { IMap } from "../data/map";
 import { IUserPolicy } from "../data/policy";
 
@@ -18,7 +18,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
 
   constructor(
     areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
-    tokens: IFeatureDictionary<IGridCoord, IToken>,
+    tokens: ITokenDictionary,
     walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
     notes: IFeatureDictionary<IGridCoord, IAnnotation>,
     userPolicy: IUserPolicy | undefined,

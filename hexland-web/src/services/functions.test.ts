@@ -5,7 +5,7 @@ import { IDataService, IUser } from './interfaces';
 import { IAnnotation } from '../data/annotation';
 import { ChangeCategory, ChangeType, IChanges, ITokenAdd, ITokenMove, IWallAdd } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
-import { coordString, edgeString, IGridCoord, IGridEdge } from '../data/coord';
+import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from '../data/coord';
 import { FeatureDictionary, IFeature, IToken } from '../data/feature';
 import { IMap, MapType } from '../data/map';
 import * as Policy from '../data/policy';
@@ -18,6 +18,8 @@ import { initializeTestApp } from '@firebase/rules-unit-testing';
 import { Subject } from 'rxjs';
 import { filter, first } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
+import { createTokenDictionary, SimpleTokenDrawing } from '../data/tokens';
+import { createChangesConverter } from './converter';
 
 export function createTestUser(
   displayName: string | null,
@@ -215,6 +217,7 @@ describe('test functions', () => {
         colour: 1,
         id: 'token1',
         players: [uid],
+        size: '1',
         text: 'ONE',
         note: 'token one',
         noteVisibleToPlayers: true
@@ -718,7 +721,11 @@ describe('test functions', () => {
     expect(mapRecord).not.toBeUndefined();
 
     // Watch changes, mocking up the handlers:
-    const tokens = new FeatureDictionary<IGridCoord, IToken>(coordString);
+    const tokens = createTokenDictionary(MapType.Square, new SimpleTokenDrawing(
+      new FeatureDictionary<IGridCoord, IToken>(coordString),
+      new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
+      new FeatureDictionary<IGridVertex, IFeature<IGridVertex>>(vertexString)
+    ));
     const changeTracker = new SimpleChangeTracker(
       new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
       tokens,
@@ -757,6 +764,7 @@ describe('test functions', () => {
           colour: 0,
           id: '1',
           players: [],
+          size: '1',
           text: 'ONE',
           note: '',
           noteVisibleToPlayers: false
@@ -824,7 +832,7 @@ describe('test functions', () => {
       expect(onError).not.toHaveBeenCalled();
 
       // Wait a couple of seconds; that should be enough for anything else to flush through
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(r => setTimeout(r, 3000));
 
       // To exercise throttling behaviour, I'll now iterate over (bad change, bad change,
       // good change) a few times in quick succession -- we should avoid doing a resync
@@ -868,7 +876,7 @@ describe('test functions', () => {
       }
 
       // Wait a couple of seconds; that should be enough for anything else to flush through
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(r => setTimeout(r, 3000));
 
       // We should have only received or two more resets, and not another five, and
       // no actual errors
@@ -952,10 +960,11 @@ describe('test functions', () => {
     await verifyBaseChangesRecord(dataService, user.uid, a1Id, m3Id, moveCount);
 
     // Map 2 should have no changes, because it was cloned before any were made
-    const m2BaseChange = await dataService.get(dataService.getMapBaseChangeRef(a1Id, m2Id));
+    const converter = createChangesConverter();
+    const m2BaseChange = await dataService.get(dataService.getMapBaseChangeRef(a1Id, m2Id, converter));
     expect(m2BaseChange).toBeUndefined();
 
-    const m2IncrementalChanges = await dataService.getMapIncrementalChangesRefs(a1Id, m2Id, 500);
+    const m2IncrementalChanges = await dataService.getMapIncrementalChangesRefs(a1Id, m2Id, 500, converter);
     if (m2IncrementalChanges !== undefined) {
       expect(m2IncrementalChanges).toHaveLength(0);
     }

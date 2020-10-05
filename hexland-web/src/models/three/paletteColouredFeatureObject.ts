@@ -107,18 +107,32 @@ export class PaletteColouredFeatureObject<K extends IGridCoord, F extends IFeatu
 
 // Defines the selection colour parameters, which helps us (along with a multiple
 // feature object) draw positive selection as an additive and negative selection
-// as a subtractive, based on the feature colour 0 or 1.
-export function createSelectionColourParameters(i: number) {
-  if (i !== 0 && i !== 1) {
-    throw RangeError("Selection palette object must have colour 0 or 1");
-  }
+// as a subtractive, based on the feature colour.
+// The feature colours are:
+// - 0 (add, valid)
+// - 1 (remove, valid)
+// - 2 (add, not valid)
+// - 3 (remove, not valid)
+const selectionColourPalette = [
+  new THREE.Color(0x606060),
+  new THREE.Color(0x606060),
+  new THREE.Color(0x600000),
+  new THREE.Color(0x006060)
+];
 
-  return i === 0 ? {
-    palette: [new THREE.Color(0x606060)],
-    blending: THREE.AdditiveBlending
-  } : {
-    // We need two entries here because we'll always be accessing the second colour
-    palette: [new THREE.Color(0x606060), new THREE.Color(0x606060)],
-    blending: THREE.SubtractiveBlending
+function getSelectionColourBlending(i: number) {
+  if (i === 0 || i === 2) {
+    return THREE.AdditiveBlending;
+  } else if (i === 1 || i === 3) {
+    return THREE.SubtractiveBlending;
+  } else {
+    throw RangeError("Invalid selection colour value: " + i);
+  }
+}
+
+export function createSelectionColourParameters(i: number) {
+  return {
+    palette: selectionColourPalette,
+    blending: getSelectionColourBlending(i)
   };
 }

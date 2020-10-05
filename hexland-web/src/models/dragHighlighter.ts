@@ -1,7 +1,9 @@
 import { IChange, IWallAdd, IWallRemove, IAreaAdd, IAreaRemove, createAreaAdd, createWallAdd, createWallRemove, createAreaRemove } from "../data/change";
-import { IGridCoord, IGridEdge, edgesEqual, coordsEqual, edgeString, coordString } from "../data/coord";
+import { IGridCoord, IGridEdge, edgesEqual, coordsEqual, edgeString, coordString, IGridVertex, verticesEqual, vertexString } from "../data/coord";
 import { IFeature, IFeatureDictionary } from '../data/feature';
 import { IDragRectangle } from "./interfaces";
+
+import fluent from "fluent-iterable";
 
 // Helps handling a hover highlight with drag to select many and release to commit
 // them into new features.
@@ -20,8 +22,8 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
 
   protected abstract keysEqual(a: K, b: K | undefined): boolean;
   protected abstract keyString(a: K | undefined): string;
-  protected abstract createFeatureAdd(position: K, colour: number): IChange;
-  protected abstract createFeatureRemove(position: K): IChange;
+  protected abstract createFeatureAdd(position: K, colour: number): IChange | undefined;
+  protected abstract createFeatureRemove(position: K): IChange | undefined;
   protected abstract createHighlight(position: K, subtract: boolean): F;
 
   protected addHighlightAt(position: K, subtract: boolean) {
@@ -32,20 +34,57 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
     this._highlights.clear();
   }
 
-  protected removeHighlightAt(position: K) {
-    return this._highlights.remove(position);
-  }
-
   // Override this to change the drag behaviour, e.g. to implement rectangular highlighting.
   protected dragTo(position: K, subtract: boolean) {
     // By default we highlight the new position if it wasn't already
     this.addHighlightAt(position, subtract);
   }
 
+  // Pushes the changes into the array (if defined) and returns it, or undefined
+  // if the changes are marked as not valid.
+  protected pushFeatureChanges(changes: IChange[] | undefined, colour: number, h: IFeature<K>): IChange[] | undefined {
+    if (this._features.get(h.position) !== undefined) {
+      const remove = this.createFeatureRemove(h.position);
+      if (remove !== undefined) {
+        changes?.push(remove);
+      }
+    }
+
+    if (colour >= 0 && (h.colour === 0 || h.colour === 2)) {
+      const add = this.createFeatureAdd(h.position, colour);
+      if (add !== undefined) {
+        changes?.push(add);
+      }
+    }
+
+    return h.colour < 2 ? changes : undefined;
+  }
+
+  protected removeHighlightAt(position: K) {
+    return this._highlights.remove(position);
+  }
+
   get inDrag(): boolean { return this._inDrag; }
 
   clear() {
     this.clearHighlights();
+  }
+
+  createChanges(colour: number, onlyIfValid: boolean): IChange[] {
+    if (this._inDrag === false) {
+      return [];
+    }
+
+    let changes: IChange[] | undefined = [];
+    for (const h of this._highlights) {
+      const newChanges = this.pushFeatureChanges(changes, colour, h);
+      if (onlyIfValid) {
+        changes = newChanges;
+      }
+    }
+
+    console.log("created " + (changes?.length ?? 0) + " changes");
+    return changes ?? [];
   }
 
   dragCancel(position: K | undefined, colour: number) {
@@ -66,31 +105,27 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
       return [];
     }
 
-    let changes: IChange[] = [];
-    this._highlights.forEach(h => {
-      if (this._features.get(h.position) !== undefined) {
-        changes.push(this.createFeatureRemove(h.position));
-      }
-
-      if (colour >= 0 && h.colour === 0) {
-        changes.push(this.createFeatureAdd(h.position, colour));
-      }
-
-      if (!this.keysEqual(h.position, position)) {
-        this.removeHighlightAt(h.position);
-      }
-    });
-
+    const changes = this.createChanges(colour, true);
     this._inDrag = false;
+    this.clearHighlights();
+    if (position !== undefined) {
+      this.addHighlightAt(position, colour < 0);
+    }
     return changes;
   }
 
+  // Returns true if something changed, else false.
   moveHighlight(position: K | undefined, colour: number) {
+    let changed = false;
     if (position === undefined) {
       if (this._inDrag !== true) {
+        if (fluent(this._highlights).any()) {
+          changed = true;
+        }
         this.clearHighlights();
       }
     } else if (!this.keysEqual(position, this._lastHoverPosition)) {
+      changed = true;
       if (this._inDrag === true) {
         this.dragTo(position, colour < 0);
       } else {
@@ -101,6 +136,24 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
     }
 
     this._lastHoverPosition = position;
+    return changed;
+  }
+
+  // Sets whether or not the highlights are marked as valid -- this swaps
+  // the colours between (0, 1) and (2, 3).  (This is the only place where we'll
+  // assign the highlight colours 2 and 3.)
+  setHighlightValidity(valid: boolean) {
+    console.log("setting highlight validity to " + valid);
+    function needsChange(h: IFeature<K>) {
+      return valid ? (h.colour >= 2) : (h.colour < 2);
+    }
+
+    const toChange = [...fluent(this._highlights).filter(needsChange)];
+    for (const h of toChange) {
+      this._highlights.remove(h.position);
+      h.colour = valid ? h.colour - 2 : h.colour + 2;
+      this._highlights.add(h);
+    }
   }
 }
 
@@ -195,5 +248,28 @@ export class FaceHighlighter extends DragHighlighter<IGridCoord, IFeature<IGridC
   dragStart(position: IGridCoord | undefined, colour: number) {
     super.dragStart(position, colour);
     this._startPosition = position;
+  }
+}
+
+// The vertex highlighter doesn't actually support making changes (none are relevant right now)
+export class VertexHighlighter extends DragHighlighter<IGridVertex, IFeature<IGridVertex>> {
+  protected keysEqual(a: IGridVertex, b: IGridVertex | undefined) {
+    return verticesEqual(a, b);
+  }
+
+  protected keyString(a: IGridVertex | undefined) {
+    return a === undefined ? "undefined" : vertexString(a);
+  }
+
+  protected createFeatureAdd(position: IGridVertex, colour: number) {
+    return undefined;
+  }
+
+  protected createFeatureRemove(position: IGridVertex) {
+    return undefined;
+  }
+
+  protected createHighlight(position: IGridVertex, subtract: boolean): IFeature<IGridVertex> {
+    return { position: position, colour: subtract ? 1 : 0 };
   }
 }

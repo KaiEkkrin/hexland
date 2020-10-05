@@ -1,7 +1,7 @@
 import { IAnnotation } from "./annotation";
 import { IChange, ChangeCategory, ChangeType, IAreaAdd, IAreaRemove, ITokenAdd, IWallAdd, IWallRemove, ITokenRemove, ITokenMove, INoteAdd, INoteRemove, createAreaAdd, createWallAdd, createNoteAdd, createTokenAdd } from "./change";
 import { IGridCoord, IGridEdge } from "./coord";
-import { IFeature, IToken, IFeatureDictionary } from "./feature";
+import { IFeature, IToken, IFeatureDictionary, ITokenDictionary } from "./feature";
 import { IMap } from "./map";
 import { IUserPolicy } from "./policy";
 
@@ -33,7 +33,7 @@ export interface IChangeTracker {
 // A simple implementation for testing, etc.
 export class SimpleChangeTracker implements IChangeTracker {
   private readonly _areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
-  private readonly _tokens: IFeatureDictionary<IGridCoord, IToken>;
+  private readonly _tokens: ITokenDictionary;
   private readonly _walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
   private readonly _notes: IFeatureDictionary<IGridCoord, IAnnotation>;
   private readonly _userPolicy: IUserPolicy | undefined;
@@ -42,7 +42,7 @@ export class SimpleChangeTracker implements IChangeTracker {
 
   constructor(
     areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
-    tokens: IFeatureDictionary<IGridCoord, IToken>,
+    tokens: ITokenDictionary,
     walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
     notes: IFeatureDictionary<IGridCoord, IAnnotation>,
     userPolicy: IUserPolicy | undefined
@@ -102,6 +102,13 @@ export class SimpleChangeTracker implements IChangeTracker {
   }
 
   tokenAdd(map: IMap, user: string, feature: IToken, oldPosition: IGridCoord | undefined) {
+    // Check for conflicts with walls
+    for (const edge of this._tokens.enumerateFillEdgePositions(feature)) {
+      if (this._walls.get(edge) !== undefined) {
+        return false;
+      }
+    }
+
     return this.policyAdd(this._tokens, feature);
   }
 
@@ -117,6 +124,11 @@ export class SimpleChangeTracker implements IChangeTracker {
   }
 
   wallAdd(feature: IFeature<IGridEdge>) {
+    // Stop us from overwriting a token with a wall
+    if (this._tokens.hasFillEdge(feature.position)) {
+      return false;
+    }
+
     return this.policyAdd(this._walls, feature);
   }
 

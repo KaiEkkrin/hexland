@@ -1,21 +1,21 @@
 import { IChange } from "../data/change";
-import { IGridVertex, IGridEdge, verticesEqual, IGridCoord, coordsEqual } from "../data/coord";
-import { IFeature, IFeatureDictionary } from "../data/feature";
-import { EdgeHighlighter, FaceHighlighter } from "./dragHighlighter";
+import { IGridVertex, IGridEdge, verticesEqual, IGridCoord, coordsEqual, vertexString } from "../data/coord";
+import { FeatureDictionary, IFeature, IFeatureDictionary } from "../data/feature";
+import { MapColouring } from "./colouring";
+import { EdgeHighlighter, FaceHighlighter, VertexHighlighter } from "./dragHighlighter";
 import { IGridGeometry } from "./gridGeometry";
 import { IDragRectangle } from "./interfaces";
 
 import * as THREE from 'three';
-import { MapColouring } from "./colouring";
 
 // Given two vertices, plots a straight-line (more or less) wall between them including the
 // intermediate vertices.
 export function *drawWallBetween(geometry: IGridGeometry, a: IGridVertex, b: IGridVertex) {
-  let bCentre = geometry.createVertexCentre(new THREE.Vector3(), b, 0);
-  let [eCentre, vCentre, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  const bCentre = geometry.createVertexCentre(new THREE.Vector3(), b, 0);
+  const [eCentre, vCentre, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
   while (verticesEqual(a, b) === false) {
     // Out of all the adjacent edges, find the one closest to b, and yield it
-    let closestEdge = geometry.getVertexEdgeAdjacency(a).map(e => {
+    const closestEdge = geometry.getVertexEdgeAdjacency(a).map(e => {
       return { edge: e, dSq: geometry.createEdgeCentre(eCentre, scratch1, scratch2, e, 0).distanceToSquared(bCentre) };
     }).reduce((e, f) => {
       return e.dSq < f.dSq ? e : f;
@@ -24,7 +24,7 @@ export function *drawWallBetween(geometry: IGridGeometry, a: IGridVertex, b: IGr
     yield closestEdge.edge;
 
     // Out of all the adjacent vertices, find the one closest to b and continue
-    let closestVertex = geometry.getEdgeVertexAdjacency(closestEdge.edge).map(v => {
+    const closestVertex = geometry.getEdgeVertexAdjacency(closestEdge.edge).map(v => {
       return { vertex: v, dSq: geometry.createVertexCentre(vCentre, v, 0).distanceToSquared(bCentre) };
     }).reduce((v, w) => {
       return v.dSq < w.dSq ? v : w;
@@ -44,7 +44,7 @@ export function drawWallAround(
   faceDictionary: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
   addWall: (position: IGridEdge) => void
 ) {
-  for (let f of faceDictionary) {
+  for (const f of faceDictionary) {
     geometry.forEachAdjacentFace(f.position, (adj, edge) => {
       if (faceDictionary.get(adj) === undefined) {
         // This is an exterior face -- add the wall
@@ -65,17 +65,14 @@ export function drawWallUnion(
   addWall: (position: IGridEdge) => void,
   removeWall: (position: IGridEdge) => void
 ) {
-  let changeCount = [0];
-  for (let f of faceDictionary) {
+  for (const f of faceDictionary) {
     geometry.forEachAdjacentFace(f.position, (adj, edge) => {
       if (faceDictionary.get(adj) === undefined && colouring.colourOf(adj) === outerColour) {
         // This is an exterior face -- add the wall
         addWall(edge);
-        ++changeCount[0];
       } else if (colouring.getWall(edge) !== undefined) {
         // This is an interior wall -- remove it
         removeWall(edge);
-        ++changeCount[0];
       }
     });
   }
@@ -92,22 +89,24 @@ export function drawWallDifference(
   addWall: (position: IGridEdge) => void,
   removeWall: (position: IGridEdge) => void
 ) {
-  let changeCount = [0];
-  for (let f of faceDictionary) {
-    geometry.forEachAdjacentFace(f.position, (adj, edge) => {
-      if (faceDictionary.get(adj) === undefined && colouring.colourOf(adj) !== innerColour) {
-        // This is an exterior face -- add the wall
-        addWall(edge);
-        ++changeCount[0];
-      } else if (colouring.getWall(edge) !== undefined) {
-        // This is an interior wall -- remove it
-        removeWall(edge);
-        ++changeCount[0];
-      }
-    });
+  let changeCount = 0;
+  function handleAdjacentFace(adj: IGridCoord, edge: IGridEdge) {
+    if (faceDictionary.get(adj) === undefined && colouring.colourOf(adj) !== innerColour) {
+      // This is an exterior face -- add the wall
+      addWall(edge);
+      ++changeCount;
+    } else if (colouring.getWall(edge) !== undefined) {
+      // This is an interior wall -- remove it
+      removeWall(edge);
+      ++changeCount;
+    }
   }
 
-  if (changeCount[0] === 0) {
+  for (const f of faceDictionary) {
+    geometry.forEachAdjacentFace(f.position, handleAdjacentFace);
+  }
+
+  if (changeCount === 0) {
     drawWallAround(geometry, faceDictionary, addWall);
   }
 }
@@ -119,7 +118,10 @@ export class WallHighlighter {
 
   // We drive this edge highlighter to do that part of the work:
   private readonly _edgeHighlighter: EdgeHighlighter;
-  private readonly _vertexHighlights: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>>;
+  private readonly _vertexHighlighter: VertexHighlighter;
+
+  // How to check whether the wall changes we made are valid
+  private readonly _validate: (changes: IChange[]) => boolean;
 
   private _lastHoverPosition: IGridVertex | undefined = undefined;
 
@@ -127,18 +129,23 @@ export class WallHighlighter {
     geometry: IGridGeometry,
     walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
     wallHighlights: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
-    vertexHighlights: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>>
+    vertexHighlights: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>>,
+    validate: (changes: IChange[]) => boolean
   ) {
     this._geometry = geometry;
     this._edgeHighlighter = new EdgeHighlighter(walls, wallHighlights);
-    this._vertexHighlights = vertexHighlights;
+    this._vertexHighlighter = new VertexHighlighter(
+      new FeatureDictionary<IGridVertex, IFeature<IGridVertex>>(vertexString),
+      vertexHighlights
+    );
+    this._validate = validate;
   }
 
   get inDrag() { return this._edgeHighlighter.inDrag; }
 
   clear() {
     this._edgeHighlighter.clear();
-    this._vertexHighlights.clear();
+    this._vertexHighlighter.clear();
   }
   
   dragCancel(position: IGridVertex | undefined, colour: number) {
@@ -161,24 +168,21 @@ export class WallHighlighter {
   }
 
   moveHighlight(position: IGridVertex | undefined, colour: number) {
-    if (position === undefined) {
-      if (this._edgeHighlighter.inDrag !== true) {
-        this._vertexHighlights.clear();
-      }
-    } else {
+    this._vertexHighlighter.moveHighlight(position, colour);
+    if (position !== undefined) {
       if (
         this._edgeHighlighter.inDrag === true &&
         this._lastHoverPosition !== undefined &&
         !verticesEqual(position, this._lastHoverPosition)
       ) {
-        for (let wall of drawWallBetween(this._geometry, this._lastHoverPosition, position)) {
+        for (const wall of drawWallBetween(this._geometry, this._lastHoverPosition, position)) {
           this._edgeHighlighter.moveHighlight(wall, colour);
         }
+
+        const valid = this._validate(this._edgeHighlighter.createChanges(colour, false));
+        this._edgeHighlighter.setHighlightValidity(valid);
       }
 
-      // Highlight the current vertex position
-      this._vertexHighlights.clear();
-      this._vertexHighlights.add({ position: position, colour: 0 });
       this._lastHoverPosition = position;
     }
   }
@@ -196,6 +200,9 @@ export class WallRectangleHighlighter {
   // ...and this face highlighter to show the faces
   private readonly _faceHighlighter: FaceHighlighter;
 
+  // How to check whether the wall changes we made are valid
+  private readonly _validate: (changes: IChange[]) => boolean;
+
   private _lastHoverPosition: IGridCoord | undefined;
 
   constructor(
@@ -204,12 +211,14 @@ export class WallRectangleHighlighter {
     walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
     wallHighlights: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
     faceHighlights: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
+    validate: (changes: IChange[]) => boolean,
     dragRectangle: IDragRectangle
   ) {
     this._geometry = geometry;
     this._faceHighlights = faceHighlights;
     this._edgeHighlighter = new EdgeHighlighter(walls, wallHighlights);
     this._faceHighlighter = new FaceHighlighter(faces, faceHighlights, dragRectangle);
+    this._validate = validate;
   }
 
   protected get geometry() { return this._geometry; }
@@ -254,6 +263,9 @@ export class WallRectangleHighlighter {
       this._edgeHighlighter.clear();
       this._edgeHighlighter.dragStart(undefined, colour);
       this.drawWall(colour);
+
+      const valid = this._validate(this._edgeHighlighter.createChanges(colour, false));
+      this._edgeHighlighter.setHighlightValidity(valid);
     }
 
     this._lastHoverPosition = position;
@@ -276,9 +288,10 @@ export class RoomHighlighter extends WallRectangleHighlighter {
     walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
     wallHighlights: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
     faceHighlights: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
+    validate: (changes: IChange[]) => boolean,
     dragRectangle: IDragRectangle
   ) {
-    super(geometry, faces, walls, wallHighlights, faceHighlights, dragRectangle);
+    super(geometry, faces, walls, wallHighlights, faceHighlights, validate, dragRectangle);
     this._colouring = colouring;
   }
 

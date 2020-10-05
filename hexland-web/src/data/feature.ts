@@ -108,7 +108,7 @@ export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> impl
     this._values.clear();
   }
 
-  clone() {
+  clone(): IFeatureDictionary<K, F> {
     return new FeatureDictionary<K, F>(this._toIndex, this._values);
   }
 
@@ -158,6 +158,9 @@ export interface ITokenDictionary extends IFeatureDictionary<IGridCoord, IToken>
   // position is the given one.)
   at(face: IGridCoord): IToken | undefined;
 
+  // The clone should produce a token dictionary
+  clone(): ITokenDictionary;
+
   // Returns all the face positions of a given token.
   enumerateFacePositions(token: IToken): Iterable<IGridCoord>;
 
@@ -168,6 +171,10 @@ export interface ITokenDictionary extends IFeatureDictionary<IGridCoord, IToken>
   // Returns all the fill vertex positions of a given token.
   // (Probably won't need calling externally.)
   enumerateFillVertexPositions(token: IToken): Iterable<IGridVertex>;
+
+  // Returns true if we have a fill edge here, else false.  (For checking for
+  // conflicts with walls.)
+  hasFillEdge(edge: IGridEdge): boolean;
 
   // Returns the token with the given id, or undefined for none.
   ofId(id: string): IToken | undefined;

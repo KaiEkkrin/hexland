@@ -204,9 +204,14 @@ abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements I
     this._byId.clear();
   }
 
+  abstract clone(): ITokenDictionary;
   abstract enumerateFacePositions(token: IToken): Iterable<IGridCoord>;
   abstract enumerateFillEdgePositions(token: IToken): Iterable<IGridEdge>;
   abstract enumerateFillVertexPositions(token: IToken): Iterable<IGridVertex>;
+
+  hasFillEdge(edge: IGridEdge) {
+    return this._drawing.fillEdges.get(edge) !== undefined;
+  }
 
   ofId(id: string) {
     return this._byId.get(id);

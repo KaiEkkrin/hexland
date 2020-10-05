@@ -169,24 +169,6 @@ export class MapStateMachine {
       t => this._drawing.getViewportToWorld(t)
     );
 
-    this._faceHighlighter = new FaceHighlighter(
-      this._drawing.areas, this._drawing.highlightedAreas, this._dragRectangle
-    );
-
-    this._wallHighlighter = new WallHighlighter(
-      this._gridGeometry, this._drawing.walls, this._drawing.highlightedWalls, this._drawing.highlightedVertices
-    );
-
-    this._wallRectangleHighlighter = new WallRectangleHighlighter(
-      this._gridGeometry, this._drawing.areas, this._drawing.walls, this._drawing.highlightedWalls,
-      this._drawing.highlightedAreas, this._dragRectangle
-    );
-
-    this._roomHighlighter = new RoomHighlighter(
-      this._gridGeometry, this._mapColouring, this._drawing.areas, this._drawing.walls, this._drawing.highlightedWalls,
-      this._drawing.highlightedAreas, this._dragRectangle
-    );
-
     // The notes are rendered with React, not with Three.js
     this._notes = new FeatureDictionary<IGridCoord, IAnnotation>(coordString);
 
@@ -222,6 +204,29 @@ export class MapStateMachine {
           return true;
         });
       }
+    );
+
+    this._faceHighlighter = new FaceHighlighter(
+      this._drawing.areas, this._drawing.highlightedAreas, this._dragRectangle
+    );
+
+    this.validateWallChanges = this.validateWallChanges.bind(this);
+    this._wallHighlighter = new WallHighlighter(
+      this._gridGeometry,
+      this._drawing.walls,
+      this._drawing.highlightedWalls,
+      this._drawing.highlightedVertices,
+      this.validateWallChanges
+    );
+
+    this._wallRectangleHighlighter = new WallRectangleHighlighter(
+      this._gridGeometry, this._drawing.areas, this._drawing.walls, this._drawing.highlightedWalls,
+      this._drawing.highlightedAreas, this.validateWallChanges, this._dragRectangle
+    );
+
+    this._roomHighlighter = new RoomHighlighter(
+      this._gridGeometry, this._mapColouring, this._drawing.areas, this._drawing.walls, this._drawing.highlightedWalls,
+      this._drawing.highlightedAreas, this.validateWallChanges, this._dragRectangle
     );
 
     this.resize();
@@ -576,6 +581,7 @@ export class MapStateMachine {
       return;
     }
 
+    console.log("checking if we can drop selection at " + coordString(target));
     const selectionDrag = this.canDropSelectionAt(position) ? this._selectionDrag : this._selectionDragRed;
     this._selectionDrag.clear();
     this._selectionDragRed.clear();
@@ -621,6 +627,14 @@ export class MapStateMachine {
     state.tokens = [...fluent(this._tokens).map(t => ({
       ...t, selectable: this.canSelectToken(t)
     }))];
+  }
+
+  private validateWallChanges(changes: IChange[]): boolean {
+    // I need to clone the walls for this one.  The map colouring won't be relevant.
+    const changeTracker = new MapChangeTracker(
+      this._drawing.areas, this._tokens, this._drawing.walls.clone(), this._notes, this._userPolicy, undefined
+    );
+    return trackChanges(this._map.record, changeTracker, changes, this._uid);
   }
 
   // Helps create a new map state that might be a combination of more than

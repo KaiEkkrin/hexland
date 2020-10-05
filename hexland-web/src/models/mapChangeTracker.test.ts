@@ -3,10 +3,11 @@ import { HexGridGeometry } from './hexGridGeometry';
 import { MapChangeTracker } from './mapChangeTracker';
 import { ChangeType, ChangeCategory } from '../data/change';
 import { trackChanges, IChangeTracker } from '../data/changeTracking';
-import { IGridEdge, IGridCoord, coordString, edgeString } from '../data/coord';
+import { IGridEdge, IGridCoord, coordString, edgeString, IGridVertex, vertexString } from '../data/coord';
 import { FeatureDictionary, IFeature, IToken } from '../data/feature';
 import { MapType } from '../data/map';
 import { IAnnotation } from '../data/annotation';
+import { createTokenDictionary, SimpleTokenDrawing } from '../data/tokens';
 
 const ownerUid = "owner";
 const uid1 = "uid1";
@@ -51,7 +52,11 @@ function buildWallsOfThreeHexes(changeTracker: IChangeTracker) {
 
 test('Unprivileged users cannot move other users\' tokens', () => {
   const areas = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
-  const tokens = new FeatureDictionary<IGridCoord, IToken>(coordString);
+  const tokens = createTokenDictionary(MapType.Hex, new SimpleTokenDrawing(
+    new FeatureDictionary<IGridCoord, IToken>(coordString),
+    new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
+    new FeatureDictionary<IGridVertex, IFeature<IGridVertex>>(vertexString)
+  ));
   const walls = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
   const notes = new FeatureDictionary<IGridCoord, IAnnotation>(coordString);
 
@@ -68,8 +73,8 @@ test('Unprivileged users cannot move other users\' tokens', () => {
   expect(handleChangesAborted.mock.calls.length).toBe(0);
 
   let addTokens = [
-    { position: { x: 0, y: 0 }, colour: 0, players: [uid1], text: "Zero" },
-    { position: { x: 0, y: 1 }, colour: 0, players: [uid2], text: "Inner2" },
+    { position: { x: 0, y: 0 }, colour: 0, id: "a", players: [uid1], size: "1", text: "Zero" },
+    { position: { x: 0, y: 1 }, colour: 0, id: "b", players: [uid2], size: "1", text: "Inner2" },
   ].map(t => {
     return {
       ty: ChangeType.Add,
@@ -88,7 +93,8 @@ test('Unprivileged users cannot move other users\' tokens', () => {
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 1, y: 0 },
-    oldPosition: { x: 0, y: 1 }
+    oldPosition: { x: 0, y: 1 },
+    tokenId: "b"
   };
 
   // uid1 can't move uid2's token
@@ -109,12 +115,14 @@ test('Unprivileged users cannot move other users\' tokens', () => {
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 0, y: 0 },
-    oldPosition: { x: 1, y: 0 }
+    oldPosition: { x: 1, y: 0 },
+    tokenId: "b"
   }, {
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 1, y: 0 },
-    oldPosition: { x: 0, y: 0 }
+    oldPosition: { x: 0, y: 0 },
+    tokenId: "a"
   }];
 
   ok = trackChanges(map, changeTracker, moveSwap, uid1);
@@ -139,7 +147,8 @@ test('Unprivileged users cannot move other users\' tokens', () => {
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 0, y: 1 },
-    oldPosition: { x: 0, y: 0 }
+    oldPosition: { x: 0, y: 0 },
+    tokenId: "b"
   };
 
   ok = trackChanges(map, changeTracker, [moveBack], uid2);
@@ -151,7 +160,11 @@ test('Unprivileged users cannot move other users\' tokens', () => {
 
 test('Unprivileged tokens cannot escape from bounded areas', () => {
   const areas = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
-  const tokens = new FeatureDictionary<IGridCoord, IToken>(coordString);
+  const tokens = createTokenDictionary(MapType.Hex, new SimpleTokenDrawing(
+    new FeatureDictionary<IGridCoord, IToken>(coordString),
+    new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
+    new FeatureDictionary<IGridVertex, IFeature<IGridVertex>>(vertexString)
+  ));
   const walls = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
   const notes = new FeatureDictionary<IGridCoord, IAnnotation>(coordString);
   const colouring = new MapColouring(new HexGridGeometry(100, 8));
@@ -172,9 +185,9 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
   // console.log("outer colour: " + colouring.colourOf({ x: 1, y: -1 }));
 
   let addTokens = [
-    { position: { x: 0, y: 0 }, colour: 0, players: [uid1], text: "Zero" },
-    { position: { x: 0, y: 1 }, colour: 0, players: [uid1], text: "Inner" },
-    { position: { x: -2, y: 2 }, colour: 0, players: [uid1], text: "Outer" }
+    { position: { x: 0, y: 0 }, colour: 0, id: "a", players: [uid1], size: "1", text: "Zero" },
+    { position: { x: 0, y: 1 }, colour: 0, id: "b", players: [uid1], size: "1", text: "Inner" },
+    { position: { x: -2, y: 2 }, colour: 0, id: "c", players: [uid1], size: "1", text: "Outer" }
   ].map(t => {
     return {
       ty: ChangeType.Add,
@@ -193,21 +206,24 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 1, y: -1 },
-    oldPosition: { x: 0, y: 0 }
+    oldPosition: { x: 0, y: 0 },
+    tokenId: "a"
   };
 
   const moveWithinInner = {
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 1, y: 0 },
-    oldPosition: { x: 0, y: 1 }
+    oldPosition: { x: 0, y: 1 },
+    tokenId: "b"
   };
 
   const moveOuterToOuter = {
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: -1, y: 1 },
-    oldPosition: { x: -2, y: 2 }
+    oldPosition: { x: -2, y: 2 },
+    tokenId: "c"
   };
 
   // We certainly can't do all three together
@@ -259,7 +275,8 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 0, y: 1 },
-    oldPosition: { x: 1, y: -1 }
+    oldPosition: { x: 1, y: -1 },
+    tokenId: "a"
   };
 
   ok = trackChanges(map, changeTracker, [moveOuterToInner], uid1);
