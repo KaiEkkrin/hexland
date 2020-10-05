@@ -78,6 +78,14 @@ class SelectionDrawing extends BaseTokenDrawing<IIdFeature<IGridCoord>> {
     return { position: position, colour: 0, id: token.id };
   }
 
+  createFillEdge(token: ITokenProperties, position: IGridEdge): IFeature<IGridEdge> {
+    return { position: position, colour: 0 };
+  }
+
+  createFillVertex(token: ITokenProperties, position: IGridVertex): IFeature<IGridVertex> {
+    return { position: position, colour: 0 };
+  }
+
   dispose() {
     this._dispose?.();
   }

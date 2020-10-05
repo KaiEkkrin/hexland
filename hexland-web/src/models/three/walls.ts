@@ -11,9 +11,11 @@ import { IInstancedFeatureObject } from './instancedFeatureObject';
 
 export function createTokenFillEdgeGeometry(gridGeometry: IGridGeometry, alpha: number, z: number) {
   const vertices = [...gridGeometry.createTokenFillEdgeVertices(alpha, z)];
+  const indices = gridGeometry.createTokenFillEdgeIndices();
   return () => {
     const geometry = new THREE.InstancedBufferGeometry();
     geometry.setFromPoints(vertices);
+    geometry.setIndex(indices);
     return geometry;
   };
 }

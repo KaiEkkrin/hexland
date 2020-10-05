@@ -53,6 +53,7 @@ export abstract class BaseTokenDrawing<F extends IFeature<IGridCoord>> implement
   }
 
   dispose() {
+    // nothing to do by default
   }
 }
 
@@ -66,6 +67,20 @@ export class SimpleTokenDrawing extends BaseTokenDrawing<IToken> {
   }
 }
 
+// A utility for the below
+function removeAll<K extends IGridCoord, F extends IFeature<K>>(
+  dict: IFeatureDictionary<K, F>,
+  list: K[]
+) {
+  while (true) {
+    const toRemove = list.pop();
+    if (toRemove === undefined) {
+      return;
+    }
+    dict.remove(toRemove);
+  }
+}
+
 // Implements the tokens dictionary, using one or more token faces to
 // draw each token.
 // Note that cloning this creates an internal clone of the faces dictionary too,
@@ -73,6 +88,12 @@ export class SimpleTokenDrawing extends BaseTokenDrawing<IToken> {
 // the `clone` method.)
 abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements ITokenDictionary {
   private readonly _drawing: ITokenDrawing<IIdFeature<IGridCoord>>;
+
+  // For tracking what things we added during an add operation so that we can roll back on failure
+  private readonly _addedFaces: IGridCoord[] = [];
+  private readonly _addedEdges: IGridEdge[] = [];
+  private readonly _addedVertices: IGridVertex[] = [];
+
   private _byId: { [id: string]: IToken };
 
   constructor(
@@ -88,44 +109,73 @@ abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements I
   protected get drawing() { return this._drawing; }
   protected get byId() { return this._byId; }
 
-  private revertAdd(token: IToken, faces: IGridCoord[], edges: IGridEdge[], vertices: IGridVertex[]) {
-    for (const face of faces) {
-      this._drawing.faces.remove(face);
+  private revertAdd(token: IToken) {
+    removeAll(this._drawing.fillVertices, this._addedVertices);
+    removeAll(this._drawing.fillEdges, this._addedEdges);
+    removeAll(this._drawing.faces, this._addedFaces);
+    if (token.id in this._byId) {
+      delete this._byId[token.id];
     }
-
     super.remove(token.position);
   }
 
+  // This add() can't be called concurrently because of the use of member variables for the revert --
+  // that should be fine and it gives the runtime the opportunity to reduce the amount of allocation it does
   add(token: IToken) {
     if (super.add(token) === true) {
-      // Record the things we added -- if we get a failure we want to be
-      // able to roll this back
-      const addedFaces: IGridCoord[] = [];
-      const addedEdges: IGridEdge[] = [];
-      const addedVertices: IGridVertex[] = [];
-
-      // Add the token's faces
-      for (const face of this.enumerateFacePositions(token)) {
-        const faceToken = this._drawing.createFace(token, face);
-        if (this._drawing.faces.add(faceToken) === false) {
-          // This token doesn't fit here.  Roll back any changes we've already
-          // made:
-          this.revertAdd(token, addedFaces, addedEdges, addedVertices);
+      try { // paranoia ;) I'm not going to use exception driven logic on purpose, hopefully this won't cost
+        // Make sure the token's id isn't already in use
+        if (token.id in this._byId) {
+          this.revertAdd(token);
           return false;
-        } else {
-          // This token fits here -- note that we added this face and continue
-          addedFaces.push(face);
         }
-      }
+        this._byId[token.id] = token;
 
-      // If the token's ID is already in use that's also a rollback
-      if (token.id in this._byId) {
-        this.revertAdd(token, addedFaces, addedEdges, addedVertices);
-        return false;
-      }
+        // Add the token's faces
+        for (const face of this.enumerateFacePositions(token)) {
+          const faceToken = this._drawing.createFace(token, face);
+          if (this._drawing.faces.add(faceToken) === false) {
+            // This token doesn't fit here.  Roll back any changes we've already
+            // made:
+            this.revertAdd(token);
+            return false;
+          } else {
+            // This token fits here -- note that we added this face and continue
+            this._addedFaces.push(face);
+          }
+        }
 
-      this._byId[token.id] = token;
-      return true;
+        // Add the token's edges
+        for (const edge of this.enumerateFillEdgePositions(token)) {
+          const edgeToken = this._drawing.createFillEdge(token, edge);
+          if (this._drawing.fillEdges.add(edgeToken) === false) {
+            // This token doesn't fit here.  Roll back any changes we've already
+            // made:
+            this.revertAdd(token);
+            return false;
+          } else {
+            this._addedEdges.push(edge);
+          }
+        }
+
+        // Add the token's vertices
+        for (const vertex of this.enumerateFillVertexPositions(token)) {
+          const vertexToken = this._drawing.createFillVertex(token, vertex);
+          if (this._drawing.fillVertices.add(vertexToken) === false) {
+            // This token doesn't fit here.  Roll back any changes we've already
+            // made:
+            this.revertAdd(token);
+            return false;
+          } else {
+            this._addedVertices.push(vertex);
+          }
+        }
+
+        return true;
+      } catch (e) {
+        this.revertAdd(token);
+        throw e;
+      }
     } else {
       return false;
     }
@@ -145,6 +195,14 @@ abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements I
       for (const face of this.enumerateFacePositions(token)) {
         this._drawing.faces.remove(face);
       }
+
+      for (const edge of this.enumerateFillEdgePositions(token)) {
+        this._drawing.fillEdges.remove(edge);
+      }
+
+      for (const vertex of this.enumerateFillVertexPositions(token)) {
+        this._drawing.fillVertices.remove(vertex);
+      }
     }
 
     // Now we can clear the rest
@@ -163,6 +221,14 @@ abstract class Tokens extends FeatureDictionary<IGridCoord, IToken> implements I
   remove(k: IGridCoord): IToken | undefined {
     const removed = super.remove(k);
     if (removed !== undefined) {
+      for (const vertex of this.enumerateFillVertexPositions(removed)) {
+        this._drawing.fillVertices.remove(vertex);
+      }
+
+      for (const edge of this.enumerateFillEdgePositions(removed)) {
+        this._drawing.fillEdges.remove(edge);
+      }
+
       for (const face of this.enumerateFacePositions(removed)) {
         this._drawing.faces.remove(face);
       }
@@ -243,11 +309,141 @@ class TokensHex extends Tokens {
   }
 
   *enumerateFillEdgePositions(token: IToken): Iterable<IGridEdge> {
-    // TODO #119
+    if (token.size === '1') {
+      return;
+    }
+
+    if (token.size.indexOf('l') >= 0) {
+      // The crosshair in the middle
+      yield { x: token.position.x - 1, y: token.position.y + 1, edge: 1 };
+      yield { x: token.position.x - 1, y: token.position.y + 1, edge: 2 };
+      yield { x: token.position.x, y: token.position.y, edge: 0 };
+      if (token.size[0] === '2') {
+        return;
+      }
+
+      // The rest of the 3
+      yield { x: token.position.x - 1, y: token.position.y, edge: 2 };
+      yield { x: token.position.x, y: token.position.y, edge: 1 };
+      yield { x: token.position.x + 1, y: token.position.y - 1, edge: 0 };
+      yield { x: token.position.x, y: token.position.y, edge: 2 };
+      yield { x: token.position.x + 1, y: token.position.y, edge: 1 };
+      yield { x: token.position.x + 1, y: token.position.y, edge: 0 };
+      yield { x: token.position.x, y: token.position.y + 1, edge: 2 };
+      yield { x: token.position.x, y: token.position.y + 1, edge: 1 };
+      yield { x: token.position.x, y: token.position.y + 1, edge: 0 };
+      if (token.size[0] === '3') {
+        return;
+      }
+
+      // The left positions:
+      yield { x: token.position.x, y: token.position.y - 1, edge: 0 };
+      yield { x: token.position.x - 1, y: token.position.y, edge: 1 };
+      yield { x: token.position.x - 2, y: token.position.y, edge: 2 };
+      yield { x: token.position.x - 1, y: token.position.y, edge: 0 };
+      yield { x: token.position.x - 2, y: token.position.y + 1, edge: 1 };
+      yield { x: token.position.x - 2, y: token.position.y + 1, edge: 2 };
+      yield { x: token.position.x - 1, y: token.position.y + 1, edge: 0 };
+      yield { x: token.position.x - 2, y: token.position.y + 2, edge: 1 };
+      yield { x: token.position.x - 2, y: token.position.y + 2, edge: 2 };
+      yield { x: token.position.x - 1, y: token.position.y + 2, edge: 0 };
+      yield { x: token.position.x - 1, y: token.position.y + 2, edge: 1 };
+      yield { x: token.position.x - 1, y: token.position.y + 2, edge: 2 };
+    } else {
+      // The crosshair in the middle
+      yield { x: token.position.x, y: token.position.y, edge: 1 };
+      yield { x: token.position.x - 1, y: token.position.y, edge: 2 };
+      yield { x: token.position.x, y: token.position.y, edge: 0 };
+      if (token.size[0] === '2') {
+        return;
+      }
+
+      // The rest of the 3
+      yield { x: token.position.x - 1, y: token.position.y + 1, edge: 1 };
+      yield { x: token.position.x - 1, y: token.position.y + 1, edge: 2 };
+      yield { x: token.position.x, y: token.position.y + 1, edge: 0 };
+      yield { x: token.position.x, y: token.position.y + 1, edge: 1 };
+      yield { x: token.position.x, y: token.position.y + 1, edge: 2 };
+      yield { x: token.position.x + 1, y: token.position.y, edge: 0 };
+      yield { x: token.position.x + 1, y: token.position.y, edge: 1 };
+      yield { x: token.position.x, y: token.position.y, edge: 2 };
+      yield { x: token.position.x + 1, y: token.position.y - 1, edge: 0 };
+      if (token.size[0] === '3') {
+        return;
+      }
+
+      // The top-left positions:
+      yield { x: token.position.x + 1, y: token.position.y - 1, edge: 1 };
+      yield { x: token.position.x, y: token.position.y - 1, edge: 2 };
+      yield { x: token.position.x + 1, y: token.position.y - 2, edge: 0 };
+      yield { x: token.position.x, y: token.position.y - 1, edge: 1 };
+      yield { x: token.position.x - 1, y: token.position.y - 1, edge: 2 };
+      yield { x: token.position.x, y: token.position.y - 1, edge: 0 };
+      yield { x: token.position.x - 1, y: token.position.y, edge: 1 };
+      yield { x: token.position.x - 2, y: token.position.y, edge: 2 };
+      yield { x: token.position.x - 1, y: token.position.y, edge: 0 };
+      yield { x: token.position.x - 2, y: token.position.y + 1, edge: 1 };
+      yield { x: token.position.x - 2, y: token.position.y + 1, edge: 2 };
+      yield { x: token.position.x - 1, y: token.position.y + 1, edge: 0 };
+    }
   }
 
   *enumerateFillVertexPositions(token: IToken): Iterable<IGridVertex> {
-    // TODO #119
+    if (token.size === '1') {
+      return;
+    }
+
+    if (token.size.indexOf('l') >= 0) {
+      // The crosshair in the middle
+      yield { x: token.position.x, y: token.position.y, vertex: 0 };
+      if (token.size[0] === '2') {
+        return;
+      }
+
+      // The rest of the 3
+      yield { x: token.position.x, y: token.position.y + 1, vertex: 1 };
+      yield { x: token.position.x + 1, y: token.position.y, vertex: 0 };
+      yield { x: token.position.x + 1, y: token.position.y, vertex: 1 };
+      yield { x: token.position.x + 1, y: token.position.y - 1, vertex: 0 };
+      yield { x: token.position.x, y: token.position.y, vertex: 1 };
+      if (token.size[0] === '3') {
+        return;
+      }
+
+      // The left positions:
+      yield { x: token.position.x, y: token.position.y - 1, vertex: 0 };
+      yield { x: token.position.x - 1, y: token.position.y, vertex: 1 };
+      yield { x: token.position.x - 1, y: token.position.y, vertex: 0 };
+      yield { x: token.position.x - 1, y: token.position.y + 1, vertex: 1 };
+      yield { x: token.position.x - 1, y: token.position.y + 1, vertex: 0 };
+      yield { x: token.position.x - 1, y: token.position.y + 2, vertex: 1 };
+      yield { x: token.position.x, y: token.position.y + 1, vertex: 0 };
+    } else {
+      // The crosshair in the middle
+      yield { x: token.position.x, y: token.position.y, vertex: 1 };
+      if (token.size[0] === '2') {
+        return;
+      }
+
+      // The rest of the 3
+      yield { x: token.position.x, y: token.position.y + 1, vertex: 1 };
+      yield { x: token.position.x + 1, y: token.position.y, vertex: 0 };
+      yield { x: token.position.x + 1, y: token.position.y, vertex: 1 };
+      yield { x: token.position.x + 1, y: token.position.y - 1, vertex: 0 };
+      yield { x: token.position.x, y: token.position.y, vertex: 0 };
+      if (token.size[0] === '3') {
+        return;
+      }
+
+      // The top-left positions:
+      yield { x: token.position.x + 1, y: token.position.y - 1, vertex: 1 };
+      yield { x: token.position.x + 1, y: token.position.y - 2, vertex: 0 };
+      yield { x: token.position.x, y: token.position.y - 1, vertex: 1 };
+      yield { x: token.position.x, y: token.position.y - 1, vertex: 0 };
+      yield { x: token.position.x - 1, y: token.position.y, vertex: 1 };
+      yield { x: token.position.x - 1, y: token.position.y, vertex: 0 };
+      yield { x: token.position.x - 1, y: token.position.y + 1, vertex: 1 };
+    }
   }
 }
 
@@ -278,29 +474,78 @@ class TokensSquare extends Tokens {
     // Complete the 3:
     yield { x: token.position.x - 1, y: token.position.y + 1 };
     yield { x: token.position.x, y: token.position.y + 1 };
-    yield { x: token.position.x + 1, y: token.position.y + 1 };
     yield { x: token.position.x + 1, y: token.position.y };
     yield { x: token.position.x + 1, y: token.position.y - 1 };
     if (token.size === '3') {
+      yield { x: token.position.x + 1, y: token.position.y + 1 };
       return;
     }
 
-    // The seven further top-left positions:
-    yield { x: token.position.x + 1, y: token.position.y - 2 };
+    // The four further top-left positions:
     yield { x: token.position.x, y: token.position.y - 2 };
     yield { x: token.position.x - 1, y: token.position.y - 2 };
-    yield { x: token.position.x - 2, y: token.position.y - 2 };
     yield { x: token.position.x - 2, y: token.position.y - 1 };
     yield { x: token.position.x - 2, y: token.position.y };
-    yield { x: token.position.x - 2, y: token.position.y + 1 };
   }
 
   *enumerateFillEdgePositions(token: IToken): Iterable<IGridEdge> {
-    // TODO #119
+    if (token.size === '1') {
+      return;
+    }
+
+    // The crosshair in the middle
+    yield { x: token.position.x, y: token.position.y, edge: 0 };
+    yield { x: token.position.x, y: token.position.y, edge: 1 };
+    yield { x: token.position.x, y: token.position.y - 1, edge: 0 };
+    yield { x: token.position.x - 1, y: token.position.y, edge: 1 };
+    if (token.size[0] === '2') {
+      return;
+    }
+
+    // Complete the 3:
+    yield { x: token.position.x + 1, y: token.position.y - 1, edge: 0 };
+    yield { x: token.position.x + 1, y: token.position.y, edge: 1 };
+    yield { x: token.position.x + 1, y: token.position.y, edge: 0 };
+    yield { x: token.position.x - 1, y: token.position.y + 1, edge: 1 };
+    yield { x: token.position.x, y: token.position.y + 1, edge: 1 };
+    yield { x: token.position.x, y: token.position.y + 1, edge: 0 };
+    if (token.size === '3') {
+      yield { x: token.position.x + 1, y: token.position.y + 1, edge: 0 };
+      yield { x: token.position.x + 1, y: token.position.y + 1, edge: 1 };
+      return;
+    }
+
+    // Complete the 4:
+    yield { x: token.position.x, y: token.position.y - 2, edge: 0 };
+    yield { x: token.position.x, y: token.position.y - 1, edge: 1 };
+    yield { x: token.position.x - 1, y: token.position.y - 1, edge: 1 };
+    yield { x: token.position.x - 2, y: token.position.y, edge: 1 };
+    yield { x: token.position.x - 1, y: token.position.y, edge: 0 };
+    yield { x: token.position.x - 1, y: token.position.y - 1, edge: 0 };
   }
 
   *enumerateFillVertexPositions(token: IToken): Iterable<IGridVertex> {
-    // TODO #119
+    if (token.size === '1') {
+      return;
+    }
+
+    // The centre of the middle crosshair
+    yield { x: token.position.x, y: token.position.y, vertex: 0 };
+    if (token.size[0] === '2') {
+      return;
+    }
+
+    // The three other vertices around the middle square
+    yield { x: token.position.x + 1, y: token.position.y, vertex: 0 };
+    yield { x: token.position.x, y: token.position.y + 1, vertex: 0 };
+    if (token.size[0] === '3') {
+      yield { x: token.position.x + 1, y: token.position.y + 1, vertex: 0 };
+      return;
+    }
+
+    // The pair of top-left vertices
+    yield { x: token.position.x - 1, y: token.position.y, vertex: 0 };
+    yield { x: token.position.x, y: token.position.y - 1, vertex: 0 };
   }
 }
 

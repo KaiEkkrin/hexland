@@ -157,7 +157,11 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     yield this.createTopRight(new THREE.Vector3(), centreLeft).lerp(centreLeft, invAlpha);
     yield this.createBottomRight(new THREE.Vector3(), centreLeft).lerp(centreLeft, invAlpha);
     yield this.createTopLeft(new THREE.Vector3(), centreRight).lerp(centreRight, invAlpha);
-    yield this.createBottomRight(new THREE.Vector3(), centreRight).lerp(centreRight, invAlpha);
+    yield this.createBottomLeft(new THREE.Vector3(), centreRight).lerp(centreRight, invAlpha);
+  }
+
+  createTokenFillEdgeIndices(): number[] {
+    return [ 0, 1, 2, 1, 3, 2 ];
   }
 
   *createTokenFillVertexVertices(alpha: number, z: number): Iterable<THREE.Vector3> {
@@ -175,6 +179,10 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     yield this.createTopRight(new THREE.Vector3(), centreBottomLeft).lerp(centreBottomLeft, invAlpha);
     yield this.createBottomLeft(new THREE.Vector3(), centreTopRight).lerp(centreTopRight, invAlpha);
     yield this.createTopLeft(new THREE.Vector3(), centreBottomRight).lerp(centreBottomRight, invAlpha);
+  }
+
+  createTokenFillVertexIndices(): number[] {
+    return [ 0, 1, 2, 1, 3, 2 ];
   }
 
   forEachAdjacentFace(coord: IGridCoord, fn: (face: IGridCoord, edge: IGridEdge) => void) {

@@ -11,9 +11,11 @@ import * as THREE from 'three';
 
 export function createTokenFillVertexGeometry(gridGeometry: IGridGeometry, alpha: number, z: number) {
   const vertices = [...gridGeometry.createTokenFillVertexVertices(alpha, z)];
+  const indices = gridGeometry.createTokenFillVertexIndices();
   return () => {
     const geometry = new THREE.InstancedBufferGeometry();
     geometry.setFromPoints(vertices);
+    geometry.setIndex(indices);
     return geometry;
   };
 }

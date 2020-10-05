@@ -71,9 +71,15 @@ export interface IGridGeometry {
   // We make only 1 (presuming tile 0 and tileDim 1).
   createTokenFillEdgeVertices(alpha: number, z: number): Iterable<THREE.Vector3>;
 
+  // ...and the indices
+  createTokenFillEdgeIndices(): number[];
+
   // Creates the vertices for the token fill vertex mesh.
   // We make only 1 (presuming tile 0 and tileDim 1).
   createTokenFillVertexVertices(alpha: number, z: number): Iterable<THREE.Vector3>;
+
+  // ...and the indices
+  createTokenFillVertexIndices(): number[];
 
   // Creates the 'face' attribute array that matches `createSolidVertexVertices` when used
   // for the grid colours.
