@@ -360,6 +360,7 @@ export const playerConverter = new ShallowConverter<IPlayer>({
 
 export const profileConverter = new ShallowConverter<IProfile>({
   name: "",
+  email: "",
   level: UserLevel.Standard,
   adventures: undefined,
   latestMaps: undefined

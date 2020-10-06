@@ -26,8 +26,8 @@ function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
     <div className="App">
       <FirebaseContextProvider {...props}>
         <UserContextProvider>
-          <ProfileContextProvider>
-            <AnalyticsContextProvider {...props}>
+          <AnalyticsContextProvider {...props}>
+            <ProfileContextProvider>
               <StatusContextProvider>
                 <Routing {...props}>
                   <Switch>
@@ -44,8 +44,8 @@ function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
                 <Status />
                 <ToastCollection />
               </StatusContextProvider>
-            </AnalyticsContextProvider>
-          </ProfileContextProvider>
+            </ProfileContextProvider>
+          </AnalyticsContextProvider>
         </UserContextProvider>
       </FirebaseContextProvider>
     </div>

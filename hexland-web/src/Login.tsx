@@ -213,12 +213,6 @@ function Login() {
       firebaseContext.timestampProvider
     );
 
-    // TODO Use the display name property.  (At first try this didn't work...)
-    // if (newDisplayName !== undefined) {
-    //   user.displayName = newDisplayName;
-    //   await user.updateProfile({ displayName: newDisplayName });
-    // }
-
     if (newDisplayName !== undefined) {
       // This implies it's a new user:
       await ensureProfile(dataService, user, analyticsContext.analytics, newDisplayName);
@@ -229,9 +223,8 @@ function Login() {
           record: { title: "Email/password login", message: "A verification email has been sent to " + user.email }
         });
       }
-    } else {
-      await ensureProfile(dataService, user, analyticsContext.analytics);
     }
+
     return true;
   }, [analyticsContext, firebaseContext, setLoginFailedVisible, statusContext]);
 

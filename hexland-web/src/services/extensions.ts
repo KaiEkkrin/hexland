@@ -25,12 +25,20 @@ export async function ensureProfile(
     let profile = await view.get(profileRef);
     if (profile !== undefined) {
       analytics?.logEvent("login", { "method": user.providerId });
+
+      // Keep the user's email in sync if required
+      if (profile.email !== user.email && user.email !== null) {
+        await view.update(profileRef, { email: user.email });
+        profile.email = user.email;
+      }
+
       return profile;
     }
 
     // If we get here, we need to create a new profile
     profile = {
       name: displayName ?? user.displayName ?? "Unnamed user",
+      email: user.email ?? "",
       level: UserLevel.Standard,
       adventures: [],
       latestMaps: []

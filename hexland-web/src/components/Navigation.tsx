@@ -156,7 +156,6 @@ function NavLogin() {
       return;
     }
 
-    // I don't need to ensureProfile() here: it was done by the login component
     updateProfile(userContext.dataService, userContext.user?.uid, editDisplayName)
       .then(() => console.log("successfully updated profile"))
       .catch(e => analyticsContext.logError("error updating profile:", e));
@@ -269,6 +268,13 @@ function NavLogin() {
                 onChange={e => setEditDisplayName(e.target.value)} />
               <Form.Text className="text-muted">
                 This is the name that will be shown to other users of Wall &amp; Shadow.
+              </Form.Text>
+            </Form.Group>
+            <Form.Group>
+              <Form.Label htmlFor="emailInput">Email address</Form.Label>
+              <Form.Control id="emailInput" type="text" maxLength={50} value={profile?.email} disabled={true} />
+              <Form.Text className="text-muted">
+                This is the email address associated with your Wall &amp; Shadow account. It will not be shown to other users.
               </Form.Text>
             </Form.Group>
             <Form.Group>
