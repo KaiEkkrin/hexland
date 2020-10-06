@@ -1,6 +1,8 @@
 import { IMapSummary } from "./adventure";
 import { TokenSize } from "./feature";
 
+export const MAP_CONTAINER_CLASS = "Map-container";
+
 export enum MapType {
   Hex = "hex",
   Square = "square",
