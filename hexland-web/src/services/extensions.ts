@@ -10,6 +10,8 @@ import { IDataService, IDataView, IDataReference, IDataAndReference, IUser, IAna
 import { interval, Subject } from 'rxjs';
 import { throttle } from 'rxjs/operators';
 
+const defaultDisplayName = "Unnamed user";
+
 export async function ensureProfile(
   dataService: IDataService | undefined,
   user: IUser | undefined,
@@ -26,10 +28,20 @@ export async function ensureProfile(
     if (profile !== undefined) {
       analytics?.logEvent("login", { "method": user.providerId });
 
-      // Keep the user's email in sync if required
+      // Keep the user's email in sync if required, and replace any default display name
+      let profileNeedsUpdate = false;
+      if ((profile.name === "" || profile.name === defaultDisplayName) && displayName !== undefined) {
+        profile.name = displayName;
+        profileNeedsUpdate = true;
+      }
+
       if (profile.email !== user.email && user.email !== null) {
-        await view.update(profileRef, { email: user.email });
         profile.email = user.email;
+        profileNeedsUpdate = true;
+      }
+
+      if (profileNeedsUpdate === true) {
+        await view.update(profileRef, profile);
       }
 
       return profile;
@@ -37,7 +49,7 @@ export async function ensureProfile(
 
     // If we get here, we need to create a new profile
     profile = {
-      name: displayName ?? user.displayName ?? "Unnamed user",
+      name: displayName ?? user.displayName ?? defaultDisplayName,
       email: user.email ?? "",
       level: UserLevel.Standard,
       adventures: [],

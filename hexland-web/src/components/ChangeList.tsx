@@ -13,7 +13,7 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
-    version: "0.10.0-3",
+    version: "0.10.0-4",
     changes: [
       "Support 2-, 3- and 4-size tokens"
     ]
