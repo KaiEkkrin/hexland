@@ -52,6 +52,16 @@ export const defaultWall: IFeature<IGridEdge> = {
   colour: 0
 };
 
+// Token text is positioned either at a coord or a vertex.  We can cheat slightly
+// and use the vertex structure for the coord too, complete with the `atVertex` flag.
+// This one is used only internally, derived from the token, and never added as part
+// of a change.
+export interface ITokenText extends IFeature<IGridVertex> {
+  atVertex: boolean
+  size: number,
+  text: string,
+}
+
 // The interface of a dictionary of these
 export interface IFeatureDictionary<K extends IGridCoord, F extends IFeature<K>> extends Iterable<F> {
   // Returns true if the feature wasn't already present (we added it), else false
@@ -171,6 +181,13 @@ export interface ITokenDictionary extends IFeatureDictionary<IGridCoord, IToken>
   // Returns all the fill vertex positions of a given token.
   // (Probably won't need calling externally.)
   enumerateFillVertexPositions(token: IToken): Iterable<IGridVertex>;
+
+  // Gets the text position of a given token.
+  getTextPosition(token: IToken): IGridVertex;
+
+  // Returns true if the text should be positioned at the vertex or false for the
+  // face centre.
+  getTextAtVertex(token: IToken): boolean;
 
   // Returns true if we have a fill edge here, else false.  (For checking for
   // conflicts with walls.)

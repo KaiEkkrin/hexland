@@ -1,19 +1,18 @@
-import { edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from "../../data/coord";
-import { IFeature, IFeatureDictionary, IIdFeature, ITokenProperties } from "../../data/feature";
+import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from "../../data/coord";
+import { IFeature, IFeatureDictionary, IIdFeature, IToken, ITokenProperties } from "../../data/feature";
 import { BaseTokenDrawing, SimpleTokenDrawing } from "../../data/tokens";
 import { IGridGeometry } from "../gridGeometry";
 import { RedrawFlag } from "../redrawFlag";
 
-import { createSelectedAreas } from "./areas";
+import { createPaletteColouredAreaObject, createSelectedAreas } from "./areas";
 import { IInstancedFeatureObject } from "./instancedFeatureObject";
 import { InstancedFeatures } from "./instancedFeatures";
 import { IColourParameters } from "./paletteColouredFeatureObject";
-import textCreator from "./textCreator";
-import { TokenFaces } from "./tokenFaces";
 import { createPaletteColouredVertexObject, createTokenFillVertexGeometry } from "./vertices";
 import { createPaletteColouredWallObject, createTokenFillEdgeGeometry } from "./walls";
 
 import * as THREE from 'three';
+import { TokenTexts } from "./tokenTexts";
 
 // A handy wrapper for the various thingies that go into token drawing.
 export class TokenDrawing extends SimpleTokenDrawing {
@@ -28,7 +27,11 @@ export class TokenDrawing extends SimpleTokenDrawing {
     scene: THREE.Scene
   ) {
     super(
-      new TokenFaces(gridGeometry, needsRedraw, textCreator, textMaterial, alpha, z, textZ, colourParameters),
+      new InstancedFeatures<IGridCoord, IToken>(
+        gridGeometry, needsRedraw, coordString, createPaletteColouredAreaObject(
+          gridGeometry, alpha, z, colourParameters
+        )
+      ),
       new InstancedFeatures<IGridEdge, IFeature<IGridEdge>>(
         gridGeometry, needsRedraw, edgeString, createPaletteColouredWallObject(
           createTokenFillEdgeGeometry(gridGeometry, alpha, z), gridGeometry, colourParameters
@@ -38,18 +41,20 @@ export class TokenDrawing extends SimpleTokenDrawing {
         gridGeometry, needsRedraw, vertexString, createPaletteColouredVertexObject(
           createTokenFillVertexGeometry(gridGeometry, alpha, z), gridGeometry, colourParameters
         )
-      )
+      ),
+      new TokenTexts(gridGeometry, needsRedraw, textMaterial, scene, textZ)
     );
 
-    (this.faces as TokenFaces).addToScene(scene);
+    (this.faces as InstancedFeatures<IGridCoord, IToken>).addToScene(scene);
     (this.fillEdges as InstancedFeatures<IGridEdge, IFeature<IGridEdge>>).addToScene(scene);
     (this.fillVertices as InstancedFeatures<IGridVertex, IFeature<IGridVertex>>).addToScene(scene);
   }
 
   dispose() {
-    (this.faces as TokenFaces).dispose();
+    (this.faces as InstancedFeatures<IGridCoord, IToken>).dispose();
     (this.fillEdges as InstancedFeatures<IGridEdge, IFeature<IGridEdge>>).dispose();
     (this.fillVertices as InstancedFeatures<IGridVertex, IFeature<IGridVertex>>).dispose();
+    (this.texts as TokenTexts).dispose();
   }
 }
 
