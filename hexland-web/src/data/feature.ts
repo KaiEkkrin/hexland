@@ -35,6 +35,20 @@ export const defaultTokenProperties: ITokenProperties = {
   noteVisibleToPlayers: false
 };
 
+export function flipToken(token: ITokenProperties): ITokenProperties | undefined {
+  if (token.size === '2 (left)') {
+    return { ...token, size: '2 (right)' };
+  } else if (token.size === '2 (right)') {
+    return { ...token, size: '2 (left)' };
+  } else if (token.size === '4 (left)') {
+    return { ...token, size: '4 (right)' };
+  } else if (token.size === '4 (right)') {
+    return { ...token, size: '4 (left)' };
+  } else {
+    return undefined;
+  }
+}
+
 export interface IToken extends IIdFeature<IGridCoord>, ITokenProperties {}
 
 export const defaultArea: IFeature<IGridCoord> = {

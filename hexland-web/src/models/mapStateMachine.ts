@@ -14,7 +14,7 @@ import { IAnnotation, IPositionedAnnotation } from '../data/annotation';
 import { IChange, createTokenRemove, createTokenAdd, createNoteRemove, createNoteAdd, createTokenMove } from '../data/change';
 import { trackChanges } from '../data/changeTracking';
 import { IGridCoord, coordString, coordsEqual, coordSub, coordAdd } from '../data/coord';
-import { FeatureDictionary, IToken, ITokenDictionary, ITokenProperties, TokenSize } from '../data/feature';
+import { FeatureDictionary, flipToken, IToken, ITokenDictionary, ITokenProperties, TokenSize } from '../data/feature';
 import { IAdventureIdentified } from '../data/identified';
 import { IMap, MapType } from '../data/map';
 import { IUserPolicy } from '../data/policy';
@@ -722,6 +722,15 @@ export class MapStateMachine {
       this._dragRectangle.start(cp);
     }
     this._faceHighlighter.dragStart(this._drawing.getGridCoordAt(cp), colour);
+  }
+
+  flipToken(token: ITokenProperties): IChange[] | undefined {
+    const flipped = flipToken(token);
+    if (flipped !== undefined) {
+      return this.setTokenById(token.id, flipped);
+    } else {
+      return undefined;
+    }
   }
 
   *getSelectedTokens(): Iterable<ITokenProperties> {

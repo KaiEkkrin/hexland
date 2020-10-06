@@ -487,19 +487,47 @@ function Map(props: IMapPageProps) {
     setTokenToEditPosition(cp);
   }, [setShowTokenEditor, setTokenToEdit, setTokenToEditPosition]);
 
+  const flipToken = useCallback((cp: THREE.Vector3) => {
+    if (stateMachine === undefined) {
+      return;
+    }
+
+    const here = stateMachine.getToken(cp);
+    if (here !== undefined) {
+      try {
+        addChanges(stateMachine.flipToken(here));
+      } catch (e) {
+        statusContext.toasts.next({ id: uuidv4(), record: {
+          title: "Cannot flip token",
+          message: String(e.message)
+        }});
+      }
+    }
+  }, [addChanges, stateMachine]);
+
   const editNoteFromMenu = useCallback(() => {
-    let cp = getClientPosition(contextMenuX, contextMenuY);
+    const cp = getClientPosition(contextMenuX, contextMenuY);
     if (cp !== undefined) {
       editNote(cp, stateMachine?.getNote(cp));
     }
   }, [contextMenuX, contextMenuY, editNote, getClientPosition, stateMachine]);
 
   const editTokenFromMenu = useCallback(() => {
-    let cp = getClientPosition(contextMenuX, contextMenuY);
+    const cp = getClientPosition(contextMenuX, contextMenuY);
     if (cp !== undefined) {
       editToken(cp, stateMachine?.getToken(cp));
     }
   }, [contextMenuX, contextMenuY, editToken, getClientPosition, stateMachine]);
+
+  const flipTokenFromMenu = useCallback(() => {
+    console.log("called flipToken with x " + contextMenuX + ", y " + contextMenuY);
+    const cp = getClientPosition(contextMenuX, contextMenuY);
+    if (cp === undefined) {
+      return;
+    }
+
+    flipToken(cp);
+  }, [contextMenuX, contextMenuY, flipToken, getClientPosition]);
 
   const handleContextMenu = useCallback((e: MouseEvent) => {
     let bounds = drawingRef.current?.getBoundingClientRect();
@@ -861,6 +889,7 @@ function Map(props: IMapPageProps) {
         token={contextMenuToken}
         note={contextMenuNote}
         editToken={editTokenFromMenu}
+        flipToken={flipTokenFromMenu}
         editNote={editNoteFromMenu}
         editMode={editMode}
         setEditMode={setEditMode} />

@@ -8,15 +8,16 @@ import Card from 'react-bootstrap/Card';
 import ListGroup from 'react-bootstrap/ListGroup';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faMapMarker, faSquare, faDrawPolygon, faVectorSquare } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faMapMarker, faSquare, faDrawPolygon, faVectorSquare, faArrowsAltH } from '@fortawesome/free-solid-svg-icons';
 
 interface IMapContextMenuItemProps {
+  visible?: boolean | undefined;
   children: React.ReactNode;
   onClick: (e: React.MouseEvent<Element, MouseEvent>) => void;
 }
 
 function MapContextMenuItem(props: IMapContextMenuItemProps) {
-  return (
+  return props.visible === false ? null : (
     <ListGroup.Item className="Map-info-list-item" action onClick={props.onClick}>
       {props.children}
     </ListGroup.Item>
@@ -38,6 +39,7 @@ interface IMapContextMenuProps {
   token: ITokenProperties | undefined;
   note: IAnnotation | undefined;
   editToken: () => void;
+  flipToken: () => void;
   editNote: () => void;
 
   editMode: EditMode;
@@ -48,6 +50,7 @@ interface IMapContextMenuProps {
 function MapContextMenu(props: IMapContextMenuProps) {
   const hidden = useMemo(() => !props.show, [props.show]);
   const tokenLabel = useMemo(() => props.token === undefined ? "Add token" : "Edit token " + props.token.text, [props.token]);
+  const showFlipTokenLabel = useMemo(() => props.token !== undefined && props.token.size.length > 1, [props.token]);
   const noteLabel = useMemo(() => props.note === undefined ? "Add note" : "Edit note", [props.note]);
 
   const left = useMemo(() => props.x > props.pageRight / 2 ? undefined : props.x, [props.x, props.pageRight]);
@@ -58,6 +61,11 @@ function MapContextMenu(props: IMapContextMenuProps) {
 
   const handleTokenClick = useCallback(() => {
     props.editToken();
+    props.setShow(false);
+  }, [props]);
+
+  const handleFlipTokenClick = useCallback(() => {
+    props.flipToken();
     props.setShow(false);
   }, [props]);
 
@@ -93,6 +101,9 @@ function MapContextMenu(props: IMapContextMenuProps) {
       <ListGroup variant="flush">
         <MapContextMenuItem onClick={handleTokenClick}>
           <FontAwesomeIcon className="mr-1" icon={faPlus} color="white" />{tokenLabel}
+        </MapContextMenuItem>
+        <MapContextMenuItem onClick={handleFlipTokenClick} visible={showFlipTokenLabel}>
+          <FontAwesomeIcon className="mr-1" icon={faArrowsAltH} color="white" />Flip token
         </MapContextMenuItem>
         <MapContextMenuItem onClick={handleNoteClick}>
           <FontAwesomeIcon className="mr-1" icon={faMapMarker} color="white" />{noteLabel}
