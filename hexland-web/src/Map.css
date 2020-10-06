@@ -22,12 +22,14 @@
   height: calc(100vh - 8rem);
   min-width: 3rem;
   z-index: 4;
+  pointer-events: none;
 }
 
 .Map-control {
   background-color: transparent;
   margin-left: 1rem;
   margin-top: 1rem;
+  pointer-events: auto;
 }
 
 .Map-content {
