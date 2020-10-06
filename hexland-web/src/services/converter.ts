@@ -166,7 +166,7 @@ const tokenMoveConverter = new RecursingConverter<ITokenMove>({
   cat: ChangeCategory.Token,
   newPosition: defaultGridCoord,
   oldPosition: defaultGridCoord,
-  tokenId: undefined,
+  tokenId: "",
 }, {
   "newPosition": (conv, raw) => {
     conv.newPosition = gridCoordConverter.convert(raw);
@@ -182,7 +182,7 @@ const tokenRemoveConverter = new RecursingConverter<ITokenRemove>({
   ty: ChangeType.Remove,
   cat: ChangeCategory.Token,
   position: defaultGridCoord,
-  tokenId: undefined
+  tokenId: ""
 }, {
   "position": (conv, raw) => {
     conv.position = gridCoordConverter.convert(raw);
@@ -282,6 +282,7 @@ export const playerConverter = new ShallowConverter<IPlayer>({
 
 export const profileConverter = new ShallowConverter<IProfile>({
   name: "",
+  email: "",
   level: UserLevel.Standard,
   adventures: undefined,
   latestMaps: undefined
