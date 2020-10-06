@@ -12,6 +12,8 @@ interface ITokenTextWithMesh extends ITokenText {
   mesh: THREE.Mesh;
 }
 
+const offsetMultiplicand = new THREE.Vector3(-0.5, 0.5, 0.0);
+
 export class TokenTexts extends Drawn implements IFeatureDictionary<IGridVertex, ITokenText> {
   private readonly _dict = new FeatureDictionary<IGridVertex, ITokenTextWithMesh>(vertexString);
 
@@ -24,6 +26,7 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<IGridVertex,
 
   // excessive allocation of these is expensive
   private readonly _scratchMatrix1 = new THREE.Matrix4();
+  private readonly _scratchMatrix2 = new THREE.Matrix4();
   private readonly _scratchVector1 = new THREE.Vector3();
   private readonly _targetPosition = new THREE.Vector3();
   private readonly _transform = new THREE.Matrix4();
@@ -44,16 +47,17 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<IGridVertex,
   private createMesh(f: ITokenText, geometry: THREE.ShapeBufferGeometry, bb: THREE.Box3): THREE.Mesh {
     const mesh = new THREE.Mesh(geometry, this._material);
 
-    const offset = this._scratchVector1.copy(bb.max).sub(bb.min).multiplyScalar(0.5);
+    const offset = this._scratchVector1.copy(bb.max).sub(bb.min).multiply(offsetMultiplicand);
     const targetPosition = (f.atVertex ? this.geometry.createVertexCentre(
       this._targetPosition, f.position, this._z
     ) : this.geometry.createCoordCentre(
       this._targetPosition, f.position, this._z
-    )).sub(offset);
+    ));
 
-    const targetSize = Math.pow(f.size, 0.5);
+    const targetSize = 0.15 * Math.pow(f.size, 0.5);
     const transform = this._transform.makeTranslation(targetPosition.x, targetPosition.y, targetPosition.z)
-      .multiply(this._scratchMatrix1.makeScale(targetSize, -targetSize, targetSize));
+      .multiply(this._scratchMatrix1.makeScale(targetSize, targetSize, targetSize))
+      .multiply(this._scratchMatrix2.makeTranslation(offset.x, offset.y, 0));
     mesh.applyMatrix4(transform);
     return mesh;
   }
