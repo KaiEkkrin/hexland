@@ -25,7 +25,7 @@ import { IChange } from './data/change';
 import { netObjectCount, trackChanges } from './data/changeTracking';
 import { ITokenProperties } from './data/feature';
 import { IAdventureIdentified } from './data/identified';
-import { createTokenSizes, IMap } from './data/map';
+import { createTokenSizes, IMap, MAP_CONTAINER_CLASS } from './data/map';
 import { getUserPolicy } from './data/policy';
 import { IProfile } from './data/profile';
 import { registerMapAsRecent, editMap, watchChangesAndConsolidate, removeMapFromRecent } from './services/extensions';
@@ -300,6 +300,7 @@ function Map(props: IMapPageProps) {
   const [editMode, setEditMode] = useState(EditMode.Select);
   const [mapColourMode, setMapColourMode] = useState(MapColourVisualisationMode.Areas);
   const [selectedColour, setSelectedColour] = useState(0);
+  const [mapContainerClassName, setMapContainerClassName] = useState(MAP_CONTAINER_CLASS);
 
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuX, setContextMenuX] = useState(0);
@@ -633,6 +634,9 @@ function Map(props: IMapPageProps) {
   // *** Handler helpers to cover the common functionality between mouse and touch ***
 
   const handleInteractionEnd = useCallback((cp: THREE.Vector3, shiftKey: boolean) => {
+    // Make interaction state visible to CSS
+    setMapContainerClassName(`${MAP_CONTAINER_CLASS}`);
+
     let changes: IChange[] | undefined;
     if (isDraggingView) {
       stateMachine?.panEnd();
@@ -688,6 +692,9 @@ function Map(props: IMapPageProps) {
   }, [editMode, isDraggingView, selectedColour, stateMachine]);
 
   const handleInteractionStart = useCallback((cp: THREE.Vector3, shiftKey: boolean, ctrlKey: boolean) => {
+    // Make interaction state visible to CSS
+    setMapContainerClassName(`${MAP_CONTAINER_CLASS} Map-interaction`);
+
     switch (editMode) {
       case EditMode.Select:
         if (shiftKey) {
@@ -836,7 +843,7 @@ function Map(props: IMapPageProps) {
   }, [setCustomAnnotationFlags, setShowAnnotationFlags]);
 
   return (
-    <div className="Map-container">
+    <div className={mapContainerClassName}>
       <div className="Map-nav">
         <Navigation>{title}</Navigation>
       </div>
