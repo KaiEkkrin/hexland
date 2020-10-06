@@ -13,6 +13,13 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "0.10.5",
+    changes: [
+      "Fix dead area on the left-hand side of the map page (contributed by davey3000)",
+      "Disable user-select and pointer events on UI components while dragging (contributed by davey3000)"
+    ]
+  },
+  {
     version: "0.10.0-4",
     changes: [
       "Support 2-, 3- and 4-size tokens"
