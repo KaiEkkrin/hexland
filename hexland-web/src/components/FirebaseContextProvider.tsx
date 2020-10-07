@@ -5,6 +5,7 @@ import 'firebase/analytics';
 import 'firebase/auth';
 import 'firebase/firestore';
 import 'firebase/functions';
+import 'firebase/storage';
 
 import { IContextProviderProps, IFirebaseContext, IFirebaseProps } from './interfaces';
 import * as Auth from '../services/auth';
@@ -19,6 +20,7 @@ async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => vo
   const app = firebase.initializeApp(await response.json());
   const db = app.firestore();
   const functions = app.functions(region);
+  const storage = app.storage();
 
   // Configure to use local emulators when running locally with webpack hot-plugging
   if ('webpackHotUpdate' in window) {
@@ -36,6 +38,7 @@ async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => vo
     db: db,
     functions: functions,
     googleAuthProvider: Auth.googleAuthProviderWrapper,
+    storage: storage,
     timestampProvider: firebase.firestore.FieldValue.serverTimestamp,
     createAnalytics: () => app.analytics()
   });

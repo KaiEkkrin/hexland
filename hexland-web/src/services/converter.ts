@@ -3,6 +3,7 @@ import { IAnnotation, defaultAnnotation } from '../data/annotation';
 import { IChange, IChanges, ChangeType, ChangeCategory, ITokenAdd, ITokenMove, ITokenRemove, IAreaAdd, IAreaRemove, INoteAdd, INoteRemove, IWallAdd, IWallRemove } from '../data/change';
 import { IGridCoord, defaultGridCoord, IGridEdge, defaultGridEdge, coordString } from '../data/coord';
 import { IToken, defaultToken, IFeature, defaultArea, defaultWall, IFeatureDictionary, IIdFeature, FeatureDictionary, parseTokenSize } from '../data/feature';
+import { IImage } from '../data/image';
 import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
 import { IProfile } from '../data/profile';
@@ -345,6 +346,13 @@ export const mapConverter = new ShallowConverter<IMap>({
   owner: "",
   ty: MapType.Square,
   ffa: false
+});
+
+export const imageConverter = new ShallowConverter<IImage>({
+  name: "",
+  date: undefined,
+  owner: "",
+  path: ""
 });
 
 export const playerConverter = new ShallowConverter<IPlayer>({

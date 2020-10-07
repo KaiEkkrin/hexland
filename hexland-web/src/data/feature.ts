@@ -51,7 +51,7 @@ export function flipToken(token: ITokenProperties): ITokenProperties | undefined
 }
 
 export function parseTokenSize(s: string): TokenSize {
-  if (/^[1-4]$/.test(s) || /^[2,4] \((left|right)\)$/.test(s)) {
+  if (/^[1-4]$/.test(s) || /^[24] \((left|right)\)$/.test(s)) {
     return s as TokenSize;
   } else {
     // fall back to the default value

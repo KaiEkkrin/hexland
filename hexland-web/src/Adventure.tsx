@@ -3,6 +3,7 @@ import './App.css';
 
 import AdventureModal from './components/AdventureModal';
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
+import ImagePickerModal from './components/ImagePickerModal';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
 import PlayerInfoList from './components/PlayerInfoList';
@@ -17,6 +18,7 @@ import { getUserPolicy } from './data/policy';
 import { deleteMap, registerAdventureAsRecent, editAdventure, deleteAdventure, leaveAdventure, removeAdventureFromRecent } from './services/extensions';
 
 import Button from 'react-bootstrap/Button';
+import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import Card from 'react-bootstrap/Card';
 import CardDeck from 'react-bootstrap/CardDeck';
 import Col from 'react-bootstrap/Col';
@@ -25,6 +27,8 @@ import Modal from 'react-bootstrap/Modal';
 import Row from 'react-bootstrap/Row';
 
 import { Link, RouteComponentProps, useHistory } from 'react-router-dom';
+import { faImage } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -200,6 +204,9 @@ function Adventure(props: IAdventureProps) {
   const [editAdventureName, setEditAdventureName] = useState("");
   const [editAdventureDescription, setEditAdventureDescription] = useState("");
 
+  // Adventure image support
+  const [showImagePicker, setShowImagePicker] = useState(false);
+
   // Adventure deletion support
   const canDeleteAdventure = useMemo(
     () => canEditAdventure && adventure?.record.maps.length === 0,
@@ -234,9 +241,10 @@ function Adventure(props: IAdventureProps) {
     setShowBlockPlayer(false);
     setShowUnblockPlayer(false);
     setShowEditAdventure(false);
+    setShowImagePicker(false);
     setShowDeleteAdventure(false);
     setShowLeaveAdventure(false);
-  }, [setShowBlockPlayer, setShowUnblockPlayer, setShowEditAdventure, setShowDeleteAdventure, setShowLeaveAdventure]);
+  }, [setShowBlockPlayer, setShowUnblockPlayer, setShowEditAdventure, setShowImagePicker, setShowDeleteAdventure, setShowLeaveAdventure]);
 
   const handleShowBlockPlayer = useCallback((player: IPlayer) => {
     setShowBlockPlayer(true);
@@ -270,6 +278,14 @@ function Adventure(props: IAdventureProps) {
     setEditAdventureDescription(adventure.record.description);
     setShowEditAdventure(true);
   }, [adventure, setEditAdventureName, setEditAdventureDescription, setShowEditAdventure]);
+
+  const handleShowImagePicker = useCallback(() => {
+    if (adventure === undefined) {
+      return;
+    }
+
+    setShowImagePicker(true);
+  }, [adventure, setShowImagePicker]);
 
   const handleEditAdventureSave = useCallback(async () => {
     handleModalClose();
@@ -315,6 +331,7 @@ function Adventure(props: IAdventureProps) {
       .catch(e => analyticsContext.logError("Error deleting map " + id, e));
   }, [userContext, props.adventureId, analyticsContext]);
 
+  // TODO #149: Super temporary place to put an image selection thingy, in that button group there
   return (
     <div>
       <Navigation>{title}</Navigation>
@@ -327,7 +344,12 @@ function Adventure(props: IAdventureProps) {
                   <Card.Header className="card-header-spaced">
                     {adventure.record.name}
                     {canEditAdventure === true ?
-                      <Button className="ml-2" variant="primary" onClick={handleShowEditAdventure}>Edit</Button> :
+                      <ButtonGroup className="ml-2">
+                        <Button variant="primary" onClick={handleShowEditAdventure}>Edit</Button>
+                        <Button variant="primary" onClick={handleShowImagePicker}>
+                          <FontAwesomeIcon icon={faImage} color="white" />
+                        </Button>
+                      </ButtonGroup> :
                       <div></div>
                     }
                   </Card.Header>
@@ -383,6 +405,9 @@ function Adventure(props: IAdventureProps) {
         handleSave={handleEditAdventureSave}
         setDescription={setEditAdventureDescription}
         setName={setEditAdventureName} />
+      <ImagePickerModal
+        show={showImagePicker}
+        handleClose={handleModalClose} />
       <Modal show={showBlockPlayer} onHide={handleModalClose}>
         <Modal.Header>
           <Modal.Title>Block {playerToBlock?.playerName}</Modal.Title>

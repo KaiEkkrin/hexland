@@ -5,6 +5,7 @@ import { IDataService, IDataReference, IDataView, IDataAndReference } from './in
 import { IAdventure, IPlayer } from '../data/adventure';
 import { IChange, IChanges } from '../data/change';
 import { IIdentified } from '../data/identified';
+import { IImage } from '../data/image';
 import { IInvite } from '../data/invite';
 import { IMap } from '../data/map';
 import { IProfile } from '../data/profile';
@@ -12,6 +13,7 @@ import { IProfile } from '../data/profile';
 // Well-known collection names.
 const profiles = "profiles";
 const adventures = "adventures";
+const images = "images";
 const invites = "invites";
 const maps = "maps";
 const changes = "changes";
@@ -107,9 +109,19 @@ export class DataService implements IDataService {
     });
   }
 
+  async addImage(image: IImage): Promise<string> {
+    const ref = await this._db.collection(images).add({ ...image, date: this._timestampProvider() });
+    return ref.id;
+  }
+
   getAdventureRef(id: string): IDataReference<IAdventure> {
-    let d = this._db.collection(adventures).doc(id);
+    const d = this._db.collection(adventures).doc(id);
     return new DataReference<IAdventure>(d, Convert.adventureConverter);
+  }
+
+  getImageRef(id: string): IDataReference<IImage> {
+    const d = this._db.collection(images).doc(id);
+    return new DataReference<IImage>(d, Convert.imageConverter);
   }
 
   getInviteRef(adventureId: string, id: string): IDataReference<IInvite> {
@@ -204,11 +216,11 @@ export class DataService implements IDataService {
     return this._db.collection(adventures).where("owner", "==", uid)
       .orderBy("name")
       .onSnapshot(s => {
-        let adventures: IIdentified<IAdventure>[] = [];
+        const adventures: IIdentified<IAdventure>[] = [];
         s.forEach((d) => {
-          let data = d.data();
+          const data = d.data();
           if (data !== null) {
-            let adventure = Convert.adventureConverter.convert(data);
+            const adventure = Convert.adventureConverter.convert(data);
             adventures.push({ id: d.id, record: adventure });
           }
         });
@@ -236,10 +248,24 @@ export class DataService implements IDataService {
           // - newly added documents -- these are new changes for the map
           // - updates to the base change *only*, to act on a resync
           if (d.doc.exists && (d.doc.ref.isEqual(baseChangeRef) || d.oldIndex === -1)) {
-            let chs = converter.convert(d.doc.data());
+            const chs = converter.convert(d.doc.data());
             onNext(chs);
           }
         });
+      }, onError, onCompletion);
+  }
+
+  watchImages(
+    uid: string,
+    onNext: (images: IImage[]) => void,
+    onError?: ((error: Error) => void) | undefined,
+    onCompletion?: (() => void) | undefined
+  ) {
+    return this._db.collection(images)
+      .where("owner", "==", uid)
+      .orderBy("date", "desc")
+      .onSnapshot(s => {
+        onNext(s.docs.map(d => Convert.imageConverter.convert(d.data())));
       }, onError, onCompletion);
   }
 

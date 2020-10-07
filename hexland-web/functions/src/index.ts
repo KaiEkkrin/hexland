@@ -25,6 +25,8 @@ const dataService = new AdminDataService(app);
 //   });
 // });
 
+// == CALLABLE FUNCTIONS ==
+
 // Creates an adventure, checking for cap.
 
 export const createAdventure = functions.region(region).https.onCall(async (data, context) => {
@@ -196,4 +198,32 @@ export const joinAdventure = functions.region(region).https.onCall(async (data, 
   }
 
   await Extensions.joinAdventure(dataService, uid, adventureId, inviteId, getInviteExpiryPolicy(data));
+});
+
+// == TRIGGER FUNCTIONS ==
+
+export const onUpload = functions.region(region).storage.object().onFinalize(async (object) => {
+  // TODO #149 Have this function delete unexpected objects!
+  if (object.name === undefined) {
+    functions.logger.warn("Found unnamed object");
+    return;
+  }
+
+  if (object.contentType === undefined || !/^image\//.test(object.contentType)) {
+    functions.logger.warn("Found unrecognised object: " + object.name);
+    return;
+  }
+
+  // Extract the uid from the path.  We rely on the Storage security rules to have
+  // enforced that uid
+  const result = /^images\/([^\/]+)\/([^\/]+)/.exec(object.name);
+  if (result === null) {
+    functions.logger.warn("Found object with unrecognised name: " + object.name);
+    return;
+  }
+
+  // TODO #149 Check the number of images the user already has first
+  const name = String(object.metadata?.originalName);
+  const uid = result[1];
+  await dataService.addImage({ name: name, owner: uid, path: object.name });
 });

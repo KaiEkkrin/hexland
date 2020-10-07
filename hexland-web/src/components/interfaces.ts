@@ -11,6 +11,7 @@ export interface IFirebaseContext {
   db?: firebase.firestore.Firestore | undefined;
   functions?: firebase.functions.Functions | undefined;
   googleAuthProvider?: IAuthProvider | undefined;
+  storage?: firebase.storage.Storage | undefined;
   timestampProvider?: (() => firebase.firestore.FieldValue) | undefined;
   // Creates an Analytics provider
   createAnalytics?: (() => IAnalytics) | undefined;
