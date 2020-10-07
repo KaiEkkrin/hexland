@@ -504,7 +504,7 @@ function Map(props: IMapPageProps) {
         }});
       }
     }
-  }, [addChanges, stateMachine]);
+  }, [addChanges, stateMachine, statusContext.toasts]);
 
   const editNoteFromMenu = useCallback(() => {
     const cp = getClientPosition(contextMenuX, contextMenuY);

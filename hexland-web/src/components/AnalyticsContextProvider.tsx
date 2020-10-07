@@ -14,6 +14,14 @@ export const AnalyticsContext = React.createContext<IAnalyticsContext>({
 
 const enabledKey = "analyticsEnabled";
 
+function getExMessage(e: any): string {
+  if (typeof(e) === 'string') {
+    return e;
+  } else {
+    return String(e?.message);
+  }
+}
+
 // This provides a context for Google Analytics -- whether it is enabled, the interface
 // to use it through, etc.
 // The enabled setting is stored not in the user profile but in local storage.
@@ -47,9 +55,10 @@ export function AnalyticsContextProvider(props: IContextProviderProps & IAnalyti
     logError: (message: string, e: any, fatal?: boolean | undefined) => {
       console.error(message, e);
       if (enabled) {
+        console.log("logging to analytics with error: " + getExMessage(e));
         analytics?.logEvent("exception", {
           "exDescription": message,
-          "exMessage": String(e?.message),
+          "exMessage": getExMessage(e),
           "exFatal": fatal !== false
         });
       }

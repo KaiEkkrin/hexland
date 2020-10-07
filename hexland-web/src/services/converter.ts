@@ -2,7 +2,7 @@ import { IAdventure, IPlayer } from '../data/adventure';
 import { IAnnotation, defaultAnnotation } from '../data/annotation';
 import { IChange, IChanges, ChangeType, ChangeCategory, ITokenAdd, ITokenMove, ITokenRemove, IAreaAdd, IAreaRemove, INoteAdd, INoteRemove, IWallAdd, IWallRemove } from '../data/change';
 import { IGridCoord, defaultGridCoord, IGridEdge, defaultGridEdge, coordString } from '../data/coord';
-import { IToken, defaultToken, IFeature, defaultArea, defaultWall, IFeatureDictionary, IIdFeature, FeatureDictionary, TokenSize } from '../data/feature';
+import { IToken, defaultToken, IFeature, defaultArea, defaultWall, IFeatureDictionary, IIdFeature, FeatureDictionary, parseTokenSize } from '../data/feature';
 import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
 import { IProfile } from '../data/profile';
@@ -63,7 +63,7 @@ class AddTokenFeatureConverter extends RecursingConverter<IToken> {
         return conv;
       },
       "size": (conv, raw) => {
-        conv.size = String(raw) as TokenSize; // shouldn't have any bad strings knocking about
+        conv.size = parseTokenSize(raw);
         return conv;
       }
     });

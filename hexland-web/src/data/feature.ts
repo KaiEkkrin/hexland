@@ -14,6 +14,7 @@ export interface IIdFeature<K> extends IFeature<K> {
 }
 
 // A token has some extra properties:
+// (Remember to keep `parseTokenSize` below in sync with this definition if it changes)
 export type TokenSize = "1" | "2" | "2 (left)" | "2 (right)" | "3" | "4" | "4 (left)" | "4 (right)";
 export interface ITokenProperties {
   id: string; // a UUID for this token, that follows it around
@@ -46,6 +47,15 @@ export function flipToken(token: ITokenProperties): ITokenProperties | undefined
     return { ...token, size: '4 (left)' };
   } else {
     return undefined;
+  }
+}
+
+export function parseTokenSize(s: string): TokenSize {
+  if (/^[1-4]$/.test(s) || /^[2,4] \((left|right)\)$/.test(s)) {
+    return s as TokenSize;
+  } else {
+    // fall back to the default value
+    return "1";
   }
 }
 

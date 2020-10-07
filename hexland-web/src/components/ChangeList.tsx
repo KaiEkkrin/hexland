@@ -13,6 +13,12 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "0.10.6",
+    changes: [
+      "Fix a source of \"map corrupt\" errors"
+    ]
+  },
+  {
     version: "0.10.5",
     changes: [
       "Fix dead area on the left-hand side of the map page (contributed by davey3000)",

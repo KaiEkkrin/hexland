@@ -61,6 +61,9 @@ test('A token operation without id receives the a fresh id', () => {
   // ...and my remove position should have been correct
   expect((convertedChanges.chs[2] as ITokenRemove).position.x).toBe(0);
   expect((convertedChanges.chs[2] as ITokenRemove).position.y).toBe(4);
+
+  // Oh, and it should have been assigned the default token size
+  expect((convertedChanges.chs[0] as ITokenAdd).feature.size).toBe("1");
 });
 
 test('A token operation with two id-less tokens receives two fresh ids', () => {
@@ -184,4 +187,51 @@ test('A token operation with id has its id retained', () => {
   // ...and I should have filled in the default x
   expect((convertedChanges.chs[2] as ITokenRemove).position.x).toBe(defaultGridCoord.x);
   expect((convertedChanges.chs[2] as ITokenRemove).position.y).toBe(4);
+});
+
+test('The size in a token add is parsed correctly', () => {
+  const acceptedSizes = ["1", "2", "2 (left)", "2 (right)", "3", "4 (left)", "4 (right)"];
+  for (const size of acceptedSizes) {
+    const rawChanges = {
+      chs: [{
+        ty: ChangeType.Add,
+        cat: ChangeCategory.Token,
+        feature: {
+          position: { x: 3, y: 4 },
+          colour: 1,
+          players: ["user2"],
+          size: size,
+          text: "TO1",
+          note: "Token 1",
+        }
+      }]
+    };
+
+    const convertedChanges = Convert.createChangesConverter().convert(rawChanges);
+    expect((convertedChanges.chs[0] as ITokenAdd).feature.size).toBe(size);
+  }
+
+  const invalidSizes = [
+    "", "5", "0", " 3", "2 (leftright)", "4 (light)", "4(left)", "3 (right)", "4 (rightleft)",
+    "2 (left", "right)"
+  ];
+  for (const size of invalidSizes) {
+    const rawChanges = {
+      chs: [{
+        ty: ChangeType.Add,
+        cat: ChangeCategory.Token,
+        feature: {
+          position: { x: 3, y: 4 },
+          colour: 1,
+          players: ["user2"],
+          size: size,
+          text: "TO1",
+          note: "Token 1",
+        }
+      }]
+    };
+
+    const convertedChanges = Convert.createChangesConverter().convert(rawChanges);
+    expect((convertedChanges.chs[0] as ITokenAdd).feature.size).toBe("1");
+  }
 });
