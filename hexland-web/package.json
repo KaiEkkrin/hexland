@@ -31,7 +31,8 @@
     "react-scripts": "3.4.1",
     "three": "^0.120.0",
     "typescript": "~3.7.2",
-    "uuid": "^8.3.0"
+    "uuid": "^8.3.0",
+    "webdav": "^3.3.0"
   },
   "scripts": {
     "start": "run-p --race dev:firebase dev:react",

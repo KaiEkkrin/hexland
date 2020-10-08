@@ -7,7 +7,6 @@
 
 # Login to Firebase and specify the project to use (creating the project if it
 # doesn't exist)
-cd hexland-web
 firebase login
 firebase use hexland-test-${USER}
 if [ $? -ne 0 ]; then
@@ -29,18 +28,31 @@ fi
 #}
 #trap cleanup EXIT
 
-# Watch for Firebase Function source changes (removing escape codes from the watcher output to
-# prevent the terminal from being cleared)
-cd functions
-yarn watch | sed 's/[^[:print:]]//g' &
-#FUNCTION_WATCH_PID=$!
-cd ..
+if [ "$RUN_TESTS" == "true" ]; then
+  cd functions
+  IS_LOCAL_DEV="true" yarn serve &
 
-# Run webapp dev server that watches for source changes (removing escape codes from the watcher
-# output to prevent the terminal from being cleared)
-yarn dev:react | sed 's/[^[:print:]]//g' &
-#WEBAPP_WATCH_PID=$!
+  # Wait for emulator UI to become available (indicating emulators have started)
+  until $(curl --output /dev/null --silent --head --fail http://localhost:4000); do
+      sleep 1
+  done
 
-# Run emulators
-# This includes hosting in order to provide access to init.json for configuring Firebase
-firebase emulators:start
+  cd ..
+  yarn test
+else
+  # Watch for Firebase Function source changes (removing escape codes from the watcher output to
+  # prevent the terminal from being cleared)
+  cd functions
+  IS_LOCAL_DEV="true" yarn watch | sed 's/[^[:print:]]//g' &
+  #FUNCTION_WATCH_PID=$!
+  cd ..
+
+  # Run webapp dev server that watches for source changes (removing escape codes from the watcher
+  # output to prevent the terminal from being cleared)
+  yarn dev:react | sed 's/[^[:print:]]//g' &
+  #WEBAPP_WATCH_PID=$!
+
+  # Run emulators
+  # This includes hosting in order to provide access to init.json for configuring Firebase
+  IS_LOCAL_DEV="true" firebase emulators:start
+fi

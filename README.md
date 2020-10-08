@@ -36,6 +36,7 @@ The expected execution time of some of the tests is quite close to the timeout v
 ## Deploying
 
 ```bash
+yarn install
 yarn build
 firebase deploy
 ```
@@ -47,21 +48,6 @@ firebase deploy --only hosting
 ```
 
 to avoid incurring the extra wait time (and potentially even bill!) of the server-side Functions build.
-
-## Running it locally
-
-Local execution of the web application assumes two things:
-
-- a local release build of the web application, not used to serve any of its actual pages, but used to provide a static URL for the Firebase configuration
-- access to the "real" Firebase Functions and Firestore.  (Setting up a debug build to run using emulators is left as an exercise for the reader.)
-
-Therefore, I recommend doing your first deploy, and re-doing it if you've changed Functions or Firestore security rules, before doing this
-
-```bash
-yarn start
-```
-
-to load the local debug Web application.
 
 ## Running locally with Docker
 
@@ -79,7 +65,7 @@ This will build a Docker image containing build tools and the emulators, and the
 container that runs the emulators and builds the web application (rebuilding when source file
 changes are detected). The web application can then be accessed at:
 
-http://localhost:5000
+[http://localhost:5000](http://localhost:5000)
 
 Note that the web application may take a minute or more to build, although subsequent source file
 changes should result in a much faster rebuild.

@@ -1,6 +1,7 @@
 import * as Convert from './converter';
 import { ChangeType, ChangeCategory, ITokenAdd, ITokenMove, ITokenRemove } from '../data/change';
 import { defaultGridCoord } from '../data/coord';
+import { UserLevel } from '../data/policy';
 
 // I'm not going to pedantically go through all the possible conversions, but just
 // target a few I want to verify:
@@ -234,4 +235,77 @@ test('The size in a token add is parsed correctly', () => {
     const convertedChanges = Convert.createChangesConverter().convert(rawChanges);
     expect((convertedChanges.chs[0] as ITokenAdd).feature.size).toBe("1");
   }
+});
+
+test('An adventure with no maps gets empty maps', () => {
+  const raw = {
+    name: 'Adventure One',
+    owner: 'owner'
+  };
+
+  const a = Convert.adventureConverter.convert(raw);
+  expect(a.name).toBe('Adventure One');
+  expect(a.owner).toBe('owner');
+  expect(a.description).toBe('');
+  expect(a.maps).toHaveLength(0);
+});
+
+test('The maps in an adventure get converted', () => {
+  const raw = {
+    name: 'Adventure One',
+    owner: 'owner',
+    maps: [
+      { id: 'a', name: 'Map One' },
+      { id: 'b', description: 'An unnamed map' }
+    ]
+  };
+
+  const a = Convert.adventureConverter.convert(raw);
+  expect(a.name).toBe('Adventure One');
+  expect(a.owner).toBe('owner');
+  expect(a.description).toBe('');
+  expect(a.imagePath).toBe('');
+  
+  expect(a.maps).toHaveLength(2);
+
+  expect(a.maps[0].id).toBe('a');
+  expect(a.maps[0].name).toBe('Map One');
+  expect(a.maps[0].description).toBe('');
+
+  expect(a.maps[1].id).toBe('b');
+  expect(a.maps[1].name).toBe('');
+  expect(a.maps[1].description).toBe('An unnamed map');
+});
+
+test('The adventures and maps in a profile get converted', () => {
+  const raw = {
+    name: 'A User',
+    adventures: [
+      { id: 'a', description: 'An unnamed adventure' }
+    ],
+    latestMaps: [
+      { id: 'm', name: 'Map One' },
+      { id: 'b', description: 'An unnamed map' }
+    ]
+  };
+
+  const a = Convert.profileConverter.convert(raw);
+  expect(a.name).toBe('A User');
+  expect(a.level).toBe(UserLevel.Standard);
+
+  expect(a.adventures).toHaveLength(1);
+  expect(a.latestMaps).toHaveLength(2);
+
+  expect(a.adventures?.[0].id).toBe('a');
+  expect(a.adventures?.[0].name).toBe('');
+  expect(a.adventures?.[0].description).toBe('An unnamed adventure');
+  expect(a.adventures?.[0].imagePath).toBe('');
+
+  expect(a.latestMaps?.[0].id).toBe('m');
+  expect(a.latestMaps?.[0].name).toBe('Map One');
+  expect(a.latestMaps?.[0].description).toBe('');
+
+  expect(a.latestMaps?.[1].id).toBe('b');
+  expect(a.latestMaps?.[1].name).toBe('');
+  expect(a.latestMaps?.[1].description).toBe('An unnamed map');
 });

@@ -1,0 +1,27 @@
+version: "3.8"
+services:
+    hexland:
+        build:
+            context: hexland-web/docker
+            args:
+                - GID=${GROUP_ID}
+                - UID=${USER_ID}
+                - USER=${USER}
+        environment: 
+            - GOOGLE_APPLICATION_CREDENTIALS=/usr/src/app/hexland-web/firebase-admin-credentials.json
+            - RUN_TESTS=${RUN_TESTS}
+        ports:
+            - 4000:4000
+            - 5000:5000
+            - 5001:5001
+            - 8080:8080
+            - 9005:9005
+        stdin_open: true
+        tty: true
+        volumes:
+            - ./hexland-web:/usr/src/app/hexland-web
+            - ./.usercache:/home/${USER}
+    mock-storage:
+        build: mock-storage
+        ports:
+            - 7000:80

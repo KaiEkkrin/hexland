@@ -64,7 +64,8 @@ export async function addImage(
 ): Promise<boolean> {
   // Extract the uid from the path.  We rely on the Storage security rules to have
   // enforced that uid
-  const result = /^images\/([^\/]+)\/([^\/]+)/.exec(path);
+  // The leading / character is optional
+  const result = /^\/?images\/([^\/]+)\/([^\/]+)/.exec(path);
   if (!result) {
     logger.logWarning("Found image with unrecognised path: " + path);
     return false;

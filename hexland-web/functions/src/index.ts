@@ -220,3 +220,35 @@ export const onUpload = functions.region(region).storage.object().onFinalize(asy
     dataService, functionLogger, name, object.name
   );
 });
+
+// == EMULATOR ONLY ==
+
+const emulatorFunctionsDisabled = process.env.IS_LOCAL_DEV !== 'true';
+if (emulatorFunctionsDisabled) {
+  functionLogger.logInfo("Emulator-only functions disabled");
+} else {
+  functionLogger.logWarning("Emulator-only functions enabled");
+}
+
+export const handleMockStorageUpload = functions.region(region).https.onCall(async (data, context) => {
+  if (emulatorFunctionsDisabled) {
+    // This function is only valid in a local development environment -- allowing it
+    // in the real system would be a security hole :)
+    throw new functions.https.HttpsError('permission-denied', 'Nope');
+  }
+
+  const uid = context.auth?.uid;
+  if (uid === undefined) {
+    throw new functions.https.HttpsError('unauthenticated', 'No uid found');
+  }
+
+  const imageId = data['imageId'];
+  const name = data['name'];
+  if (!imageId || !name) {
+    throw new functions.https.HttpsError('invalid-argument', 'No image id or name supplied');
+  }
+
+  await ImageExtensions.addImage(
+    dataService, functionLogger, name, imageId
+  );
+});

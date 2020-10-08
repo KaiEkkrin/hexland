@@ -1,7 +1,6 @@
 import React, { useCallback, useContext, useEffect, useMemo, useReducer, useState } from 'react';
 
 import { AnalyticsContext } from './AnalyticsContextProvider';
-import { FirebaseContext } from './FirebaseContextProvider';
 import { UserContext } from './UserContextProvider';
 
 import { IImage } from '../data/image';
@@ -20,18 +19,18 @@ interface IImageCollectionItemProps {
 
 function ImageCollectionItem(props: IImageCollectionItemProps) {
   const analyticsContext = useContext(AnalyticsContext);
-  const firebaseContext = useContext(FirebaseContext);
+  const userContext = useContext(UserContext);
   const [url, setUrl] = useState("");
 
   useEffect(() => {
-    if (!firebaseContext.storage) {
+    if (!userContext.storageService) {
       return;
     }
 
-    firebaseContext.storage.ref(props.image.path).getDownloadURL()
+    userContext.storageService.ref(props.image.path).getDownloadURL()
       .then(u => setUrl(String(u)))
       .catch(e => analyticsContext.logError("Failed to get download URL for image " + props.image.path, e));
-  }, [analyticsContext, firebaseContext.storage, props.image, setUrl]);
+  }, [analyticsContext, userContext.storageService, props.image, setUrl]);
 
   return (
     <div className="App-image-collection-item">
@@ -61,7 +60,6 @@ interface IImagePickerModalProps {
 
 function ImagePickerModal(props: IImagePickerModalProps) {
   const analyticsContext = useContext(AnalyticsContext);
-  const firebaseContext = useContext(FirebaseContext);
   const userContext = useContext(UserContext);
 
   const [status, setStatus] = useState<IImageStatusProps>({ message: "" });
@@ -69,7 +67,7 @@ function ImagePickerModal(props: IImagePickerModalProps) {
   // File uploads
 
   const handleFileChange = useCallback((e: any) => {
-    if (!firebaseContext.storage || !userContext.user) {
+    if (!userContext.storageService || !userContext.user) {
       return;
     }
 
@@ -81,7 +79,7 @@ function ImagePickerModal(props: IImagePickerModalProps) {
     }
 
     setStatus({ message: `Uploading ${file.name}...` });
-    firebaseContext.storage.ref(path).put(file, {
+    userContext.storageService.ref(path).put(file, {
       customMetadata: {
         originalName: file.name
       }
@@ -90,7 +88,7 @@ function ImagePickerModal(props: IImagePickerModalProps) {
         setStatus({ message: "Upload failed: " + e.message, isError: true });
         analyticsContext.logError("Upload failed", e);
       });
-  }, [analyticsContext, firebaseContext, setStatus, userContext]);
+  }, [analyticsContext, setStatus, userContext]);
 
   // Image view
   // The bootstrap carousel appears to be entirely busted under these circumstances (images are always 0 high)

@@ -23,6 +23,7 @@ RUN userdel -f node && \
     chmod 770 /usr/src/scripts/*.sh
 USER ${UID}:${GID}
 
-WORKDIR /usr/src/app
+ENV RUN_TESTS=${RUN_TESTS}
+WORKDIR /usr/src/app/hexland-web
 ENTRYPOINT ["/bin/bash", "-c"]
 CMD ["/usr/src/scripts/dev.sh"]

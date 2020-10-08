@@ -1,6 +1,6 @@
 import { Subject } from 'rxjs';
 import { IIdentified } from '../data/identified';
-import { IDataService, IUser, IAuth, IAuthProvider, IAnalytics, IFunctionsService } from '../services/interfaces';
+import { IDataService, IUser, IAuth, IAuthProvider, IAnalytics, IFunctionsService, IStorage } from '../services/interfaces';
 
 export interface IContextProviderProps {
   children: React.ReactNode;
@@ -23,6 +23,7 @@ export interface IUserContext {
                                   // null means "Not logged in"
   dataService?: IDataService | undefined;
   functionsService?: IFunctionsService | undefined;
+  storageService?: IStorage | undefined;
 }
 
 export interface ISignInMethodsContext {

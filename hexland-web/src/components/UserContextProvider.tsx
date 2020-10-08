@@ -5,6 +5,8 @@ import { IContextProviderProps, ISignInMethodsContext, IUserContext } from './in
 
 import { DataService } from '../services/dataService';
 import { FunctionsService } from '../services/functions';
+import { MockStorage } from '../services/mockStorage';
+import { Storage } from '../services/storage';
 
 export const UserContext = React.createContext<IUserContext>({
   user: undefined,
@@ -22,13 +24,25 @@ function UserContextProvider(props: IContextProviderProps) {
   // When we're connected to Firebase, subscribe to the auth state change event and create a
   // suitable user context
   useEffect(() => {
+    const functionsService = firebaseContext.functions === undefined ? undefined :
+      new FunctionsService(firebaseContext.functions);
+
+    const realStorageService = firebaseContext.storage === undefined ? undefined :
+      new Storage(firebaseContext.storage);
+
     return firebaseContext.auth?.onAuthStateChanged(u => {
-      //console.log("Creating user context from " + u?.uid);
+      // Create the relevant storage service (if any.)  If webpack hot-plugging is enabled,
+      // we use the mock storage service because there isn't an emulator
+      const storageService = functionsService === undefined || !u ? undefined :
+        ('webpackHotUpdate' in window) ? new MockStorage(functionsService, u.uid) :
+        realStorageService;
+
       setUserContext({
         user: u,
         dataService: (firebaseContext.db === undefined || firebaseContext.timestampProvider === undefined || u === null || u === undefined) ?
           undefined : new DataService(firebaseContext.db, firebaseContext.timestampProvider),
-        functionsService: (firebaseContext.functions === undefined ? undefined : new FunctionsService(firebaseContext.functions))
+        functionsService: functionsService,
+        storageService: storageService
       });
     }, e => console.error("Authentication state error: ", e));
   }, [firebaseContext]);

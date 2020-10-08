@@ -20,7 +20,7 @@ async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => vo
   const app = firebase.initializeApp(await response.json());
   const db = app.firestore();
   const functions = app.functions(region);
-  const storage = app.storage();
+  let storage: firebase.storage.Storage | undefined = undefined;
 
   // Configure to use local emulators when running locally with webpack hot-plugging
   if ('webpackHotUpdate' in window) {
@@ -31,6 +31,8 @@ async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => vo
     });
     functions.useFunctionsEmulator(`http://${hostname}:5001`);
     console.log("Running with local emulators");
+  } else {
+    storage = app.storage();
   }
 
   setFirebaseContext({

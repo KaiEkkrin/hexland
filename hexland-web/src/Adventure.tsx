@@ -346,6 +346,7 @@ function Adventure(props: IAdventureProps) {
   }, [userContext, props.adventureId, analyticsContext]);
 
   // TODO #149: Super temporary place to put an image selection thingy, in that button group there
+  // TODO #149 Make the card here have the image if there is one.
   return (
     <div>
       <Navigation>{title}</Navigation>

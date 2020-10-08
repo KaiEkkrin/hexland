@@ -158,6 +158,9 @@ export interface IFunctionsService {
   // Consolidates changes in the given map.
   consolidateMapChanges(adventureId: string, mapId: string, resync: boolean): Promise<void>;
 
+  // For mock storage use only -- not production.
+  handleMockStorageUpload(imageId: string, name: string): Promise<void>;
+
   // Creates and returns an adventure invite.
   inviteToAdventure(adventureId: string, policy?: IInviteExpiryPolicy | undefined): Promise<string>;
 
@@ -170,4 +173,19 @@ export interface ILogger {
   logError(message: string, ...optionalParams: any[]): void;
   logInfo(message: string, ...optionalParams: any[]): void;
   logWarning(message: string, ...optionalParams: any[]): void;
+}
+
+// A stripped-down abstraction around Firebase Storage that lets me use a mock one in local
+// testing (standing in for an emulator.)
+export interface IStorage {
+  // Gets a reference to this path.
+  ref(path: string): IStorageReference;
+}
+
+export interface IStorageReference {
+  // Gets the download URL for this object.
+  getDownloadURL(): Promise<string>;
+
+  // Uploads a file here.
+  put(file: File, metadata: any): Promise<void>;
 }

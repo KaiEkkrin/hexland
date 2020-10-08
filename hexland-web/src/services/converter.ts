@@ -1,4 +1,4 @@
-import { IAdventure, IPlayer } from '../data/adventure';
+import { IAdventure, IMapSummary, IPlayer } from '../data/adventure';
 import { IAnnotation, defaultAnnotation } from '../data/annotation';
 import { IChange, IChanges, ChangeType, ChangeCategory, ITokenAdd, ITokenMove, ITokenRemove, IAreaAdd, IAreaRemove, INoteAdd, INoteRemove, IWallAdd, IWallRemove } from '../data/change';
 import { IGridCoord, defaultGridCoord, IGridEdge, defaultGridEdge, coordString } from '../data/coord';
@@ -6,7 +6,7 @@ import { IToken, defaultToken, IFeature, defaultArea, defaultWall, IFeatureDicti
 import { IImage, IImages } from '../data/image';
 import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
-import { IProfile } from '../data/profile';
+import { IAdventureSummary, IProfile } from '../data/profile';
 import { UserLevel } from '../data/policy';
 
 import { v4 as uuidv4 } from 'uuid';
@@ -324,13 +324,35 @@ const gridEdgeConverter = new ShallowConverter<IGridEdge>(defaultGridEdge);
 
 // *** EXPORTS ***
 
-export const adventureConverter = new ShallowConverter<IAdventure>({
+export const adventureSummaryConverter = new ShallowConverter<IAdventureSummary>({
+  id: "",
+  name: "",
+  description: "",
+  owner: "",
+  ownerName: "",
+  imagePath: ""
+});
+
+export const mapSummaryConverter = new ShallowConverter<IMapSummary>({
+  id: "",
+  adventureId: "",
+  name: "",
+  description: "",
+  ty: MapType.Square,
+});
+
+export const adventureConverter = new RecursingConverter<IAdventure>({
   name: "",
   description: "",
   owner: "",
   ownerName: "",
   maps: [],
   imagePath: ""
+}, {
+  "maps": (conv, raw) => {
+    conv.maps = Array.isArray(raw) ? raw.map(r => mapSummaryConverter.convert(r)) : [];
+    return conv;
+  }
 });
 
 export const inviteConverter = new ShallowConverter<IInvite>({
@@ -338,15 +360,6 @@ export const inviteConverter = new ShallowConverter<IInvite>({
   owner: "",
   ownerName: "",
   timestamp: 0
-});
-
-export const mapConverter = new ShallowConverter<IMap>({
-  adventureName: "",
-  name: "",
-  description: "",
-  owner: "",
-  ty: MapType.Square,
-  ffa: false
 });
 
 export const imageConverter = new ShallowConverter<IImage>({
@@ -364,6 +377,15 @@ export const imagesConverter = new RecursingConverter<IImages>({
   }
 });
 
+export const mapConverter = new ShallowConverter<IMap>({
+  adventureName: "",
+  name: "",
+  description: "",
+  owner: "",
+  ty: MapType.Square,
+  ffa: false
+});
+
 export const playerConverter = new ShallowConverter<IPlayer>({
   id: "",
   name: "",
@@ -376,12 +398,21 @@ export const playerConverter = new ShallowConverter<IPlayer>({
   imagePath: ""
 });
 
-export const profileConverter = new ShallowConverter<IProfile>({
+export const profileConverter = new RecursingConverter<IProfile>({
   name: "",
   email: "",
   level: UserLevel.Standard,
   adventures: undefined,
   latestMaps: undefined
+}, {
+  "adventures": (conv, raw) => {
+    conv.adventures = Array.isArray(raw) ? raw.map(r => adventureSummaryConverter.convert(r)) : [];
+    return conv;
+  },
+  "latestMaps": (conv, raw) => {
+    conv.latestMaps = Array.isArray(raw) ? raw.map(r => mapSummaryConverter.convert(r)) : [];
+    return conv;
+  }
 });
 
 export function createChangesConverter() {
