@@ -144,11 +144,17 @@ async function editAdventureTransaction(
       return;
     }
 
-    if (changed.name !== p.name || changed.description !== p.description || changed.ownerName !== p.ownerName) {
+    if (
+      changed.name !== p.name ||
+      changed.description !== p.description ||
+      changed.ownerName !== p.ownerName ||
+      changed.imagePath !== p.imagePath
+    ) {
       await view.update(playerRefs[i], {
         name: changed.name,
         description: changed.description,
         ownerName: changed.ownerName,
+        imagePath: changed.imagePath
       });
     }
   }));
@@ -156,7 +162,8 @@ async function editAdventureTransaction(
   await view.update(adventureRef, {
     name: changed.name,
     description: changed.description,
-    ownerName: changed.ownerName
+    ownerName: changed.ownerName,
+    imagePath: changed.imagePath
   });
 
   // Update the profile to include this adventure if it didn't already, or
@@ -383,7 +390,8 @@ async function registerAdventureAsRecentTransaction(
     name: a.name,
     description: a.description,
     owner: a.owner,
-    ownerName: a.ownerName
+    ownerName: a.ownerName,
+    imagePath: a.imagePath
   });
   if (updated !== undefined) {
     view.update(profileRef, { adventures: updated });

@@ -8,8 +8,12 @@ export function updateProfileAdventures(adventures: IAdventureSummary[] | undefi
   const existingIndex = adventures?.findIndex(a => a.id === changed.id) ?? -1;
   if (adventures !== undefined && existingIndex >= 0) {
     const existing = adventures[existingIndex];
-    if (existing.name === changed.name && existing.description === changed.description &&
-      existing.ownerName === changed.ownerName) {
+    if (
+      existing.name === changed.name &&
+      existing.description === changed.description &&
+      existing.ownerName === changed.ownerName &&
+      existing.imagePath === changed.imagePath
+    ) {
       // No change to make
       return undefined;
     }
@@ -18,6 +22,7 @@ export function updateProfileAdventures(adventures: IAdventureSummary[] | undefi
     updated[existingIndex].name = changed.name;
     updated[existingIndex].description = changed.description;
     updated[existingIndex].ownerName = changed.ownerName;
+    updated[existingIndex].imagePath = changed.imagePath;
     return updated;
   } else {
     const created = [changed];

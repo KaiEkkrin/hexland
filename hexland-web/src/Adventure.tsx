@@ -304,6 +304,20 @@ function Adventure(props: IAdventureProps) {
     );
   }, [userContext, props.adventureId, adventure, editAdventureName, editAdventureDescription, handleModalClose]);
 
+  const handleImagePickerSave = useCallback((path: string | undefined) => {
+    handleModalClose();
+    if (adventure === undefined) {
+      return;
+    }
+
+    const updated = { ...adventure.record, imagePath: path ?? "" };
+    editAdventure(
+      userContext.dataService, userContext.user?.uid, summariseAdventure(props.adventureId, updated), updated
+    )
+      .then(() => console.log(`Adventure ${props.adventureId} successfully edited`))
+      .catch(e => analyticsContext.logError(`Error editing adventure ${props.adventureId}`, e));
+  }, [adventure, analyticsContext, handleModalClose, props.adventureId, userContext]);
+
   const handleDeleteAdventureSave = useCallback(() => {
     handleModalClose();
     deleteAdventure(userContext.dataService, userContext.user?.uid, props.adventureId)
@@ -407,7 +421,8 @@ function Adventure(props: IAdventureProps) {
         setName={setEditAdventureName} />
       <ImagePickerModal
         show={showImagePicker}
-        handleClose={handleModalClose} />
+        handleClose={handleModalClose}
+        handleSave={handleImagePickerSave} />
       <Modal show={showBlockPlayer} onHide={handleModalClose}>
         <Modal.Header>
           <Modal.Title>Block {playerToBlock?.playerName}</Modal.Title>

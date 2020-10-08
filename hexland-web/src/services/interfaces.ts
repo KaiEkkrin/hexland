@@ -1,7 +1,7 @@
 import { IAdventure, IPlayer } from '../data/adventure';
 import { IChange, IChanges } from '../data/change';
 import { IIdentified } from '../data/identified';
-import { IImage } from '../data/image';
+import { IImages } from '../data/image';
 import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
 import { IInviteExpiryPolicy } from '../data/policy';
@@ -61,14 +61,11 @@ export interface IDataService extends IDataView {
   // Adds incremental changes to a map.
   addChanges(adventureId: string, uid: string, mapId: string, changes: IChange[]): Promise<void>;
 
-  // Adds an image record and returns its id.
-  addImage(image: IImage): Promise<string>;
-
   // Gets an adventure.
   getAdventureRef(id: string): IDataReference<IAdventure>;
 
-  // Gets a reference to a record describing an image.
-  getImageRef(id: string): IDataReference<IImage>;
+  // Gets a reference to a user's images record.
+  getImagesRef(uid: string): IDataReference<IImages>;
 
   // Gets the current invite refs for an adventure.
   getInviteRef(adventureId: string, id: string): IDataReference<IInvite>;
@@ -117,13 +114,6 @@ export interface IDataService extends IDataView {
     adventureId: string,
     mapId: string,
     onNext: (changes: IChanges) => void,
-    onError?: ((error: Error) => void) | undefined,
-    onCompletion?: (() => void) | undefined
-  ): () => void;
-
-  watchImages(
-    uid: string,
-    onNext: (images: IImage[]) => void,
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ): () => void;

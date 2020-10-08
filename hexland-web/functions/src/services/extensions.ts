@@ -45,7 +45,8 @@ async function createAdventureTransaction(
     description: description,
     owner: profileRef.id,
     ownerName: profile.name,
-    maps: []
+    maps: [],
+    imagePath: ""
   };
 
   await view.set(newAdventureRef, record);
@@ -453,18 +454,25 @@ async function joinAdventureTransaction(
       description: adventure.description,
       owner: adventure.owner,
       ownerName: adventure.ownerName,
+      imagePath: adventure.imagePath,
       playerId: playerRef.id,
       playerName: profile.name,
       allowed: true
     });
   } else {
     // Update that record in case there are changes
-    if (player.name !== adventure.name || player.description !== adventure.description ||
-      player.ownerName !== adventure.ownerName || player.playerName !== profile.name) {
+    if (
+      player.name !== adventure.name ||
+      player.description !== adventure.description ||
+      player.ownerName !== adventure.ownerName ||
+      player.imagePath !== adventure.imagePath ||
+      player.playerName !== profile.name
+    ) {
       await view.update(playerRef, {
         name: adventure.name,
         description: adventure.description,
         ownerName: adventure.ownerName,
+        imagePath: adventure.imagePath,
         playerName: profile.name
       });
     }

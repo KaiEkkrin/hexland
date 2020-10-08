@@ -18,4 +18,5 @@ export interface IAdventureSummary {
   description: string;
   owner: string; // owning uid
   ownerName: string;
+  imagePath: string;
 }

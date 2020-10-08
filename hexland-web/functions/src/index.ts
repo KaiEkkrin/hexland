@@ -1,11 +1,12 @@
+import { MapType } from './data/map';
 import * as Policy from './data/policy';
 import { AdminDataService } from './services/adminDataService';
 import * as Extensions from './services/extensions';
 import functionLogger from './services/functionLogger';
+import * as ImageExtensions from './services/imageExtensions';
 
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
-import { MapType } from './data/map';
 
 const region = 'europe-west2';
 
@@ -214,16 +215,8 @@ export const onUpload = functions.region(region).storage.object().onFinalize(asy
     return;
   }
 
-  // Extract the uid from the path.  We rely on the Storage security rules to have
-  // enforced that uid
-  const result = /^images\/([^\/]+)\/([^\/]+)/.exec(object.name);
-  if (result === null) {
-    functions.logger.warn("Found object with unrecognised name: " + object.name);
-    return;
-  }
-
-  // TODO #149 Check the number of images the user already has first
   const name = String(object.metadata?.originalName);
-  const uid = result[1];
-  await dataService.addImage({ name: name, owner: uid, path: object.name });
+  await ImageExtensions.addImage(
+    dataService, functionLogger, name, object.name
+  );
 });

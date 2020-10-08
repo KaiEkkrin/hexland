@@ -7,6 +7,7 @@ export interface IAdventure {
   owner: string; // owning uid
   ownerName: string;
   maps: IMapSummary[];
+  imagePath: string;
 }
 
 export interface IMapSummary {
@@ -33,6 +34,7 @@ export function summariseAdventure(id: string, a: IAdventure): IAdventureSummary
     name: a.name,
     description: a.description,
     owner: a.owner,
-    ownerName: a.ownerName
+    ownerName: a.ownerName,
+    imagePath: a.imagePath
   };
 }

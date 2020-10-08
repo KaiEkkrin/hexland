@@ -33,6 +33,7 @@ export enum UserLevel {
 
 export interface IUserPolicy { // one per user level
   adventures: number, // cap on adventures created
+  images: number, // cap on total number of images uploaded
   maps: number, // cap on maps per adventure
   players: number, // cap on players per adventure
   objects: number, // cap on objects per map
@@ -41,6 +42,7 @@ export interface IUserPolicy { // one per user level
 
 export const standardUser: IUserPolicy = {
   adventures: 3,
+  images: 50,
   maps: 12,
   players: 8,
   objects: 10000,
@@ -49,6 +51,7 @@ export const standardUser: IUserPolicy = {
 
 export const goldUser: IUserPolicy = {
   adventures: 15,
+  images: 500,
   maps: 100,
   players: 16,
   objects: 10000,

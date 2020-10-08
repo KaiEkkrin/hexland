@@ -5,7 +5,7 @@ import { IDataService, IDataReference, IDataView, IDataAndReference } from './in
 import { IAdventure, IPlayer } from '../data/adventure';
 import { IChange, IChanges } from '../data/change';
 import { IIdentified } from '../data/identified';
-import { IImage } from '../data/image';
+import { IImages } from '../data/image';
 import { IInvite } from '../data/invite';
 import { IMap } from '../data/map';
 import { IProfile } from '../data/profile';
@@ -109,19 +109,14 @@ export class DataService implements IDataService {
     });
   }
 
-  async addImage(image: IImage): Promise<string> {
-    const ref = await this._db.collection(images).add({ ...image, date: this._timestampProvider() });
-    return ref.id;
-  }
-
   getAdventureRef(id: string): IDataReference<IAdventure> {
     const d = this._db.collection(adventures).doc(id);
     return new DataReference<IAdventure>(d, Convert.adventureConverter);
   }
 
-  getImageRef(id: string): IDataReference<IImage> {
-    const d = this._db.collection(images).doc(id);
-    return new DataReference<IImage>(d, Convert.imageConverter);
+  getImagesRef(uid: string): IDataReference<IImages> {
+    const d = this._db.collection(images).doc(uid);
+    return new DataReference<IImages>(d, Convert.imagesConverter);
   }
 
   getInviteRef(adventureId: string, id: string): IDataReference<IInvite> {
@@ -252,20 +247,6 @@ export class DataService implements IDataService {
             onNext(chs);
           }
         });
-      }, onError, onCompletion);
-  }
-
-  watchImages(
-    uid: string,
-    onNext: (images: IImage[]) => void,
-    onError?: ((error: Error) => void) | undefined,
-    onCompletion?: (() => void) | undefined
-  ) {
-    return this._db.collection(images)
-      .where("owner", "==", uid)
-      .orderBy("date", "desc")
-      .onSnapshot(s => {
-        onNext(s.docs.map(d => Convert.imageConverter.convert(d.data())));
       }, onError, onCompletion);
   }
 

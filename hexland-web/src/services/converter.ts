@@ -3,7 +3,7 @@ import { IAnnotation, defaultAnnotation } from '../data/annotation';
 import { IChange, IChanges, ChangeType, ChangeCategory, ITokenAdd, ITokenMove, ITokenRemove, IAreaAdd, IAreaRemove, INoteAdd, INoteRemove, IWallAdd, IWallRemove } from '../data/change';
 import { IGridCoord, defaultGridCoord, IGridEdge, defaultGridEdge, coordString } from '../data/coord';
 import { IToken, defaultToken, IFeature, defaultArea, defaultWall, IFeatureDictionary, IIdFeature, FeatureDictionary, parseTokenSize } from '../data/feature';
-import { IImage } from '../data/image';
+import { IImage, IImages } from '../data/image';
 import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
 import { IProfile } from '../data/profile';
@@ -329,7 +329,8 @@ export const adventureConverter = new ShallowConverter<IAdventure>({
   description: "",
   owner: "",
   ownerName: "",
-  maps: []
+  maps: [],
+  imagePath: ""
 });
 
 export const inviteConverter = new ShallowConverter<IInvite>({
@@ -350,9 +351,17 @@ export const mapConverter = new ShallowConverter<IMap>({
 
 export const imageConverter = new ShallowConverter<IImage>({
   name: "",
-  date: undefined,
-  owner: "",
   path: ""
+});
+
+export const imagesConverter = new RecursingConverter<IImages>({
+  images: [],
+  lastError: ""
+}, {
+  "images": (conv, raw) => {
+    conv.images = Array.isArray(raw) ? raw.map(r => imageConverter.convert(r)) : [];
+    return conv;
+  }
 });
 
 export const playerConverter = new ShallowConverter<IPlayer>({
@@ -363,7 +372,8 @@ export const playerConverter = new ShallowConverter<IPlayer>({
   ownerName: "",
   playerId: "",
   playerName: "",
-  allowed: true
+  allowed: true,
+  imagePath: ""
 });
 
 export const profileConverter = new ShallowConverter<IProfile>({
