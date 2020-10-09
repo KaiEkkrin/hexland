@@ -339,6 +339,7 @@ export const mapSummaryConverter = new ShallowConverter<IMapSummary>({
   name: "",
   description: "",
   ty: MapType.Square,
+  imagePath: ""
 });
 
 export const adventureConverter = new RecursingConverter<IAdventure>({
@@ -383,7 +384,8 @@ export const mapConverter = new ShallowConverter<IMap>({
   description: "",
   owner: "",
   ty: MapType.Square,
-  ffa: false
+  ffa: false,
+  imagePath: ""
 });
 
 export const playerConverter = new ShallowConverter<IPlayer>({

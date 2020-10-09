@@ -71,6 +71,13 @@ function ImagePickerModal(props: IImagePickerModalProps) {
   );
   const [status, setStatus] = useState<IImageStatusProps>({ message: "" });
 
+  // Reset the status when the dialog is opened
+  useEffect(() => {
+    if (props.show === true) {
+      setStatus({ message: "" });
+    }
+  }, [props.show, setStatus]);
+
   // File uploads
 
   const handleFileChange = useCallback((e: any) => {
@@ -182,6 +189,7 @@ function ImagePickerModal(props: IImagePickerModalProps) {
           <Form.Group>
             <Form.Label htmlFor="uploadButton">Upload a new image</Form.Label>
             <Form.Control id="uploadButton" as="input" type="file" accept="image/*" onChange={handleFileChange} />
+            <Form.Text className="text-muted">The maximum image size is 2MB.</Form.Text>
           </Form.Group>
         </Form>
         <ImageStatus {...status} />

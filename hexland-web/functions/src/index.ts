@@ -26,7 +26,8 @@ if (emulatorFunctionsDisabled) {
   functionLogger.logWarning("Emulator-only functions enabled");
 }
 
-const storage: IStorage = emulatorFunctionsDisabled ? new Storage(app) : new MockStorage();
+const storage: IStorage = emulatorFunctionsDisabled ? new Storage(app) :
+  new MockStorage('http://mock-storage');
 
 // Start writing Firebase Functions
 // https://firebase.google.com/docs/functions/typescript
@@ -228,15 +229,10 @@ export const onUpload = functions.region(region).storage.object().onFinalize(asy
     return;
   }
 
-  try {
-    const name = String(object.metadata?.originalName);
-    await ImageExtensions.addImage(
-      dataService, functionLogger, name, object.name
-    );
-  } catch (e) {
-    functions.logger.info(`Error on upload of ${object.name} -- deleting`, e);
-    await storage.ref(object.name).delete();
-  }
+  const name = String(object.metadata?.originalName);
+  await ImageExtensions.addImage(
+    dataService, storage, functionLogger, name, object.name
+  );
 });
 
 // == EMULATOR ONLY ==
@@ -259,12 +255,7 @@ export const handleMockStorageUpload = functions.region(region).https.onCall(asy
     throw new functions.https.HttpsError('invalid-argument', 'No image id or name supplied');
   }
 
-  try {
-    await ImageExtensions.addImage(
-      dataService, functionLogger, name, imageId
-    );
-  } catch (e) {
-    functions.logger.info(`Error on upload of ${imageId} -- deleting`, e);
-    await storage.ref(imageId).delete();
-  }
+  await ImageExtensions.addImage(
+    dataService, storage, functionLogger, name, imageId
+  );
 });

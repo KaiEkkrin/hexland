@@ -31,6 +31,7 @@ export interface IMap {
   owner: string; // to check whether we can consolidate
   ty: MapType;
   ffa: boolean;
+  imagePath: string;
 }
 
 export function summariseMap(adventureId: string, mapId: string, m: IMap): IMapSummary {
@@ -39,6 +40,7 @@ export function summariseMap(adventureId: string, mapId: string, m: IMap): IMapS
     id: mapId,
     name: m.name,
     description: m.description,
-    ty: m.ty
+    ty: m.ty,
+    imagePath: m.imagePath
   };
 }

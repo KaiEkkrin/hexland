@@ -8,8 +8,8 @@ import { MockStorage, MockStorageReference } from "./mockStorage";
 export class MockWebStorage extends MockStorage {
   private readonly _functionsService: IFunctionsService;
 
-  constructor(functionsService: IFunctionsService) {
-    super();
+  constructor(functionsService: IFunctionsService, location: string) {
+    super(location);
     this._functionsService = functionsService;
   }
 

@@ -1,7 +1,7 @@
 import { IImage, IImages } from '../data/image';
 import { getUserPolicy } from '../data/policy';
 import { IProfile } from '../data/profile';
-import { IDataReference, IDataService, IDataView, ILogger } from './interfaces';
+import { IDataReference, IDataService, IDataView, ILogger, IStorage } from './interfaces';
 
 async function addImageTransaction(
   view: IDataView,
@@ -58,6 +58,7 @@ async function addImageTransaction(
 // If we return false, the add wasn't successful -- delete the uploaded image.
 export async function addImage(
   dataService: IDataService,
+  storage: IStorage,
   logger: ILogger,
   name: string,
   path: string,
@@ -74,5 +75,16 @@ export async function addImage(
   const uid = result[1];
   const imagesRef = dataService.getImagesRef(uid);
   const profileRef = dataService.getProfileRef(uid);
-  return await dataService.runTransaction(tr => addImageTransaction(tr, name, path, imagesRef, profileRef));
+  try {
+    const ok = await dataService.runTransaction(tr => addImageTransaction(tr, name, path, imagesRef, profileRef));
+    if (!ok) {
+      logger.logInfo(`Add ${path} reported an error -- deleting`);
+      await storage.ref(path).delete();
+    }
+    return ok;
+  } catch (e) {
+    logger.logWarning(`Error on add ${path} -- deleting`, e);
+    await storage.ref(path).delete();
+    return false;
+  }
 }

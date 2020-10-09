@@ -16,6 +16,7 @@ export interface IMapSummary {
   name: string;
   description: string;
   ty: MapType;
+  imagePath: string;
 }
 
 // To support a collection group query for all adventures shared with me (and get

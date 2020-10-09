@@ -40,6 +40,7 @@ export function updateAdventureMaps(maps: IMapSummary[], changed: IMapSummary): 
   if (existingIndex >= 0) {
     updated[existingIndex].name = changed.name;
     updated[existingIndex].description = changed.description;
+    updated[existingIndex].imagePath = changed.imagePath;
   } else {
     updated.push(changed);
     updated.sort((a, b) => a.name.localeCompare(b.name));
@@ -53,7 +54,8 @@ export function updateProfileMaps(maps: IMapSummary[] | undefined, changed: IMap
   if (maps !== undefined && existingIndex >= 0) {
     if (
       changed.name === maps[existingIndex].name &&
-      changed.description === maps[existingIndex].description
+      changed.description === maps[existingIndex].description &&
+      changed.imagePath === maps[existingIndex].imagePath
     ) {
       // No change to make
       return undefined;
@@ -62,6 +64,7 @@ export function updateProfileMaps(maps: IMapSummary[] | undefined, changed: IMap
     const updated = [...maps];
     updated[existingIndex].name = changed.name;
     updated[existingIndex].description = changed.description;
+    updated[existingIndex].imagePath = changed.imagePath;
     return updated;
   } else {
     const created = [changed];

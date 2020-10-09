@@ -12,10 +12,10 @@ import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { StatusContext } from './components/StatusContextProvider';
 import { UserContext } from './components/UserContextProvider';
 
-import { IAdventure, summariseAdventure, IPlayer } from './data/adventure';
+import { IAdventure, summariseAdventure, IPlayer, IMapSummary } from './data/adventure';
 import { IIdentified } from './data/identified';
 import { getUserPolicy } from './data/policy';
-import { deleteMap, registerAdventureAsRecent, editAdventure, deleteAdventure, leaveAdventure, removeAdventureFromRecent } from './services/extensions';
+import { deleteMap, registerAdventureAsRecent, editAdventure, deleteAdventure, leaveAdventure, removeAdventureFromRecent, editMap } from './services/extensions';
 
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
@@ -32,6 +32,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { v4 as uuidv4 } from 'uuid';
 import ImageCardContent from './components/ImageCardContent';
+import { IMap } from './data/map';
 
 interface IAdventureProps {
   adventureId: string;
@@ -207,6 +208,7 @@ function Adventure(props: IAdventureProps) {
 
   // Adventure image support
   const [showImagePicker, setShowImagePicker] = useState(false);
+  const [pickImageForMap, setPickImageForMap] = useState<IMapSummary | undefined>(undefined);
 
   // Adventure deletion support
   const canDeleteAdventure = useMemo(
@@ -280,13 +282,14 @@ function Adventure(props: IAdventureProps) {
     setShowEditAdventure(true);
   }, [adventure, setEditAdventureName, setEditAdventureDescription, setShowEditAdventure]);
 
-  const handleShowImagePicker = useCallback(() => {
+  const handleShowImagePicker = useCallback((map?: IMapSummary | undefined) => {
     if (adventure === undefined) {
       return;
     }
 
     setShowImagePicker(true);
-  }, [adventure, setShowImagePicker]);
+    setPickImageForMap(map);
+  }, [adventure, setPickImageForMap, setShowImagePicker]);
 
   const handleEditAdventureSave = useCallback(async () => {
     handleModalClose();
@@ -307,17 +310,40 @@ function Adventure(props: IAdventureProps) {
 
   const handleImagePickerSave = useCallback((path: string | undefined) => {
     handleModalClose();
-    if (adventure === undefined) {
+    if (adventure === undefined || userContext.dataService === undefined) {
       return;
     }
 
-    const updated = { ...adventure.record, imagePath: path ?? "" };
-    editAdventure(
-      userContext.dataService, userContext.user?.uid, summariseAdventure(props.adventureId, updated), updated
-    )
-      .then(() => console.log(`Adventure ${props.adventureId} successfully edited`))
-      .catch(e => analyticsContext.logError(`Error editing adventure ${props.adventureId}`, e));
-  }, [adventure, analyticsContext, handleModalClose, props.adventureId, userContext]);
+    // We might be choosing an image for either the adventure or one of its maps
+    if (pickImageForMap === undefined) {
+      const updated: IAdventure = { ...adventure.record, imagePath: path ?? "" };
+      editAdventure(
+        userContext.dataService, userContext.user?.uid, summariseAdventure(props.adventureId, updated), updated
+      )
+        .then(() => console.log(`Adventure ${props.adventureId} successfully edited`))
+        .catch(e => analyticsContext.logError(`Error editing adventure ${props.adventureId}`, e));
+    } else {
+      const dataService = userContext.dataService;
+      const mapSummary = pickImageForMap;
+      async function getAndUpdateMap() {
+        // This is not transactional when it ought to be, but I'm not expecting that
+        // two concurrent, conflicting writes to the same map record would be very likely
+        const map = await dataService.get(dataService.getMapRef(
+          mapSummary.adventureId, mapSummary.id
+        ));
+        if (!map) {
+          throw Error("No map of id " + mapSummary.id);
+        }
+
+        const updated: IMap = { ...map, imagePath: path ?? "" };
+        await editMap(userContext.dataService, mapSummary.adventureId, mapSummary.id, updated);
+      }
+
+      getAndUpdateMap()
+        .then(() => console.log(`Map ${mapSummary.id} successfully edited`))
+        .catch(e => analyticsContext.logError(`Error editing map ${mapSummary.id}`, e));
+    }
+  }, [adventure, analyticsContext, handleModalClose, pickImageForMap, props.adventureId, userContext]);
 
   const handleDeleteAdventureSave = useCallback(() => {
     handleModalClose();
@@ -363,7 +389,7 @@ function Adventure(props: IAdventureProps) {
                           {canEditAdventure === true ?
                             <ButtonGroup className="ml-2">
                               <Button variant="primary" onClick={handleShowEditAdventure}>Edit</Button>
-                              <Button variant="primary" onClick={handleShowImagePicker}>
+                              <Button variant="primary" onClick={() => handleShowImagePicker()}>
                                 <FontAwesomeIcon icon={faImage} color="white" />
                               </Button>
                             </ButtonGroup> :
@@ -411,7 +437,8 @@ function Adventure(props: IAdventureProps) {
               adventures={adventures}
               maps={maps}
               showNewMap={canCreateNewMap}
-              deleteMap={mapDelete} />
+              deleteMap={mapDelete}
+              pickImage={handleShowImagePicker} />
           </Col>
         </Row>
       </Container>

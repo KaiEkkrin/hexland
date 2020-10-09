@@ -299,7 +299,8 @@ async function editMapTransaction(
     adventureName: changed.adventureName,
     name: changed.name,
     description: changed.description,
-    ffa: changed.ffa
+    ffa: changed.ffa,
+    imagePath: changed.imagePath
   });
 }
 
@@ -431,7 +432,8 @@ async function registerMapAsRecentTransaction(
     id: id,
     name: m.name,
     description: m.description,
-    ty: m.ty
+    ty: m.ty,
+    imagePath: m.imagePath
   });
   if (updated !== undefined) {
     view.update(profileRef, { latestMaps: updated });

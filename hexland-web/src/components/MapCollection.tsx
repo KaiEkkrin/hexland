@@ -23,7 +23,8 @@ interface IMapCollectionProps {
   adventures: IAdventureSummary[];
   maps: IMapSummary[];
   showNewMap: boolean;
-  deleteMap?: ((id: string) => void) | undefined
+  deleteMap?: ((id: string) => void) | undefined;
+  pickImage?: ((map: IMapSummary) => void) | undefined;
 }
 
 function MapCollection(props: IMapCollectionProps) {
@@ -111,7 +112,8 @@ function MapCollection(props: IMapCollectionProps) {
       <MapCards showNewMapCard={props.showNewMap} createMap={handleNewMapClick}
         adventures={props.adventures} maps={props.maps}
         cloneMap={canDeleteMap ? handleCloneMapClick : undefined}
-        deleteMap={canDeleteMap ? handleDeleteMapClick : undefined} />
+        deleteMap={canDeleteMap ? handleDeleteMapClick : undefined}
+        pickImage={props.pickImage} />
       <MapCloneModal show={showCloneMap} adventure={cloneAdventure} sourceMap={cloneSourceMap}
         handleClose={handleModalClose} />
       <MapEditorModal show={showEditMap} adventures={newMapAdventures} map={undefined}

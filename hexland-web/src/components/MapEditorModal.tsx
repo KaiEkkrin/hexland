@@ -96,7 +96,8 @@ function MapEditorModal(props: IMapEditorModalProps) {
       description: description,
       owner: uid,
       ty: ty,
-      ffa: ffa
+      ffa: ffa,
+      imagePath: ""
     }).then(() => console.log("created new map"))
       .catch(e => setIsSaving(false));
   }, [props, adventureId, description, ffa, name, setIsSaving, ty, userContext.user]);

@@ -155,7 +155,8 @@ export async function createMap(
       name: name,
       description: description,
       ty: ty,
-      ffa: ffa
+      ffa: ffa,
+      imagePath: ""
     }
   ));
 

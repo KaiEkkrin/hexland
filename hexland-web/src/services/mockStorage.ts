@@ -3,13 +3,11 @@ import { createWebDAV } from './webdav';
 
 // A mock storage service for the use of the local `run_docker.sh` deployment.
 
-const mockStorage = "http://localhost:7000/";
-
 export class MockStorage implements IStorage {
   private readonly _webdav: IWebDAV;
 
-  constructor() {
-    this._webdav = createWebDAV(mockStorage);
+  constructor(location: string) {
+    this._webdav = createWebDAV(location);
   }
 
   protected get webdav() { return this._webdav; }

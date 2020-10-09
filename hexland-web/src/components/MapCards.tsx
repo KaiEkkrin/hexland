@@ -19,7 +19,8 @@ import Measure from 'react-measure';
 import { LinkContainer } from 'react-router-bootstrap';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCopy, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faCopy, faImage, faTimes } from '@fortawesome/free-solid-svg-icons';
+import ImageCardContent from './ImageCardContent';
 
 interface INewMapCardProps {
   collapsing: boolean;
@@ -48,10 +49,14 @@ interface IMapCardProps {
   map: IMapSummary;
   cloneMap: ((map: IMapSummary) => void) | undefined;
   deleteMap: ((map: IMapSummary) => void) | undefined;
+  pickImage: ((map: IMapSummary) => void) | undefined;
 }
 
 function MapCard(props: IMapCardProps) {
   const userContext = useContext(UserContext);
+
+  // Create various buttons and thingies
+
   const cloneMapButton = useMemo(() => {
     const key = "clone-" + props.map.id;
     return props.cloneMap === undefined ? undefined : (
@@ -78,51 +83,65 @@ function MapCard(props: IMapCardProps) {
     );
   }, [props]);
 
+  const pickImageButton = useMemo(() => {
+    const key = "pick-" + props.map.id;
+    return props.pickImage === undefined ? undefined : (
+      <OverlayTrigger key={key} placement="top" overlay={
+        <Tooltip id={key + "-tooltip"}>Pick an image</Tooltip>
+      }>
+        <Button variant="secondary" onClick={() => props.pickImage?.(props.map)}>
+          <FontAwesomeIcon icon={faImage} color="white" />
+        </Button>
+      </OverlayTrigger>
+    );
+  }, [props]);
+
   const manageButtons = useMemo(() => {
     if (props.adventures.find(a => a.id === props.map.adventureId)?.owner !== userContext.user?.uid) {
       // We don't own this adventure, so we can't manage the map
       return undefined;
     }
 
-    const buttons = [cloneMapButton, deleteMapButton]
+    const buttons = [pickImageButton, cloneMapButton, deleteMapButton]
       .filter(b => b !== undefined);
     return buttons.length === 0 ? undefined : (
       <ButtonGroup>
         {buttons}
       </ButtonGroup>
     );
-  }, [cloneMapButton, deleteMapButton, props.adventures, props.map, userContext]);
+  }, [cloneMapButton, deleteMapButton, pickImageButton, props.adventures, props.map, userContext]);
+
+  const content = useMemo(
+    () => (
+      <React.Fragment>
+        <Card.Subtitle className="text-muted">{props.map.ty} map</Card.Subtitle>
+        <Card.Text>{props.map.description}</Card.Text>
+        <div className="card-row-spaced">
+          <LinkContainer to={"/adventure/" + props.map.adventureId + "/map/" + props.map.id}>
+            <Card.Link>Open map</Card.Link>
+          </LinkContainer>
+          {manageButtons}
+        </div>
+      </React.Fragment>
+    ),
+    [props.map, manageButtons]
+  );
 
   return props.collapsing ? (
     <Card bg="dark" text="white" key={props.map.id}>
       <ExpansionToggle direction="down" eventKey={props.map.id}>{props.map.name}</ExpansionToggle>
       <Accordion.Collapse eventKey={props.map.id}>
         <Card.Body>
-          <Card.Subtitle className="text-muted">{props.map.ty as string} map</Card.Subtitle>
-          <Card.Text>{props.map.description}</Card.Text>
-          <div className="card-footer-spaced">
-            <LinkContainer to={"/adventure/" + props.map.adventureId + "/map/" + props.map.id}>
-              <Card.Link>Open map</Card.Link>
-            </LinkContainer>
-            {manageButtons}
-          </div>
+          {content}
         </Card.Body>
       </Accordion.Collapse>
     </Card>
   ) : (
-    <Card className="mt-4" style={CardStyle}
-      bg="dark" text="white" key={props.map.id}>
-      <Card.Body>
+    <Card className="mt-4" style={CardStyle} bg="dark" text="white" key={props.map.id}>
+      <ImageCardContent altName={props.map.name} imagePath={props.map.imagePath}>
         <Card.Title>{props.map.name}</Card.Title>
-        <Card.Subtitle className="text-muted">{props.map.ty as string} map</Card.Subtitle>
-        <Card.Text>{props.map.description}</Card.Text>
-      </Card.Body>
-      <Card.Footer className="card-footer-spaced">
-        <LinkContainer to={"/adventure/" + props.map.adventureId + "/map/" + props.map.id}>
-          <Card.Link>Open map</Card.Link>
-        </LinkContainer>
-        {manageButtons}
-      </Card.Footer>
+        {content}
+      </ImageCardContent>
     </Card>
   );
 }
@@ -134,6 +153,7 @@ export interface IMapCardsProps {
   createMap: (() => void) | undefined;
   cloneMap: ((map: IMapSummary) => void) | undefined;
   deleteMap: ((map: IMapSummary) => void) | undefined;
+  pickImage: ((map: IMapSummary) => void) | undefined;
 }
 
 function MapCards(props: IMapCardsProps) {
@@ -145,7 +165,7 @@ function MapCards(props: IMapCardsProps) {
   const cards = useMemo(() => {
     const cardList = [...props.maps.map(v => (
       <MapCard collapsing={collapsing} key={v.id} adventures={props.adventures} map={v}
-        cloneMap={cloneMap} deleteMap={props.deleteMap} />
+        cloneMap={cloneMap} deleteMap={props.deleteMap} pickImage={props.pickImage} />
     ))];
 
     if (props.showNewMapCard && props.createMap !== undefined) {
