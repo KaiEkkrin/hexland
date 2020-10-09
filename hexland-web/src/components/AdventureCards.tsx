@@ -1,9 +1,7 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import '../App.css';
 
-import { AnalyticsContext } from './AnalyticsContextProvider';
 import ExpansionToggle from './ExpansionToggle';
-import { UserContext } from './UserContextProvider';
 
 import { IAdventureSummary } from '../data/profile';
 
@@ -14,6 +12,7 @@ import CardDeck from 'react-bootstrap/CardDeck';
 
 import { LinkContainer } from 'react-router-bootstrap';
 import Measure from 'react-measure';
+import ImageCardContent from './ImageCardContent';
 
 export const CardStyle: React.CSSProperties = {
   minWidth: '16rem', maxWidth: '24rem'
@@ -25,28 +24,19 @@ interface IAdventureCardProps {
 }
 
 function AdventureCard(props: IAdventureCardProps) {
-  const analyticsContext = useContext(AnalyticsContext);
-  const userContext = useContext(UserContext);
-  const [url, setUrl] = useState<string | undefined>(undefined);
+  const content = useMemo(
+    () => (
+      <React.Fragment>
+        <Card.Subtitle>By {props.adventure.ownerName}</Card.Subtitle>
+        <Card.Text>{props.adventure.description}</Card.Text>
+        <LinkContainer to={"/adventure/" + props.adventure.id}>
+          <Card.Link>Open adventure</Card.Link>
+        </LinkContainer>
+      </React.Fragment>
+    ),
+    [props.adventure]
+  );
 
-  // Resolve the image URL, if any
-  useEffect(() => {
-    if (!userContext.storageService || !props.adventure?.imagePath || props.adventure.imagePath.length === 0) {
-      return;
-    }
-
-    // TODO #149 I need to be able to cancel this, right now it will cause updates after
-    // the component has unmounted
-    const imagePath = props.adventure.imagePath;
-    userContext.storageService.ref(imagePath).getDownloadURL()
-      .then(u => {
-        console.log(`got download URL for image ${imagePath} : ${u}`);
-        setUrl(String(u));
-      })
-      .catch(e => analyticsContext.logError("Failed to get download URL for image " + imagePath, e));
-  }, [analyticsContext, props.adventure, setUrl, userContext.storageService]);
-
-  // I could find no working way of splitting this apart and sharing components :/
   if (props.collapsing) {
     // TODO #108 I don't know how to include an image in a collapsing card for now
     return (
@@ -54,44 +44,18 @@ function AdventureCard(props: IAdventureCardProps) {
         <ExpansionToggle direction="down" eventKey={props.adventure.id}>{props.adventure.name}</ExpansionToggle>
         <Accordion.Collapse eventKey={props.adventure.id}>
           <Card.Body>
-            <Card.Subtitle>By {props.adventure.ownerName}</Card.Subtitle>
-            <Card.Text>{props.adventure.description}</Card.Text>
-            <LinkContainer to={"/adventure/" + props.adventure.id}>
-              <Card.Link>Open adventure</Card.Link>
-            </LinkContainer>
+            {content}
           </Card.Body>
         </Accordion.Collapse>
-      </Card>
-    );
-  } else if (url !== undefined) {
-    return (
-      <Card className="mt-4" style={CardStyle} bg="dark" text="white">
-        <Card.Img src={url} alt={props.adventure.name} />
-        <Card.ImgOverlay>
-          <Card.Title>{props.adventure.name}</Card.Title>
-          <Card.Subtitle>By {props.adventure.ownerName}</Card.Subtitle>
-          <Card.Text>{props.adventure.description}</Card.Text>
-        </Card.ImgOverlay>
-        <Card.Footer>
-          <LinkContainer to={"/adventure/" + props.adventure.id}>
-            <Card.Link>Open adventure</Card.Link>
-          </LinkContainer>
-        </Card.Footer>
       </Card>
     );
   } else {
     return (
       <Card className="mt-4" style={CardStyle} bg="dark" text="white">
-        <Card.Body>
-          <Card.Title>{props.adventure.name}</Card.Title>
-          <Card.Subtitle>By {props.adventure.ownerName}</Card.Subtitle>
-          <Card.Text>{props.adventure.description}</Card.Text>
-        </Card.Body>
-        <Card.Footer>
-          <LinkContainer to={"/adventure/" + props.adventure.id}>
-            <Card.Link>Open adventure</Card.Link>
-          </LinkContainer>
-        </Card.Footer>
+        <ImageCardContent altName={props.adventure.name} imagePath={props.adventure.imagePath}>
+          <Card.Title className="h5">{props.adventure.name}</Card.Title>
+          {content}
+        </ImageCardContent>
       </Card>
     );
   }

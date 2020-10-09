@@ -1,6 +1,7 @@
 import React, { useCallback, useContext, useEffect, useMemo, useReducer, useState } from 'react';
 
 import { AnalyticsContext } from './AnalyticsContextProvider';
+import { ProfileContext } from './ProfileContextProvider';
 import { UserContext } from './UserContextProvider';
 
 import { IImage } from '../data/image';
@@ -12,6 +13,7 @@ import Modal from 'react-bootstrap/Modal';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons';
 import { v4 as uuidv4 } from 'uuid';
+import { getUserPolicy } from '../data/policy';
 
 interface IImageCollectionItemProps {
   image: IImage;
@@ -60,8 +62,13 @@ interface IImagePickerModalProps {
 
 function ImagePickerModal(props: IImagePickerModalProps) {
   const analyticsContext = useContext(AnalyticsContext);
+  const profile = useContext(ProfileContext);
   const userContext = useContext(UserContext);
 
+  const maxImages = useMemo(
+    () => profile === undefined ? undefined : getUserPolicy(profile.level).images,
+    [profile]
+  );
   const [status, setStatus] = useState<IImageStatusProps>({ message: "" });
 
   // File uploads
@@ -167,8 +174,8 @@ function ImagePickerModal(props: IImagePickerModalProps) {
 
   return (
     <Modal show={props.show} onHide={props.handleClose}>
-      <Modal.Header>
-        <Modal.Title>Choose image</Modal.Title>
+      <Modal.Header closeButton>
+        <Modal.Title>Choose image ({images.length}/{maxImages})</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <Form>

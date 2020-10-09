@@ -4,6 +4,9 @@ import { AdminDataService } from './services/adminDataService';
 import * as Extensions from './services/extensions';
 import functionLogger from './services/functionLogger';
 import * as ImageExtensions from './services/imageExtensions';
+import { IStorage } from './services/interfaces';
+import { MockStorage } from './services/mockStorage';
+import { Storage } from './services/storage';
 
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
@@ -15,6 +18,15 @@ const FIREBASE_CONFIG = process.env.FIREBASE_CONFIG && JSON.parse(process.env.FI
 functions.logger.info("initializing admin SDK with projectId: " + FIREBASE_CONFIG.projectId);
 const app = admin.initializeApp(FIREBASE_CONFIG);
 const dataService = new AdminDataService(app);
+
+const emulatorFunctionsDisabled = process.env.IS_LOCAL_DEV !== 'true';
+if (emulatorFunctionsDisabled) {
+  functionLogger.logInfo("Emulator-only functions disabled");
+} else {
+  functionLogger.logWarning("Emulator-only functions enabled");
+}
+
+const storage: IStorage = emulatorFunctionsDisabled ? new Storage(app) : new MockStorage();
 
 // Start writing Firebase Functions
 // https://firebase.google.com/docs/functions/typescript
@@ -211,24 +223,23 @@ export const onUpload = functions.region(region).storage.object().onFinalize(asy
   }
 
   if (object.contentType === undefined || !/^image\//.test(object.contentType)) {
-    functions.logger.warn("Found unrecognised object: " + object.name);
+    functions.logger.warn(`Found unrecognised object ${object.name} -- deleting`);
+    await storage.ref(object.name).delete();
     return;
   }
 
-  const name = String(object.metadata?.originalName);
-  await ImageExtensions.addImage(
-    dataService, functionLogger, name, object.name
-  );
+  try {
+    const name = String(object.metadata?.originalName);
+    await ImageExtensions.addImage(
+      dataService, functionLogger, name, object.name
+    );
+  } catch (e) {
+    functions.logger.info(`Error on upload of ${object.name} -- deleting`, e);
+    await storage.ref(object.name).delete();
+  }
 });
 
 // == EMULATOR ONLY ==
-
-const emulatorFunctionsDisabled = process.env.IS_LOCAL_DEV !== 'true';
-if (emulatorFunctionsDisabled) {
-  functionLogger.logInfo("Emulator-only functions disabled");
-} else {
-  functionLogger.logWarning("Emulator-only functions enabled");
-}
 
 export const handleMockStorageUpload = functions.region(region).https.onCall(async (data, context) => {
   if (emulatorFunctionsDisabled) {
@@ -248,7 +259,12 @@ export const handleMockStorageUpload = functions.region(region).https.onCall(asy
     throw new functions.https.HttpsError('invalid-argument', 'No image id or name supplied');
   }
 
-  await ImageExtensions.addImage(
-    dataService, functionLogger, name, imageId
-  );
+  try {
+    await ImageExtensions.addImage(
+      dataService, functionLogger, name, imageId
+    );
+  } catch (e) {
+    functions.logger.info(`Error on upload of ${imageId} -- deleting`, e);
+    await storage.ref(imageId).delete();
+  }
 });

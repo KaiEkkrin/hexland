@@ -23,6 +23,10 @@ export class StorageReference implements IStorageReference {
   constructor(ref: firebase.storage.Reference) {
     this._ref = ref;
   }
+  
+  async delete(): Promise<void> {
+    await this._ref.delete();
+  }
 
   async getDownloadURL(): Promise<string> {
     const url = await this._ref.getDownloadURL();

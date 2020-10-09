@@ -31,6 +31,7 @@ import { faImage } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { v4 as uuidv4 } from 'uuid';
+import ImageCardContent from './components/ImageCardContent';
 
 interface IAdventureProps {
   adventureId: string;
@@ -345,8 +346,6 @@ function Adventure(props: IAdventureProps) {
       .catch(e => analyticsContext.logError("Error deleting map " + id, e));
   }, [userContext, props.adventureId, analyticsContext]);
 
-  // TODO #149: Super temporary place to put an image selection thingy, in that button group there
-  // TODO #149 Make the card here have the image if there is one.
   return (
     <div>
       <Navigation>{title}</Navigation>
@@ -356,32 +355,36 @@ function Adventure(props: IAdventureProps) {
             <Col>
               <CardDeck>
                 <Card bg="dark" text="white">
-                  <Card.Header className="card-header-spaced">
-                    {adventure.record.name}
-                    {canEditAdventure === true ?
-                      <ButtonGroup className="ml-2">
-                        <Button variant="primary" onClick={handleShowEditAdventure}>Edit</Button>
-                        <Button variant="primary" onClick={handleShowImagePicker}>
-                          <FontAwesomeIcon icon={faImage} color="white" />
-                        </Button>
-                      </ButtonGroup> :
-                      <div></div>
-                    }
-                  </Card.Header>
-                  <Card.Body>
-                    <Card.Text>{adventure.record.description}</Card.Text>
-                  </Card.Body>
-                  <Card.Footer className="card-footer-spaced">
-                    {canEditAdventure !== true ? <div></div> : inviteLink === undefined ?
-                      <Button variant="primary" disabled={createInviteButtonDisabled} onClick={createInviteLink}>{createInviteText}</Button> :
-                      <Link to={inviteLink}>Send this link to other players to invite them.</Link>
-                    }
-                    {canEditAdventure === true ?
-                      <Button variant="danger" onClick={() => setShowDeleteAdventure(true)}>Delete adventure</Button> :
-                      canLeaveAdventure === true ? <Button variant="warning" onClick={() => setShowLeaveAdventure(true)}>Leave adventure</Button> :
-                        <div></div>
-                    }
-                  </Card.Footer>
+                  <ImageCardContent altName={adventure.record.name} imagePath={adventure.record.imagePath}>
+                    <div className="card-content-spaced">
+                      <div className="card-body-spaced">
+                        <div className="card-row-spaced">
+                          <Card.Title>{adventure.record.name}</Card.Title>
+                          {canEditAdventure === true ?
+                            <ButtonGroup className="ml-2">
+                              <Button variant="primary" onClick={handleShowEditAdventure}>Edit</Button>
+                              <Button variant="primary" onClick={handleShowImagePicker}>
+                                <FontAwesomeIcon icon={faImage} color="white" />
+                              </Button>
+                            </ButtonGroup> :
+                            <div></div>
+                          }
+                        </div>
+                        <Card.Text>{adventure.record.description}</Card.Text>
+                      </div>
+                      <div className="card-row-spaced">
+                        {canEditAdventure !== true ? <div></div> : inviteLink === undefined ?
+                          <Button variant="primary" disabled={createInviteButtonDisabled} onClick={createInviteLink}>{createInviteText}</Button> :
+                          <Link to={inviteLink}>Send this link to other players to invite them.</Link>
+                        }
+                        {canEditAdventure === true ?
+                          <Button variant="danger" onClick={() => setShowDeleteAdventure(true)}>Delete adventure</Button> :
+                          canLeaveAdventure === true ? <Button variant="warning" onClick={() => setShowLeaveAdventure(true)}>Leave adventure</Button> :
+                            <div></div>
+                        }
+                      </div>
+                    </div>
+                  </ImageCardContent>
                 </Card>
                 <Card bg="dark" text="white">
                   <Card.Header className="card-header-spaced">

@@ -183,9 +183,18 @@ export interface IStorage {
 }
 
 export interface IStorageReference {
+  // Deletes the object.
+  delete(): Promise<void>;
+
   // Gets the download URL for this object.
   getDownloadURL(): Promise<string>;
 
   // Uploads a file here.
   put(file: File, metadata: any): Promise<void>;
+}
+
+export interface IWebDAV {
+  deleteFile(path: string): Promise<void>;
+  getFileDownloadLink(path: string): string;
+  putFileContents(path: string, file: File): Promise<void>;
 }

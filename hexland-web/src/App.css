@@ -179,17 +179,21 @@
   z-index: 4;
 }
 
-.card-header-spaced {
+.card-content-spaced {
   display: flex;
-  flex-direction: row;
-  align-items: flex-start;
+  height: 100%;
+  flex-direction: column;
   justify-content: space-between;
 }
 
-.card-footer-spaced {
+.card-body-spaced {
+  justify-content: flex-start;
+  margin-bottom: 2rem;
+}
+
+.card-row-spaced {
   display: flex;
   flex-direction: row;
-  align-items: flex-end;
   justify-content: space-between;
 }
 

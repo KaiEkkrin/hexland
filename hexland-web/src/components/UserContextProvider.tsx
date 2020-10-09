@@ -5,7 +5,7 @@ import { IContextProviderProps, ISignInMethodsContext, IUserContext } from './in
 
 import { DataService } from '../services/dataService';
 import { FunctionsService } from '../services/functions';
-import { MockStorage } from '../services/mockStorage';
+import { MockWebStorage } from '../services/mockWebStorage';
 import { Storage } from '../services/storage';
 
 export const UserContext = React.createContext<IUserContext>({
@@ -34,7 +34,7 @@ function UserContextProvider(props: IContextProviderProps) {
       // Create the relevant storage service (if any.)  If webpack hot-plugging is enabled,
       // we use the mock storage service because there isn't an emulator
       const storageService = functionsService === undefined || !u ? undefined :
-        ('webpackHotUpdate' in window) ? new MockStorage(functionsService, u.uid) :
+        ('webpackHotUpdate' in window) ? new MockWebStorage(functionsService) :
         realStorageService;
 
       setUserContext({
