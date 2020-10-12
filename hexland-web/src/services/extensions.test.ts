@@ -9,6 +9,7 @@ import { clearFirestoreData, initializeTestApp } from '@firebase/rules-unit-test
 
 import { v4 as uuidv4 } from 'uuid';
 import fluent from 'fluent-iterable';
+import md5 from 'crypto-js/md5';
 
 export function createTestUser(
   displayName: string | null,
@@ -19,6 +20,7 @@ export function createTestUser(
   return {
     displayName: displayName,
     email: email,
+    emailMd5: email ? md5(email).toString() : null,
     emailVerified: emailVerified ?? true,
     providerId: providerId,
     uid: uuidv4(),

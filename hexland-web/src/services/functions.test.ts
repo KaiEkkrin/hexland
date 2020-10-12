@@ -1,3 +1,4 @@
+import { createChangesConverter } from './converter';
 import { DataService } from './dataService';
 import { deleteAdventure, deleteMap, editAdventure, editMap, ensureProfile, getAllMapChanges, leaveAdventure, registerAdventureAsRecent, registerMapAsRecent, removeAdventureFromRecent, removeMapFromRecent, updateProfile, watchChangesAndConsolidate } from './extensions';
 import { FunctionsService } from './functions';
@@ -9,6 +10,7 @@ import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexStri
 import { FeatureDictionary, IFeature, IToken } from '../data/feature';
 import { IMap, MapType } from '../data/map';
 import * as Policy from '../data/policy';
+import { createTokenDictionary, SimpleTokenDrawing } from '../data/tokens';
 
 import * as firebase from 'firebase/app';
 import 'firebase/firestore';
@@ -18,8 +20,7 @@ import { initializeTestApp } from '@firebase/rules-unit-testing';
 import { Subject } from 'rxjs';
 import { filter, first } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
-import { createTokenDictionary, SimpleTokenDrawing } from '../data/tokens';
-import { createChangesConverter } from './converter';
+import md5 from 'crypto-js/md5';
 
 const adminCredentials = require('../../firebase-admin-credentials.json');
 
@@ -32,6 +33,7 @@ export function createTestUser(
   return {
     displayName: displayName,
     email: email,
+    emailMd5: email ? md5(email).toString() : null,
     emailVerified: emailVerified ?? true,
     providerId: providerId,
     uid: uuidv4(),
@@ -119,7 +121,7 @@ describe('test functions', () => {
     // Edit the first adventure (we don't need to supply the whole record for a description change)
     if (a1 !== undefined) {
       a1.description = "Edited adventure";
-      await editAdventure(dataService, user.uid, { id: a1Id, ...a1 }, undefined);
+      await editAdventure(dataService, user.uid, { id: a1Id, ...a1 });
     }
 
     // If we fetch the adventure records the descriptions should be as expected
@@ -516,8 +518,7 @@ describe('test functions', () => {
     // If user 2 renames their adventure:
     if (a2 !== undefined) {
       await editAdventure(user2DataService, user2.uid,
-        { id: a2Id, ...a2, name: "Renamed Adventure" },
-        { ...a2, maps: [], name: "Renamed Adventure" }
+        { id: a2Id, ...a2, name: "Renamed Adventure" }
       );
     }
 

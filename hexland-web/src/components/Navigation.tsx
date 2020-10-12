@@ -128,6 +128,49 @@ const fetchAvatar = async (abortController: AbortController, profile: IUser | nu
   return dataUrl;
 };
 
+function Avatar(props: { children?: React.ReactNode }) {
+  const userContext = useContext(UserContext);
+
+  // We show an avatar (based on the hash of the user's email address) if one is available
+  const fetchAvatarTask = useAsyncTask(fetchAvatar);
+  useAsyncRun(fetchAvatarTask, userContext.user);
+
+  const profileImgUrl = useMemo(() => {
+    const dataUrl = fetchAvatarTask.result;
+    const cachedDataUrl = localStorage.getItem("profile.image");
+    const emailMd5 = userContext.user?.emailMd5;
+    const cachedEmailMd5 = localStorage.getItem("profile.emailMd5");
+
+    const dataUrlValid = dataUrl !== undefined && dataUrl !== null;
+    const cachedDataUrlValid = cachedDataUrl !== undefined && cachedDataUrl !== null;
+    const emailMd5Valid = emailMd5 !== undefined && emailMd5 !== null;
+
+    if (dataUrlValid && emailMd5Valid && cachedDataUrl !== dataUrl) {
+      localStorage.setItem("profile.image", String(dataUrl));
+      localStorage.setItem("profile.emailMd5", String(emailMd5));
+      return dataUrl;
+    } else if (cachedDataUrlValid && emailMd5Valid && emailMd5 === cachedEmailMd5) {
+      return cachedDataUrl;
+    } else {
+      return "";
+    }
+  }, [fetchAvatarTask.result, userContext.user]);
+
+  return (
+    <div style={{display: "inline-flex", position: "relative", alignItems: "center"}}>
+      <div style={{position: "absolute", backgroundColor: "rgba(0,0,0,1)",
+                   borderRadius: "15px", width: "30px", height: "30px"}}></div>
+      <div style={{position: "absolute", backgroundImage: `url("${profileImgUrl}")`,
+                   backgroundSize: "contain", borderRadius: "15px",
+                   width: "30px", height: "30px"}}></div>
+      <div style={{paddingLeft: "30px"}}>
+        &nbsp;
+        {props.children}
+      </div>
+    </div>
+  );
+}
+
 function NavLogin() {
   const firebaseContext = useContext(FirebaseContext);
   const userContext = useContext(UserContext);
@@ -241,31 +284,6 @@ function NavLogin() {
     }
   }, [canResendEmailVerification, handleResendEmailVerification]);
 
-  // We show an avatar (based on the hash of the user's email address) if one is available
-  const fetchAvatarTask = useAsyncTask(fetchAvatar);
-  useAsyncRun(fetchAvatarTask, userContext.user);
-
-  const profileImgUrl = useMemo(() => {
-    const dataUrl = fetchAvatarTask.result;
-    const cachedDataUrl = localStorage.getItem("profile.image");
-    const emailMd5 = userContext.user?.emailMd5;
-    const cachedEmailMd5 = localStorage.getItem("profile.emailMd5");
-
-    const dataUrlValid = dataUrl !== undefined && dataUrl !== null;
-    const cachedDataUrlValid = cachedDataUrl !== undefined && cachedDataUrl !== null;
-    const emailMd5Valid = emailMd5 !== undefined && emailMd5 !== null;
-
-    if (dataUrlValid && emailMd5Valid && cachedDataUrl !== dataUrl) {
-      localStorage.setItem("profile.image", String(dataUrl));
-      localStorage.setItem("profile.emailMd5", String(emailMd5));
-      return dataUrl;
-    } else if (cachedDataUrlValid && emailMd5Valid && emailMd5 === cachedEmailMd5) {
-      return cachedDataUrl;
-    } else {
-      return "";
-    }
-  }, [fetchAvatarTask.result, userContext.user])
-
   // We show the profile button as a dropdown only if there are further things to drop
   // down from it
   const profileButton = useMemo(() => {
@@ -273,17 +291,9 @@ function NavLogin() {
       return (
         <Dropdown alignRight>
           <Dropdown.Toggle variant="primary">
-            <div style={{display: "inline-flex", position: "relative", alignItems: "center"}}>
-              <div style={{position: "absolute", backgroundColor: "rgba(0,0,0,1)",
-                           borderRadius: "15px", width: "30px", height: "30px"}}></div>
-              <div style={{position: "absolute", backgroundImage: `url("${profileImgUrl}")`,
-                           backgroundSize: "contain", borderRadius: "15px",
-                           width: "30px", height: "30px"}}></div>
-              <div style={{paddingLeft: "30px"}}>
-                &nbsp;
-                {displayName}{verifiedIcon}
-              </div>
-            </div>
+            <Avatar>
+              {displayName}{verifiedIcon}
+            </Avatar>
           </Dropdown.Toggle>
           <Dropdown.Menu>
             <Dropdown.Item onClick={handleEditProfile}>Edit profile</Dropdown.Item>
@@ -294,11 +304,15 @@ function NavLogin() {
       );
     } else {
       return (
-        <Button variant="primary" onClick={handleEditProfile}>{displayName}{verifiedIcon}</Button>
+        <Button variant="primary" onClick={handleEditProfile}>
+          <Avatar>
+            {displayName}{verifiedIcon}
+          </Avatar>
+        </Button>
       );
     }
   }, [
-    displayName, handleChangePassword, handleEditProfile, isPasswordUser, profileImgUrl,
+    displayName, handleChangePassword, handleEditProfile, isPasswordUser,
     resendVerificationItem, verifiedIcon
   ]);
 

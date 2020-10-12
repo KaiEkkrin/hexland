@@ -5,3 +5,6 @@
 /.usercache/.lesshst
 /.usercache/.yarn
 /.usercache/.yarnrc
+
+# environment files
+.env

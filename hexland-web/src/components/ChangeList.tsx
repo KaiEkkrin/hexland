@@ -13,6 +13,12 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "0.10.7",
+    changes: [
+      "Support a user avatar (contributed by davey3000)"
+    ]
+  },
+  {
     version: "0.10.6",
     changes: [
       "Fix a source of \"map corrupt\" errors"
