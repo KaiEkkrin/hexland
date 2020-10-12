@@ -49,6 +49,7 @@ export interface IAnalytics {
 export interface IDataReference<T> {
   id: string;
   convert(rawData: any): T;
+  isEqual(other: IDataReference<T>): boolean;
 }
 
 // A reference to stored data, *and* the data fetched.
@@ -60,6 +61,9 @@ export interface IDataAndReference<T> extends IDataReference<T> {
 export interface IDataService extends IDataView {
   // Adds incremental changes to a map.
   addChanges(adventureId: string, uid: string, mapId: string, changes: IChange[]): Promise<void>;
+
+  // Gets all the maps in one adventure.
+  getAdventureMapRefs(adventureId: string): Promise<IDataAndReference<IMap>[]>;
 
   // Gets an adventure.
   getAdventureRef(id: string): IDataReference<IAdventure>;
@@ -157,6 +161,9 @@ export interface IFunctionsService {
 
   // Consolidates changes in the given map.
   consolidateMapChanges(adventureId: string, mapId: string, resync: boolean): Promise<void>;
+
+  // Deletes an image.
+  deleteImage(path: string): Promise<void>;
 
   // For mock storage use only -- not production.
   handleMockStorageUpload(imageId: string, name: string): Promise<void>;

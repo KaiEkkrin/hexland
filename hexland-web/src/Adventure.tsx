@@ -3,6 +3,8 @@ import './App.css';
 
 import AdventureModal from './components/AdventureModal';
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
+import ImageCardContent from './components/ImageCardContent';
+import ImageDeletionModal from './components/ImageDeletionModal';
 import ImagePickerModal from './components/ImagePickerModal';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
@@ -14,6 +16,8 @@ import { UserContext } from './components/UserContextProvider';
 
 import { IAdventure, summariseAdventure, IPlayer, IMapSummary } from './data/adventure';
 import { IIdentified } from './data/identified';
+import { IImage } from './data/image';
+import { IMap } from './data/map';
 import { getUserPolicy } from './data/policy';
 import { deleteMap, registerAdventureAsRecent, editAdventure, deleteAdventure, leaveAdventure, removeAdventureFromRecent, editMap } from './services/extensions';
 
@@ -31,8 +35,6 @@ import { faImage } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { v4 as uuidv4 } from 'uuid';
-import ImageCardContent from './components/ImageCardContent';
-import { IMap } from './data/map';
 
 interface IAdventureProps {
   adventureId: string;
@@ -209,6 +211,8 @@ function Adventure(props: IAdventureProps) {
   // Adventure image support
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [pickImageForMap, setPickImageForMap] = useState<IMapSummary | undefined>(undefined);
+  const [showImageDeletion, setShowImageDeletion] = useState(false);
+  const [imageToDelete, setImageToDelete] = useState<IImage | undefined>(undefined);
 
   // Adventure deletion support
   const canDeleteAdventure = useMemo(
@@ -244,10 +248,11 @@ function Adventure(props: IAdventureProps) {
     setShowBlockPlayer(false);
     setShowUnblockPlayer(false);
     setShowEditAdventure(false);
+    setShowImageDeletion(false);
     setShowImagePicker(false);
     setShowDeleteAdventure(false);
     setShowLeaveAdventure(false);
-  }, [setShowBlockPlayer, setShowUnblockPlayer, setShowEditAdventure, setShowImagePicker, setShowDeleteAdventure, setShowLeaveAdventure]);
+  }, [setShowBlockPlayer, setShowUnblockPlayer, setShowEditAdventure, setShowImageDeletion, setShowImagePicker, setShowDeleteAdventure, setShowLeaveAdventure]);
 
   const handleShowBlockPlayer = useCallback((player: IPlayer) => {
     setShowBlockPlayer(true);
@@ -291,6 +296,16 @@ function Adventure(props: IAdventureProps) {
     setPickImageForMap(map);
   }, [adventure, setPickImageForMap, setShowImagePicker]);
 
+  const handleShowImageDeletion = useCallback((image: IImage | undefined) => {
+    if (image === undefined) {
+      return;
+    }
+
+    handleModalClose();
+    setShowImageDeletion(true);
+    setImageToDelete(image);
+  }, [handleModalClose, setImageToDelete, setShowImageDeletion]);
+
   const handleEditAdventureSave = useCallback(async () => {
     handleModalClose();
     if (adventure === undefined) {
@@ -304,7 +319,7 @@ function Adventure(props: IAdventureProps) {
     };
 
     await editAdventure(
-      userContext.dataService, userContext.user?.uid, summariseAdventure(props.adventureId, updated), updated
+      userContext.dataService, userContext.user?.uid, summariseAdventure(props.adventureId, updated)
     );
   }, [userContext, props.adventureId, adventure, editAdventureName, editAdventureDescription, handleModalClose]);
 
@@ -318,7 +333,7 @@ function Adventure(props: IAdventureProps) {
     if (pickImageForMap === undefined) {
       const updated: IAdventure = { ...adventure.record, imagePath: path ?? "" };
       editAdventure(
-        userContext.dataService, userContext.user?.uid, summariseAdventure(props.adventureId, updated), updated
+        userContext.dataService, userContext.user?.uid, summariseAdventure(props.adventureId, updated)
       )
         .then(() => console.log(`Adventure ${props.adventureId} successfully edited`))
         .catch(e => analyticsContext.logError(`Error editing adventure ${props.adventureId}`, e));
@@ -344,6 +359,17 @@ function Adventure(props: IAdventureProps) {
         .catch(e => analyticsContext.logError(`Error editing map ${mapSummary.id}`, e));
     }
   }, [adventure, analyticsContext, handleModalClose, pickImageForMap, props.adventureId, userContext]);
+
+  const handleImageDeletionSave = useCallback(() => {
+    handleModalClose();
+    if (imageToDelete === undefined || userContext.functionsService === undefined) {
+      return;
+    }
+
+    userContext.functionsService.deleteImage(imageToDelete.path)
+      .then(() => console.log(`deleted image ${imageToDelete.path}`))
+      .catch(e => analyticsContext.logError(`failed to delete image ${imageToDelete}`, e));
+  }, [analyticsContext, handleModalClose, imageToDelete, userContext.functionsService]);
 
   const handleDeleteAdventureSave = useCallback(() => {
     handleModalClose();
@@ -453,7 +479,13 @@ function Adventure(props: IAdventureProps) {
       <ImagePickerModal
         show={showImagePicker}
         handleClose={handleModalClose}
+        handleDelete={handleShowImageDeletion}
         handleSave={handleImagePickerSave} />
+      <ImageDeletionModal
+        image={imageToDelete}
+        show={showImageDeletion}
+        handleClose={handleModalClose}
+        handleDelete={handleImageDeletionSave} />
       <Modal show={showBlockPlayer} onHide={handleModalClose}>
         <Modal.Header>
           <Modal.Title>Block {playerToBlock?.playerName}</Modal.Title>

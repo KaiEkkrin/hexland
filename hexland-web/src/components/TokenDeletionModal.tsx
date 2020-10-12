@@ -23,7 +23,7 @@ function TokenDeletionModal(props: ITokenDeletionModalProps) {
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={props.handleClose}>Close</Button>
-        <Button variant="danger" onClick={props.handleDelete}>Yes, delete!</Button>
+        <Button variant="danger" onClick={props.handleDelete}>Yes, delete token!</Button>
       </Modal.Footer>
     </Modal>
   );

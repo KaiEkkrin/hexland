@@ -9,6 +9,7 @@ export class FunctionsService implements IFunctionsService {
   private readonly _createMap: firebase.functions.HttpsCallable;
   private readonly _cloneMap: firebase.functions.HttpsCallable;
   private readonly _consolidateMapChanges: firebase.functions.HttpsCallable;
+  private readonly _deleteImage: firebase.functions.HttpsCallable;
   private readonly _handleMockStorageUpload: firebase.functions.HttpsCallable;
   private readonly _inviteToAdventure: firebase.functions.HttpsCallable;
   private readonly _joinAdventure: firebase.functions.HttpsCallable;
@@ -18,6 +19,7 @@ export class FunctionsService implements IFunctionsService {
     this._createMap = functions.httpsCallable('createMap');
     this._cloneMap = functions.httpsCallable('cloneMap');
     this._consolidateMapChanges = functions.httpsCallable('consolidateMapChanges');
+    this._deleteImage = functions.httpsCallable('deleteImage');
     this._handleMockStorageUpload = functions.httpsCallable('handleMockStorageUpload');
     this._inviteToAdventure = functions.httpsCallable('inviteToAdventure');
     this._joinAdventure = functions.httpsCallable('joinAdventure');
@@ -58,6 +60,10 @@ export class FunctionsService implements IFunctionsService {
       imageId: imageId,
       name: name
     });
+  }
+
+  async deleteImage(path: string): Promise<void> {
+    await this._deleteImage({ path: path });
   }
 
   async inviteToAdventure(

@@ -1,46 +1,20 @@
 import React, { useCallback, useContext, useEffect, useMemo, useReducer, useState } from 'react';
 
 import { AnalyticsContext } from './AnalyticsContextProvider';
+import ImageCollectionItem from './ImageCollectionItem';
 import { ProfileContext } from './ProfileContextProvider';
 import { UserContext } from './UserContextProvider';
 
 import { IImage } from '../data/image';
+import { getUserPolicy } from '../data/policy';
 
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons';
+import { faChevronLeft, faChevronRight, faTimes } from '@fortawesome/free-solid-svg-icons';
 import { v4 as uuidv4 } from 'uuid';
-import { getUserPolicy } from '../data/policy';
-
-interface IImageCollectionItemProps {
-  image: IImage;
-}
-
-function ImageCollectionItem(props: IImageCollectionItemProps) {
-  const analyticsContext = useContext(AnalyticsContext);
-  const userContext = useContext(UserContext);
-  const [url, setUrl] = useState("");
-
-  useEffect(() => {
-    if (!userContext.storageService) {
-      return;
-    }
-
-    userContext.storageService.ref(props.image.path).getDownloadURL()
-      .then(u => setUrl(String(u)))
-      .catch(e => analyticsContext.logError("Failed to get download URL for image " + props.image.path, e));
-  }, [analyticsContext, userContext.storageService, props.image, setUrl]);
-
-  return (
-    <div className="App-image-collection-item">
-      <img className="App-image-collection-image" src={url} alt={props.image.name} />
-      <p>{props.image.name}</p>
-    </div>
-  );
-}
 
 interface IImageStatusProps {
   message: string;
@@ -57,6 +31,7 @@ function ImageStatus(props: IImageStatusProps) {
 interface IImagePickerModalProps {
   show: boolean;
   handleClose: () => void;
+  handleDelete: (image: IImage | undefined) => void;
   handleSave: (path: string | undefined) => void;
 }
 
@@ -85,7 +60,6 @@ function ImagePickerModal(props: IImagePickerModalProps) {
       return;
     }
 
-    // TODO #149 Think about code structure (move stuff into a service object?)
     const path = "/images/" + userContext.user.uid + "/" + uuidv4();
     const file = e.target.files[0] as File;
     if (!file) {
@@ -159,15 +133,16 @@ function ImagePickerModal(props: IImagePickerModalProps) {
 
   // Buttons and save handling
 
-  const activeImagePath = useMemo(() => {
+  const activeImage = useMemo(() => {
     if (images.length === 0) {
       return undefined;
     } else {
       const shownIndex = Math.max(0, Math.min(images.length - 1, index));
-      return images[shownIndex].path;
+      return images[shownIndex];
     }
   }, [images, index]);
 
+  const activeImagePath = useMemo(() => activeImage?.path, [activeImage]);
   const saveDisabled = useMemo(() => activeImagePath === undefined, [activeImagePath]);
   const handleSave = useCallback(() => {
     if (activeImagePath === undefined) {
@@ -176,6 +151,14 @@ function ImagePickerModal(props: IImagePickerModalProps) {
 
     props.handleSave(activeImagePath);
   }, [activeImagePath, props]);
+
+  const handleDelete = useCallback(() => {
+    if (activeImage === undefined) {
+      return;
+    }
+
+    props.handleDelete(activeImage);
+  }, [activeImage, props]);
 
   const handleUseNone = useCallback(() => { props.handleSave(undefined); }, [props]);
 
@@ -198,9 +181,15 @@ function ImagePickerModal(props: IImagePickerModalProps) {
             <FontAwesomeIcon icon={faChevronLeft} color="white" />
           </Button>
           {shownItem}
-          <Button variant="primary" disabled={goForwardDisabled} onClick={goForward}>
-            <FontAwesomeIcon icon={faChevronRight} color="white" />
-          </Button>
+          <div className="App-image-collection-item">
+            <Button variant="danger" disabled={saveDisabled} onClick={handleDelete}>
+              <FontAwesomeIcon icon={faTimes} color="white" />
+            </Button>
+            <Button variant="primary" disabled={goForwardDisabled} onClick={goForward}>
+              <FontAwesomeIcon icon={faChevronRight} color="white" />
+            </Button>
+            <div></div>
+          </div>
         </div>
       </Modal.Body>
       <Modal.Footer>

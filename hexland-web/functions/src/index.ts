@@ -214,10 +214,25 @@ export const joinAdventure = functions.region(region).https.onCall(async (data, 
   await Extensions.joinAdventure(dataService, uid, adventureId, inviteId, getInviteExpiryPolicy(data));
 });
 
+// Deletes an image.
+
+export const deleteImage = functions.region(region).https.onCall(async (data, context) => {
+  const uid = context.auth?.uid;
+  if (uid === undefined) {
+    throw new functions.https.HttpsError('unauthenticated', 'No uid found');
+  }
+
+  const path = data['path'];
+  if (!path) {
+    throw new functions.https.HttpsError('invalid-argument', 'No path supplied');
+  }
+
+  await ImageExtensions.deleteImage(dataService, storage, functionLogger, uid, path);
+});
+
 // == TRIGGER FUNCTIONS ==
 
 export const onUpload = functions.region(region).storage.object().onFinalize(async (object) => {
-  // TODO #149 Have this function delete unexpected objects!
   if (object.name === undefined) {
     functions.logger.warn("Found unnamed object");
     return;

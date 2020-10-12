@@ -119,7 +119,7 @@ describe('test functions', () => {
     // Edit the first adventure (we don't need to supply the whole record for a description change)
     if (a1 !== undefined) {
       a1.description = "Edited adventure";
-      await editAdventure(dataService, user.uid, { id: a1Id, ...a1 }, undefined);
+      await editAdventure(dataService, user.uid, { id: a1Id, ...a1 });
     }
 
     // If we fetch the adventure records the descriptions should be as expected
@@ -516,8 +516,7 @@ describe('test functions', () => {
     // If user 2 renames their adventure:
     if (a2 !== undefined) {
       await editAdventure(user2DataService, user2.uid,
-        { id: a2Id, ...a2, name: "Renamed Adventure" },
-        { ...a2, maps: [], name: "Renamed Adventure" }
+        { id: a2Id, ...a2, name: "Renamed Adventure" }
       );
     }
 

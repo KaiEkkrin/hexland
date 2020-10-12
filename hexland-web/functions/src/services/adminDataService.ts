@@ -1,7 +1,8 @@
 import * as admin from 'firebase-admin';
 
 import * as Convert from './converter';
-import { IDataService, IDataReference, IDataView, IDataAndReference } from './interfaces';
+import { IAdminDataService, ICollectionGroupQueryResult } from './extraInterfaces';
+import { IDataReference, IDataView, IDataAndReference } from './interfaces';
 import { IAdventure, IPlayer } from '../data/adventure';
 import { IChange, IChanges } from '../data/change';
 import { IIdentified } from '../data/identified';
@@ -22,16 +23,15 @@ const changes = "changes";
 const baseChange = "base";
 const players = "players";
 
-class DataReference<T> implements IDataReference<T> {
+// A non-generic base data reference helps our isEqual implementation.
+
+class DataReferenceBase {
   private readonly _dref: FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>;
-  private readonly _converter: Convert.IConverter<T>
 
   constructor(
     dref: FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>,
-    converter: Convert.IConverter<T>
   ) {
     this._dref = dref;
-    this._converter = converter;
   }
 
   get dref(): FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData> {
@@ -42,8 +42,33 @@ class DataReference<T> implements IDataReference<T> {
     return this._dref.id;
   }
 
+  protected isEqualTo<T>(other: IDataReference<T>): boolean {
+    return (other instanceof DataReferenceBase) ? this._dref.isEqual(other._dref) : false;
+  }
+}
+
+class DataReference<T> extends DataReferenceBase implements IDataReference<T> {
+  private readonly _converter: Convert.IConverter<T>
+
+  constructor(
+    dref: FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>,
+    converter: Convert.IConverter<T>
+  ) {
+    super(dref);
+    this._converter = converter;
+  }
+  
+  protected getParentDref<U>(converter: Convert.IConverter<U>): IDataReference<U> | undefined {
+    const parent = this.dref.parent.parent;
+    return parent ? new DataReference<U>(parent, converter) : undefined;
+  }
+
   convert(rawData: any): T {
     return this._converter.convert(rawData);
+  }
+
+  isEqual(other: IDataReference<T>): boolean {
+    return super.isEqualTo(other);
   }
 }
 
@@ -64,8 +89,26 @@ class DataAndReference<T> extends DataReference<T> implements IDataAndReference<
   }
 }
 
+class CollectionGroupQueryResult<T, U> extends DataAndReference<T> implements ICollectionGroupQueryResult<T, U> {
+  private readonly _parentConverter: Convert.IConverter<U>;
+
+  constructor(
+    dref: FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>,
+    data: FirebaseFirestore.DocumentData,
+    converter: Convert.IConverter<T>,
+    parentConverter: Convert.IConverter<U>
+  ) {
+    super(dref, data, converter);
+    this._parentConverter = parentConverter;
+  }
+
+  getParent(): IDataReference<U> | undefined {
+    return this.getParentDref(this._parentConverter);
+  }
+}
+
 // This service is for datastore-related operations for the current user.
-export class AdminDataService implements IDataService {
+export class AdminDataService implements IAdminDataService {
   private readonly _db: FirebaseFirestore.Firestore;
   private readonly _timestampProvider: () => FirebaseFirestore.FieldValue | number;
 
@@ -108,9 +151,23 @@ export class AdminDataService implements IDataService {
     });
   }
 
+  async getAdventureMapRefs(adventureId: string): Promise<IDataAndReference<IMap>[]> {
+    const m = await this._db.collection(adventures).doc(adventureId).collection(maps).get();
+    return m.docs.map(d => new DataAndReference(
+      d.ref, Convert.mapConverter.convert(d.data()), Convert.mapConverter
+    ));
+  }
+
   getAdventureRef(id: string): IDataReference<IAdventure> {
     const d = this._db.collection(adventures).doc(id);
     return new DataReference<IAdventure>(d, Convert.adventureConverter);
+  }
+
+  async getAdventureRefsByImagePath(path: string): Promise<IDataAndReference<IAdventure>[]> {
+    const a = await this._db.collection(adventures).where("imagePath", "==", path).get();
+    return a.docs.map(d => new DataAndReference(
+      d.ref, Convert.adventureConverter.convert(d.data()), Convert.adventureConverter
+    ));
   }
 
   getImagesRef(uid: string): IDataReference<IImages> {
@@ -151,6 +208,13 @@ export class AdminDataService implements IDataService {
       .limit(limit)
       .get();
     return s.empty ? undefined : s.docs.map(d => new DataAndReference(d.ref, d.data(), converter));
+  }
+
+  async getMapRefsByImagePath(path: string): Promise<CollectionGroupQueryResult<IMap, IAdventure>[]> {
+    const m = await this._db.collectionGroup(maps).where("imagePath", "==", path).get();
+    return m.docs.map(d => new CollectionGroupQueryResult(
+      d.ref, Convert.mapConverter.convert(d.data()), Convert.mapConverter, Convert.adventureConverter
+    ));
   }
 
   async getMyAdventures(uid: string): Promise<IDataAndReference<IAdventure>[]> {

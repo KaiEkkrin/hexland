@@ -20,16 +20,15 @@ const changes = "changes";
 const baseChange = "base";
 const players = "players";
 
-class DataReference<T> implements IDataReference<T> {
+// A non-generic base data reference helps our isEqual implementation.
+
+class DataReferenceBase {
   private readonly _dref: firebase.firestore.DocumentReference<firebase.firestore.DocumentData>;
-  private readonly _converter: Convert.IConverter<T>
 
   constructor(
     dref: firebase.firestore.DocumentReference<firebase.firestore.DocumentData>,
-    converter: Convert.IConverter<T>
   ) {
     this._dref = dref;
-    this._converter = converter;
   }
 
   get dref(): firebase.firestore.DocumentReference<firebase.firestore.DocumentData> {
@@ -40,8 +39,28 @@ class DataReference<T> implements IDataReference<T> {
     return this._dref.id;
   }
 
+  protected isEqualTo<T>(other: IDataReference<T>): boolean {
+    return (other instanceof DataReferenceBase) ? this._dref.isEqual(other._dref) : false;
+  }
+}
+
+class DataReference<T> extends DataReferenceBase implements IDataReference<T> {
+  private readonly _converter: Convert.IConverter<T>
+
+  constructor(
+    dref: firebase.firestore.DocumentReference<firebase.firestore.DocumentData>,
+    converter: Convert.IConverter<T>
+  ) {
+    super(dref);
+    this._converter = converter;
+  }
+
   convert(rawData: any): T {
     return this._converter.convert(rawData);
+  }
+
+  isEqual(other: IDataReference<T>): boolean {
+    return super.isEqualTo(other);
   }
 }
 
@@ -78,23 +97,23 @@ export class DataService implements IDataService {
   // IDataView implementation
 
   delete<T>(r: IDataReference<T>): Promise<void> {
-    let dref = (r as DataReference<T>).dref;
+    const dref = (r as DataReference<T>).dref;
     return dref.delete();
   }
 
   async get<T>(r: IDataReference<T>): Promise<T | undefined> {
-    let dref = (r as DataReference<T>).dref;
-    let result = await dref.get();
+    const dref = (r as DataReference<T>).dref;
+    const result = await dref.get();
     return result.exists ? r.convert(result.data()) : undefined;
   }
 
   set<T>(r: IDataReference<T>, value: T): Promise<void> {
-    let dref = (r as DataReference<T>).dref;
+    const dref = (r as DataReference<T>).dref;
     return dref.set(value);
   }
 
   update<T>(r: IDataReference<T>, changes: any): Promise<void> {
-    let dref = (r as DataReference<T>).dref;
+    const dref = (r as DataReference<T>).dref;
     return dref.update(changes);
   }
 
@@ -109,6 +128,13 @@ export class DataService implements IDataService {
     });
   }
 
+  async getAdventureMapRefs(adventureId: string): Promise<IDataAndReference<IMap>[]> {
+    const m = await this._db.collection(adventures).doc(adventureId).collection(maps).get();
+    return m.docs.map(d => new DataAndReference(
+      d.ref, Convert.mapConverter.convert(d.data()), Convert.mapConverter
+    ));
+  }
+
   getAdventureRef(id: string): IDataReference<IAdventure> {
     const d = this._db.collection(adventures).doc(id);
     return new DataReference<IAdventure>(d, Convert.adventureConverter);
@@ -120,12 +146,12 @@ export class DataService implements IDataService {
   }
 
   getInviteRef(adventureId: string, id: string): IDataReference<IInvite> {
-    let d = this._db.collection(adventures).doc(adventureId).collection(invites).doc(id);
+    const d = this._db.collection(adventures).doc(adventureId).collection(invites).doc(id);
     return new DataReference<IInvite>(d, Convert.inviteConverter);
   }
 
   async getLatestInviteRef(adventureId: string): Promise<IDataAndReference<IInvite> | undefined> {
-    let s = await this._db.collection(adventures).doc(adventureId).collection(invites)
+    const s = await this._db.collection(adventures).doc(adventureId).collection(invites)
       .orderBy("timestamp", "desc")
       .limit(1)
       .get();
@@ -134,18 +160,18 @@ export class DataService implements IDataService {
   }
 
   getMapRef(adventureId: string, id: string): IDataReference<IMap> {
-    let d = this._db.collection(adventures).doc(adventureId).collection(maps).doc(id);
+    const d = this._db.collection(adventures).doc(adventureId).collection(maps).doc(id);
     return new DataReference<IMap>(d, Convert.mapConverter);
   }
 
   getMapBaseChangeRef(adventureId: string, id: string, converter: Convert.IConverter<IChanges>): IDataReference<IChanges> {
-    let d = this._db.collection(adventures).doc(adventureId)
+    const d = this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(id).collection(changes).doc(baseChange);
     return new DataReference<IChanges>(d, converter);
   }
 
   async getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number, converter: Convert.IConverter<IChanges>): Promise<IDataAndReference<IChanges>[] | undefined> {
-    let s = await this._db.collection(adventures).doc(adventureId)
+    const s = await this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(id).collection(changes)
       .where("incremental", "==", true)
       .orderBy("timestamp")
@@ -169,24 +195,24 @@ export class DataService implements IDataService {
   }
 
   getPlayerRef(adventureId: string, uid: string): IDataReference<IPlayer> {
-    let d = this._db.collection(adventures).doc(adventureId).collection(players).doc(uid);
+    const d = this._db.collection(adventures).doc(adventureId).collection(players).doc(uid);
     return new DataReference<IPlayer>(d, Convert.playerConverter);
   }
 
   async getPlayerRefs(adventureId: string): Promise<IDataAndReference<IPlayer>[]> {
-    let s = await this._db.collection(adventures).doc(adventureId).collection(players).get();
+    const s = await this._db.collection(adventures).doc(adventureId).collection(players).get();
     return s.docs.map(d => new DataAndReference(
       d.ref, Convert.playerConverter.convert(d.data()), Convert.playerConverter));
   }
 
   getProfileRef(uid: string): IDataReference<IProfile> {
-    let d = this._db.collection(profiles).doc(uid);
+    const d = this._db.collection(profiles).doc(uid);
     return new DataReference<IProfile>(d, Convert.profileConverter);
   }
 
   runTransaction<T>(fn: (dataView: IDataView) => Promise<T>): Promise<T> {
     return this._db.runTransaction(tr => {
-      let tdv = new TransactionalDataView(tr);
+      const tdv = new TransactionalDataView(tr);
       return fn(tdv);
     });
   }
@@ -281,23 +307,23 @@ class TransactionalDataView implements IDataView {
   }
 
   async delete<T>(r: IDataReference<T>): Promise<void> {
-    let dref = (r as DataReference<T>).dref;
+    const dref = (r as DataReference<T>).dref;
     this._tr = this._tr.delete(dref);
   }
 
   async get<T>(r: IDataReference<T>): Promise<T | undefined> {
-    let dref = (r as DataReference<T>).dref;
-    let result = await this._tr.get(dref);
+    const dref = (r as DataReference<T>).dref;
+    const result = await this._tr.get(dref);
     return result.exists ? r.convert(result.data()) : undefined;
   }
 
   async set<T>(r: IDataReference<T>, value: T): Promise<void> {
-    let dref = (r as DataReference<T>).dref;
+    const dref = (r as DataReference<T>).dref;
     this._tr = this._tr.set(dref, value);
   }
 
   async update<T>(r: IDataReference<T>, changes: any): Promise<void> {
-    let dref = (r as DataReference<T>).dref;
+    const dref = (r as DataReference<T>).dref;
     this._tr = this._tr.update(dref, changes);
   }
 }

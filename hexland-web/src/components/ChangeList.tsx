@@ -13,6 +13,12 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "0.11.0-1",
+    changes: [
+      "Upload images and attach them to map and adventure cards"
+    ]
+  },
+  {
     version: "0.10.6",
     changes: [
       "Fix a source of \"map corrupt\" errors"

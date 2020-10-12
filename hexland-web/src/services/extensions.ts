@@ -128,17 +128,17 @@ async function editAdventureTransaction(
   view: IDataView,
   profileRef: IDataReference<IProfile>,
   adventureRef: IDataReference<IAdventure>,
-  mapRefs: IDataReference<IMap>[],
+  mapRefs: IDataAndReference<IMap>[],
   playerRefs: IDataAndReference<IPlayer>[],
   changed: IAdventureSummary
 ): Promise<void> {
   // Fetch the profile, which we'll want to edit (maybe)
-  let profile = await view.get(profileRef);
+  const profile = await view.get(profileRef);
   if (profile === undefined) {
     throw Error("No profile available");
   }
 
-  let players = await Promise.all(playerRefs.map(r => view.get(r)));
+  const players = await Promise.all(playerRefs.map(r => view.get(r)));
   await Promise.all(players.map(async (p, i) => {
     if (p === undefined || profile === undefined) {
       return;
@@ -182,8 +182,7 @@ async function editAdventureTransaction(
 export async function editAdventure(
   dataService: IDataService | undefined,
   uid: string | undefined,
-  changed: IAdventureSummary,
-  rec?: IAdventure | undefined
+  changed: IAdventureSummary
 ): Promise<void> {
   if (dataService === undefined || uid === undefined) {
     return;
@@ -194,8 +193,7 @@ export async function editAdventure(
   // go with it.
   const profileRef = dataService.getProfileRef(uid);
   const adventureRef = dataService.getAdventureRef(changed.id);
-  const adventure = rec ?? (await dataService.get(adventureRef));
-  const mapRefs = adventure?.maps.map(m => dataService.getMapRef(changed.id, m.id)) ?? [];
+  const mapRefs = await dataService.getAdventureMapRefs(changed.id);
   const playerRefs = await dataService.getPlayerRefs(changed.id);
 
   await dataService.runTransaction(view =>
