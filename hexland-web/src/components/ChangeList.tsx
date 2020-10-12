@@ -13,6 +13,12 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "0.11.2",
+    changes: [
+      "Support a user avatar (contributed by davey3000)"
+    ]
+  },
+  {
     version: "0.11.0-1",
     changes: [
       "Upload images and attach them to map and adventure cards"

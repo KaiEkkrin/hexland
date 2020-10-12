@@ -2,6 +2,8 @@ import { IAuth, IAuthProvider, IUser } from "./interfaces";
 
 import * as firebase from 'firebase/app';
 
+import md5 from 'crypto-js/md5';
+
 function createUser(user: firebase.User | null) {
   return user === null ? null : new User(user);
 }
@@ -17,7 +19,7 @@ export class FirebaseAuth implements IAuth {
   }
 
   async createUserWithEmailAndPassword(email: string, password: string) {
-    let credential = await this._auth.createUserWithEmailAndPassword(email, password);
+    const credential = await this._auth.createUserWithEmailAndPassword(email, password);
     return createUser(credential.user);
   }
 
@@ -70,13 +72,19 @@ class PopupAuthProviderWrapper implements IAuthProvider {
 
 export class User implements IUser {
   private readonly _user: firebase.User;
+  private readonly _userExtra: { emailMd5: string | null };
 
   constructor(user: firebase.User) {
     this._user = user;
+    const emailMd5 = (this._user.email === null) ? null : md5(this._user.email).toString();
+    this._userExtra = {
+      emailMd5: emailMd5
+    };
   }
 
   get displayName() { return this._user.displayName; }
   get email() { return this._user.email; }
+  get emailMd5() { return this._userExtra.emailMd5; }
   get emailVerified() { return this._user.emailVerified; }
   get providerId() { return this._user.providerId; }
   get uid() { return this._user.uid; }
