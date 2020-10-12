@@ -2,7 +2,7 @@ import * as admin from 'firebase-admin';
 
 import * as Convert from './converter';
 import { IAdminDataService, ICollectionGroupQueryResult } from './extraInterfaces';
-import { IDataReference, IDataView, IDataAndReference } from './interfaces';
+import { IChildDataReference, IDataReference, IDataView, IDataAndReference } from './interfaces';
 import { IAdventure, IPlayer } from '../data/adventure';
 import { IChange, IChanges } from '../data/change';
 import { IIdentified } from '../data/identified';
@@ -69,6 +69,23 @@ class DataReference<T> extends DataReferenceBase implements IDataReference<T> {
 
   isEqual(other: IDataReference<T>): boolean {
     return super.isEqualTo(other);
+  }
+}
+
+class ChildDataReference<T, U> extends DataReference<T> implements IChildDataReference<T, U> {
+  private readonly _parentConverter: Convert.IConverter<U>;
+
+  constructor(
+    dref: FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>,
+    converter: Convert.IConverter<T>,
+    parentConverter: Convert.IConverter<U>
+  ) {
+    super(dref, converter);
+    this._parentConverter = parentConverter;
+  }
+
+  getParent(): IDataReference<U> | undefined {
+    return this.getParentDref(this._parentConverter);
   }
 }
 
@@ -189,9 +206,9 @@ export class AdminDataService implements IAdminDataService {
       new DataAndReference(s.docs[0].ref, s.docs[0].data(), Convert.inviteConverter);
   }
 
-  getMapRef(adventureId: string, id: string): IDataReference<IMap> {
+  getMapRef(adventureId: string, id: string): IChildDataReference<IMap, IAdventure> {
     const d = this._db.collection(adventures).doc(adventureId).collection(maps).doc(id);
-    return new DataReference<IMap>(d, Convert.mapConverter);
+    return new ChildDataReference<IMap, IAdventure>(d, Convert.mapConverter, Convert.adventureConverter);
   }
 
   getMapBaseChangeRef(adventureId: string, id: string, converter: Convert.IConverter<IChanges>): IDataReference<IChanges> {

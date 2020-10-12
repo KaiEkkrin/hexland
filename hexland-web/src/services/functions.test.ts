@@ -3,6 +3,7 @@ import { DataService } from './dataService';
 import { deleteAdventure, deleteMap, editAdventure, editMap, ensureProfile, getAllMapChanges, leaveAdventure, registerAdventureAsRecent, registerMapAsRecent, removeAdventureFromRecent, removeMapFromRecent, updateProfile, watchChangesAndConsolidate } from './extensions';
 import { FunctionsService } from './functions';
 import { IDataService, IUser } from './interfaces';
+import { MockWebStorage } from './mockWebStorage';
 import { IAnnotation } from '../data/annotation';
 import { ChangeCategory, ChangeType, IChanges, ITokenAdd, ITokenMove, IWallAdd } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
@@ -16,7 +17,9 @@ import * as firebase from 'firebase/app';
 import 'firebase/firestore';
 import 'firebase/functions';
 
+import * as fs from 'fs';
 import { initializeTestApp } from '@firebase/rules-unit-testing';
+import * as http from 'http';
 import { Subject } from 'rxjs';
 import { filter, first } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
@@ -971,5 +974,215 @@ describe('test functions', () => {
     if (m2IncrementalChanges !== undefined) {
       expect(m2IncrementalChanges).toHaveLength(0);
     }
+  });
+
+  // I expect this will be a bit heavy too
+  describe('test images', () => {
+    const storageLocation = 'http://mock-storage';
+    const testImages = [
+      './test-images/st01.png',
+      './test-images/st02.png',
+      './test-images/st03.png',
+      './test-images/st04.png',
+      './test-images/st05.png',
+      './test-images/st06.png',
+      './test-images/st07.png',
+      './test-images/st08.png',
+      './test-images/st09.png',
+      './test-images/st10.png',
+      './test-images/st11.png',
+      './test-images/st12.png',
+      './test-images/st13.png',
+      './test-images/st14.png',
+      './test-images/st15.png',
+      './test-images/st16.png',
+    ];
+
+    function downloadImage(url: string): Promise<Buffer> {
+      return new Promise((resolve, reject) => {
+        http.get(url, res => {
+          res.setEncoding('binary');
+          const array: Uint8Array[] = [];
+          res.on('data', data => {
+            array.push(Buffer.from(data, 'binary'));
+          }).on('end', () => {
+            resolve(Buffer.concat(array));
+          }).on('error', err => {
+            reject(err);
+          });
+        });
+      })
+    }
+
+    test('add and delete one image', async () => {
+      const owner = createTestUser('Owner', 'owner@example.com', 'google.com');
+      const emul = initializeEmul(owner);
+      const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
+      const functionsService = new FunctionsService(emul.functions);
+      const storage = new MockWebStorage(functionsService, storageLocation);
+
+      // Make sure the user has a profile
+      await ensureProfile(dataService, owner, undefined);
+
+      // Add a new adventure
+      const a1Id = await functionsService.createAdventure('Adventure One', 'First adventure');
+      let a1 = await dataService.get(dataService.getAdventureRef(a1Id));
+      expect(a1).not.toBeUndefined();
+      expect(a1?.imagePath).toBe("");
+
+      // Upload an image for it
+      const buffer = fs.readFileSync(testImages[0]);
+      const path = `images/${owner.uid}/one`;
+      await storage.ref(path).put(buffer, { customMetadata: { originalName: 'st01.png' } });
+
+      // I should now find it has an images entry:
+      const imagesRef = dataService.getImagesRef(owner.uid);
+      const images = await dataService.get(imagesRef);
+      expect(images?.images).toHaveLength(1);
+      expect(images?.images[0].name).toBe('st01.png');
+      expect(images?.images[0].path).toBe(path);
+
+      // Attach that image to the adventure
+      if (a1 !== undefined) {
+        await editAdventure(dataService, owner.uid, { id: a1Id, ...a1, imagePath: path });
+      }
+
+      // The image should appear in the adventure and profile records now
+      a1 = await dataService.get(dataService.getAdventureRef(a1Id));
+      expect(a1?.imagePath).toBe(path);
+
+      let profile = await dataService.get(dataService.getProfileRef(owner.uid));
+      expect(profile?.adventures).toHaveLength(1);
+      expect(profile?.adventures?.[0].name).toBe(a1?.name);
+      expect(profile?.adventures?.[0].imagePath).toBe(path);
+
+      // I should be able to download it via the URL
+      const url = await storage.ref(path).getDownloadURL();
+      const downloaded = await downloadImage(url);
+      expect(downloaded.compare(buffer)).toBe(0);
+
+      // If I delete it, it should correctly disappear from the adventure
+      await functionsService.deleteImage(path);
+
+      a1 = await dataService.get(dataService.getAdventureRef(a1Id));
+      expect(a1?.imagePath).toBe("");
+    });
+
+    test('attach an image to multiple adventures and maps', async () => {
+      const owner = createTestUser('Owner', 'owner@example.com', 'google.com');
+      const emul = initializeEmul(owner);
+      const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
+      const functionsService = new FunctionsService(emul.functions);
+      const storage = new MockWebStorage(functionsService, storageLocation);
+
+      // Make sure the user has a profile
+      await ensureProfile(dataService, owner, undefined);
+
+      // Set up this arrangement of adventure, map, image
+      //
+      // Adventure   Image
+      // -----------------
+      // A1          st01
+      // A2          st02
+      // A3          st01
+      //
+      // Adventure   Map   Image
+      // -----------------------
+      // A1          M11   st02
+      // A1          M12   st01
+      // A2          M21   st01
+      // A2          M22   st01
+
+      const a1Id = await functionsService.createAdventure('A1', 'First adventure');
+      const a2Id = await functionsService.createAdventure('A2', 'Second adventure');
+      const a3Id = await functionsService.createAdventure('A3', 'Third adventure');
+
+      const m11Id = await functionsService.createMap(a1Id, 'M11', 'Map 11', MapType.Square, false);
+      const m12Id = await functionsService.createMap(a1Id, 'M12', 'Map 12', MapType.Square, false);
+      const m21Id = await functionsService.createMap(a2Id, 'M21', 'Map 21', MapType.Square, false);
+      const m22Id = await functionsService.createMap(a2Id, 'M22', 'Map 22', MapType.Square, false);
+
+      // Upload both images
+      const buffer01 = fs.readFileSync(testImages[0]);
+      const path01 = `images/${owner.uid}/one`;
+      await storage.ref(path01).put(buffer01, { customMetadata: { originalName: 'st01.png' } });
+
+      const buffer02 = fs.readFileSync(testImages[1]);
+      const path02 = `images/${owner.uid}/two`;
+      await storage.ref(path02).put(buffer02, { customMetadata: { originalName: 'st02.png' } });
+
+      // Sanity check
+      const [d01, d02] = await Promise.all([path01, path02].map(async p => {
+        const url = await storage.ref(p).getDownloadURL();
+        return await downloadImage(url);
+      }));
+
+      expect(d01.compare(buffer01)).toBe(0);
+      expect(d02.compare(buffer02)).toBe(0);
+      expect(d01.compare(d02)).not.toBe(0);
+
+      // Visit the adventures and edit them into that arrangement
+      const adventures = await Promise.all([a1Id, a2Id, a3Id].map(async id => {
+        const record = await dataService.get(dataService.getAdventureRef(id));
+        if (record === undefined) {
+          throw Error("Couldn't load adventure " + id);
+        } else {
+          await registerAdventureAsRecent(dataService, owner.uid, id, record);
+          return record;
+        }
+      }));
+
+      const mapRefs = [
+        dataService.getMapRef(a1Id, m11Id),
+        dataService.getMapRef(a1Id, m12Id),
+        dataService.getMapRef(a2Id, m21Id),
+        dataService.getMapRef(a2Id, m22Id)
+      ];
+      const maps = await Promise.all(mapRefs.map(async r => {
+        const record = await dataService.get(r);
+        const adventureRef = r.getParent();
+        if (record === undefined || adventureRef === undefined) {
+          throw Error("Couldn't load map " + r.id);
+        } else {
+          await registerMapAsRecent(dataService, owner.uid, adventureRef.id, r.id, record);
+          return record;
+        }
+      }));
+
+      // Edit in the images
+      await editAdventure(dataService, owner.uid, {
+        id: a1Id, ...adventures[0], imagePath: path01
+      });
+      await editAdventure(dataService, owner.uid, {
+        id: a2Id, ...adventures[1], imagePath: path02
+      });
+      await editAdventure(dataService, owner.uid, {
+        id: a3Id, ...adventures[2], imagePath: path01
+      });
+
+      await editMap(dataService, a1Id, m11Id, { ...maps[0], imagePath: path02 });
+      await editMap(dataService, a1Id, m12Id, { ...maps[1], imagePath: path01 });
+      await editMap(dataService, a2Id, m21Id, { ...maps[2], imagePath: path01 });
+      await editMap(dataService, a2Id, m22Id, { ...maps[3], imagePath: path02 });
+
+      // Delete image 1
+      await functionsService.deleteImage(path01);
+
+      // Now if I visit the adventures and maps again, the ones with `path02` should
+      // still have it, and the ones with `path01` should have their image path reset
+      const adventures2 = await Promise.all([a1Id, a2Id, a3Id].map(
+        id => dataService.get(dataService.getAdventureRef(id))
+      ));
+
+      expect(adventures2[0]?.imagePath).toBe("");
+      expect(adventures2[1]?.imagePath).toBe(path02);
+      expect(adventures2[2]?.imagePath).toBe("");
+
+      const maps2 = await Promise.all(mapRefs.map(r => dataService.get(r)));
+      expect(maps2[0]?.imagePath).toBe(path02);
+      expect(maps2[1]?.imagePath).toBe("");
+      expect(maps2[2]?.imagePath).toBe("");
+      expect(maps2[3]?.imagePath).toBe(path02);
+    });
   });
 });

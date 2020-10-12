@@ -33,7 +33,7 @@ export class StorageReference implements IStorageReference {
     return String(url);
   }
 
-  async put(file: File, metadata: any) {
+  async put(file: Blob | Buffer, metadata: any) {
     // For now, I'll enumerate explicitly what metadata I expect here
     await this._ref.put(file, {
       customMetadata: metadata.customMetadata

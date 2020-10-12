@@ -1,7 +1,7 @@
 import * as firebase from 'firebase/app';
 
 import * as Convert from './converter';
-import { IDataService, IDataReference, IDataView, IDataAndReference } from './interfaces';
+import { IDataService, IDataReference, IDataView, IDataAndReference, IChildDataReference } from './interfaces';
 import { IAdventure, IPlayer } from '../data/adventure';
 import { IChange, IChanges } from '../data/change';
 import { IIdentified } from '../data/identified';
@@ -54,6 +54,11 @@ class DataReference<T> extends DataReferenceBase implements IDataReference<T> {
     super(dref);
     this._converter = converter;
   }
+  
+  protected getParentDref<U>(converter: Convert.IConverter<U>): IDataReference<U> | undefined {
+    const parent = this.dref.parent.parent;
+    return parent ? new DataReference<U>(parent, converter) : undefined;
+  }
 
   convert(rawData: any): T {
     return this._converter.convert(rawData);
@@ -64,6 +69,25 @@ class DataReference<T> extends DataReferenceBase implements IDataReference<T> {
   }
 }
 
+class ChildDataReference<T, U> extends DataReference<T> implements IChildDataReference<T, U> {
+  private readonly _parentConverter: Convert.IConverter<U>;
+
+  constructor(
+    dref: firebase.firestore.DocumentReference<firebase.firestore.DocumentData>,
+    converter: Convert.IConverter<T>,
+    parentConverter: Convert.IConverter<U>
+  ) {
+    super(dref, converter);
+    this._parentConverter = parentConverter;
+  }
+
+  getParent(): IDataReference<U> | undefined {
+    return this.getParentDref(this._parentConverter);
+  }
+}
+
+// TODO #149 To avoid the nasty cobweb of inheritance, instead make DataAndReference a
+// double return value (reference, data).
 class DataAndReference<T> extends DataReference<T> implements IDataAndReference<T> {
   private readonly _data: firebase.firestore.DocumentData;
 
@@ -159,9 +183,9 @@ export class DataService implements IDataService {
       new DataAndReference(s.docs[0].ref, s.docs[0].data(), Convert.inviteConverter);
   }
 
-  getMapRef(adventureId: string, id: string): IDataReference<IMap> {
+  getMapRef(adventureId: string, id: string): IChildDataReference<IMap, IAdventure> {
     const d = this._db.collection(adventures).doc(adventureId).collection(maps).doc(id);
-    return new DataReference<IMap>(d, Convert.mapConverter);
+    return new ChildDataReference<IMap, IAdventure>(d, Convert.mapConverter, Convert.adventureConverter);
   }
 
   getMapBaseChangeRef(adventureId: string, id: string, converter: Convert.IConverter<IChanges>): IDataReference<IChanges> {

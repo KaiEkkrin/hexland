@@ -36,7 +36,7 @@ export class StorageReference implements IStorageReference {
     throw Error("Not supported");
   }
 
-  put(file: File, metadata: any): Promise<void> {
+  put(file: Blob | Buffer, metadata: any): Promise<void> {
     // I don't think I need to be able to do this right now
     throw Error("Not supported");
   }

@@ -270,6 +270,7 @@ export const handleMockStorageUpload = functions.region(region).https.onCall(asy
     throw new functions.https.HttpsError('invalid-argument', 'No image id or name supplied');
   }
 
+  functions.logger.info(`Adding image ${imageId} with name ${name}`);
   await ImageExtensions.addImage(
     dataService, storage, functionLogger, name, imageId
   );

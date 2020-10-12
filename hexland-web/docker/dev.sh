@@ -38,6 +38,9 @@ if [ "$RUN_TESTS" == "true" ]; then
   done
 
   cd ..
+  # Set TERM=dumb here to stop jest from clearing the console and wiping interesting log messages
+  # (Makes jest look ugly and harder to read)
+  #TERM=dumb yarn test
   yarn test
 else
   # Watch for Firebase Function source changes (removing escape codes from the watcher output to

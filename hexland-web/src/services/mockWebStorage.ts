@@ -26,7 +26,7 @@ export class MockWebStorageReference extends MockStorageReference {
     this._functionsService = functionsService;
   }
 
-  async put(file: File, metadata: any): Promise<void> {
+  async put(file: Blob | Buffer, metadata: any): Promise<void> {
     await super.put(file, metadata);
 
     // This call replaces the onFinalize trigger that is active in the real deployment.

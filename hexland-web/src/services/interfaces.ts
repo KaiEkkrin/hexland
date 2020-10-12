@@ -53,6 +53,10 @@ export interface IDataReference<T> {
   isEqual(other: IDataReference<T>): boolean;
 }
 
+export interface IChildDataReference<T, U> extends IDataReference<T> {
+  getParent(): IDataReference<U> | undefined;
+}
+
 // A reference to stored data, *and* the data fetched.
 export interface IDataAndReference<T> extends IDataReference<T> {
   data: T;
@@ -77,7 +81,7 @@ export interface IDataService extends IDataView {
   getLatestInviteRef(adventureId: string): Promise<IDataAndReference<IInvite> | undefined>;
 
   // Gets a map.
-  getMapRef(adventureId: string, id: string): IDataReference<IMap>;
+  getMapRef(adventureId: string, id: string): IChildDataReference<IMap, IAdventure>;
   getMapBaseChangeRef(adventureId: string, id: string, converter: IConverter<IChanges>): IDataReference<IChanges>;
   getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number, converter: IConverter<IChanges>): Promise<IDataAndReference<IChanges>[] | undefined>;
 
@@ -198,11 +202,11 @@ export interface IStorageReference {
   getDownloadURL(): Promise<string>;
 
   // Uploads a file here.
-  put(file: File, metadata: any): Promise<void>;
+  put(file: Blob | Buffer, metadata: any): Promise<void>;
 }
 
 export interface IWebDAV {
   deleteFile(path: string): Promise<void>;
   getFileDownloadLink(path: string): string;
-  putFileContents(path: string, file: File): Promise<void>;
+  putFileContents(path: string, file: Blob | Buffer): Promise<void>;
 }

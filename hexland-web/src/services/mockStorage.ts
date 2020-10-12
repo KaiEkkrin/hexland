@@ -42,7 +42,7 @@ export class MockStorageReference implements IStorageReference {
     return Promise.resolve(this._webdav.getFileDownloadLink(this.getWebDAVPath()));
   }
 
-  async put(file: File, metadata: any): Promise<void> {
+  async put(file: Blob | Buffer, metadata: any): Promise<void> {
     const name = metadata?.customMetadata?.originalName;
     const webDAVPath = this.getWebDAVPath();
     console.log(`uploading file ${name} to path ${webDAVPath}...`);
