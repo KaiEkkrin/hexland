@@ -58,12 +58,9 @@ async function addImageTransaction(
   // Add the new image to the front of the list
   const newImage: IImage = { name: name, path: path };
   if (images !== undefined) {
-    await view.update(imagesRef, { images: [newImage, ...images.images] });
+    await view.update(imagesRef, { images: [newImage, ...images.images], lastError: "" });
   } else {
-    const newImages: IImages = {
-      images: [newImage],
-      lastError: ""
-    };
+    const newImages: IImages = { images: [newImage], lastError: "" };
     await view.set(imagesRef, newImages);
   }
 
