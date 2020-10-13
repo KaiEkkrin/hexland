@@ -27,7 +27,7 @@ function MapContextMenuItem(props: IMapContextMenuItemProps) {
 interface IMapContextMenuProps {
   // True if shown, else false.
   show: boolean;
-  setShow: (s: boolean) => void;
+  hide: () => void;
 
   // The window co-ordinates where it was opened (so we can position it.)
   x: number;
@@ -61,32 +61,32 @@ function MapContextMenu(props: IMapContextMenuProps) {
 
   const handleTokenClick = useCallback(() => {
     props.editToken();
-    props.setShow(false);
+    props.hide();
   }, [props]);
 
   const handleFlipTokenClick = useCallback(() => {
     props.flipToken();
-    props.setShow(false);
+    props.hide();
   }, [props]);
 
   const handleNoteClick = useCallback(() => {
     props.editNote();
-    props.setShow(false);
+    props.hide();
   }, [props]);
 
   const setAreaMode = useCallback(() => {
     props.setEditMode(EditMode.Area);
-    props.setShow(false);
+    props.hide();
   }, [props]);
 
   const setWallMode = useCallback(() => {
     props.setEditMode(EditMode.Wall);
-    props.setShow(false);
+    props.hide();
   }, [props]);
 
   const setRoomMode = useCallback(() => {
     props.setEditMode(EditMode.Room);
-    props.setShow(false);
+    props.hide();
   }, [props]);
 
   return (

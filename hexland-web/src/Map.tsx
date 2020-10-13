@@ -6,7 +6,7 @@ import { addToast } from './components/extensions';
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
 import { IAnalyticsContext } from './components/interfaces';
 import MapContextMenu from './components/MapContextMenu';
-import MapControls, { EditMode, MapColourVisualisationMode } from './components/MapControls';
+import MapControls, { MapColourVisualisationMode } from './components/MapControls';
 import MapAnnotations, { ShowAnnotationFlags } from './components/MapAnnotations';
 import MapEditorModal from './components/MapEditorModal';
 import MapInfo from './components/MapInfo';
@@ -20,7 +20,6 @@ import TokenEditorModal from './components/TokenEditorModal';
 import { UserContext } from './components/UserContextProvider';
 
 import { IPlayer } from './data/adventure';
-import { IAnnotation } from './data/annotation';
 import { IChange } from './data/change';
 import { netObjectCount, trackChanges } from './data/changeTracking';
 import { ITokenProperties } from './data/feature';
@@ -28,12 +27,12 @@ import { IAdventureIdentified } from './data/identified';
 import { createTokenSizes, IMap, MAP_CONTAINER_CLASS } from './data/map';
 import { getUserPolicy } from './data/policy';
 import { IProfile } from './data/profile';
-import { registerMapAsRecent, editMap, watchChangesAndConsolidate, removeMapFromRecent } from './services/extensions';
+import { registerMapAsRecent, watchChangesAndConsolidate, removeMapFromRecent } from './services/extensions';
 import { IDataService, IFunctionsService } from './services/interfaces';
 
 import { standardColours } from './models/featureColour';
-import * as Keys from './models/keys';
 import { MapStateMachine, createDefaultState } from './models/mapStateMachine';
+import { createDefaultUiState, isAnEditorOpen, MapUi } from './models/mapUi';
 import { networkStatusTracker } from './models/networkStatusTracker';
 
 import { Link, RouteComponentProps, useHistory } from 'react-router-dom';
@@ -56,6 +55,7 @@ function Map(props: IMapPageProps) {
   const [players, setPlayers] = useState([] as IPlayer[]);
   const [canDoAnything, setCanDoAnything] = useState(false);
   const [mapState, setMapState] = useState(createDefaultState());
+  const [uiState, setUiState] = useState(createDefaultUiState());
 
   // We only track a user policy if the user is the map owner
   const userPolicy = useMemo(() => {
@@ -292,36 +292,36 @@ function Map(props: IMapPageProps) {
     userContext.dataService.addChanges(props.adventureId, uid, props.mapId, changes)
       .then(() => console.log("Added " + changes.length + " changes"))
       .catch(e => analyticsContext.logError("Error adding " + changes.length + " changes", e));
-  }, [userContext.dataService, userContext.user, analyticsContext, map, mapState, props.adventureId, props.mapId, statusContext.toasts, userPolicy]);
+  }, [userContext, analyticsContext, map, mapState, props.adventureId, props.mapId, statusContext.toasts, userPolicy]);
 
   // == UI STUFF ==
 
+  const getClientPosition = useCallback((clientX: number, clientY: number) => {
+    let bounds = drawingRef.current?.getBoundingClientRect();
+    if (bounds === undefined) {
+      return undefined;
+    }
+
+    let x = clientX - bounds.left;
+    let y = clientY - bounds.top;
+    return new THREE.Vector3(x, bounds.height - y - 1, 0);
+  }, [drawingRef]);
+
+  // Our UI state tracking object depends on that map state machine
+  const ui = useMemo(
+    () => (stateMachine === undefined || statusContext.toasts === undefined) ? undefined :
+      new MapUi(setUiState, stateMachine, addChanges, getClientPosition, statusContext.toasts),
+    [addChanges, getClientPosition, setUiState, stateMachine, statusContext.toasts]
+  );
+
+  const mapContainerClassName = useMemo(
+    () => uiState.touch !== undefined || uiState.mouseDown ?
+      `${MAP_CONTAINER_CLASS} Map-interaction` : `${MAP_CONTAINER_CLASS}`,
+    [uiState.mouseDown, uiState.touch]
+  );
+
   const [isOwner, setIsOwner] = useState(false);
-  const [editMode, setEditMode] = useState(EditMode.Select);
   const [mapColourMode, setMapColourMode] = useState(MapColourVisualisationMode.Areas);
-  const [selectedColour, setSelectedColour] = useState(0);
-  const [mapContainerClassName, setMapContainerClassName] = useState(MAP_CONTAINER_CLASS);
-
-  const [showContextMenu, setShowContextMenu] = useState(false);
-  const [contextMenuX, setContextMenuX] = useState(0);
-  const [contextMenuY, setContextMenuY] = useState(0);
-  const [contextMenuPageRight, setContextMenuPageRight] = useState(0);
-  const [contextMenuPageBottom, setContextMenuPageBottom] = useState(0);
-  const [contextMenuToken, setContextMenuToken] = useState<ITokenProperties | undefined>(undefined);
-  const [contextMenuNote, setContextMenuNote] = useState<IAnnotation | undefined>(undefined);
-
-  const [showMapEditor, setShowMapEditor] = useState(false);
-  const [showTokenEditor, setShowTokenEditor] = useState(false);
-  const [showNoteEditor, setShowNoteEditor] = useState(false);
-  const [showTokenDeletion, setShowTokenDeletion] = useState(false);
-
-  const [tokenToEdit, setTokenToEdit] = useState(undefined as ITokenProperties | undefined);
-  const [tokenToEditPosition, setTokenToEditPosition] = useState(undefined as THREE.Vector3 | undefined);
-  const [noteToEdit, setNoteToEdit] = useState(undefined as IAnnotation | undefined);
-  const [noteToEditPosition, setNoteToEditPosition] = useState(undefined as THREE.Vector3 | undefined);
-  const [tokensToDelete, setTokensToDelete] = useState<ITokenProperties[]>([]);
-
-  const [isDraggingView, setIsDraggingView] = useState(false);
 
   useEffect(() => {
     setCanDoAnything(map?.record.ffa === true || userContext.user?.uid === map?.record.owner);
@@ -330,17 +330,6 @@ function Map(props: IMapPageProps) {
   useEffect(() => {
     setIsOwner(userContext.user?.uid === map?.record.owner);
   }, [userContext.user, map]);
-
-  // When the edit mode changes at all, reset any margin panning.
-  // When the edit mode changes away from Select, we should clear any selection.
-  // #36 When the edit mode changes at all, we should clear the highlights
-  useEffect(() => {
-    stateMachine?.panMarginReset();
-    stateMachine?.clearHighlights(selectedColour);
-    if (editMode !== EditMode.Select) {
-      stateMachine?.clearSelection();
-    }
-  }, [stateMachine, editMode, selectedColour]);
 
   // Sync the drawing with the map colour mode
   useEffect(() => {
@@ -354,139 +343,35 @@ function Map(props: IMapPageProps) {
   );
 
   const handleMapEditorSave = useCallback(async (adventureId: string, updated: IMap) => {
-    setShowMapEditor(false);
-    if (userContext.dataService !== undefined && map !== undefined) {
-      let dataService = userContext.dataService;
-
-      if (map.record.ffa === true && updated.ffa === false) {
-        // We should do a consolidate first, otherwise we might be invalidating the
-        // backlog of non-owner moves.
-        try {
-          console.log("consolidating map changes");
-          await userContext.functionsService?.consolidateMapChanges(map.adventureId, map.id, false);
-        } catch (e) {
-          analyticsContext.logError("Error consolidating map " + map.adventureId + "/" + map.id + " changes", e);
-        }
-      }
-
-      try {
-        await editMap(dataService, map.adventureId, map.id, updated);
-        console.log("Updated map");
-      } catch (e) {
-        analyticsContext.logError("Failed to update map: ", e);
-      }
-    }
-  }, [analyticsContext, map, setShowMapEditor, userContext]);
-
-  const handleModalClose = useCallback(() => {
-    setShowMapEditor(false);
-    setShowTokenDeletion(false);
-    setShowTokenEditor(false);
-    setShowNoteEditor(false);
-    setEditMode(EditMode.Select);
-  }, [setEditMode, setShowMapEditor, setShowTokenDeletion, setShowTokenEditor, setShowNoteEditor]);
-
-  const handleTokenEditorDelete = useCallback(() => {
-    if (tokenToEditPosition !== undefined) {
-      try {
-        addChanges(stateMachine?.setToken(tokenToEditPosition, undefined));
-      } catch (e) {
-        statusContext.toasts.next({ id: uuidv4(), record: {
-          title: "Failed to delete token",
-          message: String(e.message)
-        }});
-      }
-    }
-    handleModalClose();
-  }, [addChanges, handleModalClose, stateMachine, statusContext.toasts, tokenToEditPosition]);
-
-  const handleTokenEditorSave = useCallback((properties: ITokenProperties) => {
-    if (tokenToEditPosition !== undefined) {
-      try {
-        addChanges(stateMachine?.setToken(tokenToEditPosition, properties));
-      } catch (e) {
-        statusContext.toasts.next({ id: uuidv4(), record: {
-          title: "Failed to save token",
-          message: String(e.message)
-        }});
-      }
-    }
-    handleModalClose();
-  }, [addChanges, handleModalClose, stateMachine, statusContext.toasts, tokenToEditPosition]);
-
-  const handleNoteEditorDelete = useCallback(() => {
-    if (noteToEditPosition !== undefined) {
-      addChanges(stateMachine?.setNote(noteToEditPosition, "", -1, "", false));
-    }
-    handleModalClose();
-  }, [addChanges, handleModalClose, noteToEditPosition, stateMachine]);
-
-  const handleNoteEditorSave = useCallback((id: string, colour: number, text: string, visibleToPlayers: boolean) => {
-    if (noteToEditPosition !== undefined) {
-      addChanges(stateMachine?.setNote(noteToEditPosition, id, colour, text, visibleToPlayers));
-    }
-    handleModalClose();
-  }, [addChanges, handleModalClose, noteToEditPosition, stateMachine]);
-
-  const handleTokenDeletion = useCallback(() => {
-    const changes: IChange[] = [];
-    for (const t of tokensToDelete) {
-      const chs = stateMachine?.setTokenById(t.id, undefined);
-      if (chs !== undefined) {
-        changes.push(...chs);
-      }
+    if (ui === undefined) {
+      return;
     }
 
-    addChanges(changes);
-    stateMachine?.clearSelection();
-    handleModalClose();
-  }, [addChanges, handleModalClose, stateMachine, tokensToDelete]);
+    await ui.mapEditorSave(
+      userContext.dataService,
+      userContext.functionsService,
+      map, updated,
+      (message, e) => analyticsContext.logError(message, e)
+    );
+  }, [analyticsContext, map, ui, userContext]);
 
-  // We track what keys are down so that we can disable mouse movement handlers if a movement key
-  // is down (they don't play well together)
-  const [keysDown, setKeysDown] = useReducer(Keys.keysDownReducer, {});
-  const movementKeyDown = useMemo(
-    () => Keys.isKeyDown(keysDown, 'ArrowLeft') || Keys.isKeyDown(keysDown, 'ArrowRight') ||
-      Keys.isKeyDown(keysDown, 'ArrowUp') || Keys.isKeyDown(keysDown, 'ArrowDown') ||
-      Keys.isKeyDown(keysDown, 'O'),
-    [keysDown]
+  const handleModalClose = useCallback(() => ui?.modalClose(), [ui]);
+  const handleTokenEditorDelete = useCallback(() => ui?.tokenEditorDelete(), [ui]);
+  const handleTokenEditorSave = useCallback(
+    (properties: ITokenProperties) => ui?.tokenEditorSave(properties),
+    [ui]
   );
 
-  // ...and also that the mouse button is down so we can disable movement keys
-  const [mouseDown, setMouseDown] = useState(false);
+  const handleNoteEditorDelete = useCallback(() => ui?.noteEditorDelete(), [ui]);
+  const handleNoteEditorSave = useCallback((id: string, colour: number, text: string, visibleToPlayers: boolean) => {
+    ui?.noteEditorSave(id, colour, text, visibleToPlayers);
+  }, [ui]);
 
-  // ...and also whether a touch is active (and its identifier.)
-  const [touch, setTouch] = useState<number | undefined>(undefined);
+  const handleTokenDeletion = useCallback(() => ui?.tokenDeletion(), [ui]);
 
   // We want to disable most of the handlers, below, if a modal editor is open, to prevent
   // accidents whilst editing
-  const anEditorIsOpen = useMemo(
-    () => showMapEditor || showNoteEditor || showTokenEditor,
-    [showMapEditor, showNoteEditor, showTokenEditor]
-  );
-
-  const getClientPosition = useCallback((clientX: number, clientY: number) => {
-    let bounds = drawingRef.current?.getBoundingClientRect();
-    if (bounds === undefined) {
-      return undefined;
-    }
-
-    let x = clientX - bounds.left;
-    let y = clientY - bounds.top;
-    return new THREE.Vector3(x, bounds.height - y - 1, 0);
-  }, [drawingRef]);
-
-  const editNote = useCallback((cp: THREE.Vector3, note: IAnnotation | undefined) => {
-    setShowNoteEditor(true);
-    setNoteToEdit(note);
-    setNoteToEditPosition(cp);
-  }, [setShowNoteEditor, setNoteToEdit, setNoteToEditPosition]);
-
-  const editToken = useCallback((cp: THREE.Vector3, token: ITokenProperties | undefined) => {
-    setShowTokenEditor(true);
-    setTokenToEdit(token);
-    setTokenToEditPosition(cp);
-  }, [setShowTokenEditor, setTokenToEdit, setTokenToEditPosition]);
+  const anEditorIsOpen = useMemo(() => isAnEditorOpen(uiState), [uiState]);
 
   const flipToken = useCallback((cp: THREE.Vector3) => {
     if (stateMachine === undefined) {
@@ -506,29 +391,18 @@ function Map(props: IMapPageProps) {
     }
   }, [addChanges, stateMachine, statusContext.toasts]);
 
-  const editNoteFromMenu = useCallback(() => {
-    const cp = getClientPosition(contextMenuX, contextMenuY);
-    if (cp !== undefined) {
-      editNote(cp, stateMachine?.getNote(cp));
-    }
-  }, [contextMenuX, contextMenuY, editNote, getClientPosition, stateMachine]);
-
-  const editTokenFromMenu = useCallback(() => {
-    const cp = getClientPosition(contextMenuX, contextMenuY);
-    if (cp !== undefined) {
-      editToken(cp, stateMachine?.getToken(cp));
-    }
-  }, [contextMenuX, contextMenuY, editToken, getClientPosition, stateMachine]);
+  const editNoteFromMenu = useCallback(() => ui?.editNote(), [ui]);
+  const editTokenFromMenu = useCallback(() => ui?.editToken(), [ui]);
 
   const flipTokenFromMenu = useCallback(() => {
-    console.log("called flipToken with x " + contextMenuX + ", y " + contextMenuY);
-    const cp = getClientPosition(contextMenuX, contextMenuY);
+    console.log("called flipToken with x " + uiState.contextMenuX + ", y " + uiState.contextMenuY);
+    const cp = getClientPosition(uiState.contextMenuX, uiState.contextMenuY);
     if (cp === undefined) {
       return;
     }
 
     flipToken(cp);
-  }, [contextMenuX, contextMenuY, flipToken, getClientPosition]);
+  }, [flipToken, getClientPosition, uiState.contextMenuX, uiState.contextMenuY]);
 
   const handleContextMenu = useCallback((e: MouseEvent) => {
     let bounds = drawingRef.current?.getBoundingClientRect();
@@ -537,265 +411,43 @@ function Map(props: IMapPageProps) {
     }
 
     e.preventDefault();
-    setShowContextMenu(true);
-    setContextMenuX(e.clientX);
-    setContextMenuY(e.clientY);
-    setContextMenuPageRight(bounds.right);
-    setContextMenuPageBottom(bounds.bottom);
-
-    let cp = getClientPosition(e.clientX, e.clientY);
-    if (cp !== undefined) {
-      setContextMenuToken(stateMachine?.getToken(cp));
-      setContextMenuNote(stateMachine?.getNote(cp));
-    }
-  }, [getClientPosition, setShowContextMenu, setContextMenuX, setContextMenuY, setContextMenuPageBottom, setContextMenuToken, setContextMenuNote, stateMachine]);
+    ui?.contextMenu(e, bounds);
+  }, [drawingRef, ui]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (stateMachine === undefined || anEditorIsOpen || mouseDown) {
+    if (ui === undefined || anEditorIsOpen) {
       return;
     }
 
-    // See https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values
-    // for a reference of key values.
-    setKeysDown({ key: e.key, down: true });
-    if (e.key === 'ArrowLeft') {
-      if (e.repeat || !stateMachine.jogSelection({ x: -1, y: 0 })) {
-        addChanges(stateMachine.setPanningX(-1));
-      }
-      e.preventDefault();
-    } else if (e.key === 'ArrowRight') {
-      if (e.repeat || !stateMachine.jogSelection({ x: 1, y: 0 })) {
-        addChanges(stateMachine.setPanningX(1));
-      }
-      e.preventDefault();
-    } else if (e.key === 'ArrowDown') {
-      if (e.repeat || !stateMachine.jogSelection({ x: 0, y: 1 })) {
-        addChanges(stateMachine.setPanningY(1));
-      }
-      e.preventDefault();
-    } else if (e.key === 'ArrowUp') {
-      if (e.repeat || !stateMachine.jogSelection({ x: 0, y: -1 })) {
-        addChanges(stateMachine.setPanningY(-1));
-      }
-      e.preventDefault();
-    }
-  }, [stateMachine, addChanges, anEditorIsOpen, mouseDown, setKeysDown]);
+    ui.keyDown(e);
+  }, [anEditorIsOpen, ui]);
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
-    if (stateMachine === undefined || anEditorIsOpen) {
+    if (ui === undefined || anEditorIsOpen) {
       return;
     }
 
-    setKeysDown({ key: e.key, down: false });
-    if (e.key === 'Escape') {
-      // This should cancel any drag operation, and also return us to
-      // select mode.  Unlike the other keys, it should operate even
-      // during a mouse drag.
-      stateMachine.clearHighlights(selectedColour);
-      stateMachine.clearSelection();
-      setEditMode(EditMode.Select);
-      setShowContextMenu(false);
-    }
-
-    if (mouseDown) {
-      return;
-    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      addChanges(stateMachine.setPanningX(0));
-      e.preventDefault();
-    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      addChanges(stateMachine.setPanningY(0));
-      e.preventDefault();
-    } else if (e.key === 'Delete') {
-      // This invokes the token deletion if we've got tokens selected.
-      let tokens = [...stateMachine.getSelectedTokens()];
-      if (canDoAnything && tokens.length > 0) {
-        setShowTokenDeletion(true);
-        setTokensToDelete(tokens);
-      }
-    } else if (e.key === 'a' || e.key === 'A') {
-      if (canDoAnything) {
-        setEditMode(EditMode.Area);
-      }
-    } else if (e.key === 'o' || e.key === 'O') {
-      stateMachine.resetView();
-    } else if (e.key === 'r' || e.key === 'R') {
-      if (canDoAnything) {
-        setEditMode(EditMode.Room);
-      }
-    } else if (e.key === 's' || e.key === 'S') {
-      setEditMode(EditMode.Select);
-    } else if (e.key === 'w' || e.key === 'W') {
-      if (canDoAnything) {
-        setEditMode(EditMode.Wall);
-      }
-    }
-  }, [stateMachine, addChanges, anEditorIsOpen, canDoAnything, mouseDown, selectedColour, setEditMode, setKeysDown, setShowContextMenu]);
-
-  // *** Handler helpers to cover the common functionality between mouse and touch ***
-
-  const handleInteractionEnd = useCallback((cp: THREE.Vector3, shiftKey: boolean) => {
-    // Make interaction state visible to CSS
-    setMapContainerClassName(`${MAP_CONTAINER_CLASS}`);
-
-    let changes: IChange[] | undefined;
-    if (isDraggingView) {
-      stateMachine?.panEnd();
-      setIsDraggingView(false);
-    } else {
-      switch (editMode) {
-        case EditMode.Select:
-          changes = stateMachine?.selectionDragEnd(cp);
-          break;
-
-        case EditMode.Token:
-          editToken(cp, stateMachine?.getToken(cp));
-          break;
-
-        case EditMode.Notes:
-          editNote(cp, stateMachine?.getNote(cp));
-          break;
-
-        case EditMode.Area:
-          changes = stateMachine?.faceDragEnd(cp, selectedColour);
-          break;
-
-        case EditMode.Wall:
-          changes = stateMachine?.wallDragEnd(cp, selectedColour);
-          break;
-
-        case EditMode.Room:
-          changes = stateMachine?.roomDragEnd(cp, shiftKey, selectedColour);
-          break;
-      }
-    }
-
-    if (changes !== undefined && changes.length > 0) {
-      // We've done something -- reset the edit mode
-      setEditMode(EditMode.Select);
-    }
-    addChanges(changes);
-  }, [addChanges, editMode, editNote, editToken, isDraggingView, setEditMode, setIsDraggingView, selectedColour, stateMachine]);
-
-  const handleInteractionMove = useCallback((cp: THREE.Vector3, shiftKey: boolean) => {
-    if (isDraggingView) {
-      stateMachine?.panTo(cp);
-    } else {
-      switch (editMode) {
-        case EditMode.Select: stateMachine?.moveSelectionTo(cp); break;
-        case EditMode.Area: stateMachine?.moveFaceHighlightTo(cp, selectedColour); break;
-        case EditMode.Wall: stateMachine?.moveWallHighlightTo(cp, shiftKey, selectedColour); break;
-        case EditMode.Room: stateMachine?.moveRoomHighlightTo(cp, shiftKey, selectedColour); break;
-      }
-    }
-
-    return cp;
-  }, [editMode, isDraggingView, selectedColour, stateMachine]);
-
-  const handleInteractionStart = useCallback((cp: THREE.Vector3, shiftKey: boolean, ctrlKey: boolean) => {
-    // Make interaction state visible to CSS
-    setMapContainerClassName(`${MAP_CONTAINER_CLASS} Map-interaction`);
-
-    switch (editMode) {
-      case EditMode.Select:
-        if (shiftKey) {
-          stateMachine?.selectionDragStart(cp);
-        } else if (stateMachine?.selectToken(cp) !== true) {
-          // There's no token here -- pan or rotate the view instead.
-          setIsDraggingView(true);
-          stateMachine?.clearSelection();
-          stateMachine?.panStart(cp, ctrlKey);
-        }
-        break;
-
-      case EditMode.Area: stateMachine?.faceDragStart(cp, shiftKey, selectedColour); break;
-      case EditMode.Wall: stateMachine?.wallDragStart(cp, shiftKey, selectedColour); break;
-      case EditMode.Room: stateMachine?.roomDragStart(cp, shiftKey, selectedColour); break;
-    }
-  }, [editMode, setIsDraggingView, selectedColour, stateMachine]);
+    ui.keyUp(e, canDoAnything);
+  }, [anEditorIsOpen, canDoAnything, ui]);
 
   // *** Mouse and touch specific handlers ***
 
-  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    setShowContextMenu(false);
-    let cp = getClientPosition(e.clientX, e.clientY);
-    if (cp === undefined || anEditorIsOpen || e.button !== 0 || movementKeyDown) {
-      return;
-    }
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    ui?.mouseDown(e, getClientPosition(e.clientX, e.clientY));
+  }, [getClientPosition, ui]);
 
-    setMouseDown(true);
-    handleInteractionStart(cp, e.shiftKey, e.ctrlKey);
-  }, [anEditorIsOpen, getClientPosition, handleInteractionStart, movementKeyDown, setMouseDown, setShowContextMenu]);
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    return ui?.mouseMove(e, getClientPosition(e.clientX, e.clientY));
+  }, [getClientPosition, ui]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    let cp = getClientPosition(e.clientX, e.clientY);
-    if (cp === undefined || anEditorIsOpen || movementKeyDown) {
-      return undefined;
-    }
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    const cp = handleMouseMove(e);
+    ui?.mouseUp(e, cp);
+  }, [handleMouseMove, ui]);
 
-    return handleInteractionMove(cp, e.shiftKey);
-  }, [anEditorIsOpen, getClientPosition, handleInteractionMove, movementKeyDown]);
-
-  const handleMouseUp = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    let cp = handleMouseMove(e);
-    if (cp === undefined || anEditorIsOpen || e.button !== 0 || movementKeyDown) {
-      return;
-    }
-
-    setMouseDown(false);
-    handleInteractionEnd(cp, e.shiftKey);
-  }, [anEditorIsOpen, handleInteractionEnd, handleMouseMove, movementKeyDown, setMouseDown]);
-
-  const isTrackingTouch = useCallback((e: React.TouchEvent) => {
-    for (let i = 0; i < e.changedTouches.length; ++i) {
-      if (e.changedTouches[i].identifier === touch) {
-        return e.changedTouches[i];
-      }
-    }
-
-    return undefined;
-  }, [touch]);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    // This only takes effect if the touch we're tracking has changed
-    let t = isTrackingTouch(e);
-    if (t === undefined) {
-      return undefined;
-    }
-
-    let cp = getClientPosition(t.clientX, t.clientY);
-    if (cp === undefined || anEditorIsOpen || movementKeyDown) {
-      return undefined;
-    }
-
-    cp = handleInteractionMove(cp, false);
-    return { touch: t, cp: cp };
-  }, [anEditorIsOpen, getClientPosition, handleInteractionMove, isTrackingTouch, movementKeyDown]);
-
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    let x = handleTouchMove(e);
-    if (x === undefined || anEditorIsOpen || movementKeyDown) {
-      return;
-    }
-
-    setTouch(undefined);
-    handleInteractionEnd(x.cp, false);
-  }, [anEditorIsOpen, handleInteractionEnd, handleTouchMove, movementKeyDown, setTouch]);
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (touch !== undefined || e.changedTouches.length === 0) {
-      return;
-    }
-
-    let t = e.changedTouches[0];
-    setShowContextMenu(false);
-    let cp = getClientPosition(t.clientX, t.clientY);
-    if (cp === undefined || anEditorIsOpen || movementKeyDown) {
-      return;
-    }
-
-    setTouch(t.identifier);
-    handleInteractionStart(cp, false, false);
-  }, [anEditorIsOpen, getClientPosition, handleInteractionStart, movementKeyDown, setTouch, touch]);
+  const handleTouchMove = useCallback((e: React.TouchEvent) => ui?.touchMove(e), [ui]);
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => ui?.touchEnd(e), [ui]);
+  const handleTouchStart = useCallback((e: React.TouchEvent) => ui?.touchStart(e), [ui]);
 
   const handleWheel = useCallback((e: WheelEvent) => {
     if (e.deltaY !== 0 && !anEditorIsOpen) {
@@ -849,16 +501,16 @@ function Map(props: IMapPageProps) {
       </div>
       <div className="Map-overlay">
         <MapControls
-          editMode={editMode}
-          setEditMode={setEditMode}
-          selectedColour={selectedColour}
-          setSelectedColour={setSelectedColour}
+          editMode={uiState.editMode}
+          setEditMode={m => ui?.setEditMode(m)}
+          selectedColour={uiState.selectedColour}
+          setSelectedColour={c => ui?.setSelectedColour(c)}
           resetView={() => stateMachine?.resetView()}
           mapColourVisualisationMode={mapColourMode}
           setMapColourVisualisationMode={setMapColourMode}
           canDoAnything={canDoAnything}
           isOwner={isOwner}
-          openMapEditor={() => setShowMapEditor(true)}
+          openMapEditor={() => ui?.showMapEditor()}
           setShowAnnotationFlags={cycleShowAnnotationFlags} />
         <MapInfo map={map?.record} players={players} tokens={mapState.tokens}
           canDoAnything={canDoAnything} resetView={c => stateMachine?.resetView(c)}
@@ -874,32 +526,32 @@ function Map(props: IMapPageProps) {
           onTouchMove={handleTouchMove}
           onTouchStart={handleTouchStart} />
       </div>
-      <MapEditorModal show={showMapEditor} map={map}
-        handleClose={() => setShowMapEditor(false)} handleSave={handleMapEditorSave} />
-      <TokenEditorModal selectedColour={selectedColour} show={showTokenEditor}
-        sizes={tokenSizes} token={tokenToEdit}
+      <MapEditorModal show={uiState.showMapEditor} map={map}
+        handleClose={() => ui?.modalClose()} handleSave={handleMapEditorSave} />
+      <TokenEditorModal selectedColour={uiState.selectedColour} show={uiState.showTokenEditor}
+        sizes={tokenSizes} token={uiState.tokenToEdit}
         players={players} handleClose={handleModalClose}
         handleDelete={handleTokenEditorDelete} handleSave={handleTokenEditorSave} />
-      <TokenDeletionModal show={showTokenDeletion} tokens={tokensToDelete}
+      <TokenDeletionModal show={uiState.showTokenDeletion} tokens={uiState.tokensToDelete}
         handleClose={handleModalClose} handleDelete={handleTokenDeletion} />
-      <NoteEditorModal show={showNoteEditor} note={noteToEdit} handleClose={handleModalClose}
+      <NoteEditorModal show={uiState.showNoteEditor} note={uiState.noteToEdit} handleClose={handleModalClose}
         handleDelete={handleNoteEditorDelete} handleSave={handleNoteEditorSave} />
       <MapAnnotations annotations={mapState.annotations} showFlags={showAnnotationFlags} customFlags={customAnnotationFlags}
-        setCustomFlags={setCustomAnnotationFlags} suppressAnnotations={isDraggingView} />
+        setCustomFlags={setCustomAnnotationFlags} suppressAnnotations={uiState.isDraggingView} />
       <MapContextMenu
-        show={showContextMenu}
-        setShow={setShowContextMenu}
-        x={contextMenuX}
-        y={contextMenuY}
-        pageRight={contextMenuPageRight}
-        pageBottom={contextMenuPageBottom}
-        token={contextMenuToken}
-        note={contextMenuNote}
+        show={uiState.showContextMenu}
+        hide={() => ui?.hideContextMenu()}
+        x={uiState.contextMenuX}
+        y={uiState.contextMenuY}
+        pageRight={uiState.contextMenuPageRight}
+        pageBottom={uiState.contextMenuPageBottom}
+        token={uiState.contextMenuToken}
+        note={uiState.contextMenuNote}
         editToken={editTokenFromMenu}
         flipToken={flipTokenFromMenu}
         editNote={editNoteFromMenu}
-        editMode={editMode}
-        setEditMode={setEditMode} />
+        editMode={uiState.editMode}
+        setEditMode={m => ui?.setEditMode(m)} />
     </div>
   );
 }

@@ -24,3 +24,9 @@ export function keysDownReducer(state: KeysDown, action: IKeyAction): KeysDown {
     return newState;
   }
 }
+
+export function isAMovementKeyDown(state: KeysDown) {
+  return isKeyDown(state, 'ArrowLeft') || isKeyDown(state, 'ArrowRight') ||
+    isKeyDown(state, 'ArrowUp') || isKeyDown(state, 'ArrowDown') ||
+    isKeyDown(state, 'O')
+}
