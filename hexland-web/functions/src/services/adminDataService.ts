@@ -277,7 +277,7 @@ export class AdminDataService implements IAdminDataService {
     onError?: ((error: Error) => void) | undefined
   ) {
     return (d as DataReference<T>).dref.onSnapshot(s => {
-      onNext(s.exists ? (s.data() as T) : undefined);
+      onNext(s.exists ? d.convert(s.data()) : undefined);
     }, onError);
   }
 
