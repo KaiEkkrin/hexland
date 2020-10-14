@@ -4,7 +4,6 @@ import './Map.css';
 
 import { addToast } from './components/extensions';
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
-import { IAnalyticsContext } from './components/interfaces';
 import MapContextMenu from './components/MapContextMenu';
 import MapControls, { MapColourVisualisationMode } from './components/MapControls';
 import MapAnnotations, { ShowAnnotationFlags } from './components/MapAnnotations';
@@ -41,9 +40,9 @@ import fluent from 'fluent-iterable';
 import { v4 as uuidv4 } from 'uuid';
 
 // The map component is rather large because of all the state that got pulled into it...
-function Map(props: IMapPageProps) {
-  const userContext = useContext(UserContext);
-  const analyticsContext = useContext(AnalyticsContext);
+function Map({ adventureId, mapId }: IMapPageProps) {
+  const { dataService, functionsService, user } = useContext(UserContext);
+  const { analytics, logError, logEvent } = useContext(AnalyticsContext);
   const profile = useContext(ProfileContext);
   const statusContext = useContext(StatusContext);
   const history = useHistory();
@@ -57,12 +56,12 @@ function Map(props: IMapPageProps) {
 
   // We only track a user policy if the user is the map owner
   const userPolicy = useMemo(() => {
-    if (map?.record.owner !== userContext.user?.uid || profile === undefined) {
+    if (map?.record.owner !== user?.uid || profile === undefined) {
       return undefined;
     }
 
     return getUserPolicy(profile.level);
-  }, [map, profile, userContext]);
+  }, [map, profile, user]);
 
   // Create a suitable title
   const title = useMemo(() => {
@@ -70,14 +69,14 @@ function Map(props: IMapPageProps) {
       return undefined;
     }
 
-    const adventureLink = "/adventure/" + props.adventureId;
+    const adventureLink = "/adventure/" + adventureId;
     const objectsString = userPolicy === undefined ? undefined : " (" + mapState.objectCount + "/" + userPolicy.objects + ")";
     return (
       <div style={{ overflowWrap: 'normal' }}>
         <Link to={adventureLink}>{map.record.adventureName}</Link> | {map.record.name}{objectsString}
       </div>
     );
-  }, [props.adventureId, profile, map, mapState, userPolicy]);
+  }, [adventureId, profile, map, mapState, userPolicy]);
 
   // Track network status
   const [resyncCount, setResyncCount] = useState(0);
@@ -107,11 +106,11 @@ function Map(props: IMapPageProps) {
 
   // Watch the map when it changes
   useEffect(() => {
-    if (userContext.dataService === undefined) {
+    if (dataService === undefined) {
       return;
     }
 
-    const mapRef = userContext.dataService.getMapRef(props.adventureId, props.mapId);
+    const mapRef = dataService.getMapRef(adventureId, mapId);
 
     // How to handle a map load failure.
     function couldNotLoad(message: string) {
@@ -120,41 +119,41 @@ function Map(props: IMapPageProps) {
         record: { title: 'Error loading map', message: message }
       });
 
-      const uid = userContext.user?.uid;
+      const uid = user?.uid;
       if (uid && mapRef) {
-        removeMapFromRecent(userContext.dataService, uid, mapRef.id)
-          .catch(e => analyticsContext.logError("Error removing map from recent", e));
+        removeMapFromRecent(dataService, uid, mapRef.id)
+          .catch(e => logError("Error removing map from recent", e));
       }
 
       history.replace('/');
     }
 
     // Check this map exists and can be fetched (the watch doesn't do this for us)
-    userContext.dataService.get(mapRef)
+    dataService.get(mapRef)
       .then(r => {
         if (r === undefined) {
           couldNotLoad('That map does not exist.');
         }
       })
       .catch(e => {
-        analyticsContext.logError("Error checking for map " + props.mapId + ": ", e);
+        logError("Error checking for map " + mapId + ": ", e);
         couldNotLoad(e.message);
       });
 
-    analyticsContext.analytics?.logEvent("select_content", {
+    analytics?.logEvent("select_content", {
       "content_type": "map",
-      "item_id": props.mapId
+      "item_id": mapId
     });
 
-    return userContext.dataService.watch<IMap>(
+    return dataService.watch<IMap>(
       mapRef, m => setMap(m === undefined ? undefined : {
-        adventureId: props.adventureId,
-        id: props.mapId,
+        adventureId: adventureId,
+        id: mapId,
         record: m
       }),
-      e => analyticsContext.logError("Error watching map " + props.mapId, e)
+      e => logError("Error watching map " + mapId, e)
     );
-  }, [userContext, analyticsContext, history, props.adventureId, props.mapId, statusContext]);
+  }, [dataService, user, analytics, logError, history, adventureId, mapId, statusContext]);
 
   // Track changes to the map.
   // We don't start watching until we have an initialised state machine (which means the
@@ -162,7 +161,7 @@ function Map(props: IMapPageProps) {
   // The "openMap" utility's dependencies are deliberately limited to prevent it from being
   // re-created and causing lots of extra Firebase work.
   const openMap = useCallback(async (
-    analyticsContext: IAnalyticsContext,
+    logError: (message: string, e: any, fatal?: boolean | undefined) => void,
     dataService: IDataService,
     functionsService: IFunctionsService,
     uid: string,
@@ -175,14 +174,14 @@ function Map(props: IMapPageProps) {
     try {
       registerMapAsRecent(dataService, uid, map.adventureId, map.id, map.record);
     } catch (e) {
-      analyticsContext.logError("Error registering map " + map.adventureId + "/" + map.id + " as recent", e);
+      logError("Error registering map " + map.adventureId + "/" + map.id + " as recent", e);
     }
 
     try {
       console.log("consolidating map changes");
       functionsService.consolidateMapChanges(map.adventureId, map.id, false);
     } catch (e) {
-      analyticsContext.logError("Error consolidating map " + map.adventureId + "/" + map.id + " changes", e);
+      logError("Error consolidating map " + map.adventureId + "/" + map.id + " changes", e);
     }
 
     const userPolicy = uid === map.record.owner ? getUserPolicy(profile.level) : undefined;
@@ -192,10 +191,10 @@ function Map(props: IMapPageProps) {
   }, [setMapState, setStateMachine]);
 
   useEffect(() => {
-    const uid = userContext.user?.uid;
+    const uid = user?.uid;
     if (
-      userContext.dataService === undefined ||
-      userContext.functionsService === undefined ||
+      dataService === undefined ||
+      functionsService === undefined ||
       map === undefined ||
       uid === undefined ||
       profile === undefined ||
@@ -205,9 +204,9 @@ function Map(props: IMapPageProps) {
       return;
     }
 
-    openMap(analyticsContext, userContext.dataService, userContext.functionsService, uid, profile, map, drawingRef?.current)
-      .catch(e => analyticsContext.logError("Error opening map", e));
-  }, [analyticsContext, drawingRef, openMap, map, profile, userContext]);
+    openMap(logError, dataService, functionsService, uid, profile, map, drawingRef?.current)
+      .catch(e => logError("Error opening map", e));
+  }, [logError, drawingRef, openMap, map, profile, dataService, functionsService, user]);
 
   useEffect(() => {
     if (stateMachine === undefined) {
@@ -217,16 +216,16 @@ function Map(props: IMapPageProps) {
     console.log("Watching changes to map " + stateMachine.map.id);
     networkStatusTracker.clear();
     return watchChangesAndConsolidate(
-      userContext.dataService, userContext.functionsService,
+      dataService, functionsService,
       stateMachine.map.adventureId, stateMachine.map.id,
       chs => {
         networkStatusTracker.onChanges(chs);
         return trackChanges(stateMachine.map.record, stateMachine.changeTracker, chs.chs, chs.user);
       },
       () => stateMachine.changeTracker.clear(),
-      analyticsContext.logEvent,
-      e => analyticsContext.logError("Error watching map changes", e));
-  }, [analyticsContext, stateMachine, userContext]);
+      logEvent,
+      e => logError("Error watching map changes", e));
+  }, [logError, logEvent, stateMachine, dataService, functionsService]);
 
   // If we can't see anything, notify the user
   const canSeeAnything = useMemo(() => {
@@ -253,14 +252,14 @@ function Map(props: IMapPageProps) {
 
   // Track the adventure's players
   useEffect(() => {
-    if (userContext.dataService === undefined) {
+    if (dataService === undefined) {
       return () => {};
     }
 
-    console.log("Watching players in adventure " + props.adventureId);
-    return userContext.dataService.watchPlayers(props.adventureId, setPlayers,
-      e => analyticsContext.logError("Error watching players", e));
-  }, [analyticsContext, userContext.dataService, props.adventureId]);
+    console.log("Watching players in adventure " + adventureId);
+    return dataService.watchPlayers(adventureId, setPlayers,
+      e => logError("Error watching players", e));
+  }, [logError, dataService, adventureId]);
 
   // == UI STUFF ==
 
@@ -279,8 +278,8 @@ function Map(props: IMapPageProps) {
   // different parts of the UI
   const ui = useMemo(
     () => statusContext.toasts === undefined ? undefined :
-      new MapUi(setUiState, getClientPosition, analyticsContext.logError, statusContext.toasts),
-    [analyticsContext.logError, getClientPosition, setUiState, statusContext.toasts]
+      new MapUi(setUiState, getClientPosition, logError, statusContext.toasts),
+    [logError, getClientPosition, setUiState, statusContext.toasts]
   );
 
   // This is a bit nasty, but if we didn't update our ui object with any new map state machine
@@ -323,12 +322,12 @@ function Map(props: IMapPageProps) {
     }
 
     await ui.mapEditorSave(
-      userContext.dataService,
-      userContext.functionsService,
+      dataService,
+      functionsService,
       map, updated,
-      (message, e) => analyticsContext.logError(message, e)
+      (message, e) => logError(message, e)
     );
-  }, [analyticsContext, map, ui, userContext]);
+  }, [logError, map, ui, dataService, functionsService]);
 
   const handleModalClose = useCallback(() => ui?.modalClose(), [ui]);
   const handleTokenEditorDelete = useCallback(() => ui?.tokenEditorDelete(), [ui]);

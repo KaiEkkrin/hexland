@@ -13,11 +13,11 @@ export interface INetworkStatusProps {
   resyncCount: number;
 }
 
-function NetworkStatus(props: INetworkStatusProps) {
+function NetworkStatus({ resyncCount }: INetworkStatusProps) {
   const buttonBg = useMemo(() => {
-    return props.resyncCount === 0 ? 'success' :
-      props.resyncCount < 3 ? 'warning': 'danger';
-  }, [props.resyncCount]);
+    return resyncCount === 0 ? 'success' :
+      resyncCount < 3 ? 'warning': 'danger';
+  }, [resyncCount]);
 
   return (
     <MapInfoCard title="Network Status" bg={buttonBg} buttonContent={(
@@ -27,7 +27,7 @@ function NetworkStatus(props: INetworkStatusProps) {
         <ListGroup.Item className="Map-info-list-item">
           <div className="Map-network-status-item">
             <div>Recent resyncs</div>
-            <div className="ml-2">{props.resyncCount}</div>
+            <div className="ml-2">{resyncCount}</div>
           </div>
         </ListGroup.Item>
       </ListGroup>

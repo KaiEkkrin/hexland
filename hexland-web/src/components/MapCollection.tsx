@@ -27,10 +27,10 @@ interface IMapCollectionProps {
   pickImage?: ((map: IMapSummary) => void) | undefined;
 }
 
-function MapCollection(props: IMapCollectionProps) {
-  const analyticsContext = useContext(AnalyticsContext);
-  const statusContext = useContext(StatusContext);
-  const userContext = useContext(UserContext);
+function MapCollection({ adventures, maps, showNewMap, deleteMap, pickImage }: IMapCollectionProps) {
+  const { logError } = useContext(AnalyticsContext);
+  const { toasts } = useContext(StatusContext);
+  const { functionsService, user } = useContext(UserContext);
   const history = useHistory();
 
   const [showCloneMap, setShowCloneMap] = useState(false);
@@ -39,8 +39,8 @@ function MapCollection(props: IMapCollectionProps) {
 
   // Clone map state
   const cloneAdventure = useMemo(
-    () => fluent(props.adventures).first(),
-    [props.adventures]
+    () => fluent(adventures).first(),
+    [adventures]
   );
   const [cloneSourceMap, setCloneSourceMap] = useState<IMapSummary | undefined>(undefined);
 
@@ -48,7 +48,7 @@ function MapCollection(props: IMapCollectionProps) {
   const [editId, setEditId] = useState<string | undefined>(undefined);
   const [editName, setEditName] = useState("");
 
-  const canDeleteMap = useMemo(() => props.deleteMap !== undefined, [props.deleteMap]);
+  const canDeleteMap = useMemo(() => deleteMap !== undefined, [deleteMap]);
 
   const handleNewMapClick = useCallback(() => {
     setShowEditMap(true);
@@ -73,7 +73,6 @@ function MapCollection(props: IMapCollectionProps) {
   }, [setEditId, setShowCloneMap, setShowDeleteMap, setShowEditMap]);
 
   const handleNewMapSave = useCallback(async (adventureId: string, map: IMap) => {
-    const functionsService = userContext.functionsService;
     if (functionsService === undefined) {
       return;
     }
@@ -83,37 +82,37 @@ function MapCollection(props: IMapCollectionProps) {
       history.replace('/adventure/' + adventureId + '/map/' + id);
     } catch (e) {
       handleModalClose();
-      analyticsContext.logError('Failed to create map', e);
+      logError('Failed to create map', e);
       const message = String(e.message);
       if (message) {
-        statusContext.toasts.next({ id: uuidv4(), record: {
+        toasts.next({ id: uuidv4(), record: {
           title: "Error creating map", message: message
         }});
       }
     }
-  }, [analyticsContext, handleModalClose, history, statusContext, userContext]);
+  }, [logError, handleModalClose, history, toasts, functionsService]);
 
   const handleDeleteMapSave = useCallback(() => {
     if (editId !== undefined) {
-      props.deleteMap?.(editId);
+      deleteMap?.(editId);
     }
 
     handleModalClose();
-  }, [editId, handleModalClose, props]);
+  }, [editId, handleModalClose, deleteMap]);
 
   // The only adventures available for new maps are ones that we own
   const newMapAdventures = useMemo(
-    () => props.adventures.filter(a => a.owner === userContext.user?.uid),
-    [props.adventures, userContext]
+    () => adventures.filter(a => a.owner === user?.uid),
+    [adventures, user]
   );
 
   return (
     <div>
-      <MapCards showNewMapCard={props.showNewMap} createMap={handleNewMapClick}
-        adventures={props.adventures} maps={props.maps}
+      <MapCards showNewMapCard={showNewMap} createMap={handleNewMapClick}
+        adventures={adventures} maps={maps}
         cloneMap={canDeleteMap ? handleCloneMapClick : undefined}
         deleteMap={canDeleteMap ? handleDeleteMapClick : undefined}
-        pickImage={props.pickImage} />
+        pickImage={pickImage} />
       <MapCloneModal show={showCloneMap} adventure={cloneAdventure} sourceMap={cloneSourceMap}
         handleClose={handleModalClose} />
       <MapEditorModal show={showEditMap} adventures={newMapAdventures} map={undefined}

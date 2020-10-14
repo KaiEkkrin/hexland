@@ -79,6 +79,7 @@ function createTestUser(displayName: string, email: string, providerId: string, 
   return {
     displayName: displayName,
     email: email,
+    emailMd5: "",
     emailVerified: emailVerified ?? true,
     providerId: providerId,
     uid: uid,

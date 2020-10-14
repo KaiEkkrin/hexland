@@ -27,17 +27,17 @@ interface INewMapCardProps {
   handleNewMapClick: (() => void) | undefined;
 }
 
-function NewMapCard(props: INewMapCardProps) {
-  return props.collapsing ? (
+function NewMapCard({ collapsing, handleNewMapClick }: INewMapCardProps) {
+  return collapsing ? (
     <Card bg="dark" text="white">
       <Card.Header>
-        <Button onClick={() => props.handleNewMapClick?.()}>New map</Button>
+        <Button onClick={() => handleNewMapClick?.()}>New map</Button>
       </Card.Header>
     </Card>
   ) : (
     <Card className="mt-4" style={CardStyle} bg="dark" text="white">
       <Card.Body>
-        <Button onClick={() => props.handleNewMapClick?.()}>New map</Button>
+        <Button onClick={() => handleNewMapClick?.()}>New map</Button>
       </Card.Body>
     </Card>
   );
@@ -52,52 +52,52 @@ interface IMapCardProps {
   pickImage: ((map: IMapSummary) => void) | undefined;
 }
 
-function MapCard(props: IMapCardProps) {
+function MapCard({ collapsing, adventures, map, cloneMap, deleteMap, pickImage }: IMapCardProps) {
   const userContext = useContext(UserContext);
 
   // Create various buttons and thingies
 
   const cloneMapButton = useMemo(() => {
-    const key = "clone-" + props.map.id;
-    return props.cloneMap === undefined ? undefined : (
+    const key = "clone-" + map.id;
+    return cloneMap === undefined ? undefined : (
       <OverlayTrigger key={key} placement="top" overlay={
         <Tooltip id={key + "-tooltip"}>Clone map</Tooltip>
       }>
-        <Button variant="secondary" onClick={() => props.cloneMap?.(props.map)}>
+        <Button variant="secondary" onClick={() => cloneMap?.(map)}>
           <FontAwesomeIcon icon={faCopy} color="white" />
         </Button>
       </OverlayTrigger>
     );
-  }, [props]);
+  }, [cloneMap, map]);
 
   const deleteMapButton = useMemo(() => {
-    const key = "delete-" + props.map.id;
-    return props.deleteMap === undefined ? undefined : (
+    const key = "delete-" + map.id;
+    return deleteMap === undefined ? undefined : (
       <OverlayTrigger key={key} placement="top" overlay={
         <Tooltip id={key + "-tooltip"}>Delete map</Tooltip>
       }>
-        <Button variant="danger" onClick={() => props.deleteMap?.(props.map)}>
+        <Button variant="danger" onClick={() => deleteMap?.(map)}>
           <FontAwesomeIcon icon={faTimes} color="white" />
         </Button>
       </OverlayTrigger>
     );
-  }, [props]);
+  }, [deleteMap, map]);
 
   const pickImageButton = useMemo(() => {
-    const key = "pick-" + props.map.id;
-    return props.pickImage === undefined ? undefined : (
+    const key = "pick-" + map.id;
+    return pickImage === undefined ? undefined : (
       <OverlayTrigger key={key} placement="top" overlay={
         <Tooltip id={key + "-tooltip"}>Pick an image</Tooltip>
       }>
-        <Button variant="secondary" onClick={() => props.pickImage?.(props.map)}>
+        <Button variant="secondary" onClick={() => pickImage?.(map)}>
           <FontAwesomeIcon icon={faImage} color="white" />
         </Button>
       </OverlayTrigger>
     );
-  }, [props]);
+  }, [pickImage, map]);
 
   const manageButtons = useMemo(() => {
-    if (props.adventures.find(a => a.id === props.map.adventureId)?.owner !== userContext.user?.uid) {
+    if (adventures.find(a => a.id === map.adventureId)?.owner !== userContext.user?.uid) {
       // We don't own this adventure, so we can't manage the map
       return undefined;
     }
@@ -109,37 +109,37 @@ function MapCard(props: IMapCardProps) {
         {buttons}
       </ButtonGroup>
     );
-  }, [cloneMapButton, deleteMapButton, pickImageButton, props.adventures, props.map, userContext]);
+  }, [cloneMapButton, deleteMapButton, pickImageButton, adventures, map, userContext]);
 
   const content = useMemo(
     () => (
       <React.Fragment>
-        <Card.Subtitle className="text-muted">{props.map.ty} map</Card.Subtitle>
-        <Card.Text>{props.map.description}</Card.Text>
+        <Card.Subtitle className="text-muted">{map.ty} map</Card.Subtitle>
+        <Card.Text>{map.description}</Card.Text>
         <div className="card-row-spaced">
-          <LinkContainer to={"/adventure/" + props.map.adventureId + "/map/" + props.map.id}>
+          <LinkContainer to={"/adventure/" + map.adventureId + "/map/" + map.id}>
             <Card.Link>Open map</Card.Link>
           </LinkContainer>
           {manageButtons}
         </div>
       </React.Fragment>
     ),
-    [props.map, manageButtons]
+    [map, manageButtons]
   );
 
-  return props.collapsing ? (
-    <Card bg="dark" text="white" key={props.map.id}>
-      <ExpansionToggle direction="down" eventKey={props.map.id}>{props.map.name}</ExpansionToggle>
-      <Accordion.Collapse eventKey={props.map.id}>
+  return collapsing ? (
+    <Card bg="dark" text="white" key={map.id}>
+      <ExpansionToggle direction="down" eventKey={map.id}>{map.name}</ExpansionToggle>
+      <Accordion.Collapse eventKey={map.id}>
         <Card.Body>
           {content}
         </Card.Body>
       </Accordion.Collapse>
     </Card>
   ) : (
-    <Card className="mt-4" style={CardStyle} bg="dark" text="white" key={props.map.id}>
-      <ImageCardContent altName={props.map.name} imagePath={props.map.imagePath}>
-        <Card.Title>{props.map.name}</Card.Title>
+    <Card className="mt-4" style={CardStyle} bg="dark" text="white" key={map.id}>
+      <ImageCardContent altName={map.name} imagePath={map.imagePath}>
+        <Card.Title>{map.name}</Card.Title>
         {content}
       </ImageCardContent>
     </Card>

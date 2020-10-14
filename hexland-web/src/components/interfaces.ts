@@ -3,7 +3,7 @@ import { IIdentified } from '../data/identified';
 import { IDataService, IUser, IAuth, IAuthProvider, IAnalytics, IFunctionsService, IStorage } from '../services/interfaces';
 
 export interface IContextProviderProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
  
 export interface IFirebaseContext {

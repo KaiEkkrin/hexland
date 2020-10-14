@@ -23,7 +23,9 @@ interface ITokenEditorModalProps {
   handleSave: (properties: ITokenProperties) => void;
 }
 
-function TokenEditorModal(props: ITokenEditorModalProps) {
+function TokenEditorModal(
+  { selectedColour, sizes, show, token, players, handleClose, handleDelete, handleSave }: ITokenEditorModalProps
+) {
   const [text, setText] = useState("");
   const [colour, setColour] = useState(0);
   const [size, setSize] = useState<TokenSize>("1");
@@ -32,15 +34,15 @@ function TokenEditorModal(props: ITokenEditorModalProps) {
   const [noteVisibleToPlayers, setNoteVisibleToPlayers] = useState(true);
 
   useEffect(() => {
-    if (props.show) {
-      setText(props.token?.text ?? "");
-      setColour(props.token?.colour ?? props.selectedColour);
-      setSize(props.token?.size ?? "1");
-      setPlayerIds(props.token?.players ?? []);
-      setNote(props.token?.note ?? "");
-      setNoteVisibleToPlayers(props.token?.noteVisibleToPlayers ?? false);
+    if (show) {
+      setText(token?.text ?? "");
+      setColour(token?.colour ?? selectedColour);
+      setSize(token?.size ?? "1");
+      setPlayerIds(token?.players ?? []);
+      setNote(token?.note ?? "");
+      setNoteVisibleToPlayers(token?.noteVisibleToPlayers ?? false);
     }
-  }, [props.selectedColour, props.show, props.token]);
+  }, [selectedColour, show, token]);
 
   const [saveDisabled, setSaveDisabled] = useState(false);
   useEffect(() => {
@@ -48,8 +50,8 @@ function TokenEditorModal(props: ITokenEditorModalProps) {
   }, [text]);
 
   const sizeOptions = useMemo(
-    () => props.sizes?.map(sz => (<option key={sz} value={sz}>{sz}</option>)),
-    [props.sizes]
+    () => sizes?.map(sz => (<option key={sz} value={sz}>{sz}</option>)),
+    [sizes]
   );
   const sizeString = useMemo(() => String(size), [size]);
   const handleSizeChange = useCallback((e: React.FormEvent<HTMLSelectElement>) => {
@@ -61,21 +63,21 @@ function TokenEditorModal(props: ITokenEditorModalProps) {
     setNoteVisibleToPlayers(e.currentTarget.checked);
   }, [setNoteVisibleToPlayers]);
 
-  const handleSave = useCallback(() => {
-    props.handleSave({
+  const doHandleSave = useCallback(() => {
+    handleSave({
       colour: colour,
       // If this was a new token, make a new id for it
-      id: props.token === undefined ? uuidv4() : props.token.id,
+      id: token === undefined ? uuidv4() : token.id,
       text: text,
       players: playerIds,
       size: size,
       note: note,
       noteVisibleToPlayers: noteVisibleToPlayers
     });
-  }, [colour, note, noteVisibleToPlayers, playerIds, props, size, text]);
+  }, [colour, note, noteVisibleToPlayers, playerIds, handleSave, token, size, text]);
 
   return (
-    <Modal show={props.show} onHide={props.handleClose}>
+    <Modal show={show} onHide={handleClose}>
       <Modal.Header closeButton>
         <Modal.Title>Token</Modal.Title>
       </Modal.Header>
@@ -110,7 +112,7 @@ function TokenEditorModal(props: ITokenEditorModalProps) {
           </Form.Group>
           <Form.Group>
             <Form.Label htmlFor="tokenPlayerSelect">Assigned to players</Form.Label>
-            <TokenPlayerSelection id="tokenPlayerSelect" players={props.players}
+            <TokenPlayerSelection id="tokenPlayerSelect" players={players}
               tokenPlayerIds={playerIds} setTokenPlayerIds={setPlayerIds} />
           </Form.Group>
           <Form.Group>
@@ -120,11 +122,11 @@ function TokenEditorModal(props: ITokenEditorModalProps) {
         </Form>
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="danger" onClick={props.handleDelete}>Delete</Button>
-        <Button variant="secondary" onClick={props.handleClose}>Close</Button>
+        <Button variant="danger" onClick={handleDelete}>Delete</Button>
+        <Button variant="secondary" onClick={handleClose}>Close</Button>
         <Button variant="primary"
           disabled={saveDisabled}
-          onClick={handleSave}>Save</Button>
+          onClick={doHandleSave}>Save</Button>
       </Modal.Footer>
     </Modal>
   );

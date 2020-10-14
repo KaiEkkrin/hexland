@@ -47,47 +47,49 @@ interface IMapContextMenuProps {
 }
 
 // We replace the context menu with this when the map is seen.
-function MapContextMenu(props: IMapContextMenuProps) {
-  const hidden = useMemo(() => !props.show, [props.show]);
-  const tokenLabel = useMemo(() => props.token === undefined ? "Add token" : "Edit token " + props.token.text, [props.token]);
-  const showFlipTokenLabel = useMemo(() => props.token !== undefined && props.token.size.length > 1, [props.token]);
-  const noteLabel = useMemo(() => props.note === undefined ? "Add note" : "Edit note", [props.note]);
+function MapContextMenu(
+  { show, hide, x, y, pageRight, pageBottom, token, note, editToken, flipToken, editNote, editMode, setEditMode }: IMapContextMenuProps
+) {
+  const hidden = useMemo(() => !show, [show]);
+  const tokenLabel = useMemo(() => token === undefined ? "Add token" : "Edit token " + token.text, [token]);
+  const showFlipTokenLabel = useMemo(() => token !== undefined && token.size.length > 1, [token]);
+  const noteLabel = useMemo(() => note === undefined ? "Add note" : "Edit note", [note]);
 
-  const left = useMemo(() => props.x > props.pageRight / 2 ? undefined : props.x, [props.x, props.pageRight]);
-  const right = useMemo(() => props.x > props.pageRight / 2 ? props.pageRight - props.x : undefined, [props.x, props.pageRight]);
+  const left = useMemo(() => x > pageRight / 2 ? undefined : x, [x, pageRight]);
+  const right = useMemo(() => x > pageRight / 2 ? pageRight - x : undefined, [x, pageRight]);
 
-  const top = useMemo(() => props.y > props.pageBottom / 2 ? undefined : props.y, [props.y, props.pageBottom]);
-  const bottom = useMemo(() => props.y > props.pageBottom / 2 ? props.pageBottom - props.y : undefined, [props.y, props.pageBottom]);
+  const top = useMemo(() => y > pageBottom / 2 ? undefined : y, [y, pageBottom]);
+  const bottom = useMemo(() => y > pageBottom / 2 ? pageBottom - y : undefined, [y, pageBottom]);
 
   const handleTokenClick = useCallback(() => {
-    props.editToken();
-    props.hide();
-  }, [props]);
+    editToken();
+    hide();
+  }, [editToken, hide]);
 
   const handleFlipTokenClick = useCallback(() => {
-    props.flipToken();
-    props.hide();
-  }, [props]);
+    flipToken();
+    hide();
+  }, [flipToken, hide]);
 
   const handleNoteClick = useCallback(() => {
-    props.editNote();
-    props.hide();
-  }, [props]);
+    editNote();
+    hide();
+  }, [editNote, hide]);
 
   const setAreaMode = useCallback(() => {
-    props.setEditMode(EditMode.Area);
-    props.hide();
-  }, [props]);
+    setEditMode(EditMode.Area);
+    hide();
+  }, [setEditMode, hide]);
 
   const setWallMode = useCallback(() => {
-    props.setEditMode(EditMode.Wall);
-    props.hide();
-  }, [props]);
+    setEditMode(EditMode.Wall);
+    hide();
+  }, [setEditMode, hide]);
 
   const setRoomMode = useCallback(() => {
-    props.setEditMode(EditMode.Room);
-    props.hide();
-  }, [props]);
+    setEditMode(EditMode.Room);
+    hide();
+  }, [setEditMode, hide]);
 
   return (
     <Card bg="dark" text="white" hidden={hidden} style={{

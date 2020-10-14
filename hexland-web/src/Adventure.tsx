@@ -40,11 +40,11 @@ interface IAdventureProps {
   adventureId: string;
 }
 
-function Adventure(props: IAdventureProps) {
-  const userContext = useContext(UserContext);
-  const analyticsContext = useContext(AnalyticsContext);
+function Adventure({ adventureId }: IAdventureProps) {
+  const { dataService, functionsService, user } = useContext(UserContext);
+  const { analytics, logError } = useContext(AnalyticsContext);
   const profile = useContext(ProfileContext);
-  const statusContext = useContext(StatusContext);
+  const { toasts } = useContext(StatusContext);
   const history = useHistory();
 
   const userPolicy = useMemo(
@@ -54,28 +54,28 @@ function Adventure(props: IAdventureProps) {
 
   const [adventure, setAdventure] = useState<IIdentified<IAdventure> | undefined>(undefined);
   useEffect(() => {
-    const uid = userContext.user?.uid;
+    const uid = user?.uid;
     if (uid === undefined) {
       return;
     }
 
-    const d = userContext.dataService?.getAdventureRef(props.adventureId);
-    const playerRef = userContext.dataService?.getPlayerRef(props.adventureId, uid);
+    const d = dataService?.getAdventureRef(adventureId);
+    const playerRef = dataService?.getPlayerRef(adventureId, uid);
     if (d === undefined || playerRef === undefined) {
       return;
     }
 
     // How to handle an adventure load failure.
     function couldNotLoad(message: string) {
-      statusContext.toasts.next({
+      toasts.next({
         id: uuidv4(),
         record: { title: 'Error loading adventure', message: message }
       });
 
-      const uid = userContext.user?.uid;
+      const uid = user?.uid;
       if (uid && d) {
-        removeAdventureFromRecent(userContext.dataService, uid, d.id)
-          .catch(e => analyticsContext.logError("Error removing adventure from recent", e));
+        removeAdventureFromRecent(dataService, uid, d.id)
+          .catch(e => logError("Error removing adventure from recent", e));
       }
 
       history.replace('/');
@@ -86,7 +86,7 @@ function Adventure(props: IAdventureProps) {
     // we're blocked; being blocked necessarily doesn't stop us from getting the adventure
     // from the db (only the maps), but showing it to the user in that state would *not*
     // be a helpful thing to do
-    userContext.dataService?.get(playerRef)
+    dataService?.get(playerRef)
       .then(r => {
         // Deliberately try not to show the player the difference between the adventure being
         // deleted and the player being blocked!  Might avoid a confrontation...
@@ -95,41 +95,41 @@ function Adventure(props: IAdventureProps) {
         }
       })
       .catch(e => {
-        analyticsContext.logError("Error checking for adventure " + props.adventureId + ": ", e);
+        logError("Error checking for adventure " + adventureId + ": ", e);
         couldNotLoad(e.message);
       });
 
-    analyticsContext.analytics?.logEvent("select_content", {
+    analytics?.logEvent("select_content", {
       "content_type": "adventure",
-      "item_id": props.adventureId
+      "item_id": adventureId
     });
-    return userContext.dataService?.watch(d,
-      a => setAdventure(a === undefined ? undefined : { id: props.adventureId, record: a }),
-      e => analyticsContext.logError("Error watching adventure " + props.adventureId + ": ", e));
-  }, [userContext, analyticsContext, history, props.adventureId, statusContext]);
+    return dataService?.watch(d,
+      a => setAdventure(a === undefined ? undefined : { id: adventureId, record: a }),
+      e => logError("Error watching adventure " + adventureId + ": ", e));
+  }, [dataService, user, analytics, logError, history, adventureId, toasts]);
 
   const title = useMemo(() => {
-    if (adventure?.record.owner !== userContext.user?.uid) {
+    if (adventure?.record.owner !== user?.uid) {
       return adventure?.record.name ?? "";
     }
 
     return (adventure?.record.name ?? "") + " (" + (adventure?.record.maps.length ?? 0) + "/" + (userPolicy?.maps ?? 0) + ")";
-  }, [adventure, userContext, userPolicy]);
+  }, [adventure, user, userPolicy]);
 
   // Track changes to the adventure
   useEffect(() => {
-    const uid = userContext.user?.uid;
+    const uid = user?.uid;
     if (
-      userContext.dataService === undefined || adventure === undefined ||
+      dataService === undefined || adventure === undefined ||
       uid === undefined
     ) {
       return;
     }
 
-    registerAdventureAsRecent(userContext.dataService, uid, adventure.id, adventure.record)
+    registerAdventureAsRecent(dataService, uid, adventure.id, adventure.record)
       .then(() => console.log("registered adventure " + adventure.id + " as recent"))
-      .catch(e => analyticsContext.logError("Failed to register adventure " + adventure.id + " as recent", e));
-  }, [analyticsContext, userContext, adventure]);
+      .catch(e => logError("Failed to register adventure " + adventure.id + " as recent", e));
+  }, [logError, dataService, user, adventure]);
 
   // Derive the adventures list for the map collection
   const adventures = useMemo(
@@ -146,54 +146,54 @@ function Adventure(props: IAdventureProps) {
   );
 
   useEffect(() => {
-    if (props.adventureId) {
+    if (adventureId) {
       setCreateInviteButtonDisabled(false);
     }
-  }, [props.adventureId, setCreateInviteButtonDisabled]);
+  }, [adventureId, setCreateInviteButtonDisabled]);
 
   // Invitations
   const [inviteLink, setInviteLink] = useState<string | undefined>(undefined);
   const createInviteLink = useCallback(() => {
-    if (adventure === undefined || userContext.functionsService === undefined) {
+    if (adventure === undefined || functionsService === undefined) {
       return;
     }
 
     setCreateInviteButtonDisabled(true);
-    analyticsContext.analytics?.logEvent("share", { "content_type": "adventure", "item_id": props.adventureId });
-    userContext.functionsService.inviteToAdventure(adventure.id)
-      .then(l => setInviteLink(props.adventureId + "/invite/" + l))
+    analytics?.logEvent("share", { "content_type": "adventure", "item_id": adventureId });
+    functionsService.inviteToAdventure(adventure.id)
+      .then(l => setInviteLink(adventureId + "/invite/" + l))
       .catch(e => {
         setCreateInviteButtonDisabled(false);
-        analyticsContext.logError("Failed to create invite link for " + props.adventureId, e);
+        logError("Failed to create invite link for " + adventureId, e);
       });
-  }, [adventure, analyticsContext, props.adventureId, setCreateInviteButtonDisabled, setInviteLink, userContext]);
+  }, [adventure, analytics, logError, adventureId, setCreateInviteButtonDisabled, setInviteLink, functionsService]);
 
   // Adventure editing support
   const [players, setPlayers] = useState<IPlayer[]>([]);
   useEffect(() => {
-    if (userContext.dataService === undefined) {
+    if (dataService === undefined) {
       setPlayers([]);
       return () => {};
     }
 
-    return userContext.dataService.watchPlayers(
-      props.adventureId,
+    return dataService.watchPlayers(
+      adventureId,
       setPlayers,
-      e => analyticsContext.logError("Failed to watch players of adventure " + props.adventureId, e)
+      e => logError("Failed to watch players of adventure " + adventureId, e)
     );
-  }, [analyticsContext, userContext.dataService, props.adventureId]);
+  }, [logError, dataService, adventureId]);
 
   const playersTitle = useMemo(() => {
-    if (adventure?.record.owner !== userContext.user?.uid) {
+    if (adventure?.record.owner !== user?.uid) {
       return "Players";
     }
     
     return "Players (" + players.filter(p => p.allowed !== false).length + "/" + (userPolicy?.players ?? 0) + ")";
-  }, [adventure, players, userContext, userPolicy]);
+  }, [adventure, players, user, userPolicy]);
 
   const canEditAdventure = useMemo(
-    () => adventure?.record.owner === userContext.user?.uid,
-    [userContext.user, adventure]
+    () => adventure?.record.owner === user?.uid,
+    [user, adventure]
   );
 
   const canCreateNewMap = useMemo(() => {
@@ -224,14 +224,14 @@ function Adventure(props: IAdventureProps) {
 
   // Support for leaving the adventure
   const canLeaveAdventure = useMemo(
-    () => adventure?.record.owner !== userContext.user?.uid,
-    [userContext.user, adventure]
+    () => adventure?.record.owner !== user?.uid,
+    [user, adventure]
   );
   const [showLeaveAdventure, setShowLeaveAdventure] = useState(false);
 
   // Support for the players list
   const ownerUid = useMemo(() => adventure?.record.owner, [adventure]);
-  const showBlockButtons = useMemo(() => ownerUid === userContext.user?.uid, [ownerUid, userContext.user]);
+  const showBlockButtons = useMemo(() => ownerUid === user?.uid, [ownerUid, user]);
   const showShowBlockedToggle = useMemo(
     () => showBlockButtons && players.find(p => p.allowed === false) !== undefined,
     [showBlockButtons, players]
@@ -270,12 +270,12 @@ function Adventure(props: IAdventureProps) {
       return;
     }
 
-    const playerRef = userContext.dataService?.getPlayerRef(props.adventureId, playerToBlock.playerId);
+    const playerRef = dataService?.getPlayerRef(adventureId, playerToBlock.playerId);
     if (playerRef !== undefined) {
-      userContext.dataService?.update(playerRef, { allowed: allowed })
-        .catch(e => analyticsContext.logError("Failed to block/unblock player", e));
+      dataService?.update(playerRef, { allowed: allowed })
+        .catch(e => logError("Failed to block/unblock player", e));
     }
-  }, [analyticsContext, handleModalClose, playerToBlock, props.adventureId, userContext.dataService]);
+  }, [logError, handleModalClose, playerToBlock, adventureId, dataService]);
 
   const handleShowEditAdventure = useCallback(() => {
     if (adventure === undefined) {
@@ -319,13 +319,13 @@ function Adventure(props: IAdventureProps) {
     };
 
     await editAdventure(
-      userContext.dataService, userContext.user?.uid, summariseAdventure(props.adventureId, updated)
+      dataService, user?.uid, summariseAdventure(adventureId, updated)
     );
-  }, [userContext, props.adventureId, adventure, editAdventureName, editAdventureDescription, handleModalClose]);
+  }, [dataService, user, adventureId, adventure, editAdventureName, editAdventureDescription, handleModalClose]);
 
   const handleImagePickerSave = useCallback((path: string | undefined) => {
     handleModalClose();
-    if (adventure === undefined || userContext.dataService === undefined) {
+    if (adventure === undefined || dataService === undefined) {
       return;
     }
 
@@ -333,14 +333,17 @@ function Adventure(props: IAdventureProps) {
     if (pickImageForMap === undefined) {
       const updated: IAdventure = { ...adventure.record, imagePath: path ?? "" };
       editAdventure(
-        userContext.dataService, userContext.user?.uid, summariseAdventure(props.adventureId, updated)
+        dataService, user?.uid, summariseAdventure(adventureId, updated)
       )
-        .then(() => console.log(`Adventure ${props.adventureId} successfully edited`))
-        .catch(e => analyticsContext.logError(`Error editing adventure ${props.adventureId}`, e));
+        .then(() => console.log(`Adventure ${adventureId} successfully edited`))
+        .catch(e => logError(`Error editing adventure ${adventureId}`, e));
     } else {
-      const dataService = userContext.dataService;
       const mapSummary = pickImageForMap;
       async function getAndUpdateMap() {
+        if (dataService === undefined) {
+          return;
+        }
+
         // This is not transactional when it ought to be, but I'm not expecting that
         // two concurrent, conflicting writes to the same map record would be very likely
         const map = await dataService.get(dataService.getMapRef(
@@ -351,52 +354,52 @@ function Adventure(props: IAdventureProps) {
         }
 
         const updated: IMap = { ...map, imagePath: path ?? "" };
-        await editMap(userContext.dataService, mapSummary.adventureId, mapSummary.id, updated);
+        await editMap(dataService, mapSummary.adventureId, mapSummary.id, updated);
       }
 
       getAndUpdateMap()
         .then(() => console.log(`Map ${mapSummary.id} successfully edited`))
-        .catch(e => analyticsContext.logError(`Error editing map ${mapSummary.id}`, e));
+        .catch(e => logError(`Error editing map ${mapSummary.id}`, e));
     }
-  }, [adventure, analyticsContext, handleModalClose, pickImageForMap, props.adventureId, userContext]);
+  }, [adventure, logError, handleModalClose, pickImageForMap, adventureId, dataService, user]);
 
   const handleImageDeletionSave = useCallback(() => {
     handleModalClose();
-    if (imageToDelete === undefined || userContext.functionsService === undefined) {
+    if (imageToDelete === undefined || functionsService === undefined) {
       return;
     }
 
-    userContext.functionsService.deleteImage(imageToDelete.path)
+    functionsService.deleteImage(imageToDelete.path)
       .then(() => console.log(`deleted image ${imageToDelete.path}`))
-      .catch(e => analyticsContext.logError(`failed to delete image ${imageToDelete}`, e));
-  }, [analyticsContext, handleModalClose, imageToDelete, userContext.functionsService]);
+      .catch(e => logError(`failed to delete image ${imageToDelete}`, e));
+  }, [logError, handleModalClose, imageToDelete, functionsService]);
 
   const handleDeleteAdventureSave = useCallback(() => {
     handleModalClose();
-    deleteAdventure(userContext.dataService, userContext.user?.uid, props.adventureId)
+    deleteAdventure(dataService, user?.uid, adventureId)
       .then(() => {
-        console.log("Adventure " + props.adventureId + " successfully deleted");
+        console.log("Adventure " + adventureId + " successfully deleted");
         history.replace("/");
       })
-      .catch(e => analyticsContext.logError("Error deleting adventure " + props.adventureId, e));
-  }, [userContext, props.adventureId, history, handleModalClose, analyticsContext]);
+      .catch(e => logError("Error deleting adventure " + adventureId, e));
+  }, [dataService, user, adventureId, history, handleModalClose, logError]);
 
   const handleLeaveAdventureSave = useCallback(() => {
     handleModalClose();
-    leaveAdventure(userContext.dataService, userContext.user?.uid, props.adventureId)
+    leaveAdventure(dataService, user?.uid, adventureId)
       .then(() => {
-        console.log("Successfully left adventure " + props.adventureId);
+        console.log("Successfully left adventure " + adventureId);
         history.replace("/");
       })
-      .catch(e => analyticsContext.logError("Error leaving adventure " + props.adventureId, e));
-  }, [userContext, analyticsContext, props.adventureId, handleModalClose, history]);
+      .catch(e => logError("Error leaving adventure " + adventureId, e));
+  }, [dataService, user, logError, adventureId, handleModalClose, history]);
 
   const maps = useMemo(() => adventure?.record.maps ?? [], [adventure]);
   const mapDelete = useCallback((id: string) => {
-    deleteMap(userContext.dataService, userContext.user?.uid, props.adventureId, id)
+    deleteMap(dataService, user?.uid, adventureId, id)
       .then(() => console.log("Map " + id + " successfully deleted"))
-      .catch(e => analyticsContext.logError("Error deleting map " + id, e));
-  }, [userContext, props.adventureId, analyticsContext]);
+      .catch(e => logError("Error deleting map " + id, e));
+  }, [dataService, user, adventureId, logError]);
 
   return (
     <div>

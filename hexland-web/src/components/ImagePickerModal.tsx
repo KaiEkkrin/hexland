@@ -35,10 +35,10 @@ interface IImagePickerModalProps {
   handleSave: (path: string | undefined) => void;
 }
 
-function ImagePickerModal(props: IImagePickerModalProps) {
-  const analyticsContext = useContext(AnalyticsContext);
+function ImagePickerModal({ show, handleClose, handleDelete, handleSave }: IImagePickerModalProps) {
+  const { logError } = useContext(AnalyticsContext);
   const profile = useContext(ProfileContext);
-  const userContext = useContext(UserContext);
+  const { dataService, storageService, user } = useContext(UserContext);
 
   const maxImages = useMemo(
     () => profile === undefined ? undefined : getUserPolicy(profile.level).images,
@@ -48,35 +48,35 @@ function ImagePickerModal(props: IImagePickerModalProps) {
 
   // Reset the status when the dialog is opened
   useEffect(() => {
-    if (props.show === true) {
+    if (show === true) {
       setStatus({ message: "" });
     }
-  }, [props.show, setStatus]);
+  }, [show, setStatus]);
 
   // File uploads
 
   const handleFileChange = useCallback((e: any) => {
-    if (!userContext.storageService || !userContext.user) {
+    if (!storageService || !user) {
       return;
     }
 
-    const path = "/images/" + userContext.user.uid + "/" + uuidv4();
+    const path = "/images/" + user.uid + "/" + uuidv4();
     const file = e.target.files[0] as File;
     if (!file) {
       return;
     }
 
     setStatus({ message: `Uploading ${file.name}...` });
-    userContext.storageService.ref(path).put(file, {
+    storageService.ref(path).put(file, {
       customMetadata: {
         originalName: file.name
       }
     }).then(() => setStatus({ message: `Processing ${file.name}...` })) // will be replaced when the onUpload function finishes
       .catch(e => {
         setStatus({ message: "Upload failed: " + e.message, isError: true });
-        analyticsContext.logError("Upload failed", e);
+        logError("Upload failed", e);
       });
-  }, [analyticsContext, setStatus, userContext]);
+  }, [logError, setStatus, storageService, user]);
 
   // Image view
   // The bootstrap carousel appears to be entirely busted under these circumstances (images are always 0 high)
@@ -84,13 +84,13 @@ function ImagePickerModal(props: IImagePickerModalProps) {
 
   const [images, setImages] = useState<IImage[]>([]);
   useEffect(() => {
-    if (!userContext.dataService || !userContext.user) {
+    if (!dataService || !user) {
       return undefined;
     }
 
-    const imagesRef = userContext.dataService.getImagesRef(userContext.user.uid);
+    const imagesRef = dataService.getImagesRef(user.uid);
     console.log("watching images");
-    return userContext.dataService.watch(
+    return dataService.watch(
       imagesRef,
       r => {
         setImages(r?.images ?? []);
@@ -98,9 +98,9 @@ function ImagePickerModal(props: IImagePickerModalProps) {
           setStatus({ message: r.lastError, isError: r.lastError.length > 0 });
         }
       },
-      e => analyticsContext.logError("Error watching images", e)
+      e => logError("Error watching images", e)
     );
-  }, [analyticsContext, setImages, setStatus, userContext]);
+  }, [logError, setImages, setStatus, dataService, user]);
 
   const [index, setIndex] = useReducer(
     (state: number, action: number) => action === 0 ? 0 : state + action,
@@ -144,26 +144,26 @@ function ImagePickerModal(props: IImagePickerModalProps) {
 
   const activeImagePath = useMemo(() => activeImage?.path, [activeImage]);
   const saveDisabled = useMemo(() => activeImagePath === undefined, [activeImagePath]);
-  const handleSave = useCallback(() => {
+  const doHandleSave = useCallback(() => {
     if (activeImagePath === undefined) {
       return;
     }
 
-    props.handleSave(activeImagePath);
-  }, [activeImagePath, props]);
+    handleSave(activeImagePath);
+  }, [activeImagePath, handleSave]);
 
-  const handleDelete = useCallback(() => {
+  const doHandleDelete = useCallback(() => {
     if (activeImage === undefined) {
       return;
     }
 
-    props.handleDelete(activeImage);
-  }, [activeImage, props]);
+    handleDelete(activeImage);
+  }, [activeImage, handleDelete]);
 
-  const handleUseNone = useCallback(() => { props.handleSave(undefined); }, [props]);
+  const handleUseNone = useCallback(() => { handleSave(undefined); }, [handleSave]);
 
   return (
-    <Modal show={props.show} onHide={props.handleClose}>
+    <Modal show={show} onHide={handleClose}>
       <Modal.Header closeButton>
         <Modal.Title>Choose image ({images.length}/{maxImages})</Modal.Title>
       </Modal.Header>
@@ -182,7 +182,7 @@ function ImagePickerModal(props: IImagePickerModalProps) {
           </Button>
           {shownItem}
           <div className="App-image-collection-item">
-            <Button variant="danger" disabled={saveDisabled} onClick={handleDelete}>
+            <Button variant="danger" disabled={saveDisabled} onClick={doHandleDelete}>
               <FontAwesomeIcon icon={faTimes} color="white" />
             </Button>
             <Button variant="primary" disabled={goForwardDisabled} onClick={goForward}>
@@ -194,8 +194,8 @@ function ImagePickerModal(props: IImagePickerModalProps) {
       </Modal.Body>
       <Modal.Footer>
         <Button variant="warning" onClick={handleUseNone}>Use no image</Button>
-        <Button variant="secondary" onClick={props.handleClose}>Close</Button>
-        <Button variant="primary" disabled={saveDisabled} onClick={handleSave}>Use this image</Button>
+        <Button variant="secondary" onClick={handleClose}>Close</Button>
+        <Button variant="primary" disabled={saveDisabled} onClick={doHandleSave}>Use this image</Button>
       </Modal.Footer>
     </Modal>
   );

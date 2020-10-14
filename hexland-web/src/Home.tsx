@@ -14,12 +14,12 @@ import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 
 function LatestColumn() {
-  const userContext = useContext(UserContext);
+  const { user } = useContext(UserContext);
   const profile = useContext(ProfileContext);
 
   const myAdventures = useMemo(
-    () => profile?.adventures?.filter(a => a.owner === userContext.user?.uid) ?? [],
-    [profile, userContext.user]
+    () => profile?.adventures?.filter(a => a.owner === user?.uid) ?? [],
+    [profile, user]
   );
 
   const showNewMap = useMemo(() => myAdventures.length > 0, [myAdventures]);
@@ -36,14 +36,14 @@ function LatestColumn() {
         />
       <h5 className="mt-4">Latest adventures</h5>
       <AdventureCollection
-        uid={userContext.user?.uid}
+        uid={user?.uid}
         adventures={adventures} showNewAdventure={true} />
     </div>
   );
 }
 
 function Home() {
-  const userContext = useContext(UserContext);
+  const { user } = useContext(UserContext);
 
   // We keep the change list state here
   const [changeCount, toggleChangeCount] = useReducer(
@@ -61,7 +61,7 @@ function Home() {
       </Col>
     ];
 
-    if (userContext.user) {
+    if (user) {
       columnArray.splice(0, 0,
         <Col key="latest" xl={{ order: 'last' }}
           lg={{ order: 'last', span: 4 }}
@@ -74,12 +74,12 @@ function Home() {
     }
 
     return columnArray;
-  }, [changeCount, toggleChangeCount, userContext.user]);
+  }, [changeCount, toggleChangeCount, user]);
 
   // Changing the container fluidity lets us take up more of the screen when we have two
   // TODO On narrower screens, make the latest column collapse into a side bar instead,
   // with a pull-out to expand it to the whole window and disappear the introduction?
-  const containerFluid = useMemo(() => userContext.user ? true : undefined, [userContext.user]);
+  const containerFluid = useMemo(() => user ? true : undefined, [user]);
 
   return (
     <div>

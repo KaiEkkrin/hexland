@@ -11,27 +11,27 @@ interface IImageCollectionItemProps {
   image: IImage;
 }
 
-function ImageCollectionItem(props: IImageCollectionItemProps) {
-  const analyticsContext = useContext(AnalyticsContext);
-  const userContext = useContext(UserContext);
+function ImageCollectionItem({ image }: IImageCollectionItemProps) {
+  const { logError } = useContext(AnalyticsContext);
+  const { storageService } = useContext(UserContext);
   const [url, setUrl] = useState("");
 
   useEffect(() => {
-    if (!userContext.storageService) {
+    if (!storageService) {
       return;
     }
 
-    const sub = from(userContext.storageService.ref(props.image.path).getDownloadURL()).subscribe(
+    const sub = from(storageService.ref(image.path).getDownloadURL()).subscribe(
       u => setUrl(String(u)),
-      e => analyticsContext.logError("Failed to get download URL for image " + props.image.path, e)
+      e => logError("Failed to get download URL for image " + image.path, e)
     );
     return () => sub.unsubscribe();
-  }, [analyticsContext, userContext.storageService, props.image, setUrl]);
+  }, [logError, storageService, image, setUrl]);
 
   return (
     <div className="App-image-collection-item">
-      <img className="App-image-collection-image" src={url} alt={props.image.name} />
-      <p>{props.image.name}</p>
+      <img className="App-image-collection-image" src={url} alt={image.name} />
+      <p>{image.name}</p>
     </div>
   );
 }

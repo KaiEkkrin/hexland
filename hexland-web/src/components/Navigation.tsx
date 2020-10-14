@@ -33,7 +33,7 @@ interface IChangePasswordModalProps {
   handleChange: (oldPassword: string, newPassword: string) => void;
 }
 
-function ChangePasswordModal(props: IChangePasswordModalProps) {
+function ChangePasswordModal({ shown, handleClose, handleChange }: IChangePasswordModalProps) {
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -43,13 +43,13 @@ function ChangePasswordModal(props: IChangePasswordModalProps) {
     [oldPassword, newPassword, confirmPassword]
   );
 
-  const handleChange = useCallback(
-    () => props.handleChange(oldPassword, newPassword),
-    [props, oldPassword, newPassword]
+  const doHandleChange = useCallback(
+    () => handleChange(oldPassword, newPassword),
+    [handleChange, oldPassword, newPassword]
   );
 
   return (
-    <Modal show={props.shown} onHide={props.handleClose}>
+    <Modal show={shown} onHide={handleClose}>
       <Modal.Header closeButton>
         <Modal.Title>Change password</Modal.Title>
       </Modal.Header>
@@ -74,8 +74,8 @@ function ChangePasswordModal(props: IChangePasswordModalProps) {
         </Form.Group>
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="secondary" onClick={props.handleClose}>Close</Button>
-        <Button variant="primary" disabled={changeDisabled} onClick={handleChange}>Change password</Button>
+        <Button variant="secondary" onClick={handleClose}>Close</Button>
+        <Button variant="primary" disabled={changeDisabled} onClick={doHandleChange}>Change password</Button>
       </Modal.Footer>
     </Modal>
   );
@@ -172,31 +172,31 @@ function Avatar(props: { children?: React.ReactNode }) {
 }
 
 function NavLogin() {
-  const firebaseContext = useContext(FirebaseContext);
-  const userContext = useContext(UserContext);
-  const signInMethodsContext = useContext(SignInMethodsContext);
+  const { auth } = useContext(FirebaseContext);
+  const { dataService, user } = useContext(UserContext);
+  const { signInMethods } = useContext(SignInMethodsContext);
   const profile = useContext(ProfileContext);
   const statusContext = useContext(StatusContext);
-  const analyticsContext = useContext(AnalyticsContext);
+  const { enabled, setEnabled, logError } = useContext(AnalyticsContext);
 
   const isPasswordUser = useMemo(
-    () => signInMethodsContext.signInMethods.find(m => /password/i.test(m)) !== undefined,
-    [signInMethodsContext.signInMethods]
+    () => signInMethods.find(m => /password/i.test(m)) !== undefined,
+    [signInMethods]
   );
 
   const displayName = useMemo(
-    () => profile?.name ?? userContext.user?.displayName ?? "",
-    [profile, userContext.user]
+    () => profile?.name ?? user?.displayName ?? "",
+    [profile, user]
   );
 
   const handleSignOut = useCallback(() => {
-    firebaseContext.auth?.signOut()
-      .catch(e => analyticsContext.logError("Error signing out: ", e));
+    auth?.signOut()
+      .catch(e => logError("Error signing out: ", e));
 
     // Clear locally cached profile properties
     localStorage.removeItem("profile.image");
     localStorage.removeItem("profile.emailMd5");
-  }, [firebaseContext.auth, analyticsContext]);
+  }, [auth, logError]);
   
   const [showChangePassword, setShowChangePassword] = useState(false);
 
@@ -209,9 +209,9 @@ function NavLogin() {
   const handleEditProfile = useCallback(() => {
     setShowChangePassword(false);
     setEditDisplayName(displayName);
-    setEditAnalyticsEnabled(analyticsContext.enabled);
+    setEditAnalyticsEnabled(enabled);
     setShowEditProfile(true);
-  }, [analyticsContext, displayName, setEditAnalyticsEnabled, setEditDisplayName, setShowChangePassword, setShowEditProfile]);
+  }, [enabled, displayName, setEditAnalyticsEnabled, setEditDisplayName, setShowChangePassword, setShowEditProfile]);
 
   const handleModalClose = useCallback(() => {
     setShowChangePassword(false);
@@ -225,15 +225,15 @@ function NavLogin() {
 
   const handleSaveProfile = useCallback(() => {
     handleModalClose();
-    analyticsContext.setEnabled(editAnalyticsEnabled);
-    if (userContext.dataService === undefined) {
+    setEnabled(editAnalyticsEnabled);
+    if (dataService === undefined) {
       return;
     }
 
-    updateProfile(userContext.dataService, userContext.user?.uid, editDisplayName)
+    updateProfile(dataService, user?.uid, editDisplayName)
       .then(() => console.log("successfully updated profile"))
-      .catch(e => analyticsContext.logError("error updating profile:", e));
-  }, [analyticsContext, editAnalyticsEnabled, editDisplayName, handleModalClose, userContext]);
+      .catch(e => logError("error updating profile:", e));
+  }, [setEnabled, logError, editAnalyticsEnabled, editDisplayName, handleModalClose, dataService, user]);
 
   const saveProfileDisabled = useMemo(() => editDisplayName.length === 0, [editDisplayName]);
 
@@ -244,35 +244,35 @@ function NavLogin() {
 
   // We show a verified icon if the user's email is verified
   const verifiedIcon = useMemo(() => {
-    if (userContext.user?.emailVerified === true) {
+    if (user?.emailVerified === true) {
       return (
         <FontAwesomeIcon className="ml-1" icon={faCheck} color="white" />
       );
     } else {
       return undefined;
     }
-  }, [userContext.user]);
+  }, [user]);
 
   // We'll let users re-send their email verification once per login
   const [canResendEmailVerification, setCanResendEmailVerification] = useState(false);
 
   useEffect(() => {
-    if (userContext.user?.emailVerified === false) {
+    if (user?.emailVerified === false) {
       setCanResendEmailVerification(true);
     } else {
       setCanResendEmailVerification(false);
     }
-  }, [userContext.user]);
+  }, [user]);
 
   const handleResendEmailVerification = useCallback(() => {
     setCanResendEmailVerification(false);
-    userContext.user?.sendEmailVerification()
+    user?.sendEmailVerification()
       .then(() => statusContext.toasts.next({
         id: uuidv4(),
-        record: { title: "Email/password login", message: "A verification email has been sent to " + userContext.user?.email }
+        record: { title: "Email/password login", message: "A verification email has been sent to " + user?.email }
       }))
-      .catch(e => analyticsContext.logError("Resend email verification error", e));
-  }, [analyticsContext, setCanResendEmailVerification, statusContext, userContext.user]);
+      .catch(e => logError("Resend email verification error", e));
+  }, [logError, setCanResendEmailVerification, statusContext, user]);
 
   const resendVerificationItem = useMemo(() => {
     if (canResendEmailVerification === true) {
@@ -318,7 +318,7 @@ function NavLogin() {
 
   const handleChangePasswordSave = useCallback((oldPassword: string, newPassword: string) => {
     handleModalClose();
-    userContext.user?.changePassword(oldPassword, newPassword)
+    user?.changePassword(oldPassword, newPassword)
     .then(() => statusContext.toasts.next({
       id: uuidv4(),
       record: { title: "Password changed", message: "Password change was successful" }
@@ -327,9 +327,9 @@ function NavLogin() {
       id: uuidv4(),
       record: { title: "Password change failed", message: "Check your old password was entered correctly." }
     }));
-  }, [handleModalClose, statusContext, userContext.user]);
+  }, [handleModalClose, statusContext, user]);
 
-  return userContext.user ? (
+  return user ? (
     <div>
       <Form inline>
         <ButtonGroup>
@@ -341,7 +341,7 @@ function NavLogin() {
         handleChange={handleChangePasswordSave} />
       <Modal show={showEditProfile} onHide={handleModalClose}>
         <Modal.Header closeButton>
-          <Modal.Title>User profile settings ({signInMethodsContext.signInMethods})</Modal.Title>
+          <Modal.Title>User profile settings ({signInMethods})</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form>

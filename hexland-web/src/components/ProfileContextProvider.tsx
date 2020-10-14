@@ -13,42 +13,41 @@ export const ProfileContext = React.createContext<IProfile | undefined>(undefine
 // This provides the profile context, and can be wrapped around individual components
 // for unit testing.
 function ProfileContextProvider(props: IContextProviderProps) {
-  const analyticsContext = useContext(AnalyticsContext);
-  const userContext = useContext(UserContext);
+  const { analytics, logError } = useContext(AnalyticsContext);
+  const { dataService, user } = useContext(UserContext);
   const [profile, setProfile] = useState<IProfile | undefined>(undefined);
 
   // Upon start, make sure the user has an up-to-date profile, then set this:
   const [profileRef, setProfileRef] = useState<IDataReference<IProfile> | undefined>(undefined);
   useEffect(() => {
-    if (userContext.dataService === undefined || userContext.user === undefined || userContext.user === null) {
+    if (dataService === undefined || user === undefined || user === null) {
       setProfile(undefined);
       setProfileRef(undefined);
       return;
     }
 
-    const uid = userContext.user.uid;
-    const dataService = userContext.dataService;
-    console.log("ensuring profile of " + userContext.user.displayName);
-    ensureProfile(userContext.dataService, userContext.user, analyticsContext.analytics)
+    const uid = user.uid;
+    console.log("ensuring profile of " + user.displayName);
+    ensureProfile(dataService, user, analytics)
       .then(p => {
         setProfile(p);
         setProfileRef(dataService.getProfileRef(uid));
       })
-      .catch(e => analyticsContext.logError("Failed to ensure profile of user " + userContext.user?.displayName, e));
-  }, [analyticsContext, setProfile, setProfileRef, userContext]);
+      .catch(e => logError("Failed to ensure profile of user " + user?.displayName, e));
+  }, [analytics, logError, setProfile, setProfileRef, dataService, user]);
 
   // Watch the user's profile:
   useEffect(() => {
-    if (profileRef === undefined || userContext.dataService === undefined) {
+    if (profileRef === undefined || dataService === undefined) {
       setProfile(undefined);
       return undefined;
     }
 
-    return userContext.dataService.watch(profileRef,
+    return dataService.watch(profileRef,
         p => setProfile(p),
-        e => analyticsContext.logError("Failed to watch profile", e)
+        e => logError("Failed to watch profile", e)
       );
-  }, [analyticsContext, profileRef, setProfile, userContext.dataService]);
+  }, [logError, profileRef, setProfile, dataService]);
 
   return (
     <ProfileContext.Provider value={profile}>

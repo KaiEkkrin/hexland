@@ -18,19 +18,19 @@ export const SignInMethodsContext = React.createContext<ISignInMethodsContext>({
 
 // This provides the user context.
 function UserContextProvider(props: IContextProviderProps) {
-  const firebaseContext = useContext(FirebaseContext);
+  const { auth, db, functions, storage, timestampProvider } = useContext(FirebaseContext);
   const [userContext, setUserContext] = useState<IUserContext>({ user: undefined });
 
   // When we're connected to Firebase, subscribe to the auth state change event and create a
   // suitable user context
   useEffect(() => {
-    const functionsService = firebaseContext.functions === undefined ? undefined :
-      new FunctionsService(firebaseContext.functions);
+    const functionsService = functions === undefined ? undefined :
+      new FunctionsService(functions);
 
-    const realStorageService = firebaseContext.storage === undefined ? undefined :
-      new Storage(firebaseContext.storage);
+    const realStorageService = storage === undefined ? undefined :
+      new Storage(storage);
 
-    return firebaseContext.auth?.onAuthStateChanged(u => {
+    return auth?.onAuthStateChanged(u => {
       // Create the relevant storage service (if any.)  If webpack hot-plugging is enabled,
       // we use the mock storage service because there isn't an emulator
       const storageService = functionsService === undefined || !u ? undefined :
@@ -39,13 +39,13 @@ function UserContextProvider(props: IContextProviderProps) {
 
       setUserContext({
         user: u,
-        dataService: (firebaseContext.db === undefined || firebaseContext.timestampProvider === undefined || u === null || u === undefined) ?
-          undefined : new DataService(firebaseContext.db, firebaseContext.timestampProvider),
+        dataService: (db === undefined || timestampProvider === undefined || u === null || u === undefined) ?
+          undefined : new DataService(db, timestampProvider),
         functionsService: functionsService,
         storageService: storageService
       });
     }, e => console.error("Authentication state error: ", e));
-  }, [firebaseContext]);
+  }, [auth, db, functions, storage, timestampProvider]);
 
   // Check newly logged in users for sign-in methods (e.g. governs whether we can reset passwords)
   const [signInMethodsContext, setSignInMethodsContext] = useState<ISignInMethodsContext>({ signInMethods: [] });
@@ -53,13 +53,13 @@ function UserContextProvider(props: IContextProviderProps) {
   useEffect(() => {
     const email = userContext.user?.email;
     if (email !== undefined && email !== null) {
-      firebaseContext.auth?.fetchSignInMethodsForEmail(email)
+      auth?.fetchSignInMethodsForEmail(email)
         .then(m => setSignInMethodsContext({ signInMethods: m }))
         .catch(e => console.error("Unable to fetch sign-in methods for " + email, e));
     } else {
       setSignInMethodsContext({ signInMethods: [] });
     }
-  }, [firebaseContext.auth, userContext, setSignInMethodsContext]);
+  }, [auth, userContext, setSignInMethodsContext]);
 
   return (
     <UserContext.Provider value={userContext}>

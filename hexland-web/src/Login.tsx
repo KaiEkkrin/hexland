@@ -37,9 +37,9 @@ interface INewUserFormProps {
   handleSignUp: (displayName: string, email: string, password: string) => void;
 }
 
-function EmailPasswordModal(props: INewUserFormProps) {
-  const firebaseContext = useContext(FirebaseContext);
-  const analyticsContext = useContext(AnalyticsContext);
+function EmailPasswordModal({ shown, handleClose, handleSignIn, handleSignUp }: INewUserFormProps) {
+  const { auth } = useContext(FirebaseContext);
+  const { logError } = useContext(AnalyticsContext);
 
   const [key, setKey] = useState("new");
   const [displayName, setDisplayName] = useState("");
@@ -50,12 +50,12 @@ function EmailPasswordModal(props: INewUserFormProps) {
 
   // reset the password fields when the shown status changes
   useEffect(() => {
-    if (props.shown === true) {
+    if (shown === true) {
       setPassword("");
       setConfirmPassword("");
       setPasswordResetTarget(undefined);
     }
-  }, [props.shown]);
+  }, [shown]);
 
   const signInDisabled = useMemo(() => {
     if (!Policy.emailIsValid(email) || !Policy.passwordIsValid(password)) {
@@ -73,11 +73,11 @@ function EmailPasswordModal(props: INewUserFormProps) {
 
   const handleSave = useCallback(() => {
     if (key === 'new') {
-      props.handleSignUp(displayName, email, password);
+      handleSignUp(displayName, email, password);
     } else {
-      props.handleSignIn(email, password);
+      handleSignIn(email, password);
     }
-  }, [displayName, email, key, password, props]);
+  }, [displayName, email, key, password, handleSignIn, handleSignUp]);
 
   // The password reset helpers
   const handleResetPassword = useCallback(() => {
@@ -86,10 +86,10 @@ function EmailPasswordModal(props: INewUserFormProps) {
       return;
     }
 
-    firebaseContext.auth?.sendPasswordResetEmail(target)
+    auth?.sendPasswordResetEmail(target)
       .then(() => setPasswordResetTarget(target))
-      .catch(e => analyticsContext.logError("Error sending password reset email", e));
-  }, [analyticsContext, email, firebaseContext.auth, setPasswordResetTarget]);
+      .catch(e => logError("Error sending password reset email", e));
+  }, [logError, email, auth, setPasswordResetTarget]);
 
   const passwordResetComponent = useMemo(() => {
     if (!Policy.emailIsValid(email)) {
@@ -112,7 +112,7 @@ function EmailPasswordModal(props: INewUserFormProps) {
   }, [email, handleResetPassword, passwordResetTarget]);
 
   return (
-    <Modal show={props.shown} onHide={props.handleClose}>
+    <Modal show={shown} onHide={handleClose}>
       <Modal.Header closeButton>
         <Modal.Title>Sign in with an email address and password</Modal.Title>
       </Modal.Header>
@@ -169,7 +169,7 @@ function EmailPasswordModal(props: INewUserFormProps) {
         </Tabs>
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="secondary" onClick={props.handleClose}>Close</Button>
+        <Button variant="secondary" onClick={handleClose}>Close</Button>
         <Button variant="primary" disabled={signInDisabled} onClick={handleSave}>{signInText}</Button>
       </Modal.Footer>
     </Modal>
@@ -177,10 +177,10 @@ function EmailPasswordModal(props: INewUserFormProps) {
 }
 
 function Login() {
-  const firebaseContext = useContext(FirebaseContext);
+  const { auth, db, googleAuthProvider, timestampProvider } = useContext(FirebaseContext);
   const profileContext = useContext(ProfileContext);
-  const analyticsContext = useContext(AnalyticsContext);
-  const statusContext = useContext(StatusContext);
+  const { analytics, logError } = useContext(AnalyticsContext);
+  const { toasts } = useContext(StatusContext);
   const history = useHistory();
 
   const [showEmailForm, setShowEmailForm] = useState(false);
@@ -204,21 +204,18 @@ function Login() {
       return false;
     }
     
-    if (firebaseContext.db === undefined || firebaseContext.timestampProvider === undefined) {
+    if (db === undefined || timestampProvider === undefined) {
       throw Error("No database available");
     }
 
-    const dataService = new DataService(
-      firebaseContext.db,
-      firebaseContext.timestampProvider
-    );
+    const dataService = new DataService(db, timestampProvider);
 
     if (newDisplayName !== undefined) {
       // This implies it's a new user:
-      await ensureProfile(dataService, user, analyticsContext.analytics, newDisplayName);
+      await ensureProfile(dataService, user, analytics, newDisplayName);
       if (!user.emailVerified) {
         await user.sendEmailVerification();
-        statusContext.toasts.next({
+        toasts.next({
           id: uuidv4(),
           record: { title: "Email/password login", message: "A verification email has been sent to " + user.email }
         });
@@ -226,7 +223,7 @@ function Login() {
     }
 
     return true;
-  }, [analyticsContext, firebaseContext, setLoginFailedVisible, statusContext]);
+  }, [analytics, db, timestampProvider, setLoginFailedVisible, toasts]);
 
   const finishLogin = useCallback((success: boolean) => {
     if (success) {
@@ -241,8 +238,8 @@ function Login() {
   const handleLoginError = useCallback((e: any) => {
     setLoginFailedVisible(true);
     setLoginFailedText(String(e.message));
-    analyticsContext.logError("Login failed", e);
-  }, [analyticsContext, setLoginFailedVisible]);
+    logError("Login failed", e);
+  }, [logError, setLoginFailedVisible]);
 
   const handleEmailFormClose = useCallback(() => {
     setShowEmailForm(false);
@@ -251,20 +248,20 @@ function Login() {
   const handleEmailFormSignUp = useCallback((displayName: string, email: string, password: string) => {
     setShowEmailForm(false);
     setLoginFailedVisible(false);
-    firebaseContext.auth?.createUserWithEmailAndPassword(email, password)
+    auth?.createUserWithEmailAndPassword(email, password)
       .then(u => handleLoginResult(u, displayName))
       .then(finishLogin)
       .catch(handleLoginError);
-  }, [firebaseContext, finishLogin, handleLoginError, handleLoginResult, setLoginFailedVisible, setShowEmailForm]);
+  }, [auth, finishLogin, handleLoginError, handleLoginResult, setLoginFailedVisible, setShowEmailForm]);
 
   const handleEmailFormSignIn = useCallback((email: string, password: string) => {
     setShowEmailForm(false);
     setLoginFailedVisible(false);
-    firebaseContext.auth?.signInWithEmailAndPassword(email, password)
+    auth?.signInWithEmailAndPassword(email, password)
       .then(handleLoginResult)
       .then(finishLogin)
       .catch(handleLoginError);
-  }, [firebaseContext, finishLogin, handleLoginError, handleLoginResult, setLoginFailedVisible, setShowEmailForm]);
+  }, [auth, finishLogin, handleLoginError, handleLoginResult, setLoginFailedVisible, setShowEmailForm]);
 
   const handleEmailLoginClick = useCallback(() => {
     setShowEmailForm(true);
@@ -272,13 +269,13 @@ function Login() {
 
   const handleGoogleLoginClick = useCallback(() => {
     setLoginFailedVisible(false);
-    if (firebaseContext.googleAuthProvider !== undefined) {
-      firebaseContext.auth?.signInWithPopup(firebaseContext.googleAuthProvider)
+    if (googleAuthProvider !== undefined) {
+      auth?.signInWithPopup(googleAuthProvider)
         .then(handleLoginResult)
         .then(finishLogin)
         .catch(handleLoginError);
     }
-  }, [finishLogin, firebaseContext, handleLoginError, handleLoginResult, setLoginFailedVisible]);
+  }, [finishLogin, auth, googleAuthProvider, handleLoginError, handleLoginResult, setLoginFailedVisible]);
 
   return (
     <div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import { IAnnotation } from '../data/annotation';
 
@@ -16,32 +16,32 @@ interface INoteEditorModalProps {
   handleSave: (id: string, colour: number, text: string, visibleToPlayers: boolean) => void;
 }
 
-function NoteEditorModal(props: INoteEditorModalProps) {
+function NoteEditorModal({ show, note, handleClose, handleDelete, handleSave }: INoteEditorModalProps) {
   const [id, setId] = useState("");
   const [colour, setColour] = useState(0); // TODO do something with this?
   const [text, setText] = useState("");
   const [visibleToPlayers, setVisibleToPlayers] = useState(false);
 
   useEffect(() => {
-    if (props.show) {
-      setId(props.note?.id ?? uuidv4());
-      setColour(props.note?.colour ?? 0);
-      setText(props.note?.text ?? "");
-      setVisibleToPlayers(props.note?.visibleToPlayers ?? false);
+    if (show) {
+      setId(note?.id ?? uuidv4());
+      setColour(note?.colour ?? 0);
+      setText(note?.text ?? "");
+      setVisibleToPlayers(note?.visibleToPlayers ?? false);
     }
-  }, [props.show, props.note]);
+  }, [show, note]);
 
   const [saveDisabled, setSaveDisabled] = useState(false);
   useEffect(() => {
     setSaveDisabled(text.length === 0);
   }, [text]);
 
-  function handleVtoPChange(e: React.ChangeEvent<HTMLInputElement>) {
+  const handleVtoPChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setVisibleToPlayers(e.currentTarget.checked);
-  }
+  }, [setVisibleToPlayers]);
 
   return (
-    <Modal show={props.show} onHide={props.handleClose}>
+    <Modal show={show} onHide={handleClose}>
       <Modal.Header closeButton>
         <Modal.Title>Note</Modal.Title>
       </Modal.Header>
@@ -59,11 +59,11 @@ function NoteEditorModal(props: INoteEditorModalProps) {
         </Form>
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="danger" onClick={props.handleDelete}>Delete</Button>
-        <Button variant="secondary" onClick={props.handleClose}>Close</Button>
+        <Button variant="danger" onClick={handleDelete}>Delete</Button>
+        <Button variant="secondary" onClick={handleClose}>Close</Button>
         <Button variant="primary"
           disabled={saveDisabled}
-          onClick={() => props.handleSave(id, colour, text, visibleToPlayers)}>Save</Button>
+          onClick={() => handleSave(id, colour, text, visibleToPlayers)}>Save</Button>
       </Modal.Footer>
     </Modal>
   );

@@ -14,41 +14,40 @@ interface IImageCardProps {
   children?: React.ReactNode | undefined;
 }
 
-function ImageCardContent(props: IImageCardProps) {
-  const analyticsContext = useContext(AnalyticsContext);
-  const userContext = useContext(UserContext);
+function ImageCardContent({ altName, imagePath, children }: IImageCardProps) {
+  const { logError } = useContext(AnalyticsContext);
+  const { storageService } = useContext(UserContext);
   const [url, setUrl] = useState<string | undefined>(undefined);
 
   // Resolve the image URL, if any
   useEffect(() => {
-    if (!userContext.storageService || !props.imagePath || props.imagePath.length === 0) {
+    if (!storageService || !imagePath || imagePath.length === 0) {
       setUrl(undefined);
       return;
     }
 
-    const imagePath = props.imagePath;
-    const sub = from(userContext.storageService.ref(imagePath).getDownloadURL()).subscribe(
+    const sub = from(storageService.ref(imagePath).getDownloadURL()).subscribe(
       u => {
         console.log(`got download URL for image ${imagePath} : ${u}`);
         setUrl(String(u));
       },
-      e => analyticsContext.logError("Failed to get download URL for image " + imagePath, e)
+      e => logError("Failed to get download URL for image " + imagePath, e)
     );
     return () => sub.unsubscribe();
-  }, [analyticsContext, props.imagePath, setUrl, userContext.storageService]);
+  }, [imagePath, logError, setUrl, storageService]);
 
   const contents = useMemo(
     () => (url) ? (<React.Fragment>
-      <Card.Img src={url} alt={props.altName} style={{ maxHeight: '400px', objectFit: 'contain' }} />
+      <Card.Img src={url} alt={altName} style={{ maxHeight: '400px', objectFit: 'contain' }} />
       <Card.ImgOverlay style={{ textShadow: '2px 2px #000000' }}>
-        {props.children}
+        {children}
       </Card.ImgOverlay>
     </React.Fragment>) : (
       <Card.Body>
-        {props.children}
+        {children}
       </Card.Body>
     ),
-    [props.altName, props.children, url]
+    [altName, children, url]
   );
 
   return (

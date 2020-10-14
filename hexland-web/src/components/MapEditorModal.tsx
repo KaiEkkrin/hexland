@@ -11,8 +11,6 @@ import Modal from 'react-bootstrap/Modal';
 
 import fluent from 'fluent-iterable';
 
-// TODO #23 Support new map in this modal too, and copy in the remaining fields
-// from the modal in MapCollection.tsx (and delete that one)
 interface IMapEditorModalProps {
   show: boolean;
   adventures?: IAdventureSummary[] | undefined; // for new map only
@@ -21,15 +19,15 @@ interface IMapEditorModalProps {
   handleSave: (adventureId: string, updated: IMap) => Promise<void>;
 }
 
-function MapEditorModal(props: IMapEditorModalProps) {
-  const userContext = useContext(UserContext);
+function MapEditorModal({ show, adventures, map, handleClose, handleSave }: IMapEditorModalProps) {
+  const { user } = useContext(UserContext);
 
   const [isSaving, setIsSaving] = useState(false);
   useEffect(() => {
-    if (props.show === true) {
+    if (show === true) {
       setIsSaving(false);
     }
-  }, [props.show, setIsSaving]);
+  }, [show, setIsSaving]);
 
   const [name, setName] = useState("");
   const [adventureId, setAdventureId] = useState<string | undefined>(undefined);
@@ -37,10 +35,10 @@ function MapEditorModal(props: IMapEditorModalProps) {
   const [ty, setTy] = useState(MapType.Square);
   const [ffa, setFfa] = useState(false);
 
-  const newMapControlsDisabled = useMemo(() => props.map !== undefined, [props.map]);
+  const newMapControlsDisabled = useMemo(() => map !== undefined, [map]);
   const firstAdventure = useMemo(
-    () => props.adventures !== undefined ? fluent(props.adventures).first() : undefined,
-    [props.adventures]
+    () => adventures !== undefined ? fluent(adventures).first() : undefined,
+    [adventures]
   );
 
   const isSaveDisabled = useMemo(
@@ -51,46 +49,46 @@ function MapEditorModal(props: IMapEditorModalProps) {
   const saveText = useMemo(() => isSaving ? "Saving..." : "Save map", [isSaving]);
 
   useEffect(() => {
-    setName(props.map?.record.name ?? "");
-    setAdventureId(props.map?.adventureId ?? firstAdventure?.id);
-    setDescription(props.map?.record.description ?? "");
-    setTy(props.map?.record.ty ?? MapType.Square);
-    setFfa(props.map?.record.ffa ?? false);
+    setName(map?.record.name ?? "");
+    setAdventureId(map?.adventureId ?? firstAdventure?.id);
+    setDescription(map?.record.description ?? "");
+    setTy(map?.record.ty ?? MapType.Square);
+    setFfa(map?.record.ffa ?? false);
     setIsSaving(false);
-  }, [props.map, firstAdventure, setName, setAdventureId, setDescription, setTy, setFfa, setIsSaving]);
+  }, [map, firstAdventure, setName, setAdventureId, setDescription, setTy, setFfa, setIsSaving]);
 
   const handleFfaChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => setFfa(e.currentTarget.checked),
     [setFfa]
   );
 
-  const handleSave = useCallback(() => {
+  const doHandleSave = useCallback(() => {
     if (adventureId === undefined) {
       return;
     }
 
     setIsSaving(true);
-    if (props.map !== undefined) {
+    if (map !== undefined) {
       // This is an edit of an existing map:
-      props.handleSave(adventureId, {
-        ...props.map.record,
+      handleSave(adventureId, {
+        ...map.record,
         name: name,
         description: description,
         ffa: ffa
-      }).then(() => console.log("edited map " + props.map?.id))
+      }).then(() => console.log("edited map " + map?.id))
         .catch(e => setIsSaving(false));
       return;
     }
 
     // We're adding a new map.
     // There must be a valid adventure to add it to and a valid user
-    const adventureName = props.adventures?.find(a => a.id === adventureId)?.name;
-    const uid = userContext.user?.uid;
+    const adventureName = adventures?.find(a => a.id === adventureId)?.name;
+    const uid = user?.uid;
     if (adventureName === undefined || uid === undefined) {
       return;
     }
 
-    props.handleSave(adventureId, {
+    handleSave(adventureId, {
       adventureName: adventureName,
       name: name,
       description: description,
@@ -100,10 +98,10 @@ function MapEditorModal(props: IMapEditorModalProps) {
       imagePath: ""
     }).then(() => console.log("created new map"))
       .catch(e => setIsSaving(false));
-  }, [props, adventureId, description, ffa, name, setIsSaving, ty, userContext.user]);
+  }, [adventures, map, handleSave, adventureId, description, ffa, name, setIsSaving, ty, user]);
 
   return (
-    <Modal show={props.show} onHide={props.handleClose}>
+    <Modal show={show} onHide={handleClose}>
       <Modal.Header closeButton>
         <Modal.Title>Map settings</Modal.Title>
       </Modal.Header>
@@ -114,13 +112,13 @@ function MapEditorModal(props: IMapEditorModalProps) {
             <Form.Control id="mapNameInput" type="text" maxLength={30} value={name}
               onChange={e => setName(e.target.value)} />
           </Form.Group>
-          {props.adventures !== undefined && props.adventures.length > 0 ?
+          {adventures !== undefined && adventures.length > 0 ?
             <Form.Group>
               <Form.Label htmlFor="mapAdventureSelect">Adventure this map is in</Form.Label>
               <Form.Control id="mapAdventureSelect" as="select" value={adventureId}
                 disabled={newMapControlsDisabled}
                 onChange={e => setAdventureId(e.target.value)}>
-                {props.adventures?.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                {adventures?.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
               </Form.Control>
             </Form.Group> : <div></div>
           }
@@ -145,8 +143,8 @@ function MapEditorModal(props: IMapEditorModalProps) {
         </Form>
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="secondary" onClick={props.handleClose}>Close</Button>
-        <Button disabled={isSaveDisabled} variant="primary" onClick={handleSave}>{saveText}</Button>
+        <Button variant="secondary" onClick={handleClose}>Close</Button>
+        <Button disabled={isSaveDisabled} variant="primary" onClick={doHandleSave}>{saveText}</Button>
       </Modal.Footer>
     </Modal>
   );

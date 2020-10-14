@@ -13,6 +13,12 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "0.11.4",
+    changes: [
+      "Reduce the number of unnecessary updates"
+    ]
+  },
+  {
     version: "0.11.3",
     changes: [
       "Add zoom in and out buttons (lets you zoom the map when you don't have a scroll wheel)",

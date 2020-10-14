@@ -17,7 +17,7 @@ import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 
 function All() {
-  const userContext = useContext(UserContext);
+  const { dataService, user } = useContext(UserContext);
   const profile = useContext(ProfileContext);
   const analyticsContext = useContext(AnalyticsContext);
 
@@ -35,17 +35,17 @@ function All() {
 
   // Watch all adventures
   useEffect(() => {
-    const uid = userContext.user?.uid;
+    const uid = user?.uid;
     if (uid === undefined) {
       return () => {};
     }
 
-    return userContext.dataService?.watchAdventures(
+    return dataService?.watchAdventures(
       uid,
       a => setAdventures(a),
       e => analyticsContext.logError("Error watching adventures: ", e)
     );
-  }, [analyticsContext, userContext]);
+  }, [analyticsContext, dataService, user]);
 
   // I can create a new adventure if I'm not at cap
   const showNewAdventure = useMemo(
@@ -65,7 +65,7 @@ function All() {
       <Container>
         <Row>
           <Col>
-            <AdventureCollection uid={userContext.user?.uid}
+            <AdventureCollection uid={user?.uid}
               adventures={adventureSummaries} showNewAdventure={showNewAdventure} />
           </Col>
         </Row>

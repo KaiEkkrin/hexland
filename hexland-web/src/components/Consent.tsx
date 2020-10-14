@@ -16,17 +16,17 @@ import { faCookie } from '@fortawesome/free-solid-svg-icons';
 // testing to verify that it doesn't enable itself unless the consent is accepted.
 // When accepted, have it disappear into the user's profile settings.
 function Consent() {
-  const analyticsContext = useContext(AnalyticsContext);
-  const isHidden = useMemo(() => analyticsContext.enabled !== undefined, [analyticsContext.enabled]);
+  const { enabled, setEnabled } = useContext(AnalyticsContext);
+  const isHidden = useMemo(() => enabled !== undefined, [enabled]);
   const handleAcceptClick = useCallback((e: React.MouseEvent) => {
-    analyticsContext.setEnabled(true);
+    setEnabled(true);
     e.preventDefault();
-  }, [analyticsContext]);
+  }, [setEnabled]);
 
   const handleDeclineClick = useCallback((e: React.MouseEvent) => {
-    analyticsContext.setEnabled(false);
+    setEnabled(false);
     e.preventDefault();
-  }, [analyticsContext]);
+  }, [setEnabled]);
 
   const rhsButtons = useMemo(() => (
     <ButtonGroup className="ml-1 mr-1">

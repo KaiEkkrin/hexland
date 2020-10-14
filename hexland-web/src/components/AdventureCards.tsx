@@ -23,26 +23,26 @@ interface IAdventureCardProps {
   collapsing: boolean;
 }
 
-function AdventureCard(props: IAdventureCardProps) {
+const AdventureCard = ({ adventure, collapsing }: IAdventureCardProps) => {
   const content = useMemo(
     () => (
       <React.Fragment>
-        <Card.Subtitle>By {props.adventure.ownerName}</Card.Subtitle>
-        <Card.Text>{props.adventure.description}</Card.Text>
-        <LinkContainer to={"/adventure/" + props.adventure.id}>
+        <Card.Subtitle>By {adventure.ownerName}</Card.Subtitle>
+        <Card.Text>{adventure.description}</Card.Text>
+        <LinkContainer to={"/adventure/" + adventure.id}>
           <Card.Link>Open adventure</Card.Link>
         </LinkContainer>
       </React.Fragment>
     ),
-    [props.adventure]
+    [adventure]
   );
 
-  if (props.collapsing) {
+  if (collapsing) {
     // TODO #108 I don't know how to include an image in a collapsing card for now
     return (
       <Card bg="dark" text="white">
-        <ExpansionToggle direction="down" eventKey={props.adventure.id}>{props.adventure.name}</ExpansionToggle>
-        <Accordion.Collapse eventKey={props.adventure.id}>
+        <ExpansionToggle direction="down" eventKey={adventure.id}>{adventure.name}</ExpansionToggle>
+        <Accordion.Collapse eventKey={adventure.id}>
           <Card.Body>
             {content}
           </Card.Body>
@@ -52,8 +52,8 @@ function AdventureCard(props: IAdventureCardProps) {
   } else {
     return (
       <Card className="mt-4" style={CardStyle} bg="dark" text="white">
-        <ImageCardContent altName={props.adventure.name} imagePath={props.adventure.imagePath}>
-          <Card.Title className="h5">{props.adventure.name}</Card.Title>
+        <ImageCardContent altName={adventure.name} imagePath={adventure.imagePath}>
+          <Card.Title className="h5">{adventure.name}</Card.Title>
           {content}
         </ImageCardContent>
       </Card>
@@ -61,24 +61,30 @@ function AdventureCard(props: IAdventureCardProps) {
   }
 }
 
-function AdventureCardsCollapsing(props: IAdventureCardsProps) {
+interface IAdventureCardsProps {
+  showNewAdventureCard: boolean;
+  handleCreate: () => void;
+  adventures: IAdventureSummary[];
+}
+
+const AdventureCardsCollapsing = ({ showNewAdventureCard, handleCreate, adventures }: IAdventureCardsProps) => {
   const cards = useMemo(() => {
-    const cardList = [...props.adventures.map(v => (
+    const cardList = [...adventures.map(v => (
       <AdventureCard key={v.id} adventure={v} collapsing={true} />
     ))];
 
-    if (props.showNewAdventureCard) {
+    if (showNewAdventureCard) {
       cardList.splice(0, 0, (
         <Card bg="dark" text="white" key="new">
           <Card.Header>
-            <Button onClick={props.handleCreate}>New adventure</Button>
+            <Button onClick={handleCreate}>New adventure</Button>
           </Card.Header>
         </Card>
       ));
     }
 
     return cardList;
-  }, [props]);
+  }, [adventures, handleCreate, showNewAdventureCard]);
 
   return (
     <Accordion className="mt-4">
@@ -87,36 +93,30 @@ function AdventureCardsCollapsing(props: IAdventureCardsProps) {
   );
 }
 
-function AdventureCardsLarge(props: IAdventureCardsProps) {
+const AdventureCardsLarge = ({ showNewAdventureCard, handleCreate, adventures }: IAdventureCardsProps) => {
   const cards = useMemo(() => {
-    const cardList = [...props.adventures.map(v => (
+    const cardList = [...adventures.map(v => (
       <AdventureCard key={v.id} adventure={v} collapsing={false} />
     ))];
 
-    if (props.showNewAdventureCard) {
+    if (showNewAdventureCard) {
       cardList.splice(0, 0, (
         <Card className="mt-4" style={CardStyle} bg="dark" text="white" key="new">
           <Card.Body>
-            <Button onClick={props.handleCreate}>New adventure</Button>
+            <Button onClick={handleCreate}>New adventure</Button>
           </Card.Body>
         </Card>
       ));
     }
 
     return cardList;
-  }, [props]);
+  }, [showNewAdventureCard, handleCreate, adventures]);
 
   return (
     <CardDeck>
       {cards}
     </CardDeck>
   );
-}
-
-interface IAdventureCardsProps {
-  showNewAdventureCard: boolean;
-  handleCreate: () => void;
-  adventures: IAdventureSummary[];
 }
 
 function AdventureCards(props: IAdventureCardsProps) {

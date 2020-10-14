@@ -24,11 +24,11 @@ function AdventureModal(props: IAdventureModalProps) {
   );
 
   const saveText = useMemo(() => isSaving ? "Saving..." : "Save adventure", [isSaving]);
-  const handleSave = useCallback(() => {
+  const { handleSave } = props;
+  const doHandleSave = useCallback(() => {
     setIsSaving(true);
-    props.handleSave()
-      .then(() => console.log("created adventure successfully"));
-  }, [props]);
+    handleSave().then(() => console.log("created adventure successfully"));
+  }, [handleSave]);
 
   return (
     <Modal show={props.show} onHide={props.handleClose}>
@@ -52,7 +52,7 @@ function AdventureModal(props: IAdventureModalProps) {
       <Modal.Footer>
         <Button variant="secondary" onClick={props.handleClose}>Close</Button>
         <Button variant="primary" disabled={isSaveDisabled}
-          onClick={handleSave}>
+          onClick={doHandleSave}>
           {saveText}
       </Button>
       </Modal.Footer>

@@ -23,57 +23,60 @@ interface IMapCloneModalProps {
   handleClose: () => void; // not called if we clone and redirect
 }
 
-function MapCloneModal(props: IMapCloneModalProps) {
-  const analyticsContext = useContext(AnalyticsContext);
-  const userContext = useContext(UserContext);
+function MapCloneModal({ show, adventure, sourceMap, handleClose }: IMapCloneModalProps) {
+  const { logError } = useContext(AnalyticsContext);
+  const { functionsService } = useContext(UserContext);
   const history = useHistory();
 
   const [isSaving, setIsSaving] = useState(false);
   useEffect(() => {
-    if (props.show === true) {
+    if (show === true) {
       setIsSaving(false);
     }
-  }, [props.show, setIsSaving]);
+  }, [show, setIsSaving]);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
   const isSaveDisabled = useMemo(
-    () => name.length === 0 || description.length === 0 || name === props.sourceMap?.name,
-    [description, name, props.sourceMap]
+    () => name.length === 0 || description.length === 0 || name === sourceMap?.name,
+    [description, name, sourceMap]
   );
 
   const saveText = useMemo(() => isSaving ? "Cloning..." : "Clone map", [isSaving]);
 
   useEffect(() => {
-    setName(props.sourceMap?.name ?? "");
-    setDescription(props.sourceMap?.description ?? "");
+    setName(sourceMap?.name ?? "");
+    setDescription(sourceMap?.description ?? "");
     setIsSaving(false);
-  }, [props.sourceMap, setDescription, setIsSaving, setName]);
+  }, [sourceMap, setDescription, setIsSaving, setName]);
 
   const handleSave = useCallback(() => {
     if (
-      userContext.functionsService === undefined ||
-      props.adventure === undefined ||
-      props.sourceMap === undefined
+      functionsService === undefined ||
+      adventure === undefined ||
+      sourceMap === undefined
     ) {
       return;
     }
 
     setIsSaving(true);
-    userContext.functionsService.cloneMap(props.adventure.id, props.sourceMap.id, name, description)
-      .then(mapId => history.replace('/adventure/' + props.adventure?.id + '/map/' + mapId))
+    functionsService.cloneMap(adventure.id, sourceMap.id, name, description)
+      .then(mapId => history.replace('/adventure/' + adventure?.id + '/map/' + mapId))
       .catch(e => {
-        props.handleClose();
+        handleClose();
         setIsSaving(false);
-        analyticsContext.logError("Failed to clone map " + props.sourceMap?.name, e);
+        logError("Failed to clone map " + sourceMap?.name, e);
       });
-  }, [analyticsContext, description, history, name, props, setIsSaving, userContext]);
+  }, [
+    logError, description, history, name, setIsSaving, functionsService,
+    adventure, handleClose, sourceMap
+  ]);
 
   return (
-    <Modal show={props.show} onHide={props.handleClose}>
+    <Modal show={show} onHide={handleClose}>
       <Modal.Header closeButton>
-        <Modal.Title>Clone map {props.sourceMap?.name}</Modal.Title>
+        <Modal.Title>Clone map {sourceMap?.name}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <Form>
@@ -90,7 +93,7 @@ function MapCloneModal(props: IMapCloneModalProps) {
         </Form>
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="secondary" onClick={props.handleClose}>Close</Button>
+        <Button variant="secondary" onClick={handleClose}>Close</Button>
         <Button disabled={isSaveDisabled} variant="primary" onClick={handleSave}>{saveText}</Button>
       </Modal.Footer>
     </Modal>

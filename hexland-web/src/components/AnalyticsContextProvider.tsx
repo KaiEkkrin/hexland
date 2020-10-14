@@ -25,25 +25,25 @@ function getExMessage(e: any): string {
 // This provides a context for Google Analytics -- whether it is enabled, the interface
 // to use it through, etc.
 // The enabled setting is stored not in the user profile but in local storage.
-export function AnalyticsContextProvider(props: IContextProviderProps & IAnalyticsProps) {
+export function AnalyticsContextProvider({ children, getItem, setItem }: IContextProviderProps & IAnalyticsProps) {
   const firebaseContext = useContext(FirebaseContext);
 
   // Resolve our storage functions
-  const getItem = useCallback(
-    (key: string) => props.getItem?.(key) ?? localStorage.getItem(key),
-    [props.getItem]
+  const doGetItem = useCallback(
+    (key: string) => getItem?.(key) ?? localStorage.getItem(key),
+    [getItem]
   );
 
-  const setItem = useCallback(
+  const doSetItem = useCallback(
     (key: string, value: string | null) => {
-      if (props.setItem !== undefined) {
-        props.setItem(key, value);
+      if (setItem !== undefined) {
+        setItem(key, value);
       } else if (value !== null) {
         localStorage.setItem(key, value);
       } else {
         localStorage.removeItem(key);
       }
-    }, [props]
+    }, [setItem]
   );
 
   const [enabled, setEnabled] = useState<boolean | undefined>(undefined);
@@ -72,11 +72,11 @@ export function AnalyticsContextProvider(props: IContextProviderProps & IAnalyti
 
   // On load, fetch any current enabled value from local storage
   useEffect(() => {
-    const isEnabled = getItem(enabledKey);
+    const isEnabled = doGetItem(enabledKey);
     if (isEnabled !== null) {
       setEnabled(/true/i.test(isEnabled));
     }
-  }, [getItem, setEnabled]);
+  }, [doGetItem, setEnabled]);
 
   // When the setting is changed, save its value back to local storage
   useEffect(() => {
@@ -84,23 +84,23 @@ export function AnalyticsContextProvider(props: IContextProviderProps & IAnalyti
       // User chose to enable GA
       console.log("Enabling Google Analytics");
       setAnalytics(firebaseContext.createAnalytics?.());
-      setItem(enabledKey, "true");
+      doSetItem(enabledKey, "true");
     } else if (enabled === false) {
       // User chose to disable GA
       console.log("Disabling Google Analytics");
       setAnalytics(undefined);
-      setItem(enabledKey, "false");
+      doSetItem(enabledKey, "false");
     } else {
       // User hasn't chosen yet (default to disabled)
       console.log("Disabling Google Analytics by default");
       setAnalytics(undefined);
-      setItem(enabledKey, null);
+      doSetItem(enabledKey, null);
     }
-  }, [enabled, firebaseContext.createAnalytics, setAnalytics, setItem]);
+  }, [enabled, firebaseContext.createAnalytics, setAnalytics, doSetItem]);
 
   return (
     <AnalyticsContext.Provider value={analyticsContext}>
-      {props.children}
+      {children}
     </AnalyticsContext.Provider>
   );
 }

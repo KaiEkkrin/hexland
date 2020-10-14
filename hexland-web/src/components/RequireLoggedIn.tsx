@@ -9,15 +9,15 @@ interface IRequireLoggedInProps {
 }
 
 export function RequireLoggedIn(props: IRequireLoggedInProps) {
-  const userContext = useContext(UserContext);
+  const { user } = useContext(UserContext);
   const history = useHistory();
 
   useEffect(() => {
-    if (userContext.user === null) {
+    if (user === null) {
       console.log("Not logged in.  Redirecting to login page");
       history.push("/login");
     }
-  }, [userContext.user, history]);
+  }, [user, history]);
 
   return <div>{props.children}</div>;
 }

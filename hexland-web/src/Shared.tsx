@@ -14,25 +14,25 @@ import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 
 function Shared() {
-  const analyticsContext = useContext(AnalyticsContext);
-  const userContext = useContext(UserContext);
+  const { logError } = useContext(AnalyticsContext);
+  const { dataService, user } = useContext(UserContext);
   const [adventures, setAdventures] = useState<IPlayer[]>([]);
 
   useEffect(() => {
-    const uid = userContext.user?.uid;
+    const uid = user?.uid;
     if (uid === undefined) {
       return undefined;
     }
 
-    return userContext.dataService?.watchSharedAdventures(
+    return dataService?.watchSharedAdventures(
       uid,
       a => {
         console.log("Received " + a.length + " shared adventures");
         setAdventures(a.filter(a2 => a2.playerId !== a2.owner && a2.allowed !== false));
       },
-      e => analyticsContext.logError("Error watching shared adventures: ", e)
+      e => logError("Error watching shared adventures: ", e)
     );
-  }, [analyticsContext, userContext]);
+  }, [logError, dataService, user]);
 
   return (
     <RequireLoggedIn>
@@ -42,7 +42,7 @@ function Shared() {
       <Container>
         <Row>
           <Col>
-            <AdventureCollection uid={userContext.user?.uid}
+            <AdventureCollection uid={user?.uid}
               adventures={adventures} showNewAdventure={false} />
           </Col>
         </Row>
