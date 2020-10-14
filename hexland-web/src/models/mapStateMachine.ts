@@ -902,12 +902,14 @@ export class MapStateMachine {
       // we also need to rotate our camera translation point to match
       this._cameraTranslation.applyQuaternion(this._scratchRotation.inverse());
     } else {
+      // Because of the way round that the camera transform is applied, we need to
+      // apply the current scaling to our translation delta
       this._cameraTranslation.add(
         this._scratchTranslation.set(
-          this._panLast.x - cp.x,
-          cp.y - this._panLast.y,
+          zoomDefault * (this._panLast.x - cp.x),
+          zoomDefault * (cp.y - this._panLast.y),
           0
-        )
+        ).divide(this._cameraScaling)
       );
     }
 
