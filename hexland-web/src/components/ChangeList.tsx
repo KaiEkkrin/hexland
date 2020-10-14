@@ -13,6 +13,12 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "0.11.5",
+    changes: [
+      "Fix database errors when updating the profile"
+    ]
+  },
+  {
     version: "0.11.4",
     changes: [
       "Reduce the number of unnecessary updates"

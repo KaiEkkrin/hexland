@@ -8,8 +8,8 @@ export interface IProfile {
   email: string; // auto sync with user record; should be useful for looking up accounts to upgrade/downgrade
   level: UserLevel; // the user's permission level.  Firebase rules stop us from
                     // changing this willy nilly.
-  adventures: IAdventureSummary[] | undefined; 
-  latestMaps: IMapSummary[] | undefined;
+  adventures: IAdventureSummary[]; 
+  latestMaps: IMapSummary[];
 }
 
 export interface IAdventureSummary {
