@@ -77,25 +77,24 @@ export function isAnEditorOpen(state: IMapUiState): boolean {
 
 export class MapUi {
   private readonly _setState: (state: IMapUiState) => void;
-  private readonly _stateMachine: MapStateMachine;
-  private readonly _addChanges: (changes: IChange[] | undefined) => void;
   private readonly _getClientPosition: (x: number, y: number) => THREE.Vector3 | undefined;
+  private readonly _logError: (message: string, e: any, fatal?: boolean | undefined) => void;
   private readonly _toasts: Subject<IIdentified<IToast | undefined>>;
 
   private _state = createDefaultUiState();
+  private _stateMachine: MapStateMachine | undefined;
 
   constructor(
     setState: (state: IMapUiState) => void,
-    stateMachine: MapStateMachine,
-    addChanges: (changes: IChange[] | undefined) => void,
     getClientPosition: (x: number, y: number) => THREE.Vector3 | undefined,
+    logError: (message: string, e: any, fatal?: boolean | undefined) => void,
     toasts: Subject<IIdentified<IToast | undefined>>
   ) {
     this._setState = setState;
-    this._stateMachine = stateMachine;
-    this._addChanges = addChanges;
     this._getClientPosition = getClientPosition;
+    this._logError = logError;
     this._toasts = toasts;
+    console.log("created new UI state");
   }
 
   private addToast(title: string, message: string, id?: string | undefined) {
@@ -110,10 +109,10 @@ export class MapUi {
     // #36 When the edit mode changes at all, we should clear the highlights
     if (newState.editMode !== this._state.editMode) {
       if (newState.editMode !== EditMode.Select) {
-        this._stateMachine.panMarginReset();
-        this._stateMachine.clearSelection();
+        this._stateMachine?.panMarginReset();
+        this._stateMachine?.clearSelection();
       }
-      this._stateMachine.clearHighlights(newState.selectedColour);
+      this._stateMachine?.clearHighlights(newState.selectedColour);
     }
 
     this._state = newState;
@@ -134,13 +133,13 @@ export class MapUi {
 
         case EditMode.Token:
           newState.showTokenEditor = true;
-          newState.tokenToEdit = this._stateMachine.getToken(cp);
+          newState.tokenToEdit = this._stateMachine?.getToken(cp);
           newState.tokenToEditPosition = cp;
           break;
 
         case EditMode.Notes:
           newState.showNoteEditor = true;
-          newState.noteToEdit = this._stateMachine.getNote(cp);
+          newState.noteToEdit = this._stateMachine?.getNote(cp);
           newState.noteToEditPosition = cp;
           break;
 
@@ -163,13 +162,13 @@ export class MapUi {
       newState.editMode = EditMode.Select;
     }
 
-    this._addChanges(changes);
+    this.addChanges(changes);
     this.changeState(newState);
   }
 
   private interactionMove(cp: THREE.Vector3, shiftKey: boolean): THREE.Vector3 {
     if (this._state.isDraggingView) {
-      this._stateMachine.panTo(cp);
+      this._stateMachine?.panTo(cp);
     } else {
       switch (this._state.editMode) {
         case EditMode.Select: this._stateMachine?.moveSelectionTo(cp); break;
@@ -187,16 +186,16 @@ export class MapUi {
     switch (this._state.editMode) {
       case EditMode.Select:
         if (shiftKey) {
-          this._stateMachine.selectionDragStart(cp);
-        } else if (this._stateMachine.selectToken(cp) !== true) {
+          this._stateMachine?.selectionDragStart(cp);
+        } else if (this._stateMachine?.selectToken(cp) !== true) {
           // There's no token here -- pan or rotate the view instead.
           isDraggingView = true;
-          this._stateMachine.clearSelection();
-          this._stateMachine.panStart(cp, ctrlKey);
+          this._stateMachine?.clearSelection();
+          this._stateMachine?.panStart(cp, ctrlKey);
         }
         break;
 
-      case EditMode.Area: this._stateMachine.faceDragStart(cp, shiftKey, this._state.selectedColour); break;
+      case EditMode.Area: this._stateMachine?.faceDragStart(cp, shiftKey, this._state.selectedColour); break;
       case EditMode.Wall: this._stateMachine?.wallDragStart(cp, shiftKey, this._state.selectedColour); break;
       case EditMode.Room: this._stateMachine?.roomDragStart(cp, shiftKey, this._state.selectedColour); break;
     }
@@ -216,8 +215,23 @@ export class MapUi {
     return undefined;
   }
 
+  get stateMachine() { return this._stateMachine; }
+  set stateMachine(value: MapStateMachine | undefined) { this._stateMachine = value; }
+
+  addChanges(changes: IChange[] | undefined) {
+    if (this._stateMachine === undefined) {
+      return;
+    }
+
+    this._stateMachine.addChanges(changes, (id, title, message) => {
+      this._toasts.next({ id: id, record: { title: title, message: message }});
+    }).then(() => console.log(`Added ${changes?.length} changes`))
+      .catch(e => this._logError(`Error adding ${changes?.length} changes`, e));
+  }
+
   contextMenu(e: MouseEvent, bounds: DOMRect) {
-    const cp = this._getClientPosition(e.clientX, e.clientX);
+    const cp = this._getClientPosition(e.clientX, e.clientY);
+    console.log(`from ${e.clientX}, ${e.clientY} : got cp ${cp?.toArray()}`);
     this.changeState({
       ...this._state,
       showContextMenu: true,
@@ -225,8 +239,8 @@ export class MapUi {
       contextMenuY: e.clientY,
       contextMenuPageRight: bounds.right,
       contextMenuPageBottom: bounds.bottom,
-      contextMenuToken: cp ? this._stateMachine.getToken(cp) : undefined,
-      contextMenuNote: cp ? this._stateMachine.getNote(cp) : undefined
+      contextMenuToken: cp ? this._stateMachine?.getToken(cp) : undefined,
+      contextMenuNote: cp ? this._stateMachine?.getNote(cp) : undefined
     });
   }
 
@@ -240,11 +254,7 @@ export class MapUi {
       return;
     }
 
-    const note = this._stateMachine.getNote(cp);
-    if (!note) {
-      return;
-    }
-
+    const note = this._stateMachine?.getNote(cp);
     this.changeState({
       ...this._state,
       showNoteEditor: true,
@@ -263,11 +273,8 @@ export class MapUi {
       return;
     }
 
-    const token = this._stateMachine.getToken(cp);
-    if (!token) {
-      return;
-    }
-
+    console.log(`from menu position ${this._state.contextMenuX}, ${this._state.contextMenuY} : got token position ${cp}`);
+    const token = this._stateMachine?.getToken(cp);
     this.changeState({
       ...this._state,
       showTokenEditor: true,
@@ -289,23 +296,23 @@ export class MapUi {
 
     const newKeysDown = keysDownReducer(this._state.keysDown, { key: e.key, down: true });
     if (e.key === 'ArrowLeft') {
-      if (e.repeat || !this._stateMachine.jogSelection({ x: -1, y: 0 })) {
-        this._addChanges(this._stateMachine.setPanningX(-1));
+      if (e.repeat || !this._stateMachine?.jogSelection({ x: -1, y: 0 })) {
+        this.addChanges(this._stateMachine?.setPanningX(-1));
       }
       e.preventDefault();
     } else if (e.key === 'ArrowRight') {
-      if (e.repeat || !this._stateMachine.jogSelection({ x: 1, y: 0 })) {
-        this._addChanges(this._stateMachine.setPanningX(1));
+      if (e.repeat || !this._stateMachine?.jogSelection({ x: 1, y: 0 })) {
+        this.addChanges(this._stateMachine?.setPanningX(1));
       }
       e.preventDefault();
     } else if (e.key === 'ArrowDown') {
-      if (e.repeat || !this._stateMachine.jogSelection({ x: 0, y: 1 })) {
-        this._addChanges(this._stateMachine.setPanningY(1));
+      if (e.repeat || !this._stateMachine?.jogSelection({ x: 0, y: 1 })) {
+        this.addChanges(this._stateMachine?.setPanningY(1));
       }
       e.preventDefault();
     } else if (e.key === 'ArrowUp') {
-      if (e.repeat || !this._stateMachine.jogSelection({ x: 0, y: -1 })) {
-        this._addChanges(this._stateMachine.setPanningY(-1));
+      if (e.repeat || !this._stateMachine?.jogSelection({ x: 0, y: -1 })) {
+        this.addChanges(this._stateMachine?.setPanningY(-1));
       }
       e.preventDefault();
     }
@@ -323,8 +330,8 @@ export class MapUi {
       // This should cancel any drag operation, and also return us to
       // select mode.  Unlike the other keys, it should operate even
       // during a mouse drag.
-      this._stateMachine.clearHighlights(this._state.selectedColour);
-      this._stateMachine.clearSelection();
+      this._stateMachine?.clearHighlights(this._state.selectedColour);
+      this._stateMachine?.clearSelection();
       newState.editMode = EditMode.Select;
       newState.showContextMenu = false;
     }
@@ -332,14 +339,14 @@ export class MapUi {
     if (this._state.mouseDown) {
       return;
     } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      this._addChanges(this._stateMachine.setPanningX(0));
+      this.addChanges(this._stateMachine?.setPanningX(0));
       e.preventDefault();
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      this._addChanges(this._stateMachine.setPanningY(0));
+      this.addChanges(this._stateMachine?.setPanningY(0));
       e.preventDefault();
     } else if (e.key === 'Delete') {
       // This invokes the token deletion if we've got tokens selected.
-      const tokens = [...this._stateMachine.getSelectedTokens()];
+      const tokens = [...this._stateMachine?.getSelectedTokens() ?? []];
       if (canDoAnything && tokens.length > 0) {
         newState.showTokenDeletion = true;
         newState.tokensToDelete = tokens;
@@ -349,7 +356,7 @@ export class MapUi {
         newState.editMode = EditMode.Area;
       }
     } else if (e.key === 'o' || e.key === 'O') {
-      this._stateMachine.resetView();
+      this._stateMachine?.resetView();
     } else if (e.key === 'r' || e.key === 'R') {
       if (canDoAnything) {
         newState.editMode = EditMode.Room;
@@ -460,7 +467,7 @@ export class MapUi {
 
   noteEditorDelete() {
     if (this._state.noteToEditPosition !== undefined) {
-      this._addChanges(this._stateMachine.setNote(this._state.noteToEditPosition, "", -1, "", false));
+      this.addChanges(this._stateMachine?.setNote(this._state.noteToEditPosition, "", -1, "", false));
     }
 
     this.modalClose();
@@ -468,7 +475,7 @@ export class MapUi {
 
   noteEditorSave(id: string, colour: number, text: string, visibleToPlayers: boolean) {
     if (this._state.noteToEditPosition !== undefined) {
-      this._addChanges(this._stateMachine.setNote(
+      this.addChanges(this._stateMachine?.setNote(
         this._state.noteToEditPosition, id, colour, text, visibleToPlayers
       ));
     }
@@ -501,21 +508,21 @@ export class MapUi {
 
     const changes: IChange[] = [];
     for (const t of this._state.tokensToDelete) {
-      const chs = this._stateMachine.setTokenById(t.id, undefined);
+      const chs = this._stateMachine?.setTokenById(t.id, undefined);
       if (chs !== undefined) {
         changes.push(...chs);
       }
     }
 
-    this._addChanges(changes);
-    this._stateMachine.clearSelection();
+    this.addChanges(changes);
+    this._stateMachine?.clearSelection();
     this.modalClose();
   }
 
   tokenEditorDelete() {
     if (this._state.tokenToEditPosition !== undefined) {
       try {
-        this._addChanges(this._stateMachine?.setToken(this._state.tokenToEditPosition, undefined));
+        this.addChanges(this._stateMachine?.setToken(this._state.tokenToEditPosition, undefined));
       } catch (e) {
         this.addToast('Failed to delete token', String(e.message));
       }
@@ -525,9 +532,10 @@ export class MapUi {
   }
 
   tokenEditorSave(properties: ITokenProperties) {
+    console.log(`saving token with properties ${JSON.stringify(properties)} and position ${this._state.tokenToEditPosition?.toArray()}`);
     if (this._state.tokenToEditPosition !== undefined) {
       try {
-        this._addChanges(this._stateMachine.setToken(this._state.tokenToEditPosition, properties));
+        this.addChanges(this._stateMachine?.setToken(this._state.tokenToEditPosition, properties));
       } catch (e) {
         this.addToast('Failed to save token', String(e.message));
       }

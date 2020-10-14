@@ -12,7 +12,7 @@ import { WallHighlighter, WallRectangleHighlighter, RoomHighlighter } from './wa
 
 import { IAnnotation, IPositionedAnnotation } from '../data/annotation';
 import { IChange, createTokenRemove, createTokenAdd, createNoteRemove, createNoteAdd, createTokenMove } from '../data/change';
-import { trackChanges } from '../data/changeTracking';
+import { netObjectCount, trackChanges } from '../data/changeTracking';
 import { IGridCoord, coordString, coordsEqual, coordSub, coordAdd } from '../data/coord';
 import { FeatureDictionary, flipToken, IToken, ITokenDictionary, ITokenProperties, TokenSize } from '../data/feature';
 import { IAdventureIdentified } from '../data/identified';
@@ -20,6 +20,7 @@ import { IMap, MapType } from '../data/map';
 import { IUserPolicy } from '../data/policy';
 import { createTokenDictionary } from '../data/tokens';
 
+import { IDataService } from '../services/interfaces';
 import { createDrawing } from './three/drawing';
 
 import fluent from 'fluent-iterable';
@@ -44,6 +45,7 @@ const zAxis = new THREE.Vector3(0, 0, 1);
 // Describes the map state as managed by the state machine below and echoed
 // to the Map component.
 export interface IMapState {
+  isOwner: boolean;
   seeEverything: boolean;
   annotations: IPositionedAnnotation[];
   tokens: (ITokenProperties & ISelectable)[];
@@ -56,6 +58,7 @@ export interface ISelectable {
 
 export function createDefaultState(): IMapState {
   return {
+    isOwner: true,
     seeEverything: true,
     annotations: [],
     tokens: [],
@@ -74,6 +77,7 @@ export function createDefaultState(): IMapState {
 // Any other mutable fields in here are state that the owning component should
 // never find out about.
 export class MapStateMachine {
+  private readonly _dataService: IDataService;
   private readonly _map: IAdventureIdentified<IMap>;
   private readonly _uid: string;
   private readonly _userPolicy: IUserPolicy | undefined;
@@ -133,6 +137,7 @@ export class MapStateMachine {
   private _isDisposed = false;
 
   constructor(
+    dataService: IDataService,
     map: IAdventureIdentified<IMap>,
     uid: string,
     colours: FeatureColour[],
@@ -140,12 +145,14 @@ export class MapStateMachine {
     userPolicy: IUserPolicy | undefined,
     setState: (state: IMapState) => void
   ) {
+    this._dataService = dataService;
     this._map = map;
     this._uid = uid;
     this._userPolicy = userPolicy;
     this._setState = setState;
 
     this._state = {
+      isOwner: this.isOwner,
       seeEverything: this.seeEverything,
       annotations: [],
       tokens: [],
@@ -231,8 +238,10 @@ export class MapStateMachine {
     this.onPostAnimate = this.onPostAnimate.bind(this);
     this.onPreAnimate = this.onPreAnimate.bind(this);
     this._drawing.animate(this.onPreAnimate, this.onPostAnimate);
+    console.log(`created new map state for ${map.adventureId}/${map.id}`);
   }
 
+  private get isOwner() { return this._uid === this._map.record.owner; }
   private get seeEverything() { return this._uid === this._map.record.owner || this._map.record.ffa === true; }
 
   private addTokenWithProperties(target: IGridCoord, properties: ITokenProperties): IChange[] {
@@ -664,8 +673,38 @@ export class MapStateMachine {
 
   get changeTracker() { return this._changeTracker; }
   get map() { return this._map; }
+  get objectCount() { return this._state.objectCount; }
   get panningX() { return this._panningX; }
   get panningY() { return this._panningY; }
+
+  async addChanges(changes: IChange[] | undefined, complain: (id: string, title: string, message: string) => void) {
+    if (changes === undefined || changes.length === 0) {
+      return;
+    }
+
+    if (this._state.objectCount !== undefined && this._userPolicy !== undefined) {
+      const expectedCount = this._state.objectCount + netObjectCount(changes);
+      if (expectedCount > this._userPolicy.objects) {
+        // Refuse to attempt these changes -- this would cause the map to be pruned on
+        // consolidate, with consequent desyncs
+        complain(
+          this._map.id + "_hard_object_cap",
+          "Too many objects",
+          "You have reached the object limit for this map."
+        );
+        return;
+      } else if (expectedCount > this._userPolicy.objectsWarning) {
+        // Still attempt these changes, but show the soft-cap warning.
+        complain(
+          this._map.id + "_soft_object_cap",
+          "Too many objects",
+          'You are approaching the object limit for this map.  Consider clearing some unused areas or moving to a new map.'
+        );
+      }
+    }
+
+    await this._dataService.addChanges(this._map.adventureId, this._uid, this._map.id, changes);
+  }
 
   clearHighlights(colour: number) {
     this._faceHighlighter.dragCancel(undefined, colour);

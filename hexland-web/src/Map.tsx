@@ -20,8 +20,7 @@ import TokenEditorModal from './components/TokenEditorModal';
 import { UserContext } from './components/UserContextProvider';
 
 import { IPlayer } from './data/adventure';
-import { IChange } from './data/change';
-import { netObjectCount, trackChanges } from './data/changeTracking';
+import { trackChanges } from './data/changeTracking';
 import { ITokenProperties } from './data/feature';
 import { IAdventureIdentified } from './data/identified';
 import { createTokenSizes, IMap, MAP_CONTAINER_CLASS } from './data/map';
@@ -53,7 +52,6 @@ function Map(props: IMapPageProps) {
 
   const [map, setMap] = useState(undefined as IAdventureIdentified<IMap> | undefined);
   const [players, setPlayers] = useState([] as IPlayer[]);
-  const [canDoAnything, setCanDoAnything] = useState(false);
   const [mapState, setMapState] = useState(createDefaultState());
   const [uiState, setUiState] = useState(createDefaultUiState());
 
@@ -113,7 +111,7 @@ function Map(props: IMapPageProps) {
       return;
     }
 
-    let mapRef = userContext.dataService.getMapRef(props.adventureId, props.mapId);
+    const mapRef = userContext.dataService.getMapRef(props.adventureId, props.mapId);
 
     // How to handle a map load failure.
     function couldNotLoad(message: string) {
@@ -188,7 +186,9 @@ function Map(props: IMapPageProps) {
     }
 
     const userPolicy = uid === map.record.owner ? getUserPolicy(profile.level) : undefined;
-    setStateMachine(new MapStateMachine(map, uid, standardColours, mount, userPolicy, setMapState));
+    setStateMachine(new MapStateMachine(
+      dataService, map, uid, standardColours, mount, userPolicy, setMapState
+    ));
   }, [setMapState, setStateMachine]);
 
   useEffect(() => {
@@ -260,39 +260,7 @@ function Map(props: IMapPageProps) {
     console.log("Watching players in adventure " + props.adventureId);
     return userContext.dataService.watchPlayers(props.adventureId, setPlayers,
       e => analyticsContext.logError("Error watching players", e));
-  }, [analyticsContext, userContext.dataService, props.adventureId, canDoAnything]);
-
-  // How to create and share the map changes we make
-  const addChanges = useCallback((changes: IChange[] | undefined) => {
-    const uid = userContext.user?.uid;
-    if (
-      changes === undefined || changes.length === 0 || userContext.dataService === undefined ||
-      uid === undefined
-    ) {
-      return;
-    }
-
-    if (mapState.objectCount !== undefined && userPolicy !== undefined) {
-      const expectedCount = mapState.objectCount + netObjectCount(changes);
-      if (expectedCount > userPolicy.objects) {
-        // Refuse to attempt these changes -- this would cause the map to be pruned on
-        // consolidate, with consequent desyncs
-        statusContext.toasts.next({ id: map?.id + "_hard_object_cap", record: {
-          title: 'Too many objects', message: 'You have reached the object limit for this map.'
-        }});
-        return;
-      } else if (expectedCount > userPolicy.objectsWarning) {
-        // Still attempt these changes, but show the soft-cap warning.
-        statusContext.toasts.next({ id: map?.id + "_soft_object_cap", record: {
-          title: 'Too many objects', message: 'You are approaching the object limit for this map.  Consider clearing some unused areas or moving to a new map.'
-        }});
-      }
-    }
-
-    userContext.dataService.addChanges(props.adventureId, uid, props.mapId, changes)
-      .then(() => console.log("Added " + changes.length + " changes"))
-      .catch(e => analyticsContext.logError("Error adding " + changes.length + " changes", e));
-  }, [userContext, analyticsContext, map, mapState, props.adventureId, props.mapId, statusContext.toasts, userPolicy]);
+  }, [analyticsContext, userContext.dataService, props.adventureId]);
 
   // == UI STUFF ==
 
@@ -307,12 +275,21 @@ function Map(props: IMapPageProps) {
     return new THREE.Vector3(x, bounds.height - y - 1, 0);
   }, [drawingRef]);
 
-  // Our UI state tracking object depends on that map state machine
+  // We have a separate state tracking object to manage the interdependencies between
+  // different parts of the UI
   const ui = useMemo(
-    () => (stateMachine === undefined || statusContext.toasts === undefined) ? undefined :
-      new MapUi(setUiState, stateMachine, addChanges, getClientPosition, statusContext.toasts),
-    [addChanges, getClientPosition, setUiState, stateMachine, statusContext.toasts]
+    () => statusContext.toasts === undefined ? undefined :
+      new MapUi(setUiState, getClientPosition, analyticsContext.logError, statusContext.toasts),
+    [analyticsContext.logError, getClientPosition, setUiState, statusContext.toasts]
   );
+
+  // This is a bit nasty, but if we didn't update our ui object with any new map state machine
+  // we'd have to make said state machine a parameter of basically everything
+  useEffect(() => {
+    if (ui !== undefined) {
+      ui.stateMachine = stateMachine;
+    }
+  }, [stateMachine, ui]);
 
   const mapContainerClassName = useMemo(
     () => uiState.touch !== undefined || uiState.mouseDown ?
@@ -320,16 +297,7 @@ function Map(props: IMapPageProps) {
     [uiState.mouseDown, uiState.touch]
   );
 
-  const [isOwner, setIsOwner] = useState(false);
   const [mapColourMode, setMapColourMode] = useState(MapColourVisualisationMode.Areas);
-
-  useEffect(() => {
-    setCanDoAnything(map?.record.ffa === true || userContext.user?.uid === map?.record.owner);
-  }, [userContext.user, map]);
-
-  useEffect(() => {
-    setIsOwner(userContext.user?.uid === map?.record.owner);
-  }, [userContext.user, map]);
 
   // Sync the drawing with the map colour mode
   useEffect(() => {
@@ -381,7 +349,7 @@ function Map(props: IMapPageProps) {
     const here = stateMachine.getToken(cp);
     if (here !== undefined) {
       try {
-        addChanges(stateMachine.flipToken(here));
+        ui?.addChanges(stateMachine.flipToken(here));
       } catch (e) {
         statusContext.toasts.next({ id: uuidv4(), record: {
           title: "Cannot flip token",
@@ -389,7 +357,7 @@ function Map(props: IMapPageProps) {
         }});
       }
     }
-  }, [addChanges, stateMachine, statusContext.toasts]);
+  }, [stateMachine, statusContext.toasts, ui]);
 
   const editNoteFromMenu = useCallback(() => ui?.editNote(), [ui]);
   const editTokenFromMenu = useCallback(() => ui?.editToken(), [ui]);
@@ -427,8 +395,8 @@ function Map(props: IMapPageProps) {
       return;
     }
 
-    ui.keyUp(e, canDoAnything);
-  }, [anEditorIsOpen, canDoAnything, ui]);
+    ui.keyUp(e, mapState.seeEverything);
+  }, [anEditorIsOpen, mapState.seeEverything, ui]);
 
   // *** Mouse and touch specific handlers ***
 
@@ -472,9 +440,9 @@ function Map(props: IMapPageProps) {
     };
   }, [handleKeyDown, handleKeyUp, handleWheel, handleWindowResize]);
 
-  // We take over the context menu for map owners only to provide interaction.
+  // We take over the context menu for all-permissions users only to provide interaction.
   useEffect(() => {
-    if (canDoAnything) {
+    if (mapState.seeEverything) {
       document.addEventListener('contextmenu', handleContextMenu);
       return () => {
         document.removeEventListener('contextmenu', handleContextMenu);
@@ -482,7 +450,7 @@ function Map(props: IMapPageProps) {
     } else {
       return undefined;
     }
-  }, [canDoAnything, handleContextMenu]);
+  }, [handleContextMenu, mapState.seeEverything]);
 
   const [showAnnotationFlags, setShowAnnotationFlags] = useState(ShowAnnotationFlags.All);
   const [customAnnotationFlags, setCustomAnnotationFlags] = useState(false);
@@ -508,12 +476,12 @@ function Map(props: IMapPageProps) {
           resetView={() => stateMachine?.resetView()}
           mapColourVisualisationMode={mapColourMode}
           setMapColourVisualisationMode={setMapColourMode}
-          canDoAnything={canDoAnything}
-          isOwner={isOwner}
+          canDoAnything={mapState.seeEverything}
+          isOwner={mapState.isOwner}
           openMapEditor={() => ui?.showMapEditor()}
           setShowAnnotationFlags={cycleShowAnnotationFlags} />
         <MapInfo map={map?.record} players={players} tokens={mapState.tokens}
-          canDoAnything={canDoAnything} resetView={c => stateMachine?.resetView(c)}
+          canDoAnything={mapState.seeEverything} resetView={c => stateMachine?.resetView(c)}
           resyncCount={resyncCount} />
       </div>
       <div className="Map-content">
