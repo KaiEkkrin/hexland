@@ -13,6 +13,13 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "0.11.3",
+    changes: [
+      "Add zoom in and out buttons (lets you zoom the map when you don't have a scroll wheel)",
+      "Fix panning the map adding the wrong amount at non-default zoom"
+    ]
+  },
+  {
     version: "0.11.2",
     changes: [
       "Support a user avatar (contributed by davey3000)"
