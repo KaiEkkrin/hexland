@@ -182,14 +182,14 @@ export class MapUi {
   }
 
   private interactionStart(cp: THREE.Vector3, shiftKey: boolean, ctrlKey: boolean, startingState: IMapUiState) {
-    let isDraggingView = this._state.isDraggingView;
+    const newState = { ...startingState, showContextMenu: false };
     switch (this._state.editMode) {
       case EditMode.Select:
         if (shiftKey) {
           this._stateMachine?.selectionDragStart(cp);
         } else if (this._stateMachine?.selectToken(cp) !== true) {
           // There's no token here -- pan or rotate the view instead.
-          isDraggingView = true;
+          newState.isDraggingView = true;
           this._stateMachine?.clearSelection();
           this._stateMachine?.panStart(cp, ctrlKey);
         }
@@ -200,9 +200,7 @@ export class MapUi {
       case EditMode.Room: this._stateMachine?.roomDragStart(cp, shiftKey, this._state.selectedColour); break;
     }
 
-    if (isDraggingView !== this._state.isDraggingView) {
-      this.changeState({ ...this._state, isDraggingView: isDraggingView });
-    }
+    this.changeState(newState);
   }
 
   private isTrackingTouch(e: React.TouchEvent) {
