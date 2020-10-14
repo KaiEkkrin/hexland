@@ -27,20 +27,6 @@
           "order": "ASCENDING"
         }
       ]
-    },
-    {
-      "collectionGroup": "images",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "owner",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "date",
-          "order": "DESCENDING"
-        }
-      ]
     }
   ],
   "fieldOverrides": [

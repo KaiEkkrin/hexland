@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 
 import ColourSelection from './ColourSelection';
 import { ShowAnnotationFlags } from './MapAnnotations';
@@ -10,7 +10,7 @@ import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import ToggleButton from 'react-bootstrap/ToggleButton';
 import Tooltip from 'react-bootstrap/Tooltip';
 
-import { faDotCircle, faDrawPolygon, faMousePointer, faPlus, faSquare, IconDefinition, faCog, faSuitcase, faMapMarker, faVectorSquare } from '@fortawesome/free-solid-svg-icons';
+import { faDotCircle, faDrawPolygon, faMousePointer, faPlus, faSquare, IconDefinition, faCog, faSuitcase, faMapMarker, faVectorSquare, faSearchPlus, faSearchMinus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 export enum EditMode {
@@ -55,7 +55,13 @@ interface IMapControlsProps {
   setEditMode(value: EditMode): void;
   selectedColour: number;
   setSelectedColour(value: number): void;
-  resetView(): void;
+
+  zoomInDisabled: boolean;
+  zoomOutDisabled: boolean;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  resetView(c?: string | undefined): void;
+
   mapColourVisualisationMode: MapColourVisualisationMode;
   setMapColourVisualisationMode(mode: MapColourVisualisationMode): void;
   canDoAnything: boolean;
@@ -110,14 +116,31 @@ function MapControls(props: IMapControlsProps) {
   const hideExtraControls = useMemo(() => !props.canDoAnything, [props.canDoAnything]);
   const isNotOwner = useMemo(() => !props.isOwner, [props.isOwner]);
 
+  const { resetView } = props;
+  const handleResetView = useCallback(() => resetView(), [resetView]);
+
   return (
     <div className="Map-controls">
       <ButtonGroup className="Map-control" toggle vertical>{modeButtons}</ButtonGroup>
       <ButtonGroup className="Map-control" vertical>
         <OverlayTrigger placement="right" overlay={
+          <Tooltip id="zoomin-tooltip">Zoom in</Tooltip>
+        }>
+          <Button variant="dark" onClick={props.zoomIn} disabled={props.zoomInDisabled}>
+            <FontAwesomeIcon icon={faSearchPlus} color="white" />
+          </Button>
+        </OverlayTrigger>
+        <OverlayTrigger placement="right" overlay={
+          <Tooltip id="zoomin-tooltip">Zoom out</Tooltip>
+        }>
+          <Button variant="dark" onClick={props.zoomOut} disabled={props.zoomOutDisabled}>
+            <FontAwesomeIcon icon={faSearchMinus} color="white" />
+          </Button>
+        </OverlayTrigger>
+        <OverlayTrigger placement="right" overlay={
           <Tooltip id="reset-tooltip">Reset the map view to <u>o</u>rigin</Tooltip>
         }>
-          <Button variant="dark" onClick={() => props.resetView()}>
+          <Button variant="dark" onClick={handleResetView}>
             <FontAwesomeIcon icon={faDotCircle} color="white" />
           </Button>
         </OverlayTrigger>

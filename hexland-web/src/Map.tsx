@@ -30,7 +30,7 @@ import { registerMapAsRecent, watchChangesAndConsolidate, removeMapFromRecent } 
 import { IDataService, IFunctionsService } from './services/interfaces';
 
 import { standardColours } from './models/featureColour';
-import { MapStateMachine, createDefaultState } from './models/mapStateMachine';
+import { MapStateMachine, createDefaultState, zoomMax, zoomMin } from './models/mapStateMachine';
 import { createDefaultUiState, isAnEditorOpen, MapUi } from './models/mapUi';
 import { networkStatusTracker } from './models/networkStatusTracker';
 
@@ -299,6 +299,13 @@ function Map(props: IMapPageProps) {
 
   const [mapColourMode, setMapColourMode] = useState(MapColourVisualisationMode.Areas);
 
+  // Map controls stuff
+  const resetView = useCallback((c?: string | undefined) => stateMachine?.resetView(c), [stateMachine]);
+  const zoomIn = useCallback(() => stateMachine?.zoomBy(-0.5, 2), [stateMachine]);
+  const zoomOut = useCallback(() => stateMachine?.zoomBy(0.5, 2), [stateMachine]);
+  const zoomInDisabled = useMemo(() => mapState.zoom >= zoomMax, [mapState]);
+  const zoomOutDisabled = useMemo(() => mapState.zoom <= zoomMin, [mapState]);
+
   // Sync the drawing with the map colour mode
   useEffect(() => {
     stateMachine?.setShowMapColourVisualisation(mapColourMode === MapColourVisualisationMode.Connectivity);
@@ -473,7 +480,9 @@ function Map(props: IMapPageProps) {
           setEditMode={m => ui?.setEditMode(m)}
           selectedColour={uiState.selectedColour}
           setSelectedColour={c => ui?.setSelectedColour(c)}
-          resetView={() => stateMachine?.resetView()}
+          resetView={resetView}
+          zoomIn={zoomIn} zoomOut={zoomOut}
+          zoomInDisabled={zoomInDisabled} zoomOutDisabled={zoomOutDisabled}
           mapColourVisualisationMode={mapColourMode}
           setMapColourVisualisationMode={setMapColourMode}
           canDoAnything={mapState.seeEverything}
@@ -481,7 +490,7 @@ function Map(props: IMapPageProps) {
           openMapEditor={() => ui?.showMapEditor()}
           setShowAnnotationFlags={cycleShowAnnotationFlags} />
         <MapInfo map={map?.record} players={players} tokens={mapState.tokens}
-          canDoAnything={mapState.seeEverything} resetView={c => stateMachine?.resetView(c)}
+          canDoAnything={mapState.seeEverything} resetView={resetView}
           resyncCount={resyncCount} />
       </div>
       <div className="Map-content">

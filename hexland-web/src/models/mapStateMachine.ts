@@ -35,9 +35,9 @@ const tileDim = 12;
 const panMargin = 100;
 const panStep = 0.2; // per millisecond.  Try proportion of screen size instead?
 const zoomStep = 1.001;
-const zoomMin = 1;
+export const zoomMin = 1;
 const zoomDefault = 2;
-const zoomMax = 4;
+export const zoomMax = 4;
 
 const panningPosition = new THREE.Vector3(panMargin, panMargin, 0);
 const zAxis = new THREE.Vector3(0, 0, 1);
@@ -50,6 +50,7 @@ export interface IMapState {
   annotations: IPositionedAnnotation[];
   tokens: (ITokenProperties & ISelectable)[];
   objectCount?: number | undefined; // undefined for irrelevant (no policy)
+  zoom: number;
 }
 
 export interface ISelectable {
@@ -62,7 +63,8 @@ export function createDefaultState(): IMapState {
     seeEverything: true,
     annotations: [],
     tokens: [],
-    objectCount: undefined
+    objectCount: undefined,
+    zoom: zoomDefault
   };
 }
 
@@ -156,7 +158,8 @@ export class MapStateMachine {
       seeEverything: this.seeEverything,
       annotations: [],
       tokens: [],
-      objectCount: undefined
+      objectCount: undefined,
+      zoom: zoomDefault
     };
     this._setState(this._state);
 
@@ -194,7 +197,7 @@ export class MapStateMachine {
       this._mapColouring,
       (haveTokensChanged: boolean, objectCount: number) => {
         this.withStateChange(getState => {
-          let state = getState();
+          const state = getState();
           if (haveTokensChanged) {
             this.cleanUpSelection();
           }
@@ -949,6 +952,13 @@ export class MapStateMachine {
       this._cameraTranslation.set(delta.x, -delta.y, 0);
     }
 
+    // The zoom is echoed to the map state so remember to update that
+    this.withStateChange(getState => {
+      const state = getState();
+      state.zoom = zoomDefault;
+      return true;
+    });
+
     this.resize();
   }
 
@@ -1126,12 +1136,13 @@ export class MapStateMachine {
     }
   }
 
-  zoomBy(amount: number) {
-    this._cameraScaling.set(
-      Math.min(zoomMax, Math.max(zoomMin, this._cameraScaling.x * Math.pow(zoomStep, -amount))),
-      Math.min(zoomMax, Math.max(zoomMin, this._cameraScaling.y * Math.pow(zoomStep, -amount))),
-      1
-    );
+  zoomBy(amount: number, step?: number | undefined) {
+    this.withStateChange(getState => {
+      const state = getState();
+      state.zoom = Math.min(zoomMax, Math.max(zoomMin, state.zoom * Math.pow(step ?? zoomStep, -amount)));
+      this._cameraScaling.set(state.zoom, state.zoom, 1);
+      return true;
+    });
     this.resize();
   }
 
