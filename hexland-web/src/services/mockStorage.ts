@@ -38,6 +38,10 @@ export class MockStorageReference implements IStorageReference {
     await this._webdav.deleteFile(webDAVPath);
   }
 
+  async download(destination: string): Promise<void> {
+    throw Error("TODO support me");
+  }
+
   getDownloadURL(): Promise<string> {
     return Promise.resolve(this._webdav.getFileDownloadLink(this.getWebDAVPath()));
   }
@@ -47,5 +51,9 @@ export class MockStorageReference implements IStorageReference {
     const webDAVPath = this.getWebDAVPath();
     console.log(`uploading file ${name} to path ${webDAVPath}...`);
     await this._webdav.putFileContents(webDAVPath, file);
+  }
+
+  async upload(source: string, metadata: { contentType: string }): Promise<void> {
+    throw Error("TODO support me");
   }
 }

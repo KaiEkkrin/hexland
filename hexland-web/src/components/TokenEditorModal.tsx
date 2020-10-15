@@ -5,6 +5,7 @@ import TokenPlayerSelection from './TokenPlayerSelection';
 
 import { IPlayer } from '../data/adventure';
 import { ITokenProperties, TokenSize } from '../data/feature';
+import { ISprite } from '../data/sprite';
 
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
@@ -32,6 +33,7 @@ function TokenEditorModal(
   const [playerIds, setPlayerIds] = useState([] as string[]);
   const [note, setNote] = useState("");
   const [noteVisibleToPlayers, setNoteVisibleToPlayers] = useState(true);
+  const [sprites, setSprites] = useState<ISprite[]>([]);
 
   useEffect(() => {
     if (show) {
@@ -41,6 +43,7 @@ function TokenEditorModal(
       setPlayerIds(token?.players ?? []);
       setNote(token?.note ?? "");
       setNoteVisibleToPlayers(token?.noteVisibleToPlayers ?? false);
+      setSprites(token?.sprites ?? []);
     }
   }, [selectedColour, show, token]);
 
@@ -72,9 +75,10 @@ function TokenEditorModal(
       players: playerIds,
       size: size,
       note: note,
-      noteVisibleToPlayers: noteVisibleToPlayers
+      noteVisibleToPlayers: noteVisibleToPlayers,
+      sprites: sprites
     });
-  }, [colour, note, noteVisibleToPlayers, playerIds, handleSave, token, size, text]);
+  }, [colour, note, noteVisibleToPlayers, playerIds, handleSave, token, size, text, sprites]);
 
   return (
     <Modal show={show} onHide={handleClose}>

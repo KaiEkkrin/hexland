@@ -8,6 +8,7 @@ import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
 import { IAdventureSummary, IProfile } from '../data/profile';
 import { UserLevel } from '../data/policy';
+import { ISprite, ISpritesheets } from '../data/sprite';
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -65,6 +66,10 @@ class AddTokenFeatureConverter extends RecursingConverter<IToken> {
       },
       "size": (conv, raw) => {
         conv.size = parseTokenSize(raw);
+        return conv;
+      },
+      "sprites": (conv, raw) => {
+        conv.sprites = Array.isArray(raw) ? raw.map(r => spriteConverter.convert(r)) : [];
         return conv;
       }
     });
@@ -433,3 +438,20 @@ export function createChangesConverter() {
     }
   });
 }
+
+export const spriteConverter = new ShallowConverter<ISprite>({
+  source: "",
+  id: "",
+  columns: 0,
+  rows: 0,
+  position: 0
+});
+
+export const spritesheetsConverter = new RecursingConverter<ISpritesheets>({
+  sprites: [],
+}, {
+  "sprites": (conv, raw) => {
+    conv.sprites = Array.isArray(raw) ? raw.map(r => spriteConverter.convert(raw)) : [];
+    return conv;
+  }
+});

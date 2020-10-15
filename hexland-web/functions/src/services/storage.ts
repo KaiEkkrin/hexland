@@ -31,6 +31,11 @@ export class StorageReference implements IStorageReference {
     await this._bucket.file(this._path).delete();
   }
 
+  async download(destination: string): Promise<void> {
+    const file = await this._bucket.file(this._path);
+    await file.download({ destination: destination });
+  }
+
   getDownloadURL(): Promise<string> {
     // I don't think I will ever need to be able to do this
     throw Error("Not supported");
@@ -39,5 +44,9 @@ export class StorageReference implements IStorageReference {
   put(file: Blob | Buffer, metadata: any): Promise<void> {
     // I don't think I need to be able to do this right now
     throw Error("Not supported");
+  }
+
+  async upload(source: string, metadata: { contentType: string }): Promise<void> {
+    await this._bucket.upload(source, { destination: this._path, metadata: metadata });
   }
 }

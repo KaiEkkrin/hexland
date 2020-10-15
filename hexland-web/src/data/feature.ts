@@ -1,4 +1,5 @@
 import { IGridCoord, defaultGridCoord, IGridEdge, IGridVertex, defaultGridEdge } from './coord';
+import { ISprite } from './sprite';
 import { v4 as uuidv4 } from 'uuid';
 
 // Describes an instanced feature:
@@ -24,6 +25,7 @@ export interface ITokenProperties {
   text: string; // maximum of three characters
   note: string; // shown in the annotations UI
   noteVisibleToPlayers: boolean; // as you'd expect
+  sprites: ISprite[]; // should be only 0 or 1, but this format makes it easy for Firestore
 }
 
 export const defaultTokenProperties: ITokenProperties = {
@@ -33,7 +35,8 @@ export const defaultTokenProperties: ITokenProperties = {
   size: "1",
   text: "",
   note: "",
-  noteVisibleToPlayers: false
+  noteVisibleToPlayers: false,
+  sprites: []
 };
 
 export function flipToken(token: ITokenProperties): ITokenProperties | undefined {

@@ -29,7 +29,8 @@ function createTestMap(ffa: boolean): IMap {
     description: "Sphinx of black quartz, judge my vow",
     owner: ownerUid,
     ty: MapType.Hex,
-    ffa: ffa
+    ffa: ffa,
+    imagePath: ""
   };
 }
 
@@ -750,7 +751,8 @@ test('Walls cannot be created inside tokens', () => {
       noteVisibleToPlayers: false,
       players: [],
       size: '2 (left)',
-      text: 'A'
+      text: 'A',
+      sprites: []
     })
   ];
 
@@ -818,6 +820,7 @@ test('Tokens cannot be created inside walls', () => {
       players: [],
       size: '2 (left)',
       text: 'A',
+      sprites: []
     })
   ];
 
@@ -855,7 +858,8 @@ test('Tokens cannot be moved into walls', () => {
       noteVisibleToPlayers: false,
       players: [],
       size: '2 (left)',
-      text: 'A'
+      text: 'A',
+      sprites: []
     })
   ];
 

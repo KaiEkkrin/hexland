@@ -9,6 +9,7 @@ import { IImages } from '../data/image';
 import { IInvite } from '../data/invite';
 import { IMap } from '../data/map';
 import { IProfile } from '../data/profile';
+import { ISpritesheets } from '../data/sprite';
 
 // Well-known collection names.
 const profiles = "profiles";
@@ -19,6 +20,7 @@ const maps = "maps";
 const changes = "changes";
 const baseChange = "base";
 const players = "players";
+const sprites = "sprites";
 
 // A non-generic base data reference helps our isEqual implementation.
 
@@ -232,6 +234,11 @@ export class DataService implements IDataService {
   getProfileRef(uid: string): IDataReference<IProfile> {
     const d = this._db.collection(profiles).doc(uid);
     return new DataReference<IProfile>(d, Convert.profileConverter);
+  }
+
+  getSpritesRef(adventureId: string): IDataReference<ISpritesheets> {
+    const d = this._db.collection(sprites).doc(adventureId);
+    return new DataReference<ISpritesheets>(d, Convert.spritesheetsConverter);
   }
 
   runTransaction<T>(fn: (dataView: IDataView) => Promise<T>): Promise<T> {

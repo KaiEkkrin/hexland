@@ -6,6 +6,7 @@ import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
 import { IInviteExpiryPolicy } from '../data/policy';
 import { IProfile } from '../data/profile';
+import { ISpritesheets } from '../data/sprite';
 import { IConverter } from './converter';
 
 // Abstracts the Firebase authentication stuff, which isn't supported by the
@@ -97,6 +98,9 @@ export interface IDataService extends IDataView {
 
   // Gets the user's profile.
   getProfileRef(uid: string): IDataReference<IProfile>;
+
+  // Gets a reference to the sprites record for an adventure.
+  getSpritesRef(adventureId: string): IDataReference<ISpritesheets>;
 
   // Runs a transaction. The `dataView` parameter accepted by the
   // transaction function does things in the transaction's context.
@@ -198,11 +202,17 @@ export interface IStorageReference {
   // Deletes the object.
   delete(): Promise<void>;
 
+  // Downloads the object from storage.
+  download(destination: string): Promise<void>;
+
   // Gets the download URL for this object.
   getDownloadURL(): Promise<string>;
 
   // Uploads a file here.
   put(file: Blob | Buffer, metadata: any): Promise<void>;
+
+  // Uploads a file here (from the filesystem.)
+  upload(source: string, metadata: { contentType: string }): Promise<void>;
 }
 
 export interface IWebDAV {
