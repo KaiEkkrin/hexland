@@ -6,7 +6,7 @@ import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
 import { IInviteExpiryPolicy } from '../data/policy';
 import { IProfile } from '../data/profile';
-import { ISpritesheets } from '../data/sprite';
+import { ISprite, ISpritesheets } from '../data/sprite';
 import { IConverter } from './converter';
 
 // Abstracts the Firebase authentication stuff, which isn't supported by the
@@ -174,6 +174,9 @@ export interface IFunctionsService {
   // Deletes an image.
   deleteImage(path: string): Promise<void>;
 
+  // Adds a new image to a sprite or replaces an existing one.
+  editSprite(adventureId: string, newPath: string, oldPath?: string | undefined): Promise<ISprite>;
+
   // For mock storage use only -- not production.
   handleMockStorageUpload(imageId: string, name: string): Promise<void>;
 
@@ -216,6 +219,9 @@ export interface IStorageReference {
 }
 
 export interface IWebDAV {
+  // For the streams, I'm going to supply the absolute minimal interface to get working...
+  createReadStream(path: string): any;
+  createWriteStream(path: string, options: any): any; 
   deleteFile(path: string): Promise<void>;
   getFileDownloadLink(path: string): string;
   putFileContents(path: string, file: Blob | Buffer): Promise<void>;

@@ -1,6 +1,8 @@
 import { IStorage, IStorageReference, IWebDAV } from './interfaces';
 import { createWebDAV } from './webdav';
 
+import * as fs from 'fs';
+
 // A mock storage service for the use of the local `run_docker.sh` deployment.
 
 export class MockStorage implements IStorage {
@@ -38,8 +40,28 @@ export class MockStorageReference implements IStorageReference {
     await this._webdav.deleteFile(webDAVPath);
   }
 
-  async download(destination: string): Promise<void> {
-    throw Error("TODO support me");
+  download(destination: string): Promise<void> {
+    const webDAVPath = this.getWebDAVPath();
+    console.log(`downloading file at path ${webDAVPath} to ${destination}...`);
+
+    // I'm going to try to be a bit careful about making sure the local
+    // file has closed before continuing:
+    const readStream = this._webdav.createReadStream(webDAVPath);
+    const writeStream = fs.createWriteStream(destination, { autoClose: true });
+    return new Promise((resolve, reject) => {
+      function safeReject(e: any) {
+        writeStream.close();
+        reject(e);
+      }
+
+      readStream.on('data', (d: any) => writeStream.write(d));
+      readStream.on('end', () => {
+        writeStream.end();
+        resolve();
+      });
+      readStream.on('error', safeReject);
+      writeStream.on('error', safeReject);
+    });
   }
 
   getDownloadURL(): Promise<string> {
@@ -54,6 +76,28 @@ export class MockStorageReference implements IStorageReference {
   }
 
   async upload(source: string, metadata: { contentType: string }): Promise<void> {
-    throw Error("TODO support me");
+    const webDAVPath = this.getWebDAVPath();
+    console.log(`uploading file at path ${webDAVPath}...`);
+
+    // I'm going to try to be a bit careful about making sure the local
+    // file has closed before continuing:
+    const readStream = fs.createReadStream(source);
+    const writeStream = this._webdav.createWriteStream(webDAVPath, {
+      extraHeaders: { 'Content-Type': metadata.contentType }
+    });
+    return new Promise((resolve, reject) => {
+      function safeReject(e: any) {
+        readStream.close();
+        reject(e);
+      }
+
+      readStream.on('data', (d: any) => writeStream.write(d));
+      readStream.on('end', () => {
+        writeStream.end();
+        resolve();
+      });
+      readStream.on('error', safeReject);
+      writeStream.on('error', safeReject);
+    });
   }
 }

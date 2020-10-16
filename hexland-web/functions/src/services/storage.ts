@@ -32,7 +32,7 @@ export class StorageReference implements IStorageReference {
   }
 
   async download(destination: string): Promise<void> {
-    const file = await this._bucket.file(this._path);
+    const file = this._bucket.file(this._path);
     await file.download({ destination: destination });
   }
 

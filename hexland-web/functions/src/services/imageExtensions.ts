@@ -3,7 +3,7 @@ import { IImage, IImages } from '../data/image';
 import { IMap } from '../data/map';
 import { getUserPolicy } from '../data/policy';
 import { IProfile } from '../data/profile';
-import { ISprite, ISpritesheets, SpriteManager } from '../data/sprite';
+import { getSpritePath, ISprite, ISpritesheets, SpriteManager } from '../data/sprite';
 import { IAdminDataService, ICollectionGroupQueryResult } from './extraInterfaces';
 import { IDataService, IDataReference, IDataView, ILogger, IStorage, IDataAndReference, IStorageReference } from './interfaces';
 
@@ -260,7 +260,12 @@ async function getNewSpritesheetRecord(
   }
 }
 
-async function createSpritesheet(storage: IStorage, sprite: ISprite, sheetPaths: string[]): Promise<IStorageReference> {
+async function createSpritesheet(
+  storage: IStorage,
+  logger: ILogger,
+  sprite: ISprite,
+  sheetPaths: string[]
+): Promise<IStorageReference> {
   // See https://firebase.google.com/docs/functions/gcp-storage-events for an example of the
   // kind of thing I am doing in this function.
   const tmp = os.tmpdir();
@@ -269,6 +274,7 @@ async function createSpritesheet(storage: IStorage, sprite: ISprite, sheetPaths:
     // Download all the source files from Storage.  (This should preserve ordering)
     // TODO #46 To save bandwidth, I could try cutting out the existing images and only
     // downloading the new sprite.  This might be slower, and certainly more complicated...
+    logger.logInfo("downloading: " + sheetPaths);
     const downloaded = await Promise.all(sheetPaths.map(async p => {
       const tmpPath = path.join(tmp, uuidv4()); // TODO eurgh do I need file extensions?
       await storage.ref(p).download(tmpPath);
@@ -278,6 +284,7 @@ async function createSpritesheet(storage: IStorage, sprite: ISprite, sheetPaths:
 
     // Do the montage
     // TODO sort out the hardwired values here :p
+    logger.logInfo("spawning montage");
     const tmpSheetPath = path.join(tmp, `${uuidv4()}.png`);
     await spawn('montage', [
       '-geometry', '256x256',
@@ -290,7 +297,9 @@ async function createSpritesheet(storage: IStorage, sprite: ISprite, sheetPaths:
     tmpPaths.push(tmpSheetPath);
 
     // Upload that new spritesheet
-    const sheetRef = storage.ref(`sprites/${sprite.id}`);
+    const spritePath = getSpritePath(sprite);
+    logger.logInfo(`uploading: spritePath`);
+    const sheetRef = storage.ref(spritePath);
     await sheetRef.upload(tmpSheetPath, { contentType: 'image/png' });
     return sheetRef;
   } finally {
@@ -323,7 +332,7 @@ async function commitSpritesheet(
     throw Error('Sprite was deleted');
   }
 
-  view.update(spritesRef, { sprites: sm.sprites });
+  view.set(spritesRef, { sprites: sm.sprites });
   return newSprite;
 }
 
@@ -351,7 +360,7 @@ async function tryEditSprite(
   }
 
   // Create the new spritesheet
-  const spriteSheetRef = await createSpritesheet(storage, newSprite, newSheetPaths);
+  const spriteSheetRef = await createSpritesheet(storage, logger, newSprite, newSheetPaths);
 
   // If the transaction fails, I want to delete it again to save space:
   try {
@@ -370,10 +379,23 @@ export async function editSprite(
   storage: IStorage,
   logger: ILogger,
   adventureId: string,
+  uid: string,
   newPath: string,
   oldPath: string | undefined
 ): Promise<ISprite> {
+  const adventureRef = dataService.getAdventureRef(adventureId);
   const spritesRef = dataService.getSpritesRef(adventureId);
+
+  // Authorization
+  // TODO #46 Come up with an authorization solution for player characters.
+  // For now, just require the adventure owner :)
+  const adventure = await dataService.get(adventureRef);
+  if (adventure?.owner !== uid) {
+    throw new functions.https.HttpsError('permission-denied', 'You are not the owner of this adventure.');
+  }
+
+  // TODO #149 debugging
+  logger.logInfo(`creating sprite ${newPath}`);
 
   // We can't use the Firestore transaction mechanism here because we need to clean up
   // unused spritesheets in between failed tries.  Therefore, we roll our own retry loop:
@@ -384,12 +406,15 @@ export async function editSprite(
       return await tryEditSprite(dataService, storage, logger, newPath, oldPath, spritesRef);
     } catch (e) {
       if (e instanceof SpriteEditException) {
+        logger.logInfo(`editSprite ${newPath} try ${i+1} failed: ${e.message}`);
         exception = e;
       } else {
+        logger.logWarning(`editSprite ${newPath} failed: ${e.message ?? String(e)}`);
         throw e;
       }
     }
   }
 
+  logger.logWarning(`editSprite ${newPath} failed after ${tries} tries: ${exception?.message}`);
   throw exception;
 }

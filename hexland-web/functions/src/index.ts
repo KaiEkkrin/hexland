@@ -215,6 +215,8 @@ export const joinAdventure = functions.region(region).https.onCall(async (data, 
 });
 
 // Deletes an image.
+// TODO #149 Have it also clean up the associated sprites, and test that
+// (requires an exciting query...)
 
 export const deleteImage = functions.region(region).https.onCall(async (data, context) => {
   const uid = context.auth?.uid;
@@ -228,6 +230,27 @@ export const deleteImage = functions.region(region).https.onCall(async (data, co
   }
 
   await ImageExtensions.deleteImage(dataService, storage, functionLogger, uid, path);
+});
+
+// Edits a sprite, either adding a new image or replacing an existing one.
+
+export const editSprite = functions.region(region).https.onCall(async (data, context) => {
+  const uid = context.auth?.uid;
+  if (uid === undefined) {
+    throw new functions.https.HttpsError('unauthenticated', 'No uid found');
+  }
+
+  const adventureId = data['adventureId'];
+  const newPath = data['newPath'];
+  const oldPath = data['oldPath']; // optional
+  if (!adventureId || !newPath) {
+    throw new functions.https.HttpsError('invalid-argument', 'No adventure id or new path supplied');
+  }
+
+  return await ImageExtensions.editSprite(
+    dataService, storage, functionLogger, String(adventureId), uid, String(newPath),
+    oldPath ? String(oldPath) : undefined
+  );
 });
 
 // == TRIGGER FUNCTIONS ==

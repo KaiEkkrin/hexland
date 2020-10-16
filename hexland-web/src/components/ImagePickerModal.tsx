@@ -21,29 +21,24 @@ interface IImageStatusProps {
   isError?: boolean | undefined;
 }
 
-function ImageStatus(props: IImageStatusProps) {
-  const className = useMemo(() => props.isError === true ? "App-image-error-status" : undefined, [props.isError]);
+function ImageStatus({ message, isError }: IImageStatusProps) {
+  const className = useMemo(() => isError === true ? "App-image-error-status" : undefined, [isError]);
   return (
-    <p className={className}>{props.message}</p>
+    <p className={className}>{message}</p>
   );
 }
 
-interface IImagePickerModalProps {
+interface IImagePickerFormProps {
   show: boolean;
-  handleClose: () => void;
-  handleDelete: (image: IImage | undefined) => void;
-  handleSave: (path: string | undefined) => void;
+  setActiveImage: (value: IImage | undefined) => void;
+  setImageCount: (value: number) => void;
+  handleDelete: () => void;
 }
 
-function ImagePickerModal({ show, handleClose, handleDelete, handleSave }: IImagePickerModalProps) {
+export function ImagePickerForm({ show, setActiveImage, setImageCount, handleDelete }: IImagePickerFormProps) {
   const { logError } = useContext(AnalyticsContext);
-  const profile = useContext(ProfileContext);
   const { dataService, storageService, user } = useContext(UserContext);
 
-  const maxImages = useMemo(
-    () => profile === undefined ? undefined : getUserPolicy(profile.level).images,
-    [profile]
-  );
   const [status, setStatus] = useState<IImageStatusProps>({ message: "" });
 
   // Reset the status when the dialog is opened
@@ -78,10 +73,6 @@ function ImagePickerModal({ show, handleClose, handleDelete, handleSave }: IImag
       });
   }, [logError, setStatus, storageService, user]);
 
-  // Image view
-  // The bootstrap carousel appears to be entirely busted under these circumstances (images are always 0 high)
-  // so I'm going to create a poor man's one by myself
-
   const [images, setImages] = useState<IImage[]>([]);
   useEffect(() => {
     if (!dataService || !user) {
@@ -94,13 +85,14 @@ function ImagePickerModal({ show, handleClose, handleDelete, handleSave }: IImag
       imagesRef,
       r => {
         setImages(r?.images ?? []);
+        setImageCount(r?.images?.length ?? 0);
         if (r !== undefined) {
           setStatus({ message: r.lastError, isError: r.lastError.length > 0 });
         }
       },
       e => logError("Error watching images", e)
     );
-  }, [logError, setImages, setStatus, dataService, user]);
+  }, [logError, setImageCount, setImages, setStatus, dataService, user]);
 
   const [index, setIndex] = useReducer(
     (state: number, action: number) => action === 0 ? 0 : state + action,
@@ -122,26 +114,69 @@ function ImagePickerModal({ show, handleClose, handleDelete, handleSave }: IImag
     setIndex(0);
   }, [images, setIndex, setList]);
 
-  const shownItem = useMemo(() => {
-    if (list.length === 0) {
-      return <div></div>;
-    } else {
-      const shownIndex = Math.max(0, Math.min(list.length - 1, index));
-      return list[shownIndex];
-    }
-  }, [index, list]);
+  // Sync the active image with our list and index
+  const shownIndex = useMemo(
+    () => list.length === 0 ? undefined : Math.max(0, Math.min(list.length - 1, index)),
+    [index, list]
+  );
 
-  // Buttons and save handling
+  useEffect(
+    () => setActiveImage(shownIndex !== undefined ? images[shownIndex] : undefined),
+    [setActiveImage, images, shownIndex]
+  );
 
-  const activeImage = useMemo(() => {
-    if (images.length === 0) {
-      return undefined;
-    } else {
-      const shownIndex = Math.max(0, Math.min(images.length - 1, index));
-      return images[shownIndex];
-    }
-  }, [images, index]);
+  const shownItem = useMemo(
+    () => shownIndex === undefined ? <div></div> : list[shownIndex],
+    [list, shownIndex]
+  );
 
+  const saveDisabled = useMemo(() => shownIndex === undefined, [shownIndex]);
+
+  return (
+    <React.Fragment>
+      <Form>
+        <Form.Group>
+          <Form.Label htmlFor="uploadButton">Upload a new image</Form.Label>
+          <Form.Control id="uploadButton" as="input" type="file" accept="image/*" onChange={handleFileChange} />
+          <Form.Text className="text-muted">The maximum image size is 2MB.</Form.Text>
+        </Form.Group>
+      </Form>
+      <ImageStatus {...status} />
+      <div className="App-image-collection">
+        <Button variant="primary" disabled={goBackDisabled} onClick={goBack}>
+          <FontAwesomeIcon icon={faChevronLeft} color="white" />
+        </Button>
+        {shownItem}
+        <div className="App-image-collection-item">
+          <Button variant="danger" disabled={saveDisabled} onClick={handleDelete}>
+            <FontAwesomeIcon icon={faTimes} color="white" />
+          </Button>
+          <Button variant="primary" disabled={goForwardDisabled} onClick={goForward}>
+            <FontAwesomeIcon icon={faChevronRight} color="white" />
+          </Button>
+          <div>{/* empty div to provide alignment */}</div>
+        </div>
+      </div>
+    </React.Fragment>
+  );
+}
+
+interface IImagePickerModalProps {
+  show: boolean;
+  handleClose: () => void;
+  handleDelete: (image: IImage | undefined) => void;
+  handleSave: (path: string | undefined) => void;
+}
+
+function ImagePickerModal({ show, handleClose, handleDelete, handleSave }: IImagePickerModalProps) {
+  const profile = useContext(ProfileContext);
+  const maxImages = useMemo(
+    () => profile === undefined ? undefined : getUserPolicy(profile.level).images,
+    [profile]
+  );
+
+  const [activeImage, setActiveImage] = useState<IImage | undefined>(undefined);
+  const [imageCount, setImageCount] = useState(0);
   const activeImagePath = useMemo(() => activeImage?.path, [activeImage]);
   const saveDisabled = useMemo(() => activeImagePath === undefined, [activeImagePath]);
   const doHandleSave = useCallback(() => {
@@ -165,32 +200,11 @@ function ImagePickerModal({ show, handleClose, handleDelete, handleSave }: IImag
   return (
     <Modal show={show} onHide={handleClose}>
       <Modal.Header closeButton>
-        <Modal.Title>Choose image ({images.length}/{maxImages})</Modal.Title>
+        <Modal.Title>Choose image ({imageCount}/{maxImages})</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        <Form>
-          <Form.Group>
-            <Form.Label htmlFor="uploadButton">Upload a new image</Form.Label>
-            <Form.Control id="uploadButton" as="input" type="file" accept="image/*" onChange={handleFileChange} />
-            <Form.Text className="text-muted">The maximum image size is 2MB.</Form.Text>
-          </Form.Group>
-        </Form>
-        <ImageStatus {...status} />
-        <div className="App-image-collection">
-          <Button variant="primary" disabled={goBackDisabled} onClick={goBack}>
-            <FontAwesomeIcon icon={faChevronLeft} color="white" />
-          </Button>
-          {shownItem}
-          <div className="App-image-collection-item">
-            <Button variant="danger" disabled={saveDisabled} onClick={doHandleDelete}>
-              <FontAwesomeIcon icon={faTimes} color="white" />
-            </Button>
-            <Button variant="primary" disabled={goForwardDisabled} onClick={goForward}>
-              <FontAwesomeIcon icon={faChevronRight} color="white" />
-            </Button>
-            <div></div>
-          </div>
-        </div>
+        <ImagePickerForm show={show} setActiveImage={setActiveImage} setImageCount={setImageCount}
+          handleDelete={doHandleDelete} />
       </Modal.Body>
       <Modal.Footer>
         <Button variant="warning" onClick={handleUseNone}>Use no image</Button>

@@ -451,7 +451,7 @@ export const spritesheetsConverter = new RecursingConverter<ISpritesheets>({
   sprites: [],
 }, {
   "sprites": (conv, raw) => {
-    conv.sprites = Array.isArray(raw) ? raw.map(r => spriteConverter.convert(raw)) : [];
+    conv.sprites = Array.isArray(raw) ? raw.map(r => spriteConverter.convert(r)) : [];
     return conv;
   }
 });

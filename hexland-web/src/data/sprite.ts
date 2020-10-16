@@ -21,6 +21,12 @@ export function compareSprites(a: ISprite, b: ISprite): number {
   return idCmp !== 0 ? idCmp : a.position - b.position;
 }
 
+// This helps create known sprite paths in storage.
+// We hardwire the ".png" extension for now to get around issues with content type
+export function getSpritePath(sprite: ISprite) {
+  return `sprites/${sprite.id}.png`;
+}
+
 // Describes an image spritesheet(s).  These will be associated with adventures and cover all the images
 // that can be displayed in that adventure's maps.
 // There will be one of these per adventure, managed by Firebase Functions only.  There's no need
