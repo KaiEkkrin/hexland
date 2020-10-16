@@ -13,6 +13,12 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "0.11.6",
+    changes: [
+      "Make the map name in the nav bar a self link"
+    ]
+  },
+  {
     version: "0.11.5",
     changes: [
       "Fix database errors when updating the profile"

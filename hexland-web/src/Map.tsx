@@ -69,14 +69,16 @@ function Map({ adventureId, mapId }: IMapPageProps) {
       return undefined;
     }
 
-    const adventureLink = "/adventure/" + adventureId;
-    const objectsString = userPolicy === undefined ? undefined : " (" + mapState.objectCount + "/" + userPolicy.objects + ")";
+    const adventureLink = "/adventure/" + map.adventureId;
+    const mapLink = `/adventure/${map.adventureId}/map/${map.id}`;
+    const objectsString = (userPolicy === undefined || mapState.objectCount === undefined) ?
+      undefined : "(" + mapState.objectCount + "/" + userPolicy.objects + ")";
     return (
       <div style={{ overflowWrap: 'normal' }}>
-        <Link to={adventureLink}>{map.record.adventureName}</Link> | {map.record.name}{objectsString}
+        <Link to={adventureLink}>{map.record.adventureName}</Link> | <Link to={mapLink}>{map.record.name}</Link> {objectsString}
       </div>
     );
-  }, [adventureId, profile, map, mapState, userPolicy]);
+  }, [profile, map, mapState, userPolicy]);
 
   // Track network status
   const [resyncCount, setResyncCount] = useState(0);
