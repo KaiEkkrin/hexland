@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import '../App.css';
 import packageJson from '../../package.json';
 
@@ -6,7 +6,7 @@ import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faCodeBranch, faTimes } from '@fortawesome/free-solid-svg-icons';
 
 // A component that can go along the bottom of pages.
 // I could use this for error reporting toasts, social media links,
@@ -39,17 +39,34 @@ function Dependencies() {
 function Status() {
   const [isCollapsed, setIsCollapsed] = useState(true);
 
-  if (isCollapsed) {
-    return (
+  // #162: On narrow screens we squeeze that version button down so that it doesn't block
+  // the collapse button of one of the adventure or map cards
+  const [width, setWidth] = useState(window.innerWidth);
+  const handleWindowResize = useCallback(() => setWidth(window.innerWidth), [setWidth]);
+  useEffect(() => {
+    window.addEventListener('resize', handleWindowResize);
+    return () => { window.removeEventListener('resize', handleWindowResize); };
+  }, [handleWindowResize]);
+
+  const collapsedStatus = useMemo(
+    () => width < 450 ? (
       <div className="App-status">
-        <Button className="mr-2 mb-2" size="sm" variant="info" onClick={() => setIsCollapsed(false)}>
-          about | v{packageJson.version}
+        <Button className="mb-2" style={{ marginRight: '-0.5rem' }} size="sm" variant="info"
+          onClick={() => setIsCollapsed(false)}
+        >
+          <FontAwesomeIcon icon={faCodeBranch} color="white" />
         </Button>
       </div>
-    );
-  }
+    ) : (
+      <div className="App-status">
+        <Button className="mr-2 mb-2" size="sm" variant="info" onClick={() => setIsCollapsed(false)}>
+          about | {packageJson.version}
+        </Button>
+      </div>
+    ), [width, setIsCollapsed]
+  );
 
-  return (
+  return isCollapsed ? collapsedStatus : (
     <div className="App-status-card-container">
       <Card className="App-status-card" bg="dark" text="white">
         <Card.Header className="App-status-card-header">
@@ -69,7 +86,7 @@ function Status() {
         </Card.Body>
         <Card.Footer className="App-status-card-footer">
           <Button size="sm" variant="info" onClick={() => setIsCollapsed(true)}>
-            about | v{packageJson.version}
+            about | {packageJson.version}
           </Button>
         </Card.Footer>
       </Card>

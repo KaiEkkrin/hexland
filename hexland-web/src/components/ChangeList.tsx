@@ -15,6 +15,7 @@ const changes: IVersion[] = [
   {
     version: "0.11.6",
     changes: [
+      "Shrink the version button on narrow screens",
       "Make the map name in the nav bar a self link"
     ]
   },
