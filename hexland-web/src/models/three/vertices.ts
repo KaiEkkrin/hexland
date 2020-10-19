@@ -47,14 +47,14 @@ export function createPaletteColouredVertexObject(createGeometry: () => THREE.In
 
 export function createSelectionColouredVertexObject(createGeometry: () => THREE.InstancedBufferGeometry, gridGeometry: IGridGeometry) {
   return (maxInstances: number) => new MultipleFeatureObject<IGridVertex, IFeature<IGridVertex>>(
-    (i: number, maxInstances: number) => new PaletteColouredFeatureObject(
+    (i: string, maxInstances: number) => new PaletteColouredFeatureObject(
       vertexString,
       (o, p) => gridGeometry.transformToVertex(o, p),
       maxInstances,
       createGeometry,
       createSelectionColourParameters(i)
     ),
-    f => f.colour,
+    f => `${f.colour}`,
     maxInstances
   );
 }

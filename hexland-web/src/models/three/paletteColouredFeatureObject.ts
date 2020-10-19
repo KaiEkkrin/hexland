@@ -120,17 +120,17 @@ const selectionColourPalette = [
   new THREE.Color(0x006060)
 ];
 
-function getSelectionColourBlending(i: number) {
-  if (i === 0 || i === 2) {
+function getSelectionColourBlending(i: string) {
+  if (i === '0' || i === '2') {
     return THREE.AdditiveBlending;
-  } else if (i === 1 || i === 3) {
+  } else if (i === '1' || i === '3') {
     return THREE.SubtractiveBlending;
   } else {
     throw RangeError("Invalid selection colour value: " + i);
   }
 }
 
-export function createSelectionColourParameters(i: number) {
+export function createSelectionColourParameters(i: string) {
   return {
     palette: selectionColourPalette,
     blending: getSelectionColourBlending(i)

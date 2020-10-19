@@ -157,6 +157,11 @@ export interface IDataView {
   update<T>(r: IDataReference<T>, changes: any): Promise<void>;
 }
 
+export interface IDownloadUrlCache {
+  // Looks up a path to a URL asynchronously, taking the given action when done.
+  resolve(path: string, fn: (url: string) => void): void;
+}
+
 // Provides access to Firebase Functions.
 export interface IFunctionsService {
   // Creates a new adventure, returning its ID.

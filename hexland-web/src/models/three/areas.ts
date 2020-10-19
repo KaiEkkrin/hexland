@@ -1,11 +1,13 @@
 import { coordString, IGridCoord } from '../../data/coord';
-import { IFeature, IIdFeature } from '../../data/feature';
+import { IFeature, IIdFeature, IResolvedToken } from '../../data/feature';
 import { IGridGeometry } from "../gridGeometry";
 import { IInstancedFeatureObject } from './instancedFeatureObject';
 import { InstancedFeatures } from './instancedFeatures';
 import { MultipleFeatureObject } from './multipleFeatureObject';
 import { PaletteColouredFeatureObject, IColourParameters, createSelectionColourParameters } from './paletteColouredFeatureObject';
 import { RedrawFlag } from '../redrawFlag';
+import { SpriteFeatureObject } from './spriteFeatureObject';
+import { createBoundingUvs } from './uv';
 
 import * as THREE from 'three';
 
@@ -24,6 +26,20 @@ function createSingleAreaGeometry(gridGeometry: IGridGeometry, alpha: number, z:
   return createAreaGeometry(gridGeometry.toSingle(), alpha, z);
 }
 
+function createSpriteAreaGeometry(gridGeometry: IGridGeometry, alpha: number, z: number) {
+  const single = gridGeometry.toSingle();
+  const vertices = [...single.createSolidVertices(new THREE.Vector2(0, 0), alpha, z)];
+  const indices = [...single.createSolidMeshIndices()];
+  const uvs = new Float32Array(createBoundingUvs(vertices));
+  return () => {
+    const geometry = new THREE.InstancedBufferGeometry();
+    geometry.setFromPoints(vertices);
+    geometry.setIndex(indices);
+    geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+    return geometry;
+  };
+}
+
 export function createPaletteColouredAreaObject(gridGeometry: IGridGeometry, alpha: number, areaZ: number, colourParameters: IColourParameters) {
   return (maxInstances: number) => new PaletteColouredFeatureObject(
     coordString,
@@ -37,14 +53,30 @@ export function createPaletteColouredAreaObject(gridGeometry: IGridGeometry, alp
 export function createSelectionColouredAreaObject(gridGeometry: IGridGeometry, alpha: number, areaZ: number) {
   const areaGeometry = createSingleAreaGeometry(gridGeometry, alpha, areaZ);
   return (maxInstances: number) => new MultipleFeatureObject<IGridCoord, IFeature<IGridCoord>>(
-    (i: number, maxInstances: number) => new PaletteColouredFeatureObject(
+    (i: string, maxInstances: number) => new PaletteColouredFeatureObject(
       coordString,
       (o, p) => gridGeometry.transformToCoord(o, p),
       maxInstances,
       areaGeometry,
       createSelectionColourParameters(i)
     ),
-    f => f.colour,
+    f => `${f.colour}`,
+    maxInstances
+  );
+}
+
+export function createSpriteAreaObject(gridGeometry: IGridGeometry, redrawFlag: RedrawFlag, alpha: number, areaZ: number) {
+  const areaGeometry = createSpriteAreaGeometry(gridGeometry, alpha, areaZ);
+  return (maxInstances: number) => new MultipleFeatureObject<IGridCoord, IResolvedToken>(
+    (i: string, maxInstances: number) => new SpriteFeatureObject(
+      coordString,
+      (o, p) => gridGeometry.transformToCoord(o, p),
+      maxInstances,
+      areaGeometry,
+      redrawFlag,
+      i
+    ),
+    f => f.spriteUrl,
     maxInstances
   );
 }

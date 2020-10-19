@@ -6,6 +6,7 @@ import { FeatureColour } from '../featureColour';
 import { IGridGeometry } from '../gridGeometry';
 import { IDrawing } from '../interfaces';
 import { RedrawFlag } from '../redrawFlag';
+import { IDownloadUrlCache } from '../../services/interfaces';
 
 import { Areas, createPaletteColouredAreaObject, createAreas, createSelectionColouredAreaObject } from './areas';
 import { Grid, IGridLoSPreRenderParameters } from './grid';
@@ -23,6 +24,7 @@ import * as THREE from 'three';
 const areaZ = -0.5;
 const tokenZ = -0.4;
 const wallZ = -0.4;
+const tokenSpriteZ = -0.35;
 const gridZ = -0.3;
 const losZ = -0.2;
 const losQ = 0.2;
@@ -40,6 +42,7 @@ const wallAlpha = 0.15;
 const edgeAlpha = 0.5;
 const vertexAlpha = 0.5;
 const tokenAlpha = 0.7;
+const tokenSpriteAlpha = 0.6;
 const selectionAlpha = 0.9;
 const areaAlpha = 1.0;
 const vertexHighlightAlpha = 0.35;
@@ -93,7 +96,8 @@ export class DrawingOrtho implements IDrawing {
     gridGeometry: IGridGeometry,
     colours: FeatureColour[],
     mount: HTMLDivElement,
-    seeEverything: boolean
+    seeEverything: boolean,
+    urlCache: IDownloadUrlCache
   ) {
     this._gridGeometry = gridGeometry;
     this._mount = mount;
@@ -225,7 +229,13 @@ export class DrawingOrtho implements IDrawing {
 
     // The tokens
     this._tokens = new TokenDrawing(
-      gridGeometry, this._needsRedraw, this._textMaterial, tokenAlpha, tokenZ, textZ, lightColourParameters, this._mapScene
+      gridGeometry, this._needsRedraw, this._textMaterial, {
+        alpha: tokenAlpha,
+        spriteAlpha: tokenSpriteAlpha,
+        z: tokenZ,
+        spriteZ: tokenSpriteZ,
+        textZ: textZ
+      }, lightColourParameters, this._mapScene, urlCache
     );
 
     // The walls

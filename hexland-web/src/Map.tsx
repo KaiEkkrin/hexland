@@ -26,7 +26,7 @@ import { createTokenSizes, IMap, MAP_CONTAINER_CLASS } from './data/map';
 import { getUserPolicy } from './data/policy';
 import { IProfile } from './data/profile';
 import { registerMapAsRecent, watchChangesAndConsolidate, removeMapFromRecent } from './services/extensions';
-import { IDataService, IFunctionsService } from './services/interfaces';
+import { IDataService, IFunctionsService, IStorage } from './services/interfaces';
 
 import { standardColours } from './models/featureColour';
 import { MapStateMachine, createDefaultState, zoomMax, zoomMin } from './models/mapStateMachine';
@@ -38,10 +38,11 @@ import { Link, RouteComponentProps, useHistory } from 'react-router-dom';
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
 import { v4 as uuidv4 } from 'uuid';
+import { DownloadUrlCache } from './services/downloadUrlCache';
 
 // The map component is rather large because of all the state that got pulled into it...
 function Map({ adventureId, mapId }: IMapPageProps) {
-  const { dataService, functionsService, user } = useContext(UserContext);
+  const { dataService, functionsService, storageService, user } = useContext(UserContext);
   const { analytics, logError, logEvent } = useContext(AnalyticsContext);
   const profile = useContext(ProfileContext);
   const statusContext = useContext(StatusContext);
@@ -164,6 +165,7 @@ function Map({ adventureId, mapId }: IMapPageProps) {
     logError: (message: string, e: any, fatal?: boolean | undefined) => void,
     dataService: IDataService,
     functionsService: IFunctionsService,
+    storage: IStorage,
     uid: string,
     profile: IProfile,
     map: IAdventureIdentified<IMap>,
@@ -185,8 +187,9 @@ function Map({ adventureId, mapId }: IMapPageProps) {
     }
 
     const userPolicy = uid === map.record.owner ? getUserPolicy(profile.level) : undefined;
+    const urlCache = new DownloadUrlCache(storage, logError);
     setStateMachine(new MapStateMachine(
-      dataService, map, uid, standardColours, mount, userPolicy, setMapState
+      dataService, map, uid, standardColours, mount, userPolicy, urlCache, setMapState
     ));
   }, [setMapState, setStateMachine]);
 
@@ -195,6 +198,7 @@ function Map({ adventureId, mapId }: IMapPageProps) {
     if (
       dataService === undefined ||
       functionsService === undefined ||
+      storageService === undefined ||
       map === undefined ||
       uid === undefined ||
       profile === undefined ||
@@ -204,9 +208,9 @@ function Map({ adventureId, mapId }: IMapPageProps) {
       return;
     }
 
-    openMap(logError, dataService, functionsService, uid, profile, map, drawingRef?.current)
+    openMap(logError, dataService, functionsService, storageService, uid, profile, map, drawingRef?.current)
       .catch(e => logError("Error opening map", e));
-  }, [logError, drawingRef, openMap, map, profile, dataService, functionsService, user]);
+  }, [logError, drawingRef, openMap, map, profile, dataService, functionsService, storageService, user]);
 
   useEffect(() => {
     if (stateMachine === undefined) {

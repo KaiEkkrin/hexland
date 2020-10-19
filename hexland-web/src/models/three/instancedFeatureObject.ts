@@ -56,7 +56,7 @@ export abstract class InstancedFeatureObject<K extends IGridCoord, F extends IFe
   // filling in other instanced attributes.
   protected addFeature(f: F, instanceIndex: number) {
     // All features have a position, which we create now
-    let o = new THREE.Object3D();
+    const o = new THREE.Object3D();
     this._transformTo(o, f.position);
     o.updateMatrix();
     this.mesh.setMatrixAt(instanceIndex, o.matrix);
@@ -108,7 +108,7 @@ export abstract class InstancedFeatureObject<K extends IGridCoord, F extends IFe
   }
 
   remove(f: F) {
-    let instanceIndex = this._indexes.remove(f.position);
+    const instanceIndex = this._indexes.remove(f.position);
     if (instanceIndex === undefined) {
       return false;
     }

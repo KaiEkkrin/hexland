@@ -4,18 +4,18 @@ import { IInstancedFeatureObject } from './instancedFeatureObject';
 
 import * as THREE from 'three';
 
-// An instanced feature object that wraps several, complete with a numeric selector.
+// An instanced feature object that wraps several, complete with a selector.
 export class MultipleFeatureObject<K extends IGridCoord, F extends IFeature<K>> implements IInstancedFeatureObject<K, F> {
-  private readonly _createFeatureObj: (index: number, maxInstances: number) => IInstancedFeatureObject<K, F>;
-  private readonly _getIndex: (f: F) => number;
-  private readonly _featureObjs = new Map<number, IInstancedFeatureObject<K, F>>();
+  private readonly _createFeatureObj: (index: string, maxInstances: number) => IInstancedFeatureObject<K, F>;
+  private readonly _getIndex: (f: F) => string | undefined;
+  private readonly _featureObjs = new Map<string, IInstancedFeatureObject<K, F>>();
   private readonly _maxInstances: number;
 
   private _scene: THREE.Scene | undefined;
 
   constructor(
-    createFeatureObj: (index: number, maxInstances: number) => IInstancedFeatureObject<K, F>,
-    getIndex: (f: F) => number,
+    createFeatureObj: (index: string, maxInstances: number) => IInstancedFeatureObject<K, F>,
+    getIndex: (f: F) => string | undefined,
     maxInstances: number
   ) {
     this._createFeatureObj = createFeatureObj;
@@ -23,7 +23,7 @@ export class MultipleFeatureObject<K extends IGridCoord, F extends IFeature<K>> 
     this._maxInstances = maxInstances;
   }
 
-  private getFeatureObj(index: number) {
+  private getFeatureObj(index: string) {
     const obj = this._featureObjs.get(index);
     if (obj !== undefined) {
       return obj;
@@ -60,7 +60,13 @@ export class MultipleFeatureObject<K extends IGridCoord, F extends IFeature<K>> 
   }
 
   add(f: F) {
-    return this.getFeatureObj(this._getIndex(f)).add(f);
+    const index = this._getIndex(f);
+    if (index === undefined) {
+      // This feature is not drawn.
+      return false;
+    }
+
+    return this.getFeatureObj(index).add(f);
   }
 
   clear() {
@@ -68,7 +74,12 @@ export class MultipleFeatureObject<K extends IGridCoord, F extends IFeature<K>> 
   }
 
   remove(f: F) {
-    return this.getFeatureObj(this._getIndex(f)).remove(f);
+    const index = this._getIndex(f);
+    if (index === undefined) {
+      return false;
+    }
+
+    return this.getFeatureObj(index).remove(f);
   }
 
   dispose() {

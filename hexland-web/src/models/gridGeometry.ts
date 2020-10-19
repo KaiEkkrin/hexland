@@ -319,6 +319,8 @@ export abstract class BaseGeometry {
       1, 2, 3
     ];
   }
+  
+  abstract createSolidVertices(tile: THREE.Vector2, alpha: number, z: number): Iterable<THREE.Vector3>;
 
   createSolidVertexVertices(tile: THREE.Vector2, alpha: number, z: number, maxVertex?: number | undefined): THREE.Vector3[] {
     let radius = this.getVertexRadius(alpha);

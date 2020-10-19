@@ -79,6 +79,15 @@ export const defaultWall: IFeature<IGridEdge> = {
   colour: 0
 };
 
+// We use this internally to provide the sprite URL after having gone through the (asynchronous)
+// method of resolving it from the path.
+
+export interface IResolvedTokenProperties extends ITokenProperties {
+  spriteUrl: string;
+}
+
+export interface IResolvedToken extends IToken, IResolvedTokenProperties {}
+
 // Token text is positioned either at a coord or a vertex.  We can cheat slightly
 // and use the vertex structure for the coord too, complete with the `atVertex` flag.
 // This one is used only internally, derived from the token, and never added as part

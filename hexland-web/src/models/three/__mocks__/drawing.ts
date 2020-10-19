@@ -7,6 +7,7 @@ import { OutlinedRectangle } from "./overlayRectangle";
 
 import { Subject } from 'rxjs';
 import { SimpleTokenDrawing } from "../../../data/tokens";
+import { IDownloadUrlCache } from "../../../services/interfaces";
 
 jest.mock('../overlayRectangle');
 
@@ -21,7 +22,8 @@ export function createDrawing(
   gridGeometry: IGridGeometry,
   colours: FeatureColour[],
   mount: HTMLDivElement,
-  seeEverything: boolean
+  seeEverything: boolean,
+  urlCache: IDownloadUrlCache
 ): IDrawing {
   let mockDrawing = {
     gridGeometry: gridGeometry,

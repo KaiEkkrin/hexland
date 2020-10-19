@@ -1,18 +1,113 @@
 import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from "../../data/coord";
-import { IFeature, IFeatureDictionary, IIdFeature, IToken, ITokenProperties } from "../../data/feature";
+import { IFeature, IFeatureDictionary, IIdFeature, IResolvedToken, IToken, ITokenProperties } from "../../data/feature";
+import { getSpritePath } from "../../data/sprite";
 import { BaseTokenDrawing, SimpleTokenDrawing } from "../../data/tokens";
 import { IGridGeometry } from "../gridGeometry";
 import { RedrawFlag } from "../redrawFlag";
+import { IDownloadUrlCache } from "../../services/interfaces";
 
-import { createPaletteColouredAreaObject, createSelectedAreas } from "./areas";
+import { createPaletteColouredAreaObject, createSelectedAreas, createSpriteAreaObject } from "./areas";
 import { IInstancedFeatureObject } from "./instancedFeatureObject";
 import { InstancedFeatures } from "./instancedFeatures";
 import { IColourParameters } from "./paletteColouredFeatureObject";
+import { TokenTexts } from "./tokenTexts";
 import { createPaletteColouredVertexObject, createTokenFillVertexGeometry } from "./vertices";
 import { createPaletteColouredWallObject, createTokenFillEdgeGeometry } from "./walls";
 
 import * as THREE from 'three';
-import { TokenTexts } from "./tokenTexts";
+
+export interface ITokenDrawingParameters {
+  alpha: number;
+  spriteAlpha: number;
+  z: number;
+  spriteZ: number;
+  textZ: number;
+}
+
+// This middle dictionary helps us create the palette-coloured token features immediately,
+// and the sprite ones (if applicable) once we get a download URL.
+// TODO #149 Genericise it to do token fill edges and vertices too :)
+class TokenFeatures extends InstancedFeatures<IGridCoord, IToken> {
+  private readonly _urlCache: IDownloadUrlCache;
+  private readonly _spriteFeatures: InstancedFeatures<IGridCoord, IResolvedToken>;
+
+  constructor(
+    gridGeometry: IGridGeometry,
+    needsRedraw: RedrawFlag,
+    drawingParameters: ITokenDrawingParameters,
+    colourParameters: IColourParameters,
+    urlCache: IDownloadUrlCache
+  ) {
+    super(
+      gridGeometry, needsRedraw, coordString, createPaletteColouredAreaObject(
+        gridGeometry, drawingParameters.alpha, drawingParameters.z, colourParameters
+      )
+    );
+
+    this._urlCache = urlCache;
+    this._spriteFeatures = new InstancedFeatures<IGridCoord, IResolvedToken>(
+      gridGeometry, needsRedraw, coordString, createSpriteAreaObject(
+        gridGeometry, needsRedraw, drawingParameters.spriteAlpha, drawingParameters.spriteZ
+      )
+    );
+  }
+
+  addToScene(scene: THREE.Scene) {
+    if (super.addToScene(scene) === false) {
+      return false;
+    }
+
+    this._spriteFeatures.addToScene(scene);
+    return true;
+  }
+
+  removeFromScene() {
+    super.removeFromScene();
+    this._spriteFeatures.removeFromScene();
+  }
+
+  add(f: IToken) {
+    const added = super.add(f);
+    if (added === false) {
+      return false;
+    }
+
+    // To be able to add the sprite feature we need to lookup the sprite URL.
+    // After finding it we should check again whether this was removed...
+    if (f.sprites.length > 0) {
+      this._urlCache.resolve(getSpritePath(f.sprites[0]), url => {
+        const f2 = super.get(f.position);
+        if (f2?.id !== f.id) {
+          return;
+        }
+
+        this._spriteFeatures.add({ ...f, spriteUrl: url });
+      });
+    }
+
+    return true;
+  }
+
+  clear() {
+    super.clear();
+    this._spriteFeatures.clear();
+  }
+
+  remove(oldPosition: IGridCoord) {
+    const removed = super.remove(oldPosition);
+    if (removed === undefined) {
+      return undefined;
+    }
+
+    this._spriteFeatures.remove(oldPosition);
+    return removed;
+  }
+
+  dispose() {
+    super.dispose();
+    this._spriteFeatures.dispose();
+  }
+}
 
 // A handy wrapper for the various thingies that go into token drawing.
 export class TokenDrawing extends SimpleTokenDrawing {
@@ -20,38 +115,33 @@ export class TokenDrawing extends SimpleTokenDrawing {
     gridGeometry: IGridGeometry,
     needsRedraw: RedrawFlag,
     textMaterial: THREE.MeshBasicMaterial,
-    alpha: number,
-    z: number,
-    textZ: number,
+    drawingParameters: ITokenDrawingParameters,
     colourParameters: IColourParameters,
-    scene: THREE.Scene
+    scene: THREE.Scene,
+    urlCache: IDownloadUrlCache
   ) {
     super(
-      new InstancedFeatures<IGridCoord, IToken>(
-        gridGeometry, needsRedraw, coordString, createPaletteColouredAreaObject(
-          gridGeometry, alpha, z, colourParameters
-        )
-      ),
+      new TokenFeatures(gridGeometry, needsRedraw, drawingParameters, colourParameters, urlCache),
       new InstancedFeatures<IGridEdge, IFeature<IGridEdge>>(
         gridGeometry, needsRedraw, edgeString, createPaletteColouredWallObject(
-          createTokenFillEdgeGeometry(gridGeometry, alpha, z), gridGeometry, colourParameters
+          createTokenFillEdgeGeometry(gridGeometry, drawingParameters.alpha, drawingParameters.z), gridGeometry, colourParameters
         )
       ),
       new InstancedFeatures<IGridVertex, IFeature<IGridVertex>>(
         gridGeometry, needsRedraw, vertexString, createPaletteColouredVertexObject(
-          createTokenFillVertexGeometry(gridGeometry, alpha, z), gridGeometry, colourParameters
+          createTokenFillVertexGeometry(gridGeometry, drawingParameters.alpha, drawingParameters.z), gridGeometry, colourParameters
         )
       ),
-      new TokenTexts(gridGeometry, needsRedraw, textMaterial, scene, textZ)
+      new TokenTexts(gridGeometry, needsRedraw, textMaterial, scene, drawingParameters.textZ)
     );
 
-    (this.faces as InstancedFeatures<IGridCoord, IToken>).addToScene(scene);
+    (this.faces as TokenFeatures).addToScene(scene);
     (this.fillEdges as InstancedFeatures<IGridEdge, IFeature<IGridEdge>>).addToScene(scene);
     (this.fillVertices as InstancedFeatures<IGridVertex, IFeature<IGridVertex>>).addToScene(scene);
   }
 
   dispose() {
-    (this.faces as InstancedFeatures<IGridCoord, IToken>).dispose();
+    (this.faces as TokenFeatures).dispose();
     (this.fillEdges as InstancedFeatures<IGridEdge, IFeature<IGridEdge>>).dispose();
     (this.fillVertices as InstancedFeatures<IGridVertex, IFeature<IGridVertex>>).dispose();
     (this.texts as TokenTexts).dispose();

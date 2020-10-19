@@ -20,7 +20,7 @@ import { IMap, MapType } from '../data/map';
 import { IUserPolicy } from '../data/policy';
 import { createTokenDictionary } from '../data/tokens';
 
-import { IDataService } from '../services/interfaces';
+import { IDataService, IDownloadUrlCache } from '../services/interfaces';
 import { createDrawing } from './three/drawing';
 
 import fluent from 'fluent-iterable';
@@ -145,6 +145,7 @@ export class MapStateMachine {
     colours: FeatureColour[],
     mount: HTMLDivElement,
     userPolicy: IUserPolicy | undefined,
+    urlCache: IDownloadUrlCache,
     setState: (state: IMapState) => void
   ) {
     this._dataService = dataService;
@@ -166,7 +167,7 @@ export class MapStateMachine {
     this._gridGeometry = map.record.ty === MapType.Hex ?
       new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
 
-    this._drawing = createDrawing(this._gridGeometry, colours, mount, this.seeEverything);
+    this._drawing = createDrawing(this._gridGeometry, colours, mount, this.seeEverything, urlCache);
 
     this._mapColouring = new MapColouring(this._gridGeometry);
 

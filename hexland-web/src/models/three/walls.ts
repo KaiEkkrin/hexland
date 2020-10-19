@@ -42,14 +42,14 @@ export function createPaletteColouredWallObject(createGeometry: () => THREE.Inst
 
 export function createSelectionColouredWallObject(createGeometry: () => THREE.InstancedBufferGeometry, gridGeometry: IGridGeometry) {
   return (maxInstances: number) => new MultipleFeatureObject<IGridEdge, IFeature<IGridEdge>>(
-    (i: number, maxInstances: number) => new PaletteColouredFeatureObject(
+    (i: string, maxInstances: number) => new PaletteColouredFeatureObject(
       edgeString,
       (o, p) => gridGeometry.transformToEdge(o, p),
       maxInstances,
       createGeometry,
       createSelectionColourParameters(i)
     ),
-    f => f.colour,
+    f => `${f.colour}`,
     maxInstances
   );
 }
