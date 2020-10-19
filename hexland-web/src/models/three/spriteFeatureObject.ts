@@ -1,7 +1,8 @@
 import { IGridCoord } from '../../data/coord';
-import { IFeature, ITokenProperties } from '../../data/feature';
+import { IFeature, ITokenFaceProperties } from '../../data/feature';
 import { InstancedFeatureObject } from './instancedFeatureObject';
 import { RedrawFlag } from '../redrawFlag';
+import { ITokenUvTransform } from './uv';
 
 import * as THREE from 'three';
 
@@ -30,9 +31,10 @@ const spriteShader = {
 
 const textureLoader = new THREE.TextureLoader();
 
-export class SpriteFeatureObject<K extends IGridCoord, F extends (IFeature<K> & ITokenProperties)> extends InstancedFeatureObject<K, F> {
+export class SpriteFeatureObject<K extends IGridCoord, F extends (IFeature<K> & ITokenFaceProperties)> extends InstancedFeatureObject<K, F> {
   private readonly _geometry: THREE.InstancedBufferGeometry;
   private readonly _redrawFlag: RedrawFlag;
+  private readonly _uvTransform: ITokenUvTransform;
 
   private readonly _instanceUvScale: Float32Array;
   private readonly _instanceUvTranslate: Float32Array;
@@ -49,11 +51,13 @@ export class SpriteFeatureObject<K extends IGridCoord, F extends (IFeature<K> & 
     maxInstances: number,
     createGeometry: () => THREE.InstancedBufferGeometry,
     redrawFlag: RedrawFlag,
-    spritesheetUrl: string
+    spritesheetUrl: string,
+    uvTransform: ITokenUvTransform
   ) {
     super(toIndex, transformTo, maxInstances);
     this._geometry = createGeometry();
     this._redrawFlag = redrawFlag;
+    this._uvTransform = uvTransform;
 
     this._instanceUvScale = new Float32Array(maxInstances * 2);
     this._instanceUvTranslate = new Float32Array(maxInstances * 2);
@@ -97,7 +101,6 @@ export class SpriteFeatureObject<K extends IGridCoord, F extends (IFeature<K> & 
   protected addFeature(f: F, instanceIndex: number) {
     super.addFeature(f, instanceIndex);
 
-    // TODO #149 Deal with drawing larger tokens!
     if (f.sprites.length > 0) { // likely :)
       const columns = f.sprites[0].columns;
       const rows = f.sprites[0].rows;
@@ -108,10 +111,17 @@ export class SpriteFeatureObject<K extends IGridCoord, F extends (IFeature<K> & 
       const x = (f.sprites[0].position % columns);
       const y = Math.floor(f.sprites[0].position / columns);
 
-      this._instanceUvScale[2 * instanceIndex] = scaleX;
-      this._instanceUvScale[2 * instanceIndex + 1] = -scaleY;
-      this._instanceUvTranslate[2 * instanceIndex] = x * scaleX;
-      this._instanceUvTranslate[2 * instanceIndex + 1] = 1 - y * scaleY;
+      const faceTransform = this._uvTransform.getFaceTransform(f);
+      if (faceTransform === undefined) {
+        return;
+      }
+
+      // console.log(`received uv transform: offset ${faceTransform.offset.toArray()}, scale ${faceTransform.scale}`);
+
+      this._instanceUvScale[2 * instanceIndex] = scaleX * faceTransform.scale;
+      this._instanceUvScale[2 * instanceIndex + 1] = -scaleY * faceTransform.scale;
+      this._instanceUvTranslate[2 * instanceIndex] = x * scaleX + faceTransform.offset.x * scaleX;
+      this._instanceUvTranslate[2 * instanceIndex + 1] = 1 - (y * scaleY + faceTransform.offset.y * scaleY);
 
       this._instanceUvScaleAttr.needsUpdate = true;
       this._instanceUvTranslateAttr.needsUpdate = true;

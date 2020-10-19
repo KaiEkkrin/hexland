@@ -1,6 +1,7 @@
 import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from "../../data/coord";
-import { IFeature, IFeatureDictionary, IIdFeature, IResolvedToken, IToken, ITokenProperties } from "../../data/feature";
+import { IFeature, IFeatureDictionary, IIdFeature, IResolvedToken, ITokenFace, ITokenProperties } from "../../data/feature";
 import { getSpritePath } from "../../data/sprite";
+import { ITokenGeometry } from "../../data/tokenGeometry";
 import { BaseTokenDrawing, SimpleTokenDrawing } from "../../data/tokens";
 import { IGridGeometry } from "../gridGeometry";
 import { RedrawFlag } from "../redrawFlag";
@@ -27,12 +28,13 @@ export interface ITokenDrawingParameters {
 // This middle dictionary helps us create the palette-coloured token features immediately,
 // and the sprite ones (if applicable) once we get a download URL.
 // TODO #149 Genericise it to do token fill edges and vertices too :)
-class TokenFeatures extends InstancedFeatures<IGridCoord, IToken> {
+class TokenFeatures extends InstancedFeatures<IGridCoord, ITokenFace> {
   private readonly _urlCache: IDownloadUrlCache;
   private readonly _spriteFeatures: InstancedFeatures<IGridCoord, IResolvedToken>;
 
   constructor(
     gridGeometry: IGridGeometry,
+    tokenGeometry: ITokenGeometry,
     needsRedraw: RedrawFlag,
     drawingParameters: ITokenDrawingParameters,
     colourParameters: IColourParameters,
@@ -47,7 +49,7 @@ class TokenFeatures extends InstancedFeatures<IGridCoord, IToken> {
     this._urlCache = urlCache;
     this._spriteFeatures = new InstancedFeatures<IGridCoord, IResolvedToken>(
       gridGeometry, needsRedraw, coordString, createSpriteAreaObject(
-        gridGeometry, needsRedraw, drawingParameters.spriteAlpha, drawingParameters.spriteZ
+        gridGeometry, tokenGeometry, needsRedraw, drawingParameters.spriteAlpha, drawingParameters.spriteZ
       )
     );
   }
@@ -66,7 +68,7 @@ class TokenFeatures extends InstancedFeatures<IGridCoord, IToken> {
     this._spriteFeatures.removeFromScene();
   }
 
-  add(f: IToken) {
+  add(f: ITokenFace) {
     const added = super.add(f);
     if (added === false) {
       return false;
@@ -113,6 +115,7 @@ class TokenFeatures extends InstancedFeatures<IGridCoord, IToken> {
 export class TokenDrawing extends SimpleTokenDrawing {
   constructor(
     gridGeometry: IGridGeometry,
+    tokenGeometry: ITokenGeometry,
     needsRedraw: RedrawFlag,
     textMaterial: THREE.MeshBasicMaterial,
     drawingParameters: ITokenDrawingParameters,
@@ -121,7 +124,7 @@ export class TokenDrawing extends SimpleTokenDrawing {
     urlCache: IDownloadUrlCache
   ) {
     super(
-      new TokenFeatures(gridGeometry, needsRedraw, drawingParameters, colourParameters, urlCache),
+      new TokenFeatures(gridGeometry, tokenGeometry, needsRedraw, drawingParameters, colourParameters, urlCache),
       new InstancedFeatures<IGridEdge, IFeature<IGridEdge>>(
         gridGeometry, needsRedraw, edgeString, createPaletteColouredWallObject(
           createTokenFillEdgeGeometry(gridGeometry, drawingParameters.alpha, drawingParameters.z), gridGeometry, colourParameters

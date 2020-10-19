@@ -7,9 +7,10 @@ import { MultipleFeatureObject } from './multipleFeatureObject';
 import { PaletteColouredFeatureObject, IColourParameters, createSelectionColourParameters } from './paletteColouredFeatureObject';
 import { RedrawFlag } from '../redrawFlag';
 import { SpriteFeatureObject } from './spriteFeatureObject';
-import { createBoundingUvs } from './uv';
+import { createBoundingUvs, createLargeTokenUvTransform } from './uv';
 
 import * as THREE from 'three';
+import { ITokenGeometry } from '../../data/tokenGeometry';
 
 export function createAreaGeometry(gridGeometry: IGridGeometry, alpha: number, z: number) {
   const vertices = [...gridGeometry.createSolidVertices(new THREE.Vector2(0, 0), alpha, z)];
@@ -65,8 +66,15 @@ export function createSelectionColouredAreaObject(gridGeometry: IGridGeometry, a
   );
 }
 
-export function createSpriteAreaObject(gridGeometry: IGridGeometry, redrawFlag: RedrawFlag, alpha: number, areaZ: number) {
+export function createSpriteAreaObject(
+  gridGeometry: IGridGeometry,
+  tokenGeometry: ITokenGeometry,
+  redrawFlag: RedrawFlag,
+  alpha: number,
+  areaZ: number
+) {
   const areaGeometry = createSpriteAreaGeometry(gridGeometry, alpha, areaZ);
+  const uvTransform = createLargeTokenUvTransform(gridGeometry, tokenGeometry, alpha);
   return (maxInstances: number) => new MultipleFeatureObject<IGridCoord, IResolvedToken>(
     (i: string, maxInstances: number) => new SpriteFeatureObject(
       coordString,
@@ -74,7 +82,8 @@ export function createSpriteAreaObject(gridGeometry: IGridGeometry, redrawFlag: 
       maxInstances,
       areaGeometry,
       redrawFlag,
-      i
+      i,
+      uvTransform
     ),
     f => f.spriteUrl,
     maxInstances

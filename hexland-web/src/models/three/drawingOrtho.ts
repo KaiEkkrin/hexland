@@ -1,5 +1,6 @@
 import { IGridCoord, IGridVertex } from '../../data/coord';
 import { IIdFeature, IToken } from '../../data/feature';
+import { ITokenGeometry } from '../../data/tokenGeometry';
 import { ITokenDrawing } from '../../data/tokens';
 import { MapColouring } from '../colouring';
 import { FeatureColour } from '../featureColour';
@@ -94,6 +95,7 @@ export class DrawingOrtho implements IDrawing {
 
   constructor(
     gridGeometry: IGridGeometry,
+    tokenGeometry: ITokenGeometry,
     colours: FeatureColour[],
     mount: HTMLDivElement,
     seeEverything: boolean,
@@ -229,7 +231,7 @@ export class DrawingOrtho implements IDrawing {
 
     // The tokens
     this._tokens = new TokenDrawing(
-      gridGeometry, this._needsRedraw, this._textMaterial, {
+      gridGeometry, tokenGeometry, this._needsRedraw, this._textMaterial, {
         alpha: tokenAlpha,
         spriteAlpha: tokenSpriteAlpha,
         z: tokenZ,

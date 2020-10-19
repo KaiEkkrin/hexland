@@ -8,7 +8,7 @@ import { IAnnotation } from '../data/annotation';
 import { ChangeCategory, ChangeType, IChanges, ITokenAdd, ITokenMove, IWallAdd } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
 import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from '../data/coord';
-import { FeatureDictionary, IFeature, IToken } from '../data/feature';
+import { FeatureDictionary, IFeature, ITokenFace } from '../data/feature';
 import { IMap, MapType } from '../data/map';
 import * as Policy from '../data/policy';
 import { createTokenDictionary, SimpleTokenDrawing } from '../data/tokens';
@@ -729,7 +729,7 @@ describe('test functions', () => {
 
     // Watch changes, mocking up the handlers:
     const tokens = createTokenDictionary(MapType.Square, new SimpleTokenDrawing(
-      new FeatureDictionary<IGridCoord, IToken>(coordString),
+      new FeatureDictionary<IGridCoord, ITokenFace>(coordString),
       new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
       new FeatureDictionary<IGridVertex, IFeature<IGridVertex>>(vertexString)
     ));

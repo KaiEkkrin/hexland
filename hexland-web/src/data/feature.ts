@@ -79,13 +79,18 @@ export const defaultWall: IFeature<IGridEdge> = {
   colour: 0
 };
 
-// We use this internally to provide the sprite URL after having gone through the (asynchronous)
+// We use this internally to provide sprite info after having gone through the (asynchronous)
 // method of resolving it from the path.
 
-export interface IResolvedTokenProperties extends ITokenProperties {
+export interface ITokenFaceProperties extends ITokenProperties {
+  basePosition: IGridCoord;
+}
+
+export interface IResolvedTokenProperties extends ITokenFaceProperties {
   spriteUrl: string;
 }
 
+export interface ITokenFace extends IToken, ITokenFaceProperties {}
 export interface IResolvedToken extends IToken, IResolvedTokenProperties {}
 
 // Token text is positioned either at a coord or a vertex.  We can cheat slightly
@@ -213,17 +218,6 @@ export interface ITokenDictionary extends IFeatureDictionary<IGridCoord, IToken>
   // Returns all the fill edge positions of a given token.
   // (Probably won't need calling externally.)
   enumerateFillEdgePositions(token: IToken): Iterable<IGridEdge>;
-
-  // Returns all the fill vertex positions of a given token.
-  // (Probably won't need calling externally.)
-  enumerateFillVertexPositions(token: IToken): Iterable<IGridVertex>;
-
-  // Gets the text position of a given token.
-  getTextPosition(token: IToken): IGridVertex;
-
-  // Returns true if the text should be positioned at the vertex or false for the
-  // face centre.
-  getTextAtVertex(token: IToken): boolean;
 
   // Returns true if we have a fill edge here, else false.  (For checking for
   // conflicts with walls.)

@@ -18,6 +18,7 @@ import { FeatureDictionary, flipToken, IToken, ITokenDictionary, ITokenPropertie
 import { IAdventureIdentified } from '../data/identified';
 import { IMap, MapType } from '../data/map';
 import { IUserPolicy } from '../data/policy';
+import { getTokenGeometry, ITokenGeometry } from '../data/tokenGeometry';
 import { createTokenDictionary } from '../data/tokens';
 
 import { IDataService, IDownloadUrlCache } from '../services/interfaces';
@@ -89,6 +90,7 @@ export class MapStateMachine {
   private readonly _mapColouring: MapColouring;
   private readonly _notes: FeatureDictionary<IGridCoord, IAnnotation>;
   private readonly _notesNeedUpdate = new RedrawFlag();
+  private readonly _tokenGeometry: ITokenGeometry;
 
   private readonly _selection: ITokenDictionary;
   private readonly _selectionDrag: ITokenDictionary;
@@ -167,7 +169,10 @@ export class MapStateMachine {
     this._gridGeometry = map.record.ty === MapType.Hex ?
       new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
 
-    this._drawing = createDrawing(this._gridGeometry, colours, mount, this.seeEverything, urlCache);
+    this._tokenGeometry = getTokenGeometry(map.record.ty);
+    this._drawing = createDrawing(
+      this._gridGeometry, this._tokenGeometry, colours, mount, this.seeEverything, urlCache
+    );
 
     this._mapColouring = new MapColouring(this._gridGeometry);
 
@@ -326,7 +331,7 @@ export class MapStateMachine {
     );
 
     const removeToken = existingToken === undefined ? [] : [createTokenRemove(token.position, token.id)];
-    for (const face of this._tokens.enumerateFacePositions({ ...token, size: newSize })) {
+    for (const face of this._tokenGeometry.enumerateFacePositions({ ...token, size: newSize })) {
       const addToken = createTokenAdd({ ...token, size: newSize, position: face });
       if (trackChanges(this._map.record, changeTracker, [...removeToken, addToken], this._uid) === true) {
         return face;
@@ -508,7 +513,7 @@ export class MapStateMachine {
       }
 
       // TODO Possible optimisation here rejecting tokens that are definitely too far away
-      for (const facePosition of this._tokens.enumerateFacePositions(token)) {
+      for (const facePosition of this._tokenGeometry.enumerateFacePositions(token)) {
         if (inDragRectangle(facePosition)) {
           this._selection.add({ ...token, position: token.position });
         }

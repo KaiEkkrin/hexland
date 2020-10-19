@@ -5,9 +5,11 @@ import { FeatureDictionary, IFeature } from "../../../data/feature";
 import { IGridCoord, coordString, IGridEdge, edgeString, IGridVertex, vertexString } from "../../../data/coord";
 import { OutlinedRectangle } from "./overlayRectangle";
 
-import { Subject } from 'rxjs';
+import { ITokenGeometry } from "../../../data/tokenGeometry";
 import { SimpleTokenDrawing } from "../../../data/tokens";
 import { IDownloadUrlCache } from "../../../services/interfaces";
+
+import { Subject } from 'rxjs';
 
 jest.mock('../overlayRectangle');
 
@@ -20,6 +22,7 @@ export const __mockBoundsChanged = new Subject<IGridBounds>();
 
 export function createDrawing(
   gridGeometry: IGridGeometry,
+  tokenGeometry: ITokenGeometry,
   colours: FeatureColour[],
   mount: HTMLDivElement,
   seeEverything: boolean,
