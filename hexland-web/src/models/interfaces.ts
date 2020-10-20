@@ -1,6 +1,6 @@
 import { MapColouring } from "./colouring";
 import { IGridCoord, IGridEdge, IGridVertex } from "../data/coord";
-import { IFeature, IToken, IFeatureDictionary, IIdFeature } from "../data/feature";
+import { IFeature, IFeatureDictionary } from "../data/feature";
 import { ITokenDrawing } from "../data/tokens";
 
 // Describes the interface to our drawing subsystem,
@@ -9,16 +9,16 @@ import { ITokenDrawing } from "../data/tokens";
 // editing these should update the drawing upon the next animation frame.
 export interface IDrawing {
   areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
-  tokens: ITokenDrawing<IToken>;
+  tokens: ITokenDrawing;
   walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
 
   highlightedAreas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
   highlightedVertices: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>>;
   highlightedWalls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
 
-  selection: ITokenDrawing<IIdFeature<IGridCoord>>;
-  selectionDrag: ITokenDrawing<IIdFeature<IGridCoord>>;
-  selectionDragRed: ITokenDrawing<IIdFeature<IGridCoord>>;
+  selection: ITokenDrawing;
+  selectionDrag: ITokenDrawing;
+  selectionDragRed: ITokenDrawing;
 
   // A drawing always exposes a single outlined rectangle that can be used
   // for drag-boxes etc.  This object will be drawn separately and will not

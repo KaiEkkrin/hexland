@@ -1,5 +1,5 @@
-import { coordString, coordSub, IGridCoord } from '../../data/coord';
-import { defaultToken, FeatureDictionary, IFeature, ITokenFace, TokenSize } from '../../data/feature';
+import { coordString, coordSub, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from '../../data/coord';
+import { defaultToken, FeatureDictionary, IFeature, IToken, TokenSize } from '../../data/feature';
 import { ITokenGeometry } from '../../data/tokenGeometry';
 import { IGridGeometry } from '../gridGeometry';
 
@@ -52,15 +52,15 @@ export interface IUvTransform {
   transform: THREE.Matrix4;
 
   // TODO #149 Remove this debug shit
-  testVertices: THREE.Vector3[];
-  testTransform: THREE.Matrix4;
-  testBuvs: Float32Array;
+  testVertices?: THREE.Vector3[] | undefined;
+  testTransform?: THREE.Matrix4 | undefined;
+  testBuvs?: Float32Array | undefined;
 }
 
 export interface ITokenUvTransform {
-  getFaceTransform(token: ITokenFace): IUvTransform | undefined;
-  getFillEdgeTransform(token: ITokenFace): IUvTransform | undefined;
-  getFillVertexTransform(token: ITokenFace): IUvTransform | undefined;
+  getFaceTransform(token: IToken & { basePosition: IGridCoord }): IUvTransform | undefined;
+  getFillEdgeTransform(edge: IFeature<IGridEdge> & { basePosition: IGridCoord, size: TokenSize }): IUvTransform | undefined;
+  getFillVertexTransform(vertex: IFeature<IGridVertex> & { basePosition: IGridCoord, size: TokenSize }): IUvTransform | undefined;
 }
 
 interface IUvTransformFeature<K extends IGridCoord> extends IFeature<K>, IUvTransform {}
@@ -86,9 +86,8 @@ function createTokenUvTransform(
   // We assume that the base UVs fill the [0..1] square (assuming aspect ratio is preserved that's correct)
   // and create the UVs for the whole token, then work out what we need to do to cram them into that square
   const single = gridGeometry.toSingle();
-  const facePositions = [...tokenGeometry.enumerateFacePositions(
-    { ...defaultToken, position: { x: 0, y: 0 }, size: tokenSize }
-  )];
+  const baseToken = { ...defaultToken, position: { x: 0, y: 0 }, size: tokenSize };
+  const facePositions = [...tokenGeometry.enumerateFacePositions(baseToken)];
   const faceVertices = [...single.createSolidVertices(new THREE.Vector2(0, 0), alpha, 0)];
 
   const scratchVertices = [...faceVertices.map(v => v.clone())];
@@ -126,8 +125,9 @@ function createTokenUvTransform(
   const boundsSize = Math.max(boundsWidth, boundsHeight);
 
   // Splice in the overall scale
+  const scalingTransform = new THREE.Matrix4().makeScale(1.0 / boundsSize, 1.0 / boundsSize, 1);
+  const translationTransform = new THREE.Matrix4().makeTranslation(-boundsMin.x, -boundsMin.y, 0);
   const scratchMatrix1 = new THREE.Matrix4();
-  const scratchMatrix2 = new THREE.Matrix4();
   for (const f of uvFaces) {
     f.offset.sub(boundsMin).divideScalar(boundsSize);
     f.scale /= boundsSize;
@@ -137,18 +137,17 @@ function createTokenUvTransform(
       debugMatrix(baseTransform)
     );
 
-    const fScaling = f.transform.makeScale(1.0 / boundsSize, 1.0 / boundsSize, 1);
+    const fScaling = f.transform.copy(scalingTransform);
     console.log(`face ${coordString(f.position)}: face scaling\n` +
       debugMatrix(fScaling)
     );
 
     // TODO #149 correct for off-centre (very, very confusing)
-    const fTranslation = scratchMatrix2.makeTranslation(-boundsMin.x, -boundsMin.y, 0);
     console.log(`face ${coordString(f.position)}: face translation\n` +
-      debugMatrix(fTranslation)
+      debugMatrix(translationTransform)
     );
 
-    f.transform = fScaling.multiply(fTranslation).multiply(baseTransform);
+    f.transform = fScaling.multiply(translationTransform).multiply(baseTransform);
     console.log(`face ${coordString(f.position)}: offset ${f.offset.toArray()}, scale ${f.scale}, transform\n` +
       debugMatrix(f.transform)
     );
@@ -170,6 +169,24 @@ function createTokenUvTransform(
     });
   }
 
+  // Using the same boundary and transformations, I can now create the fill edge and
+  // vertex records:
+  const uvFillEdges = new FeatureDictionary<IGridEdge, IUvTransformFeature<IGridEdge>>(edgeString);
+  for (const e of tokenGeometry.enumerateFillEdgePositions(baseToken)) {
+    const relEdge = { ...coordSub(e, facePositions[0]), edge: e.edge };
+    const transform = scalingTransform.clone().multiply(translationTransform)
+      .multiply(gridGeometry.transformToEdge(scratchMatrix1, relEdge));
+    uvFillEdges.add({ position: e, colour: 0, offset: new THREE.Vector2(), scale: 1, transform: transform });
+  }
+
+  const uvFillVertices = new FeatureDictionary<IGridVertex, IUvTransformFeature<IGridVertex>>(vertexString);
+  for (const v of tokenGeometry.enumerateFillVertexPositions(baseToken)) {
+    const relVertex = { ...coordSub(v, facePositions[0]), vertex: v.vertex };
+    const transform = scalingTransform.clone().multiply(translationTransform)
+      .multiply(gridGeometry.transformToVertex(scratchMatrix1, relVertex));
+    uvFillVertices.add({ position: v, colour: 0, offset: new THREE.Vector2(), scale: 1, transform: transform });
+  }
+
   return {
     getFaceTransform: token => {
       const relCoord = coordSub(token.position, token.basePosition);
@@ -177,9 +194,17 @@ function createTokenUvTransform(
       return f2 === undefined ? undefined : f2;
     },
 
-    // TODO These
-    getFillEdgeTransform: token => undefined,
-    getFillVertexTransform: token => undefined
+    getFillEdgeTransform: edge => {
+      const relEdge = { ...coordSub(edge.position, edge.basePosition), edge: edge.position.edge };
+      const f2 = uvFillEdges.get(relEdge);
+      return f2 === undefined ? undefined : f2;
+    },
+
+    getFillVertexTransform: vertex => {
+      const relVertex = { ...coordSub(vertex.position, vertex.basePosition), vertex: vertex.position.vertex };
+      const f2 = uvFillVertices.get(relVertex);
+      return f2 === undefined ? undefined : f2;
+    }
   };
 }
 
@@ -195,7 +220,7 @@ export function createLargeTokenUvTransform(
 
   return {
     getFaceTransform: token => bySize.get(token.size)?.getFaceTransform(token),
-    getFillEdgeTransform: token => bySize.get(token.size)?.getFillEdgeTransform(token),
-    getFillVertexTransform: token => bySize.get(token.size)?.getFillVertexTransform(token)
+    getFillEdgeTransform: edge => bySize.get(edge.size)?.getFillEdgeTransform(edge),
+    getFillVertexTransform: vertex => bySize.get(vertex.size)?.getFillVertexTransform(vertex)
   };
 }

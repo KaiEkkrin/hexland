@@ -1,45 +1,57 @@
 import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from "./coord";
-import { FeatureDictionary, IFeature, IFeatureDictionary, IIdFeature, IToken, ITokenDictionary, ITokenFace, ITokenFaceProperties, ITokenText } from "./feature";
+import { FeatureDictionary, IFeature, IFeatureDictionary, IToken, ITokenDictionary, ITokenProperties, ITokenText } from "./feature";
 import { MapType } from "./map";
 import { getTokenGeometry, ITokenGeometry } from "./tokenGeometry";
 
+export interface ITokenFace extends IToken {
+  basePosition: IGridCoord;
+}
+
+export interface ITokenFillEdge extends IFeature<IGridEdge>, ITokenProperties {
+  basePosition: IGridCoord;
+}
+
+export interface ITokenFillVertex extends IFeature<IGridVertex>, ITokenProperties {
+  basePosition: IGridCoord;
+}
+
 // Describes how to draw a collection of tokens, complete with fill-in edges and vertices
 // for larger ones, and text positioning.
-export interface ITokenDrawing<F extends IFeature<IGridCoord>> {
-  faces: IFeatureDictionary<IGridCoord, F>;
-  fillEdges: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
-  fillVertices: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>>;
+export interface ITokenDrawing {
+  faces: IFeatureDictionary<IGridCoord, ITokenFace>;
+  fillEdges: IFeatureDictionary<IGridEdge, ITokenFillEdge>;
+  fillVertices: IFeatureDictionary<IGridVertex, ITokenFillVertex>;
   texts: IFeatureDictionary<IGridVertex, ITokenText>;
 
   // Makes a clone of this object.
-  clone(): ITokenDrawing<F>;
+  clone(): ITokenDrawing;
 
   // How to create suitable features.
-  createFace(token: ITokenFaceProperties, position: IGridCoord): F;
-  createFillEdge(token: ITokenFaceProperties, position: IGridEdge): IFeature<IGridEdge>;
-  createFillVertex(token: ITokenFaceProperties, position: IGridVertex): IFeature<IGridVertex>;
-  createText(token: ITokenFaceProperties, position: IGridVertex, atVertex: boolean): ITokenText;
+  createFace(token: IToken, position: IGridCoord): ITokenFace;
+  createFillEdge(token: IToken, position: IGridEdge): ITokenFillEdge;
+  createFillVertex(token: IToken, position: IGridVertex): ITokenFillVertex;
+  createText(token: IToken, position: IGridVertex, atVertex: boolean): ITokenText;
 
   // Cleans up (may be unnecessary.)
   dispose(): void;
 }
 
 // A super basic one for non-displayed use
-export abstract class BaseTokenDrawing<F extends IFeature<IGridCoord>> implements ITokenDrawing<F> {
-  private readonly _faces: IFeatureDictionary<IGridCoord, F>;
-  private readonly _fillEdges: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
-  private readonly _fillVertices: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>>;
+export class SimpleTokenDrawing implements ITokenDrawing {
+  private readonly _faces: IFeatureDictionary<IGridCoord, ITokenFace>;
+  private readonly _fillEdges: IFeatureDictionary<IGridEdge, ITokenFillEdge>;
+  private readonly _fillVertices: IFeatureDictionary<IGridVertex, ITokenFillVertex>;
   private readonly _texts: IFeatureDictionary<IGridVertex, ITokenText>;
 
   constructor(
-    faces?: IFeatureDictionary<IGridCoord, F> | undefined,
-    fillEdges?: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>> | undefined,
-    fillVertices?: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>> | undefined,
+    faces?: IFeatureDictionary<IGridCoord, ITokenFace> | undefined,
+    fillEdges?: IFeatureDictionary<IGridEdge, ITokenFillEdge> | undefined,
+    fillVertices?: IFeatureDictionary<IGridVertex, ITokenFillVertex> | undefined,
     texts?: IFeatureDictionary<IGridVertex, ITokenText> | undefined
   ) {
-    this._faces = faces ?? new FeatureDictionary<IGridCoord, F>(coordString);
-    this._fillEdges = fillEdges ?? new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
-    this._fillVertices = fillVertices ?? new FeatureDictionary<IGridVertex, IFeature<IGridVertex>>(vertexString);
+    this._faces = faces ?? new FeatureDictionary<IGridCoord, ITokenFace>(coordString);
+    this._fillEdges = fillEdges ?? new FeatureDictionary<IGridEdge, ITokenFillEdge>(edgeString);
+    this._fillVertices = fillVertices ?? new FeatureDictionary<IGridVertex, ITokenFillVertex>(vertexString);
     this._texts = texts ?? new FeatureDictionary<IGridVertex, ITokenText>(vertexString);
   }
 
@@ -48,33 +60,30 @@ export abstract class BaseTokenDrawing<F extends IFeature<IGridCoord>> implement
   get fillVertices() { return this._fillVertices; }
   get texts() { return this._texts; }
 
-  abstract clone(): ITokenDrawing<F>;
-  abstract createFace(token: ITokenFaceProperties, position: IGridCoord): F;
-
-  createFillEdge(token: ITokenFaceProperties, position: IGridEdge): IFeature<IGridEdge> {
-    return { position: position, colour: token.colour };
+  clone() {
+    return new SimpleTokenDrawing(
+      this.faces.clone(), this.fillEdges.clone(), this.fillVertices.clone(), this.texts.clone()
+    );
   }
 
-  createFillVertex(token: ITokenFaceProperties, position: IGridVertex): IFeature<IGridVertex> {
-    return { position: position, colour: token.colour };
+  createFace(token: IToken, position: IGridCoord) {
+    return { ...token, basePosition: token.position, position: position };
   }
 
-  createText(token: ITokenFaceProperties, position: IGridVertex, atVertex: boolean): ITokenText {
+  createFillEdge(token: IToken, position: IGridEdge) {
+    return { ...token, basePosition: token.position, position: position };
+  }
+
+  createFillVertex(token: IToken, position: IGridVertex) {
+    return { ...token, basePosition: token.position, position: position };
+  }
+
+  createText(token: ITokenProperties, position: IGridVertex, atVertex: boolean) {
     return { position: position, colour: 0, size: Number(token.size[0]), text: token.text, atVertex: atVertex };
   }
 
   dispose() {
     // nothing to do by default
-  }
-}
-
-export class SimpleTokenDrawing extends BaseTokenDrawing<ITokenFace> {
-  clone() {
-    return new SimpleTokenDrawing(this.faces.clone(), this.fillEdges.clone(), this.fillVertices.clone());
-  }
-
-  createFace(token: ITokenFaceProperties, position: IGridCoord) {
-    return { ...token, position: position };
   }
 }
 
@@ -99,12 +108,12 @@ function removeAll<K extends IGridCoord, F extends IFeature<K>>(
 // the `clone` method.)
 class Tokens extends FeatureDictionary<IGridCoord, IToken> implements ITokenDictionary {
   private readonly _tokenGeometry: ITokenGeometry;
-  private readonly _drawing: ITokenDrawing<IIdFeature<IGridCoord>>;
+  private readonly _drawing: ITokenDrawing;
   private readonly _byId: Map<string, IToken>;
 
   constructor(
     tokenGeometry: ITokenGeometry,
-    drawing: ITokenDrawing<IIdFeature<IGridCoord>>,
+    drawing: ITokenDrawing,
     values?: Map<string, IToken> | undefined,
     byId?: Map<string, IToken> | undefined
   ) {
@@ -148,9 +157,8 @@ class Tokens extends FeatureDictionary<IGridCoord, IToken> implements ITokenDict
         this._byId.set(token.id, token);
 
         // Add the token's faces
-        const baseTokenFace = { ...token, basePosition: token.position };
         for (const face of this._tokenGeometry.enumerateFacePositions(token)) {
-          const faceToken = this._drawing.createFace(baseTokenFace, face);
+          const faceToken = this._drawing.createFace(token, face);
           if (this._drawing.faces.add(faceToken) === false) {
             // This token doesn't fit here.  Roll back any changes we've already
             // made:
@@ -164,7 +172,7 @@ class Tokens extends FeatureDictionary<IGridCoord, IToken> implements ITokenDict
 
         // Add the token's edges
         for (const edge of this._tokenGeometry.enumerateFillEdgePositions(token)) {
-          const edgeToken = this._drawing.createFillEdge(baseTokenFace, edge);
+          const edgeToken = this._drawing.createFillEdge(token, edge);
           if (this._drawing.fillEdges.add(edgeToken) === false) {
             // This token doesn't fit here.  Roll back any changes we've already
             // made:
@@ -177,7 +185,7 @@ class Tokens extends FeatureDictionary<IGridCoord, IToken> implements ITokenDict
 
         // Add the token's vertices
         for (const vertex of this._tokenGeometry.enumerateFillVertexPositions(token)) {
-          const vertexToken = this._drawing.createFillVertex(baseTokenFace, vertex);
+          const vertexToken = this._drawing.createFillVertex(token, vertex);
           if (this._drawing.fillVertices.add(vertexToken) === false) {
             // This token doesn't fit here.  Roll back any changes we've already
             // made:
@@ -190,7 +198,7 @@ class Tokens extends FeatureDictionary<IGridCoord, IToken> implements ITokenDict
 
         // Add the token text
         const textPosition = this._tokenGeometry.getTextPosition(token);
-        const text = this._drawing.createText(baseTokenFace, textPosition, this._tokenGeometry.getTextAtVertex(token));
+        const text = this._drawing.createText(token, textPosition, this._tokenGeometry.getTextAtVertex(token));
         if (this._drawing.texts.add(text) === false) {
           // This token doesn't fit here.  Roll back any changes we've already
           // made:
@@ -289,7 +297,7 @@ class Tokens extends FeatureDictionary<IGridCoord, IToken> implements ITokenDict
 
 export function createTokenDictionary(
   mapType: MapType,
-  drawing: ITokenDrawing<IIdFeature<IGridCoord>>
+  drawing: ITokenDrawing
 ) {
   return new Tokens(getTokenGeometry(mapType), drawing);
 }

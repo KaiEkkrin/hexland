@@ -1,9 +1,9 @@
 import { IGridCoord } from '../../data/coord';
-import { IFeature, ITokenFaceProperties } from '../../data/feature';
+import { IFeature, ITokenProperties } from '../../data/feature';
 import { InstancedFeatureObject } from './instancedFeatureObject';
 import { fromMatrix4Columns, InstanceMatrix3Column } from './instanceMatrix';
 import { RedrawFlag } from '../redrawFlag';
-import { ITokenUvTransform } from './uv';
+import { IUvTransform } from './uv';
 
 import * as THREE from 'three';
 
@@ -34,10 +34,13 @@ const spriteShader = {
 
 const textureLoader = new THREE.TextureLoader();
 
-export class SpriteFeatureObject<K extends IGridCoord, F extends (IFeature<K> & ITokenFaceProperties)> extends InstancedFeatureObject<K, F> {
+export class SpriteFeatureObject<
+  K extends IGridCoord,
+  F extends (IFeature<K> & ITokenProperties & { basePosition: IGridCoord })
+> extends InstancedFeatureObject<K, F> {
   private readonly _geometry: THREE.InstancedBufferGeometry;
   private readonly _redrawFlag: RedrawFlag;
-  private readonly _uvTransform: ITokenUvTransform;
+  private readonly _getUvTransform: (feature: F) => IUvTransform | undefined;
 
   private readonly _instanceUvColumns: InstanceMatrix3Column[] = [];
 
@@ -53,14 +56,14 @@ export class SpriteFeatureObject<K extends IGridCoord, F extends (IFeature<K> & 
     transformTo: (m: THREE.Matrix4, position: K) => THREE.Matrix4,
     maxInstances: number,
     createGeometry: () => THREE.InstancedBufferGeometry,
+    getUvTransform: (feature: F) => IUvTransform | undefined,
     redrawFlag: RedrawFlag,
     spritesheetUrl: string,
-    uvTransform: ITokenUvTransform
   ) {
     super(toIndex, transformTo, maxInstances);
     this._geometry = createGeometry();
     this._redrawFlag = redrawFlag;
-    this._uvTransform = uvTransform;
+    this._getUvTransform = getUvTransform;
 
     for (let i = 0; i < 3; ++i) {
       const col = new InstanceMatrix3Column(maxInstances);
@@ -109,7 +112,7 @@ export class SpriteFeatureObject<K extends IGridCoord, F extends (IFeature<K> & 
       const x = (f.sprites[0].position % columns);
       const y = Math.floor(f.sprites[0].position / columns);
 
-      const faceTransform = this._uvTransform.getFaceTransform(f);
+      const faceTransform = this._getUvTransform(f);
       if (faceTransform === undefined) {
         return;
       }
@@ -128,7 +131,11 @@ export class SpriteFeatureObject<K extends IGridCoord, F extends (IFeature<K> & 
       const uvTranslateX = x * scaleX + faceTransform.offset.x * scaleX;
       const uvTranslateY = 1 - (y * scaleY + faceTransform.offset.y * scaleY);
 
-      faceTransform.testVertices.forEach((v, i) => {
+      faceTransform.testVertices?.forEach((v, i) => {
+        if (faceTransform.testTransform === undefined || faceTransform.testBuvs === undefined) {
+          return;
+        }
+
         const xy = v.clone().applyMatrix4(faceTransform.testTransform);
         const uv = v.clone().applyMatrix4(transform);
         console.log(`sprite mat: ${xy.toArray()} -> ${uv.toArray()}`);

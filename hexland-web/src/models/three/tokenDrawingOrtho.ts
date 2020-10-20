@@ -1,8 +1,8 @@
 import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from "../../data/coord";
-import { IFeature, IFeatureDictionary, IIdFeature, IResolvedToken, ITokenFace, ITokenProperties } from "../../data/feature";
+import { IFeature, IToken, ITokenProperties } from "../../data/feature";
 import { getSpritePath } from "../../data/sprite";
 import { ITokenGeometry } from "../../data/tokenGeometry";
-import { BaseTokenDrawing, SimpleTokenDrawing } from "../../data/tokens";
+import { ITokenFace, ITokenFillEdge, ITokenFillVertex, SimpleTokenDrawing } from "../../data/tokens";
 import { IGridGeometry } from "../gridGeometry";
 import { RedrawFlag } from "../redrawFlag";
 import { IDownloadUrlCache } from "../../services/interfaces";
@@ -12,8 +12,8 @@ import { IInstancedFeatureObject } from "./instancedFeatureObject";
 import { InstancedFeatures } from "./instancedFeatures";
 import { IColourParameters } from "./paletteColouredFeatureObject";
 import { TokenTexts } from "./tokenTexts";
-import { createPaletteColouredVertexObject, createTokenFillVertexGeometry } from "./vertices";
-import { createPaletteColouredWallObject, createTokenFillEdgeGeometry } from "./walls";
+import { createPaletteColouredVertexObject, createSpriteVertexObject, createTokenFillVertexGeometry } from "./vertices";
+import { createPaletteColouredWallObject, createSpriteEdgeObject, createTokenFillEdgeGeometry } from "./walls";
 
 import * as THREE from 'three';
 
@@ -28,29 +28,24 @@ export interface ITokenDrawingParameters {
 // This middle dictionary helps us create the palette-coloured token features immediately,
 // and the sprite ones (if applicable) once we get a download URL.
 // TODO #149 Genericise it to do token fill edges and vertices too :)
-class TokenFeatures extends InstancedFeatures<IGridCoord, ITokenFace> {
+class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenProperties & { basePosition: IGridCoord })>
+  extends InstancedFeatures<K, F>
+{
   private readonly _urlCache: IDownloadUrlCache;
-  private readonly _spriteFeatures: InstancedFeatures<IGridCoord, IResolvedToken>;
+  private readonly _spriteFeatures: InstancedFeatures<K, F & { spriteUrl: string }>;
 
   constructor(
     gridGeometry: IGridGeometry,
-    tokenGeometry: ITokenGeometry,
     needsRedraw: RedrawFlag,
-    drawingParameters: ITokenDrawingParameters,
-    colourParameters: IColourParameters,
+    toIndex: (k: K) => string,
+    createPaletteColouredObject: (maxInstances: number) => IInstancedFeatureObject<K, F>,
+    createSpriteObject: (maxInstances: number) => IInstancedFeatureObject<K, F>,
     urlCache: IDownloadUrlCache
   ) {
-    super(
-      gridGeometry, needsRedraw, coordString, createPaletteColouredAreaObject(
-        gridGeometry, drawingParameters.alpha, drawingParameters.z, colourParameters
-      )
-    );
-
+    super(gridGeometry, needsRedraw, toIndex, createPaletteColouredObject);
     this._urlCache = urlCache;
-    this._spriteFeatures = new InstancedFeatures<IGridCoord, IResolvedToken>(
-      gridGeometry, needsRedraw, coordString, createSpriteAreaObject(
-        gridGeometry, tokenGeometry, needsRedraw, drawingParameters.spriteAlpha, drawingParameters.spriteZ
-      )
+    this._spriteFeatures = new InstancedFeatures<K, F & { spriteUrl: string }>(
+      gridGeometry, needsRedraw, toIndex, createSpriteObject
     );
   }
 
@@ -68,7 +63,7 @@ class TokenFeatures extends InstancedFeatures<IGridCoord, ITokenFace> {
     this._spriteFeatures.removeFromScene();
   }
 
-  add(f: ITokenFace) {
+  add(f: F) {
     const added = super.add(f);
     if (added === false) {
       return false;
@@ -95,7 +90,7 @@ class TokenFeatures extends InstancedFeatures<IGridCoord, ITokenFace> {
     this._spriteFeatures.clear();
   }
 
-  remove(oldPosition: IGridCoord) {
+  remove(oldPosition: K) {
     const removed = super.remove(oldPosition);
     if (removed === undefined) {
       return undefined;
@@ -124,94 +119,85 @@ export class TokenDrawing extends SimpleTokenDrawing {
     urlCache: IDownloadUrlCache
   ) {
     super(
-      new TokenFeatures(gridGeometry, tokenGeometry, needsRedraw, drawingParameters, colourParameters, urlCache),
-      new InstancedFeatures<IGridEdge, IFeature<IGridEdge>>(
-        gridGeometry, needsRedraw, edgeString, createPaletteColouredWallObject(
-          createTokenFillEdgeGeometry(gridGeometry, drawingParameters.alpha, drawingParameters.z), gridGeometry, colourParameters
-        )
+      new TokenFeatures(
+        gridGeometry, needsRedraw, coordString,
+        createPaletteColouredAreaObject(gridGeometry, drawingParameters.alpha, drawingParameters.z, colourParameters),
+        createSpriteAreaObject(gridGeometry, tokenGeometry, needsRedraw, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
+        urlCache
       ),
-      new InstancedFeatures<IGridVertex, IFeature<IGridVertex>>(
-        gridGeometry, needsRedraw, vertexString, createPaletteColouredVertexObject(
+      new TokenFeatures(
+        gridGeometry, needsRedraw, edgeString,
+        createPaletteColouredWallObject(
+          createTokenFillEdgeGeometry(gridGeometry, drawingParameters.alpha, drawingParameters.z), gridGeometry, colourParameters
+        ),
+        createSpriteEdgeObject(gridGeometry, tokenGeometry, needsRedraw, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
+        urlCache
+      ),
+      new TokenFeatures(
+        gridGeometry, needsRedraw, vertexString,
+        createPaletteColouredVertexObject(
           createTokenFillVertexGeometry(gridGeometry, drawingParameters.alpha, drawingParameters.z), gridGeometry, colourParameters
-        )
+        ),
+        createSpriteVertexObject(gridGeometry, tokenGeometry, needsRedraw, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
+        urlCache
       ),
       new TokenTexts(gridGeometry, needsRedraw, textMaterial, scene, drawingParameters.textZ)
     );
 
-    (this.faces as TokenFeatures).addToScene(scene);
-    (this.fillEdges as InstancedFeatures<IGridEdge, IFeature<IGridEdge>>).addToScene(scene);
-    (this.fillVertices as InstancedFeatures<IGridVertex, IFeature<IGridVertex>>).addToScene(scene);
+    (this.faces as InstancedFeatures<IGridCoord, ITokenFace>).addToScene(scene);
+    (this.fillEdges as InstancedFeatures<IGridEdge, ITokenFillEdge>).addToScene(scene);
+    (this.fillVertices as InstancedFeatures<IGridVertex, ITokenFillVertex>).addToScene(scene);
   }
 
   dispose() {
-    (this.faces as TokenFeatures).dispose();
-    (this.fillEdges as InstancedFeatures<IGridEdge, IFeature<IGridEdge>>).dispose();
-    (this.fillVertices as InstancedFeatures<IGridVertex, IFeature<IGridVertex>>).dispose();
+    (this.faces as InstancedFeatures<IGridCoord, ITokenFace>).dispose();
+    (this.fillEdges as InstancedFeatures<IGridEdge, ITokenFillEdge>).dispose();
+    (this.fillVertices as InstancedFeatures<IGridVertex, ITokenFillVertex>).dispose();
     (this.texts as TokenTexts).dispose();
   }
 }
 
-// A similar one for a selection.
-class SelectionDrawing extends BaseTokenDrawing<IIdFeature<IGridCoord>> {
-  private readonly _dispose: (() => void) | undefined;
-
+export class SelectionDrawing extends SimpleTokenDrawing {
   constructor(
-    faces: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>,
-    fillEdges: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
-    fillVertices: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>>,
-    dispose?: (() => void) | undefined
+    gridGeometry: IGridGeometry,
+    needsRedraw: RedrawFlag,
+    createAreaObject: (maxInstances: number) => IInstancedFeatureObject<IGridCoord, IFeature<IGridCoord>>,
+    createWallObject: (maxInstances: number) => IInstancedFeatureObject<IGridEdge, IFeature<IGridEdge>>,
+    createVertexObject: (maxInstances: number) => IInstancedFeatureObject<IGridVertex, IFeature<IGridVertex>>,
+    scene: THREE.Scene
   ) {
-    super(faces, fillEdges, fillVertices);
-    this._dispose = dispose;
-  }
-
-  clone() {
-    // These will be "fake" clones (no UI attached, so no disposal required)
-    return new SelectionDrawing(
-      this.faces.clone(), this.fillEdges.clone(), this.fillVertices.clone()
+    super(
+      createSelectedAreas<ITokenFace>(gridGeometry, needsRedraw, createAreaObject, 100),
+      new InstancedFeatures<IGridEdge, ITokenFillEdge>(
+        gridGeometry, needsRedraw, edgeString, createWallObject, 100
+      ),
+      new InstancedFeatures<IGridVertex, ITokenFillVertex>(
+        gridGeometry, needsRedraw, vertexString, createVertexObject, 100
+      )
     );
+
+    (this.faces as InstancedFeatures<IGridCoord, ITokenFace>).addToScene(scene);
+    (this.fillEdges as InstancedFeatures<IGridEdge, ITokenFillEdge>).addToScene(scene);
+    (this.fillVertices as InstancedFeatures<IGridVertex, ITokenFillVertex>).addToScene(scene);
   }
 
-  createFace(token: ITokenProperties, position: IGridCoord) {
-    return { position: position, colour: 0, id: token.id };
+  // We need to squash the colour for this one; selections have their own meaning of colour
+  createFace(token: IToken, position: IGridCoord) {
+    return { ...token, basePosition: token.position, position: position, colour: 0 };
   }
 
-  createFillEdge(token: ITokenProperties, position: IGridEdge): IFeature<IGridEdge> {
-    return { position: position, colour: 0 };
+  createFillEdge(token: IToken, position: IGridEdge) {
+    return { ...token, basePosition: token.position, position: position, colour: 0 };
   }
 
-  createFillVertex(token: ITokenProperties, position: IGridVertex): IFeature<IGridVertex> {
-    return { position: position, colour: 0 };
+  createFillVertex(token: IToken, position: IGridVertex) {
+    return { ...token, basePosition: token.position, position: position, colour: 0 };
   }
 
   dispose() {
-    this._dispose?.();
+    (this.faces as InstancedFeatures<IGridCoord, ITokenFace>).dispose();
+    (this.fillEdges as InstancedFeatures<IGridEdge, ITokenFillEdge>).dispose();
+    (this.fillVertices as InstancedFeatures<IGridVertex, ITokenFillVertex>).dispose();
+    (this.texts as TokenTexts).dispose();
   }
-}
-
-export function createSelectionDrawing(
-  gridGeometry: IGridGeometry,
-  needsRedraw: RedrawFlag,
-  createAreaObject: (maxInstances: number) => IInstancedFeatureObject<IGridCoord, IFeature<IGridCoord>>,
-  createWallObject: (maxInstances: number) => IInstancedFeatureObject<IGridEdge, IFeature<IGridEdge>>,
-  createVertexObject: (maxInstances: number) => IInstancedFeatureObject<IGridVertex, IFeature<IGridVertex>>,
-  scene: THREE.Scene
-) {
-  const faces = createSelectedAreas(gridGeometry, needsRedraw, createAreaObject, 100);
-  const fillEdges = new InstancedFeatures<IGridEdge, IFeature<IGridEdge>>(
-    gridGeometry, needsRedraw, edgeString, createWallObject, 100
-  );
-  const fillVertices = new InstancedFeatures<IGridVertex, IFeature<IGridVertex>>(
-    gridGeometry, needsRedraw, vertexString, createVertexObject, 100
-  );
-
-  faces.addToScene(scene);
-  fillEdges.addToScene(scene);
-  fillVertices.addToScene(scene);
-
-  return new SelectionDrawing(faces, fillEdges, fillVertices, () => {
-    faces.dispose();
-    fillEdges.dispose();
-    fillVertices.dispose();
-  });
 }

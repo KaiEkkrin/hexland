@@ -1,5 +1,4 @@
 import { IGridCoord, IGridVertex } from '../../data/coord';
-import { IIdFeature, IToken } from '../../data/feature';
 import { ITokenGeometry } from '../../data/tokenGeometry';
 import { ITokenDrawing } from '../../data/tokens';
 import { MapColouring } from '../colouring';
@@ -15,7 +14,7 @@ import { GridFilter } from './gridFilter';
 import { LoS } from './los';
 import { MapColourVisualisation } from './mapColourVisualisation';
 import { OutlinedRectangle } from './overlayRectangle';
-import { createSelectionDrawing, TokenDrawing } from './tokenDrawingOrtho';
+import { SelectionDrawing, TokenDrawing } from './tokenDrawingOrtho';
 import { Vertices, createVertices, createSelectionColouredVertexObject, createSingleVertexGeometry, createTokenFillVertexGeometry, createPaletteColouredVertexObject } from './vertices';
 import { Walls, createPaletteColouredWallObject, createSelectionColouredWallObject, createWallGeometry, createTokenFillEdgeGeometry } from './walls';
 
@@ -72,10 +71,10 @@ export class DrawingOrtho implements IDrawing {
   private readonly _highlightedWalls: Walls;
   private readonly _los: LoS;
   private readonly _losParameters: IGridLoSPreRenderParameters;
-  private readonly _selection: ITokenDrawing<IIdFeature<IGridCoord>>;
-  private readonly _selectionDrag: ITokenDrawing<IIdFeature<IGridCoord>>; // a copy of the selection shown only while dragging it
-  private readonly _selectionDragRed: ITokenDrawing<IIdFeature<IGridCoord>>; // likewise, but shown if the selection couldn't be dropped there
-  private readonly _tokens: ITokenDrawing<IToken>;
+  private readonly _selection: ITokenDrawing;
+  private readonly _selectionDrag: ITokenDrawing; // a copy of the selection shown only while dragging it
+  private readonly _selectionDragRed: ITokenDrawing; // likewise, but shown if the selection couldn't be dropped there
+  private readonly _tokens: ITokenDrawing;
   private readonly _walls: Walls;
   private readonly _mapColourVisualisation: MapColourVisualisation;
 
@@ -209,10 +208,10 @@ export class DrawingOrtho implements IDrawing {
     const createSelectedAreaObject = createSelectionColouredAreaObject(gridGeometry, selectionAlpha, selectionZ);
     const createSelectedWallObject = createSelectionColouredWallObject(tokenFillEdgeGeometry, gridGeometry);
     const createSelectedVertexObject = createSelectionColouredVertexObject(tokenFillVertexGeometry, gridGeometry);
-    this._selection = createSelectionDrawing(
+    this._selection = new SelectionDrawing(
       gridGeometry, this._needsRedraw, createSelectedAreaObject, createSelectedWallObject, createSelectedVertexObject, this._filterScene
     );
-    this._selectionDrag = createSelectionDrawing(
+    this._selectionDrag = new SelectionDrawing(
       gridGeometry, this._needsRedraw, createSelectedAreaObject, createSelectedWallObject, createSelectedVertexObject, this._filterScene
     );
 
@@ -225,7 +224,7 @@ export class DrawingOrtho implements IDrawing {
     const createSelectedRedVertexObject = createPaletteColouredVertexObject(
       tokenFillVertexGeometry, gridGeometry, invalidSelectionColourParameters
     );
-    this._selectionDragRed = createSelectionDrawing(
+    this._selectionDragRed = new SelectionDrawing(
       gridGeometry, this._needsRedraw, createSelectedRedAreaObject, createSelectedRedWallObject, createSelectedRedVertexObject, this._filterScene
     );
 

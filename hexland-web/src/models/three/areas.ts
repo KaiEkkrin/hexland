@@ -1,5 +1,5 @@
 import { coordString, IGridCoord } from '../../data/coord';
-import { IFeature, IIdFeature, IResolvedToken } from '../../data/feature';
+import { IFeature, IIdFeature, IToken } from '../../data/feature';
 import { IGridGeometry } from "../gridGeometry";
 import { IInstancedFeatureObject } from './instancedFeatureObject';
 import { InstancedFeatures } from './instancedFeatures';
@@ -7,7 +7,7 @@ import { MultipleFeatureObject } from './multipleFeatureObject';
 import { PaletteColouredFeatureObject, IColourParameters, createSelectionColourParameters } from './paletteColouredFeatureObject';
 import { RedrawFlag } from '../redrawFlag';
 import { SpriteFeatureObject } from './spriteFeatureObject';
-import { createBoundingUvs, createLargeTokenUvTransform } from './uv';
+import { createLargeTokenUvTransform } from './uv';
 
 import * as THREE from 'three';
 import { ITokenGeometry } from '../../data/tokenGeometry';
@@ -27,20 +27,6 @@ function createSingleAreaGeometry(gridGeometry: IGridGeometry, alpha: number, z:
   return createAreaGeometry(gridGeometry.toSingle(), alpha, z);
 }
 
-function createSpriteAreaGeometry(gridGeometry: IGridGeometry, alpha: number, z: number) {
-  const single = gridGeometry.toSingle();
-  const vertices = [...single.createSolidVertices(new THREE.Vector2(0, 0), alpha, z)];
-  const indices = [...single.createSolidMeshIndices()];
-  const uvs = new Float32Array(createBoundingUvs(vertices));
-  return () => {
-    const geometry = new THREE.InstancedBufferGeometry();
-    geometry.setFromPoints(vertices);
-    geometry.setIndex(indices);
-    geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
-    return geometry;
-  };
-}
-
 export function createPaletteColouredAreaObject(gridGeometry: IGridGeometry, alpha: number, areaZ: number, colourParameters: IColourParameters) {
   return (maxInstances: number) => new PaletteColouredFeatureObject(
     coordString,
@@ -51,9 +37,11 @@ export function createPaletteColouredAreaObject(gridGeometry: IGridGeometry, alp
   );
 }
 
-export function createSelectionColouredAreaObject(gridGeometry: IGridGeometry, alpha: number, areaZ: number) {
+export function createSelectionColouredAreaObject(
+  gridGeometry: IGridGeometry, alpha: number, areaZ: number
+) {
   const areaGeometry = createSingleAreaGeometry(gridGeometry, alpha, areaZ);
-  return (maxInstances: number) => new MultipleFeatureObject<IGridCoord, IFeature<IGridCoord>>(
+  return (maxInstances: number) => new MultipleFeatureObject(
     (i: string, maxInstances: number) => new PaletteColouredFeatureObject(
       coordString,
       (o, p) => gridGeometry.transformToCoord(o, p),
@@ -73,17 +61,17 @@ export function createSpriteAreaObject(
   alpha: number,
   areaZ: number
 ) {
-  const areaGeometry = createSpriteAreaGeometry(gridGeometry, alpha, areaZ);
-  const uvTransform = createLargeTokenUvTransform(gridGeometry, tokenGeometry, alpha);
-  return (maxInstances: number) => new MultipleFeatureObject<IGridCoord, IResolvedToken>(
+  const areaGeometry = createSingleAreaGeometry(gridGeometry, alpha, areaZ);
+  const uvTransform = createLargeTokenUvTransform(gridGeometry, tokenGeometry, alpha); // TODO #149 pre-calculate this
+  return (maxInstances: number) => new MultipleFeatureObject<IGridCoord, IToken & { basePosition: IGridCoord, spriteUrl: string }>(
     (i: string, maxInstances: number) => new SpriteFeatureObject(
       coordString,
       (o, p) => gridGeometry.transformToCoord(o, p),
       maxInstances,
       areaGeometry,
+      f => uvTransform.getFaceTransform(f),
       redrawFlag,
-      i,
-      uvTransform
+      i
     ),
     f => f.spriteUrl,
     maxInstances
@@ -101,13 +89,13 @@ export function createAreas(
   );
 }
 
-export function createSelectedAreas(
+export function createSelectedAreas<F extends IFeature<IGridCoord>>(
   gridGeometry: IGridGeometry,
   needsRedraw: RedrawFlag,
-  createFeatureObject: (maxInstances: number) => IInstancedFeatureObject<IGridCoord, IIdFeature<IGridCoord>>,
+  createFeatureObject: (maxInstances: number) => IInstancedFeatureObject<IGridCoord, F>,
   maxInstances?: number | undefined
 ) {
-  return new InstancedFeatures<IGridCoord, IIdFeature<IGridCoord>>(
+  return new InstancedFeatures<IGridCoord, F>(
     gridGeometry, needsRedraw, coordString, createFeatureObject, maxInstances
   );
 }
