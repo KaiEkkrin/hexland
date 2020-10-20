@@ -158,8 +158,8 @@ export interface IDataView {
 }
 
 export interface IDownloadUrlCache {
-  // Looks up a path to a URL asynchronously, taking the given action when done.
-  resolve(path: string, fn: (url: string) => void): void;
+  // Looks up a path to a URL asynchronously.
+  resolve(path: string): Promise<string>;
 }
 
 // Provides access to Firebase Functions.

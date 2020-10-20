@@ -72,14 +72,15 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
     // To be able to add the sprite feature we need to lookup the sprite URL.
     // After finding it we should check again whether this was removed...
     if (f.sprites.length > 0) {
-      this._urlCache.resolve(getSpritePath(f.sprites[0]), url => {
-        const f2 = super.get(f.position);
-        if (f2?.id !== f.id) {
-          return;
-        }
+      this._urlCache.resolve(getSpritePath(f.sprites[0]))
+        .then(url => {
+          const f2 = super.get(f.position);
+          if (f2?.id !== f.id) {
+            return;
+          }
 
-        this._spriteFeatures.add({ ...f, spriteUrl: url });
-      });
+          this._spriteFeatures.add({ ...f, spriteUrl: url });
+        });
     }
 
     return true;
