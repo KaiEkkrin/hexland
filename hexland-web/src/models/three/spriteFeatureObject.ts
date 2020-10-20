@@ -1,6 +1,7 @@
 import { IGridCoord } from '../../data/coord';
 import { IFeature, ITokenFaceProperties } from '../../data/feature';
 import { InstancedFeatureObject } from './instancedFeatureObject';
+import { fromMatrix4Columns, InstanceMatrix3Column } from './instanceMatrix';
 import { RedrawFlag } from '../redrawFlag';
 import { ITokenUvTransform } from './uv';
 
@@ -11,13 +12,15 @@ const spriteShader = {
     "spriteTex": { value: null }
   },
   vertexShader: [
-    "attribute vec2 instanceUvScale;", // per-instance UV scaling
-    "attribute vec2 instanceUvTranslate;", // per-instance UV translation
+    "attribute vec3 instanceUv0;",
+    "attribute vec3 instanceUv1;",
+    "attribute vec3 instanceUv2;",
     "varying vec2 myUv;", // calculated UV
 
     "void main() {",
     "  gl_Position = projectionMatrix * viewMatrix * instanceMatrix * vec4(position, 1.0);",
-    "  myUv = uv * instanceUvScale + instanceUvTranslate;",
+    "  mat3 uvTransform = mat3(instanceUv0, instanceUv1, instanceUv2);",
+    "  myUv = (uvTransform * vec3(position.xy, 1.0)).xy;",
     "}"
   ].join("\n"),
   fragmentShader: [
@@ -36,18 +39,18 @@ export class SpriteFeatureObject<K extends IGridCoord, F extends (IFeature<K> & 
   private readonly _redrawFlag: RedrawFlag;
   private readonly _uvTransform: ITokenUvTransform;
 
-  private readonly _instanceUvScale: Float32Array;
-  private readonly _instanceUvTranslate: Float32Array;
-  private readonly _instanceUvScaleAttr: THREE.InstancedBufferAttribute;
-  private readonly _instanceUvTranslateAttr: THREE.InstancedBufferAttribute;
+  private readonly _instanceUvColumns: InstanceMatrix3Column[] = [];
 
   private readonly _texture: THREE.Texture;
   private readonly _material: THREE.ShaderMaterial;
   private readonly _uniforms: any;
 
+  private readonly _scratchMatrix1 = new THREE.Matrix4();
+  private readonly _scratchMatrix2 = new THREE.Matrix4();
+
   constructor(
     toIndex: (k: K) => string,
-    transformTo: (o: THREE.Object3D, position: K) => void,
+    transformTo: (m: THREE.Matrix4, position: K) => THREE.Matrix4,
     maxInstances: number,
     createGeometry: () => THREE.InstancedBufferGeometry,
     redrawFlag: RedrawFlag,
@@ -59,16 +62,11 @@ export class SpriteFeatureObject<K extends IGridCoord, F extends (IFeature<K> & 
     this._redrawFlag = redrawFlag;
     this._uvTransform = uvTransform;
 
-    this._instanceUvScale = new Float32Array(maxInstances * 2);
-    this._instanceUvTranslate = new Float32Array(maxInstances * 2);
-
-    this._instanceUvScaleAttr = new THREE.InstancedBufferAttribute(this._instanceUvScale, 2);
-    this._instanceUvScaleAttr.setUsage(THREE.DynamicDrawUsage);
-    this._geometry.setAttribute('instanceUvScale', this._instanceUvScaleAttr);
-
-    this._instanceUvTranslateAttr = new THREE.InstancedBufferAttribute(this._instanceUvTranslate, 2);
-    this._instanceUvTranslateAttr.setUsage(THREE.DynamicDrawUsage);
-    this._geometry.setAttribute('instanceUvTranslate', this._instanceUvTranslateAttr);
+    for (let i = 0; i < 3; ++i) {
+      const col = new InstanceMatrix3Column(maxInstances);
+      this._geometry.setAttribute(`instanceUv${i}`, col.attr);
+      this._instanceUvColumns.push(col);
+    }
 
     // TODO #149 Pull this out into some form of texture cache?  (so that it can be shared with
     // other feature objects for token fill vertex and fill edge geometries?)  Will THREE.js do
@@ -116,15 +114,38 @@ export class SpriteFeatureObject<K extends IGridCoord, F extends (IFeature<K> & 
         return;
       }
 
-      // console.log(`received uv transform: offset ${faceTransform.offset.toArray()}, scale ${faceTransform.scale}`);
+      // TODO #149 Debugging the matrix version.
+      const translation = this._scratchMatrix1.makeTranslation(
+        x * scaleX, 1 - (y * scaleY), 0
+      );
+      const scaling = this._scratchMatrix2.makeScale(scaleX, -scaleY, 1);
+      const transform = translation.multiply(scaling).multiply(faceTransform.transform);
 
-      this._instanceUvScale[2 * instanceIndex] = scaleX * faceTransform.scale;
-      this._instanceUvScale[2 * instanceIndex + 1] = -scaleY * faceTransform.scale;
-      this._instanceUvTranslate[2 * instanceIndex] = x * scaleX + faceTransform.offset.x * scaleX;
-      this._instanceUvTranslate[2 * instanceIndex + 1] = 1 - (y * scaleY + faceTransform.offset.y * scaleY);
+      fromMatrix4Columns(this._instanceUvColumns, transform, instanceIndex);
 
-      this._instanceUvScaleAttr.needsUpdate = true;
-      this._instanceUvTranslateAttr.needsUpdate = true;
+      const uvScaleX = scaleX * faceTransform.scale;
+      const uvScaleY = -scaleY * faceTransform.scale;
+      const uvTranslateX = x * scaleX + faceTransform.offset.x * scaleX;
+      const uvTranslateY = 1 - (y * scaleY + faceTransform.offset.y * scaleY);
+
+      faceTransform.testVertices.forEach((v, i) => {
+        const xy = v.clone().applyMatrix4(faceTransform.testTransform);
+        const uv = v.clone().applyMatrix4(transform);
+        console.log(`sprite mat: ${xy.toArray()} -> ${uv.toArray()}`);
+        
+        const sc = new THREE.Vector2(faceTransform.testBuvs[2 * i], faceTransform.testBuvs[2 * i + 1])
+          .multiply(new THREE.Vector2(
+            uvScaleX,
+            uvScaleY
+          )).add(new THREE.Vector2(
+            uvTranslateX,
+            uvTranslateY
+          ));
+        console.log(`sprite sc : ${xy.toArray()} -> ${sc.toArray()}`);
+      });
+
+      // this._instanceUvScaleAttr.needsUpdate = true;
+      // this._instanceUvTranslateAttr.needsUpdate = true;
     }
   }
 

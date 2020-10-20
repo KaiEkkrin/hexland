@@ -12,6 +12,8 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
   private readonly _xOffLeft: number;
   private readonly _xOffTop: number;
   private readonly _yOffTop: number;
+  
+  private readonly _scratchMatrix = new THREE.Matrix4();
 
   constructor(hexSize: number, tileDim: number) {
     super(tileDim, 3, 2);
@@ -309,24 +311,22 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     return new HexGridGeometry(this._hexSize, 1);
   }
 
-  transformToEdge(o: THREE.Object3D, coord: IGridEdge): void {
-    let centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
-    o.translateX(centre.x);
-    o.translateY(centre.y);
-    if (coord.edge === 1) {
-      o.rotateZ(Math.PI / 3.0);
-    } else if (coord.edge === 2) {
-      o.rotateZ(Math.PI * 2.0 / 3.0);
-    }
+  transformToEdge(m: THREE.Matrix4, coord: IGridEdge): THREE.Matrix4 {
+    const centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
+    m.makeTranslation(centre.x, centre.y, 0);
+    return coord.edge === 2 ? m.multiply(
+      this._scratchMatrix.makeRotationZ(Math.PI * 2.0 / 3.0)
+    ) : coord.edge === 1 ? m.multiply(
+      this._scratchMatrix.makeRotationZ(Math.PI / 3.0)
+    ) : m;
   }
 
-  transformToVertex(o: THREE.Object3D, coord: IGridVertex): void {
-    let centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
-    o.translateX(centre.x);
-    o.translateY(centre.y);
-    if (coord.vertex === 1) {
-      o.rotateZ(Math.PI / 3.0);
-    }
+  transformToVertex(m: THREE.Matrix4, coord: IGridVertex): THREE.Matrix4 {
+    const centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
+    m.makeTranslation(centre.x, centre.y, 0);
+    return coord.vertex === 1 ? m.multiply(
+      this._scratchMatrix.makeRotationZ(Math.PI / 3.0)
+    ) : m;
   }
 
   createShaderDeclarations() {

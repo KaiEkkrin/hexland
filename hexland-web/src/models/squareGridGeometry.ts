@@ -7,6 +7,8 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   private readonly _squareSize: number;
   private readonly _off: number;
 
+  private readonly _scratchMatrix = new THREE.Matrix4();
+
   constructor(squareSize: number, tileDim: number) {
     super(tileDim, 2, 1);
     this._squareSize = squareSize;
@@ -244,19 +246,17 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     return new SquareGridGeometry(this._squareSize, 1);
   }
 
-  transformToEdge(o: THREE.Object3D, coord: IGridEdge): void {
-    let centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
-    o.translateX(centre.x);
-    o.translateY(centre.y);
-    if (coord.edge === 1) {
-      o.rotateZ(Math.PI * 0.5);
-    }
+  transformToEdge(m: THREE.Matrix4, coord: IGridEdge): THREE.Matrix4 {
+    const centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
+    m.makeTranslation(centre.x, centre.y, 0);
+    return coord.edge === 1 ? m.multiply(
+      this._scratchMatrix.makeRotationZ(Math.PI * 0.5)
+    ) : m;
   }
 
-  transformToVertex(o: THREE.Object3D, coord: IGridVertex): void {
-    let centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
-    o.translateX(centre.x);
-    o.translateY(centre.y);
+  transformToVertex(m: THREE.Matrix4, coord: IGridVertex): THREE.Matrix4 {
+    const centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
+    return m.makeTranslation(centre.x, centre.y, 0);
   }
 
   createShaderDeclarations() {

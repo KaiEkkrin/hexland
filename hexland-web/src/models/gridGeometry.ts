@@ -1,4 +1,4 @@
-import { IGridCoord, IGridEdge, createGridCoord, createGridEdge, coordMultiplyScalar, createGridVertex, IGridVertex } from '../data/coord';
+import { IGridCoord, IGridEdge, createGridCoord, createGridEdge, createGridVertex, IGridVertex } from '../data/coord';
 import { EdgeOcclusion } from './occlusion';
 import * as THREE from 'three';
 
@@ -114,21 +114,10 @@ export interface IGridGeometry {
   // instanced draws.
   toSingle(): IGridGeometry;
 
-  // Transforms the object, assumed to be at the zero co-ordinate, to be at the
-  // given one instead.
-  transformToCoord(o: THREE.Object3D, coord: IGridCoord): void;
-
-  // Transforms the object, assumed to be at the given co-ordinate, back to the
-  // origin position.
-  transformToOrigin(o: THREE.Object3D, coord: IGridCoord): void;
-
-  // Transforms the object, assumed to be at the zero edge, to be at the
-  // given one instead.
-  transformToEdge(o: THREE.Object3D, coord: IGridEdge): void;
-
-  // Transforms the object, assumed to be at the zero vertex, to be at the
-  // given one instead.
-  transformToVertex(o: THREE.Object3D, coord: IGridVertex): void;
+  // Creates a transform from the zero co-ordinate to the given one.
+  transformToCoord(m: THREE.Matrix4, coord: IGridCoord): THREE.Matrix4;
+  transformToEdge(m: THREE.Matrix4, coord: IGridEdge): THREE.Matrix4;
+  transformToVertex(m: THREE.Matrix4, coord: IGridVertex): THREE.Matrix4;
 
   // Emits the shader declarations required by `createShaderSnippet()` below.
   createShaderDeclarations(): string[];
@@ -396,14 +385,8 @@ export abstract class BaseGeometry {
       : undefined;
   }
 
-  transformToCoord(o: THREE.Object3D, coord: IGridCoord): void {
-    let centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
-    o.translateX(centre.x);
-    o.translateY(centre.y);
-  }
-
-  transformToOrigin(o: THREE.Object3D, coord: IGridCoord): void {
-    let negated = coordMultiplyScalar(coord, -1);
-    this.transformToCoord(o, negated);
+  transformToCoord(m: THREE.Matrix4, coord: IGridCoord): THREE.Matrix4 {
+    const centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
+    return m.makeTranslation(centre.x, centre.y, 0);
   }
 }

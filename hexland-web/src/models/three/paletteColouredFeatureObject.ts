@@ -44,7 +44,7 @@ export class PaletteColouredFeatureObject<K extends IGridCoord, F extends IFeatu
   // The constructor will add the colour attribute to the geometry automatically.
   constructor(
     toIndex: (k: K) => string,
-    transformTo: (o: THREE.Object3D, position: K) => void,
+    transformTo: (m: THREE.Matrix4, position: K) => THREE.Matrix4,
     maxInstances: number,
     createGeometry: () => THREE.InstancedBufferGeometry,
     colourParameters: IColourParameters

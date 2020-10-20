@@ -19,7 +19,7 @@ export interface IInstancedFeatureObject<K extends IGridCoord, F extends IFeatur
 // A base class that manages a collection of features all drawn using the
 // same instanced mesh added to a scene.
 export abstract class InstancedFeatureObject<K extends IGridCoord, F extends IFeature<K>> implements IInstancedFeatureObject<K, F> {
-  private readonly _transformTo: (o: THREE.Object3D, position: K) => void;
+  private readonly _transformTo: (m: THREE.Matrix4, position: K) => THREE.Matrix4;
   private readonly _maxInstances: number;
 
   private readonly _indexes: FeatureDictionary<K, IFeature<K>>; // colour as instance index number
@@ -31,7 +31,7 @@ export abstract class InstancedFeatureObject<K extends IGridCoord, F extends IFe
 
   constructor(
     toIndex: (k: K) => string,
-    transformTo: (o: THREE.Object3D, position: K) => void,
+    transformTo: (m: THREE.Matrix4, position: K) => THREE.Matrix4,
     maxInstances: number
   ) {
     this._transformTo = transformTo;
@@ -57,8 +57,7 @@ export abstract class InstancedFeatureObject<K extends IGridCoord, F extends IFe
   protected addFeature(f: F, instanceIndex: number) {
     // All features have a position, which we create now
     const o = new THREE.Object3D();
-    this._transformTo(o, f.position);
-    o.updateMatrix();
+    this._transformTo(o.matrix, f.position);
     this.mesh.setMatrixAt(instanceIndex, o.matrix);
     this.mesh.instanceMatrix.needsUpdate = true;
   }

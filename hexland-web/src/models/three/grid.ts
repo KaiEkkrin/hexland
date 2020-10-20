@@ -83,7 +83,7 @@ class GridColouredFeatureObject<K extends IGridCoord, F extends IFeature<K>> ext
 
   constructor(
     toIndex: (k: K) => string,
-    transformTo: (o: THREE.Object3D, position: K) => void,
+    transformTo: (m: THREE.Matrix4, position: K) => THREE.Matrix4,
     gridGeometry: IGridGeometry,
     maxInstances: number,
     createGeometry: () => THREE.InstancedBufferGeometry,
