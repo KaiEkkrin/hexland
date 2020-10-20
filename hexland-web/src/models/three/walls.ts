@@ -1,6 +1,5 @@
 import { IGridEdge, edgeString, IGridCoord } from '../../data/coord';
 import { IFeature, IFeatureDictionary, ITokenProperties } from '../../data/feature';
-import { ITokenGeometry } from '../../data/tokenGeometry';
 import { IGridGeometry } from "../gridGeometry";
 import { IInstancedFeatureObject } from './instancedFeatureObject';
 import { InstancedFeatures } from './instancedFeatures';
@@ -8,7 +7,8 @@ import { MultipleFeatureObject } from './multipleFeatureObject';
 import { PaletteColouredFeatureObject, IColourParameters, createSelectionColourParameters } from './paletteColouredFeatureObject';
 import { RedrawFlag } from '../redrawFlag';
 import { SpriteFeatureObject } from './spriteFeatureObject';
-import { createLargeTokenUvTransform } from './uv';
+import { TextureCache } from './textureCache';
+import { ITokenUvTransform } from './uv';
 
 import * as THREE from 'three';
 
@@ -59,13 +59,12 @@ export function createSelectionColouredWallObject(createGeometry: () => THREE.In
 
 export function createSpriteEdgeObject(
   gridGeometry: IGridGeometry,
-  tokenGeometry: ITokenGeometry,
-  redrawFlag: RedrawFlag,
+  textureCache: TextureCache,
+  uvTransform: ITokenUvTransform,
   alpha: number,
   z: number
 ) {
   const edgeGeometry = createTokenFillEdgeGeometry(gridGeometry, alpha, z);
-  const uvTransform = createLargeTokenUvTransform(gridGeometry, tokenGeometry, alpha);
   return (maxInstances: number) => new MultipleFeatureObject<IGridEdge, IFeature<IGridEdge> & ITokenProperties & { basePosition: IGridCoord, spriteUrl: string }>(
     (i: string, maxInstances: number) => new SpriteFeatureObject(
       edgeString,
@@ -73,8 +72,8 @@ export function createSpriteEdgeObject(
       maxInstances,
       edgeGeometry,
       f => uvTransform.getFillEdgeTransform(f),
-      redrawFlag,
       i,
+      textureCache
     ),
     f => f.spriteUrl,
     maxInstances

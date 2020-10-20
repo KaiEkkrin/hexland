@@ -15,10 +15,12 @@ import { LoS } from './los';
 import { MapColourVisualisation } from './mapColourVisualisation';
 import { OutlinedRectangle } from './overlayRectangle';
 import { SelectionDrawing, TokenDrawing } from './tokenDrawingOrtho';
+import { createLargeTokenUvTransform } from './uv';
 import { Vertices, createVertices, createSelectionColouredVertexObject, createSingleVertexGeometry, createTokenFillVertexGeometry, createPaletteColouredVertexObject } from './vertices';
 import { Walls, createPaletteColouredWallObject, createSelectionColouredWallObject, createWallGeometry, createTokenFillEdgeGeometry } from './walls';
 
 import * as THREE from 'three';
+import { TextureCache } from './textureCache';
 
 // Our Z values are in the range -1..1 so that they're the same in the shaders
 const areaZ = -0.5;
@@ -62,6 +64,8 @@ export class DrawingOrtho implements IDrawing {
   private readonly _fixedFilterScene: THREE.Scene;
   private readonly _filterScene: THREE.Scene;
   private readonly _overlayScene: THREE.Scene;
+
+  private readonly _textureCache: TextureCache;
 
   private readonly _grid: Grid;
   private readonly _gridFilter: GridFilter;
@@ -229,8 +233,14 @@ export class DrawingOrtho implements IDrawing {
     );
 
     // The tokens
+    // TODO #149 smuggle a better logError in here
+    this._textureCache = new TextureCache(
+      this._needsRedraw,
+      (message, e) => console.error(message, e)
+    );
+    const uvTransform = createLargeTokenUvTransform(gridGeometry, tokenGeometry, tokenSpriteAlpha);
     this._tokens = new TokenDrawing(
-      gridGeometry, tokenGeometry, this._needsRedraw, this._textMaterial, {
+      gridGeometry, this._textureCache, uvTransform, this._needsRedraw, this._textMaterial, {
         alpha: tokenAlpha,
         spriteAlpha: tokenSpriteAlpha,
         z: tokenZ,
@@ -444,7 +454,11 @@ export class DrawingOrtho implements IDrawing {
       return;
     }
 
-    this._mount.removeChild(this._renderer.domElement);
+    try {
+      this._mount.removeChild(this._renderer.domElement);
+    } catch (e) {
+      console.error("failed to unmount renderer dom element", e);
+    }
 
     this._renderer.dispose();
 
@@ -465,6 +479,7 @@ export class DrawingOrtho implements IDrawing {
     this._outlinedRectangle.dispose();
 
     this._textMaterial.dispose();
+    this._textureCache.dispose();
 
     this._disposed = true;
   }

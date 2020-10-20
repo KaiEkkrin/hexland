@@ -2,8 +2,7 @@ import { IGridCoord } from '../../data/coord';
 import { IFeature, ITokenProperties } from '../../data/feature';
 import { InstancedFeatureObject } from './instancedFeatureObject';
 import { fromMatrix4Columns, InstanceMatrix3Column } from './instanceMatrix';
-import { RedrawFlag } from '../redrawFlag';
-import { IUvTransform } from './uv';
+import { TextureCache } from './textureCache';
 
 import * as THREE from 'three';
 
@@ -32,19 +31,18 @@ const spriteShader = {
   ].join("\n")
 };
 
-const textureLoader = new THREE.TextureLoader();
-
 export class SpriteFeatureObject<
   K extends IGridCoord,
   F extends (IFeature<K> & ITokenProperties & { basePosition: IGridCoord })
 > extends InstancedFeatureObject<K, F> {
   private readonly _geometry: THREE.InstancedBufferGeometry;
-  private readonly _redrawFlag: RedrawFlag;
-  private readonly _getUvTransform: (feature: F) => IUvTransform | undefined;
+  private readonly _getUvTransform: (feature: F) => THREE.Matrix4 | undefined;
 
   private readonly _instanceUvColumns: InstanceMatrix3Column[] = [];
 
-  private readonly _texture: THREE.Texture;
+  private readonly _texture: THREE.Texture; // not owned by us
+  private readonly _deref: () => void; // to release our texture lease when done
+
   private readonly _material: THREE.ShaderMaterial;
   private readonly _uniforms: any;
 
@@ -56,13 +54,12 @@ export class SpriteFeatureObject<
     transformTo: (m: THREE.Matrix4, position: K) => THREE.Matrix4,
     maxInstances: number,
     createGeometry: () => THREE.InstancedBufferGeometry,
-    getUvTransform: (feature: F) => IUvTransform | undefined,
-    redrawFlag: RedrawFlag,
+    getUvTransform: (feature: F) => THREE.Matrix4 | undefined,
     spritesheetUrl: string,
+    textureCache: TextureCache
   ) {
     super(toIndex, transformTo, maxInstances);
     this._geometry = createGeometry();
-    this._redrawFlag = redrawFlag;
     this._getUvTransform = getUvTransform;
 
     for (let i = 0; i < 3; ++i) {
@@ -71,17 +68,9 @@ export class SpriteFeatureObject<
       this._instanceUvColumns.push(col);
     }
 
-    // TODO #149 Pull this out into some form of texture cache?  (so that it can be shared with
-    // other feature objects for token fill vertex and fill edge geometries?)  Will THREE.js do
-    // that for me anyway (I hope so?)
-    this._texture = textureLoader.load(spritesheetUrl,
-      () => {
-        console.log("texture loaded : " + spritesheetUrl);
-        this._redrawFlag.setNeedsRedraw();
-      },
-      () => {},
-      // TODO #149 Can I smuggle analytics in here, or move this elsewhere to get a better error?
-      e => console.error(`failed to load texture from ${spritesheetUrl} : ${e}`));
+    const { texture, deref } = textureCache.get(spritesheetUrl);
+    this._texture = texture;
+    this._deref = deref;
 
     this._uniforms = THREE.UniformsUtils.clone(spriteShader.uniforms);
     this._material = new THREE.ShaderMaterial({
@@ -112,47 +101,42 @@ export class SpriteFeatureObject<
       const x = (f.sprites[0].position % columns);
       const y = Math.floor(f.sprites[0].position / columns);
 
-      const faceTransform = this._getUvTransform(f);
-      if (faceTransform === undefined) {
+      const baseTransform = this._getUvTransform(f);
+      if (baseTransform === undefined) {
         return;
       }
 
-      // TODO #149 Debugging the matrix version.
       const translation = this._scratchMatrix1.makeTranslation(
         x * scaleX, 1 - (y * scaleY), 0
       );
       const scaling = this._scratchMatrix2.makeScale(scaleX, -scaleY, 1);
-      const transform = translation.multiply(scaling).multiply(faceTransform.transform);
-
+      const transform = translation.multiply(scaling).multiply(baseTransform);
       fromMatrix4Columns(this._instanceUvColumns, transform, instanceIndex);
 
-      const uvScaleX = scaleX * faceTransform.scale;
-      const uvScaleY = -scaleY * faceTransform.scale;
-      const uvTranslateX = x * scaleX + faceTransform.offset.x * scaleX;
-      const uvTranslateY = 1 - (y * scaleY + faceTransform.offset.y * scaleY);
+      // const uvScaleX = scaleX * baseTransform.scale;
+      // const uvScaleY = -scaleY * baseTransform.scale;
+      // const uvTranslateX = x * scaleX + baseTransform.offset.x * scaleX;
+      // const uvTranslateY = 1 - (y * scaleY + baseTransform.offset.y * scaleY);
 
-      faceTransform.testVertices?.forEach((v, i) => {
-        if (faceTransform.testTransform === undefined || faceTransform.testBuvs === undefined) {
-          return;
-        }
+      // baseTransform.testVertices?.forEach((v, i) => {
+      //   if (baseTransform.testTransform === undefined || baseTransform.testBuvs === undefined) {
+      //     return;
+      //   }
 
-        const xy = v.clone().applyMatrix4(faceTransform.testTransform);
-        const uv = v.clone().applyMatrix4(transform);
-        console.log(`sprite mat: ${xy.toArray()} -> ${uv.toArray()}`);
+      //   const xy = v.clone().applyMatrix4(baseTransform.testTransform);
+      //   const uv = v.clone().applyMatrix4(transform);
+      //   console.log(`sprite mat: ${xy.toArray()} -> ${uv.toArray()}`);
         
-        const sc = new THREE.Vector2(faceTransform.testBuvs[2 * i], faceTransform.testBuvs[2 * i + 1])
-          .multiply(new THREE.Vector2(
-            uvScaleX,
-            uvScaleY
-          )).add(new THREE.Vector2(
-            uvTranslateX,
-            uvTranslateY
-          ));
-        console.log(`sprite sc : ${xy.toArray()} -> ${sc.toArray()}`);
-      });
-
-      // this._instanceUvScaleAttr.needsUpdate = true;
-      // this._instanceUvTranslateAttr.needsUpdate = true;
+      //   const sc = new THREE.Vector2(baseTransform.testBuvs[2 * i], baseTransform.testBuvs[2 * i + 1])
+      //     .multiply(new THREE.Vector2(
+      //       uvScaleX,
+      //       uvScaleY
+      //     )).add(new THREE.Vector2(
+      //       uvTranslateX,
+      //       uvTranslateY
+      //     ));
+      //   console.log(`sprite sc : ${xy.toArray()} -> ${sc.toArray()}`);
+      // });
     }
   }
 
@@ -160,6 +144,6 @@ export class SpriteFeatureObject<
     super.dispose();
     this._geometry.dispose();
     this._material.dispose();
-    this._texture.dispose();
+    this._deref();
   }
 }

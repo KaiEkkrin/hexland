@@ -1,7 +1,6 @@
 import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from "../../data/coord";
 import { IFeature, IToken, ITokenProperties } from "../../data/feature";
 import { getSpritePath } from "../../data/sprite";
-import { ITokenGeometry } from "../../data/tokenGeometry";
 import { ITokenFace, ITokenFillEdge, ITokenFillVertex, SimpleTokenDrawing } from "../../data/tokens";
 import { IGridGeometry } from "../gridGeometry";
 import { RedrawFlag } from "../redrawFlag";
@@ -11,7 +10,9 @@ import { createPaletteColouredAreaObject, createSelectedAreas, createSpriteAreaO
 import { IInstancedFeatureObject } from "./instancedFeatureObject";
 import { InstancedFeatures } from "./instancedFeatures";
 import { IColourParameters } from "./paletteColouredFeatureObject";
+import { TextureCache } from "./textureCache";
 import { TokenTexts } from "./tokenTexts";
+import { ITokenUvTransform } from "./uv";
 import { createPaletteColouredVertexObject, createSpriteVertexObject, createTokenFillVertexGeometry } from "./vertices";
 import { createPaletteColouredWallObject, createSpriteEdgeObject, createTokenFillEdgeGeometry } from "./walls";
 
@@ -27,7 +28,6 @@ export interface ITokenDrawingParameters {
 
 // This middle dictionary helps us create the palette-coloured token features immediately,
 // and the sprite ones (if applicable) once we get a download URL.
-// TODO #149 Genericise it to do token fill edges and vertices too :)
 class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenProperties & { basePosition: IGridCoord })>
   extends InstancedFeatures<K, F>
 {
@@ -110,7 +110,8 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
 export class TokenDrawing extends SimpleTokenDrawing {
   constructor(
     gridGeometry: IGridGeometry,
-    tokenGeometry: ITokenGeometry,
+    textureCache: TextureCache,
+    uvTransform: ITokenUvTransform,
     needsRedraw: RedrawFlag,
     textMaterial: THREE.MeshBasicMaterial,
     drawingParameters: ITokenDrawingParameters,
@@ -122,7 +123,7 @@ export class TokenDrawing extends SimpleTokenDrawing {
       new TokenFeatures(
         gridGeometry, needsRedraw, coordString,
         createPaletteColouredAreaObject(gridGeometry, drawingParameters.alpha, drawingParameters.z, colourParameters),
-        createSpriteAreaObject(gridGeometry, tokenGeometry, needsRedraw, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
+        createSpriteAreaObject(gridGeometry, textureCache, uvTransform, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
         urlCache
       ),
       new TokenFeatures(
@@ -130,7 +131,7 @@ export class TokenDrawing extends SimpleTokenDrawing {
         createPaletteColouredWallObject(
           createTokenFillEdgeGeometry(gridGeometry, drawingParameters.alpha, drawingParameters.z), gridGeometry, colourParameters
         ),
-        createSpriteEdgeObject(gridGeometry, tokenGeometry, needsRedraw, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
+        createSpriteEdgeObject(gridGeometry, textureCache, uvTransform, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
         urlCache
       ),
       new TokenFeatures(
@@ -138,7 +139,7 @@ export class TokenDrawing extends SimpleTokenDrawing {
         createPaletteColouredVertexObject(
           createTokenFillVertexGeometry(gridGeometry, drawingParameters.alpha, drawingParameters.z), gridGeometry, colourParameters
         ),
-        createSpriteVertexObject(gridGeometry, tokenGeometry, needsRedraw, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
+        createSpriteVertexObject(gridGeometry, textureCache, uvTransform, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
         urlCache
       ),
       new TokenTexts(gridGeometry, needsRedraw, textMaterial, scene, drawingParameters.textZ)
@@ -198,6 +199,5 @@ export class SelectionDrawing extends SimpleTokenDrawing {
     (this.faces as InstancedFeatures<IGridCoord, ITokenFace>).dispose();
     (this.fillEdges as InstancedFeatures<IGridEdge, ITokenFillEdge>).dispose();
     (this.fillVertices as InstancedFeatures<IGridVertex, ITokenFillVertex>).dispose();
-    (this.texts as TokenTexts).dispose();
   }
 }
