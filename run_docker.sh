@@ -5,8 +5,8 @@
 echo "USER_ID=`id -u ${USER}`" > .env
 echo "GROUP_ID=`id -u ${USER}`" >> .env
 
-if [ "${1}" = "test" ]; then
-  echo "RUN_TESTS=true" >> .env
+if [ "${1}" = "test:e2e" ] || [ "${1}" = "shell" ] || [ "${1}" = "test:unit" ]; then
+  echo "RUN_TESTS=${1}" >> .env
 
   # `docker-compose up` won't let us interact with the `hexland` container even
   # though it has stdin enabled, we need to specifically attach to that one

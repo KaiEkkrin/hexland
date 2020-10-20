@@ -51,6 +51,8 @@ to avoid incurring the extra wait time (and potentially even bill!) of the serve
 
 ## Running locally with Docker
 
+### Setup
+
 Docker can be used to run the web application locally with emulators for Firebase Functions and
 Firestore. With this development flow, the Firebase project associated with the application only
 needs to be set to the "Spark" level rather than the "Blaze" level.
@@ -93,8 +95,26 @@ hexland-web/firebase-admin-credentials.json
 
 Then re-run `run_docker.sh` (Ctrl-C any existing run first) to use the credentials.
 
-To run tests inside the container, run:
+### Running unit tests
+
+To run unit tests inside the container, run:
 
 ```shell
-./run_docker.sh test
+./run_docker.sh test:unit
+```
+
+### Running end-to-end tests
+
+To run end-to-end tests inside the container, run:
+
+```shell
+./run_docker.sh test:e2e
+```
+
+### Debugging via a shell
+
+To run a bash shell for debugging inside the container, run:
+
+```shell
+./run_docker.sh shell
 ```

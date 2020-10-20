@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "forceConsistentCasingInFileNames": true,
+    "lib": [
+      "esnext"
+    ],
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "strict": true,
+    "types": ["@types/jest", "@types/node", "expect-playwright"]
+  }
+}
