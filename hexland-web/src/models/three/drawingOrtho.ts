@@ -22,10 +22,10 @@ import * as THREE from 'three';
 
 // Our Z values are in the range -1..1 so that they're the same in the shaders
 const areaZ = -0.5;
-const tokenZ = -0.4;
-const wallZ = -0.4;
-const tokenSpriteZ = -0.35;
-const gridZ = -0.3;
+const tokenZ = -0.3;
+const wallZ = -0.45;
+const tokenSpriteZ = -0.25;
+const gridZ = -0.4;
 const losZ = -0.2;
 const losQ = 0.2;
 const selectionZ = 0;
