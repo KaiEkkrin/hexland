@@ -1,5 +1,5 @@
 # Dockerfile for creating a build and test environment for hexland
-FROM node:lts
+FROM mcr.microsoft.com/playwright:bionic
 
 ARG USER
 ARG UID
@@ -15,8 +15,7 @@ RUN apt-get update && \
 COPY ./*.sh /usr/src/scripts/
 
 # Delete default node user and create user defined by args
-RUN userdel -f node && \
-    rm -fr /home/node && \
+RUN userdel -f pwuser && \
     groupadd --gid ${GID} ${USER} && \
     useradd --uid ${UID} --gid ${USER} --shell /bin/bash --create-home ${USER} && \
     chown ${USER}:${USER} -R /usr/src/scripts && \
