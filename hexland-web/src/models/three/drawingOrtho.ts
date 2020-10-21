@@ -233,11 +233,7 @@ export class DrawingOrtho implements IDrawing {
     );
 
     // The tokens
-    // TODO #149 smuggle a better logError in here
-    this._textureCache = new TextureCache(
-      this._needsRedraw,
-      (message, e) => console.error(message, e)
-    );
+    this._textureCache = new TextureCache(urlCache);
     const uvTransform = createLargeTokenUvTransform(gridGeometry, tokenGeometry, tokenSpriteAlpha);
     this._tokens = new TokenDrawing(
       gridGeometry, this._textureCache, uvTransform, this._needsRedraw, this._textMaterial, {
@@ -246,7 +242,7 @@ export class DrawingOrtho implements IDrawing {
         z: tokenZ,
         spriteZ: tokenSpriteZ,
         textZ: textZ
-      }, lightColourParameters, this._mapScene, urlCache
+      }, lightColourParameters, this._mapScene
     );
 
     // The walls

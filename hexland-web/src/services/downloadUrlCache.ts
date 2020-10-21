@@ -16,6 +16,10 @@ export class DownloadUrlCache implements IDownloadUrlCache {
     this._logError = logError;
   }
 
+  logError(message: string, e: any) {
+    this._logError(message, e);
+  }
+
   resolve(path: string) {
     // See if we've already got a handler for this path
     const already = this._requests.get(path);
@@ -31,11 +35,15 @@ export class DownloadUrlCache implements IDownloadUrlCache {
         fresh.next(url);
       })
       .catch(e => {
-        this._logError(`failed to resolve path ${path}`, e);
+        this.logError(`failed to resolve path ${path}`, e);
         fresh.error(e);
       });
 
     this._requests.set(path, fresh);
     return fresh.pipe(first()).toPromise();
+  }
+
+  release(url: string) {
+    // nothing to do here
   }
 }

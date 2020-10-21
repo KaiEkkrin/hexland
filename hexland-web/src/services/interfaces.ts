@@ -158,8 +158,14 @@ export interface IDataView {
 }
 
 export interface IDownloadUrlCache {
+  // This is a handy way to smuggle error logging into the webgl stuff
+  logError(message: string, e: any): void;
+
   // Looks up a path to a URL asynchronously.
   resolve(path: string): Promise<string>;
+
+  // Releases the resources associated with the URL we previously looked up.
+  release(url: string): void;
 }
 
 // Provides access to Firebase Functions.

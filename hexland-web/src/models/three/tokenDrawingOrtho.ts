@@ -88,6 +88,9 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
 
   clear() {
     super.clear();
+
+    // Remember to release all the sprite resources before emptying the dictionary!
+    this._spriteFeatures.forEach(f => this._urlCache.release(f.spriteUrl));
     this._spriteFeatures.clear();
   }
 
@@ -97,11 +100,16 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
       return undefined;
     }
 
-    this._spriteFeatures.remove(oldPosition);
+    const removedSprite = this._spriteFeatures.remove(oldPosition);
+    if (removedSprite !== undefined) {
+      this._urlCache.release(removedSprite.spriteUrl);
+    }
+
     return removed;
   }
 
   dispose() {
+    this.clear(); // to ensure sprite resources are released
     super.dispose();
     this._spriteFeatures.dispose();
   }
@@ -118,14 +126,13 @@ export class TokenDrawing extends SimpleTokenDrawing {
     drawingParameters: ITokenDrawingParameters,
     colourParameters: IColourParameters,
     scene: THREE.Scene,
-    urlCache: IDownloadUrlCache
   ) {
     super(
       new TokenFeatures(
         gridGeometry, needsRedraw, coordString,
         createPaletteColouredAreaObject(gridGeometry, drawingParameters.alpha, drawingParameters.z, colourParameters),
         createSpriteAreaObject(gridGeometry, textureCache, uvTransform, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
-        urlCache
+        textureCache
       ),
       new TokenFeatures(
         gridGeometry, needsRedraw, edgeString,
@@ -133,7 +140,7 @@ export class TokenDrawing extends SimpleTokenDrawing {
           createTokenFillEdgeGeometry(gridGeometry, drawingParameters.alpha, drawingParameters.z), gridGeometry, colourParameters
         ),
         createSpriteEdgeObject(gridGeometry, textureCache, uvTransform, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
-        urlCache
+        textureCache
       ),
       new TokenFeatures(
         gridGeometry, needsRedraw, vertexString,
@@ -141,7 +148,7 @@ export class TokenDrawing extends SimpleTokenDrawing {
           createTokenFillVertexGeometry(gridGeometry, drawingParameters.alpha, drawingParameters.z), gridGeometry, colourParameters
         ),
         createSpriteVertexObject(gridGeometry, textureCache, uvTransform, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
-        urlCache
+        textureCache
       ),
       new TokenTexts(gridGeometry, needsRedraw, textMaterial, scene, drawingParameters.textZ)
     );

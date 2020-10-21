@@ -40,9 +40,7 @@ export class SpriteFeatureObject<
 
   private readonly _instanceUvColumns: InstanceMatrix3Column[] = [];
 
-  private readonly _texture: THREE.Texture; // not owned by us
-  private readonly _deref: () => void; // to release our texture lease when done
-
+  private readonly _texture: THREE.Texture; // borrowed from the texture cache, do not dispose
   private readonly _material: THREE.ShaderMaterial;
   private readonly _uniforms: any;
 
@@ -68,10 +66,7 @@ export class SpriteFeatureObject<
       this._instanceUvColumns.push(col);
     }
 
-    const { texture, deref } = textureCache.get(spritesheetUrl);
-    this._texture = texture;
-    this._deref = deref;
-
+    this._texture = textureCache.borrow(spritesheetUrl);
     this._uniforms = THREE.UniformsUtils.clone(spriteShader.uniforms);
     this._material = new THREE.ShaderMaterial({
       blending: THREE.NormalBlending,
@@ -144,6 +139,5 @@ export class SpriteFeatureObject<
     super.dispose();
     this._geometry.dispose();
     this._material.dispose();
-    this._deref();
   }
 }
