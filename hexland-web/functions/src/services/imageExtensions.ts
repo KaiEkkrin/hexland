@@ -290,9 +290,9 @@ async function createSpritesheet(
       '-geometry', '256x256',
       '-tile', '4x4',
       '-alpha', 'background',
-      '-depth', '8',
+      '-background', 'transparent',
       ...tmpPaths,
-      tmpSheetPath
+      `PNG32:${tmpSheetPath}`
     ]);
     tmpPaths.push(tmpSheetPath);
 
