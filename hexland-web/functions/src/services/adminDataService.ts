@@ -10,7 +10,7 @@ import { IImages } from '../data/image';
 import { IInvite } from '../data/invite';
 import { IMap } from '../data/map';
 import { IProfile } from '../data/profile';
-import { ISpritesheets } from '../data/sprite';
+import { ISpritesheet } from '../data/sprite';
 
 // This data services is like the one in the web application, but uses the Admin SDK instead.
 
@@ -23,7 +23,7 @@ const maps = "maps";
 const changes = "changes";
 const baseChange = "base";
 const players = "players";
-const sprites = "sprites";
+const spritesheets = "spritesheets";
 
 // A non-generic base data reference helps our isEqual implementation.
 
@@ -266,9 +266,35 @@ export class AdminDataService implements IAdminDataService {
     return new DataReference<IProfile>(d, Convert.profileConverter);
   }
 
-  getSpritesRef(adventureId: string): IDataReference<ISpritesheets> {
-    const d = this._db.collection(sprites).doc(adventureId);
-    return new DataReference<ISpritesheets>(d, Convert.spritesheetsConverter);
+  async getSpritesheetsByFreeSpace(adventureId: string, mapId: string, geometry: string): Promise<IDataAndReference<ISpritesheet>[]> {
+    const s = await this._db.collection(adventures).doc(adventureId)
+      .collection(maps).doc(mapId).collection("spritesheets")
+      .where("geometry", "==", geometry)
+      .where("supersededBy", "==", "")
+      .where("freeSpaces", ">", 0)
+      .get();
+    return s.docs.map(d => new DataAndReference(
+      d.ref, Convert.spritesheetConverter.convert(d.data()), Convert.spritesheetConverter
+    ));
+  }
+
+  async getSpritesheetsBySource(adventureId: string, mapId: string, geometry: string, sources: string[]): Promise<IDataAndReference<ISpritesheet>[]> {
+    const s = await this._db.collection(adventures).doc(adventureId)
+      .collection(maps).doc(mapId).collection("spritesheets")
+      .where("geometry", "==", geometry)
+      .where("supersededBy", "==", "")
+      .where("sprites", "array-contains-any", sources)
+      .get();
+    return s.docs.map(d => new DataAndReference(
+      d.ref, Convert.spritesheetConverter.convert(d.data()), Convert.spritesheetConverter
+    ));
+  }
+
+  getSpritesheetRef(adventureId: string, mapId: string, id: string): IDataReference<ISpritesheet> {
+    const d = this._db.collection(adventures).doc(adventureId)
+      .collection(maps).doc(mapId)
+      .collection(spritesheets).doc(id);
+    return new DataReference<ISpritesheet>(d, Convert.spritesheetConverter);
   }
 
   runTransaction<T>(fn: (dataView: IDataView) => Promise<T>): Promise<T> {

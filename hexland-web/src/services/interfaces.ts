@@ -6,7 +6,7 @@ import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
 import { IInviteExpiryPolicy } from '../data/policy';
 import { IProfile } from '../data/profile';
-import { ISprite, ISpritesheets } from '../data/sprite';
+import { ISprite } from '../data/sprite';
 import { IConverter } from './converter';
 
 // Abstracts the Firebase authentication stuff, which isn't supported by the
@@ -99,9 +99,6 @@ export interface IDataService extends IDataView {
   // Gets the user's profile.
   getProfileRef(uid: string): IDataReference<IProfile>;
 
-  // Gets a reference to the sprites record for an adventure.
-  getSpritesRef(adventureId: string): IDataReference<ISpritesheets>;
-
   // Runs a transaction. The `dataView` parameter accepted by the
   // transaction function does things in the transaction's context.
   runTransaction<T>(fn: (dataView: IDataView) => Promise<T>): Promise<T>;
@@ -159,6 +156,9 @@ export interface IDataView {
 
 // Provides access to Firebase Functions.
 export interface IFunctionsService {
+  // Adds images to spritesheets.
+  addSprites(adventureId: string, mapId: string, geometry: string, sources: string[]): Promise<ISprite[]>;
+
   // Creates a new adventure, returning its ID.
   createAdventure(name: string, description: string): Promise<string>;
 
@@ -173,9 +173,6 @@ export interface IFunctionsService {
 
   // Deletes an image.
   deleteImage(path: string): Promise<void>;
-
-  // Adds a new image to a sprite or replaces an existing one.
-  editSprite(adventureId: string, newPath: string, oldPath?: string | undefined): Promise<ISprite>;
 
   // For mock storage use only -- not production.
   handleMockStorageUpload(imageId: string, name: string): Promise<void>;

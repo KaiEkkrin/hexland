@@ -9,7 +9,7 @@ import { IImages } from '../data/image';
 import { IInvite } from '../data/invite';
 import { IMap } from '../data/map';
 import { IProfile } from '../data/profile';
-import { ISpritesheets } from '../data/sprite';
+import { ISpritesheet } from '../data/sprite';
 
 // Well-known collection names.
 const profiles = "profiles";
@@ -20,7 +20,6 @@ const maps = "maps";
 const changes = "changes";
 const baseChange = "base";
 const players = "players";
-const sprites = "sprites";
 
 // A non-generic base data reference helps our isEqual implementation.
 
@@ -165,6 +164,17 @@ export class DataService implements IDataService {
     const d = this._db.collection(adventures).doc(id);
     return new DataReference<IAdventure>(d, Convert.adventureConverter);
   }
+  async getFirstSpritesheetBySource(adventureId: string, mapId: string, source: string): Promise<IDataAndReference<ISpritesheet>[]> {
+    const s = await this._db.collection(adventures).doc(adventureId)
+      .collection(maps).doc(mapId).collection("spritesheets")
+      .where("supersededBy", "==", "")
+      .where("sprites", "array-contains", source)
+      .limit(1)
+      .get();
+    return s.docs.map(d => new DataAndReference(
+      d.ref, Convert.spritesheetConverter.convert(d.data()), Convert.spritesheetConverter
+    ));
+  }
 
   getImagesRef(uid: string): IDataReference<IImages> {
     const d = this._db.collection(images).doc(uid);
@@ -228,17 +238,13 @@ export class DataService implements IDataService {
   async getPlayerRefs(adventureId: string): Promise<IDataAndReference<IPlayer>[]> {
     const s = await this._db.collection(adventures).doc(adventureId).collection(players).get();
     return s.docs.map(d => new DataAndReference(
-      d.ref, Convert.playerConverter.convert(d.data()), Convert.playerConverter));
+      d.ref, Convert.playerConverter.convert(d.data()), Convert.playerConverter
+    ));
   }
 
   getProfileRef(uid: string): IDataReference<IProfile> {
     const d = this._db.collection(profiles).doc(uid);
     return new DataReference<IProfile>(d, Convert.profileConverter);
-  }
-
-  getSpritesRef(adventureId: string): IDataReference<ISpritesheets> {
-    const d = this._db.collection(sprites).doc(adventureId);
-    return new DataReference<ISpritesheets>(d, Convert.spritesheetsConverter);
   }
 
   runTransaction<T>(fn: (dataView: IDataView) => Promise<T>): Promise<T> {

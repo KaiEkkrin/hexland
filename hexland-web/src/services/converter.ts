@@ -8,7 +8,7 @@ import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
 import { IAdventureSummary, IProfile } from '../data/profile';
 import { UserLevel } from '../data/policy';
-import { ISprite, ISpritesheets } from '../data/sprite';
+import { defaultSpriteGeometry, ISprite, ISpritesheet, toSpriteGeometryString } from '../data/sprite';
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -442,16 +442,15 @@ export function createChangesConverter() {
 export const spriteConverter = new ShallowConverter<ISprite>({
   source: "",
   id: "",
-  columns: 0,
-  rows: 0,
+  geometry: toSpriteGeometryString(defaultSpriteGeometry),
   position: 0
 });
 
-export const spritesheetsConverter = new RecursingConverter<ISpritesheets>({
+export const spritesheetConverter = new ShallowConverter<ISpritesheet>({
   sprites: [],
-}, {
-  "sprites": (conv, raw) => {
-    conv.sprites = Array.isArray(raw) ? raw.map(r => spriteConverter.convert(r)) : [];
-    return conv;
-  }
+  geometry: toSpriteGeometryString(defaultSpriteGeometry),
+  freeSpaces: defaultSpriteGeometry.columns * defaultSpriteGeometry.rows,
+  date: 0,
+  supersededBy: "",
+  refs: 0
 });

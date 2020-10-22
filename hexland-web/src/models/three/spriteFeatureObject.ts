@@ -6,6 +6,7 @@ import { TextureCache } from './textureCache';
 import { ICacheLease } from '../../services/objectCache';
 
 import * as THREE from 'three';
+import { fromSpriteGeometryString } from '../../data/sprite';
 
 const spriteShader = {
   uniforms: {
@@ -89,9 +90,7 @@ export class SpriteFeatureObject<
     super.addFeature(f, instanceIndex);
 
     if (f.sprites.length > 0) { // likely :)
-      const columns = f.sprites[0].columns;
-      const rows = f.sprites[0].rows;
-
+      const { columns, rows } = fromSpriteGeometryString(f.sprites[0].geometry);
       const scaleX = 1.0 / columns;
       const scaleY = 1.0 / rows;
 

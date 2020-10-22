@@ -4,6 +4,7 @@ import { AnalyticsContext } from './AnalyticsContextProvider';
 import ColourSelection from './ColourSelection';
 import { ImagePickerForm } from './ImagePickerModal';
 import { ProfileContext } from './ProfileContextProvider';
+import SpriteImage from './SpriteImage';
 import TokenPlayerSelection from './TokenPlayerSelection';
 import { UserContext } from './UserContextProvider';
 
@@ -11,7 +12,8 @@ import { IPlayer } from '../data/adventure';
 import { ITokenProperties, TokenSize } from '../data/feature';
 import { IImage } from '../data/image';
 import { getUserPolicy } from '../data/policy';
-import { ISprite } from '../data/sprite';
+import { defaultSpriteGeometry, ISprite, toSpriteGeometryString } from '../data/sprite';
+import { hexColours } from '../models/featureColour';
 
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
@@ -20,11 +22,10 @@ import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 
 import { v4 as uuidv4 } from 'uuid';
-import SpriteImage from './SpriteImage';
-import { hexColours } from '../models/featureColour';
 
 interface ITokenEditorModalProps {
   adventureId: string;
+  mapId: string;
   selectedColour: number;
   sizes: TokenSize[] | undefined;
   show: boolean;
@@ -36,7 +37,7 @@ interface ITokenEditorModalProps {
 }
 
 function TokenEditorModal(
-  { adventureId, selectedColour, sizes, show, token, players, handleClose, handleDelete, handleSave }: ITokenEditorModalProps
+  { adventureId, mapId, selectedColour, sizes, show, token, players, handleClose, handleDelete, handleSave }: ITokenEditorModalProps
 ) {
   const { logError } = useContext(AnalyticsContext);
   const { functionsService } = useContext(UserContext);
@@ -126,19 +127,18 @@ function TokenEditorModal(
       return;
     }
 
-    // TODO #149 Oh dear, I need to track when more than one token is using a particular
-    // image.  Grr.  For now, I'll always make a new sprite (oh no) to test things can
-    // work at all
     setBusySettingImage(true);
-    functionsService.editSprite(adventureId, image.path)
-      .then(s => {
-        setSprites([s]);
-        setBusySettingImage(false);
-      }).catch(e => {
-        logError(`Failed to set sprite to ${image.path}`, e);
-        setBusySettingImage(false);
-      });
-  }, [adventureId, functionsService, logError, setSprites]);
+    functionsService.addSprites(
+      adventureId, mapId, toSpriteGeometryString(defaultSpriteGeometry), [image.path]
+    ).then(s => {
+      console.log(`setting sprite to ${image.path}`);
+      setSprites(s.filter(s2 => s2.source === image.path));
+      setBusySettingImage(false);
+    }).catch(e => {
+      logError(`Failed to set sprite to ${image.path}`, e);
+      setBusySettingImage(false);
+    })
+  }, [adventureId, functionsService, logError, mapId, setSprites]);
 
   const handleUseNoImage = useCallback(() => handleSetImage(undefined), [handleSetImage]);
   const handleUseImage = useCallback(() => handleSetImage(activeImage), [activeImage, handleSetImage]);

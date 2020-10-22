@@ -3,7 +3,7 @@ import { IAnnotation } from '../data/annotation';
 import { IChange, IChanges } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
 import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
-import { FeatureDictionary, IFeature } from '../data/feature';
+import { FeatureDictionary, IFeature, ITokenDictionary } from '../data/feature';
 import { IInvite } from '../data/invite';
 import { IMap, MapType, summariseMap } from '../data/map';
 import { getUserPolicy, IInviteExpiryPolicy } from '../data/policy';
@@ -271,7 +271,8 @@ async function tryConsolidateMapChanges(
   adventureId: string,
   mapId: string,
   m: IMap,
-  resync: boolean
+  resync: boolean,
+  syncChanges?: (tokenDict: ITokenDictionary) => void
 ): Promise<IConsolidateMapChangesResult> {
   // Fetch all the current changes for this map, along with their refs.
   // It's important to use the same converter for the base and incremental changes so that any
@@ -297,9 +298,10 @@ async function tryConsolidateMapChanges(
   // technically cheat and non-owners would believe them), but it will save huge amounts of
   // CPU time (especially valuable if this is going to be called in a Firebase Function.)
   const ownerPolicy = getUserPolicy(ownerProfile.level);
+  const tokenDictionary = createTokenDictionary(m.ty, new SimpleTokenDrawing());
   const tracker = new SimpleChangeTracker(
     new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
-    createTokenDictionary(m.ty, new SimpleTokenDrawing()),
+    tokenDictionary,
     new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
     new FeatureDictionary<IGridCoord, IAnnotation>(coordString),
     ownerPolicy
@@ -318,6 +320,9 @@ async function tryConsolidateMapChanges(
       isResync = true;
     }
   });
+
+  // Make any synchronous changes at this point
+  syncChanges?.(tokenDictionary);
   const consolidated = tracker.getConsolidated();
 
   // Apply it
@@ -335,13 +340,14 @@ export async function consolidateMapChanges(
   adventureId: string,
   mapId: string,
   m: IMap,
-  resync: boolean
+  resync: boolean,
+  syncChanges?: (tokenDict: ITokenDictionary) => void
 ): Promise<IChanges | undefined> {
   // Because we can consolidate at most 499 changes in one go due to the write limit,
   // we do this in a loop until we can't find any more:
   while (true) {
     const result = await tryConsolidateMapChanges(
-      dataService, logger, timestampProvider, adventureId, mapId, m, resync
+      dataService, logger, timestampProvider, adventureId, mapId, m, resync, syncChanges
     );
     if (result.isNew === false) {
       return result.baseChange;

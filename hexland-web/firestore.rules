@@ -63,13 +63,8 @@ service cloud.firestore {
       );
     }
 
-    // Everyone can read all the images and sprites but nobody can write them (we do that with a Function)
+    // Everyone can read all the images but nobody can write them (we do that with a Function)
     match /images/{id} {
-      allow read: if request.auth != null;
-      allow write: if false;
-    }
-
-    match /sprites/{id} {
       allow read: if request.auth != null;
       allow write: if false;
     }

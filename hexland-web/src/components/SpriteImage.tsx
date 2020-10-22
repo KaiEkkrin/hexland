@@ -3,7 +3,7 @@ import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { AnalyticsContext } from './AnalyticsContextProvider';
 import { UserContext } from './UserContextProvider';
 
-import { getSpritePath, ISprite } from '../data/sprite';
+import { fromSpriteGeometryString, getSpritePath, ISprite } from '../data/sprite';
 
 import { from } from 'rxjs';
 
@@ -40,9 +40,10 @@ function SpriteImage({ sprite, altName, size, borderColour }: ISpriteImageProps)
   }, [logError, setUrl, sprite, storageService]);
 
   const style: React.CSSProperties = useMemo(() => {
-    const x = sprite.position % sprite.columns;
-    const y = Math.floor(sprite.position / sprite.columns);
-    const spriteSize = sheetSize / sprite.columns; // `rows` won't be different
+    const geometry = fromSpriteGeometryString(sprite.geometry);
+    const x = sprite.position % geometry.columns;
+    const y = Math.floor(sprite.position / geometry.columns);
+    const spriteSize = sheetSize / geometry.columns; // `rows` won't be different
     const backgroundSize = size ? (sheetSize * size / spriteSize) : sheetSize;
     return {
       width: `${size ?? spriteSize}px`,

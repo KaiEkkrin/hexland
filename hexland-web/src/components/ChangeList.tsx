@@ -13,6 +13,12 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "0.12.0",
+    changes: [
+      "Support images in tokens"
+    ]
+  },
+  {
     version: "0.11.6",
     changes: [
       "Shrink the version button on narrow screens",

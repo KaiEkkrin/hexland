@@ -6,6 +6,7 @@ import functionLogger from './services/functionLogger';
 import * as ImageExtensions from './services/imageExtensions';
 import { IStorage } from './services/interfaces';
 import { MockStorage } from './services/mockStorage';
+import * as SpriteExtensions from './services/spriteExtensions';
 import { Storage } from './services/storage';
 
 import * as admin from 'firebase-admin';
@@ -232,26 +233,32 @@ export const deleteImage = functions.region(region).https.onCall(async (data, co
   await ImageExtensions.deleteImage(dataService, storage, functionLogger, uid, path);
 });
 
-// Edits a sprite, either adding a new image or replacing an existing one.
+// Adds sprites.
 
-export const editSprite = functions.region(region).https.onCall(async (data, context) => {
+export const addSprites = functions.region(region).https.onCall(async (data, context) => {
   const uid = context.auth?.uid;
   if (uid === undefined) {
     throw new functions.https.HttpsError('unauthenticated', 'No uid found');
   }
 
   const adventureId = data['adventureId'];
-  const newPath = data['newPath'];
-  const oldPath = data['oldPath']; // optional
-  if (!adventureId || !newPath) {
-    throw new functions.https.HttpsError('invalid-argument', 'No adventure id or new path supplied');
+  const mapId = data['mapId'];
+  const geometry = data['geometry'];
+  const sources = data['sources'];
+  if (!adventureId || !mapId || !sources) {
+    throw new functions.https.HttpsError('invalid-argument', 'No adventure id, map id or sources supplied');
   }
 
-  return await ImageExtensions.editSprite(
-    dataService, storage, functionLogger, String(adventureId), uid, String(newPath),
-    oldPath ? String(oldPath) : undefined
+  const sourceList = Array.isArray(sources) ? sources.map(s => String(s)) : [];
+  if (sourceList.length === 0) {
+    throw new functions.https.HttpsError('invalid-argument', 'No sources supplied');
+  }
+
+  return await SpriteExtensions.addSprites(
+    dataService, functionLogger, storage, uid, String(adventureId), String(mapId), String(geometry),
+    sourceList, admin.firestore.Timestamp.now
   );
-});
+})
 
 // == TRIGGER FUNCTIONS ==
 
