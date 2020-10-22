@@ -79,7 +79,6 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
             return;
           }
 
-          console.log(`adding sprite feature`);
           this._spriteFeatures.add({ ...f, spriteTexture: t });
         });
     }
@@ -104,7 +103,6 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
 
     const removedSprite = this._spriteFeatures.remove(oldPosition);
     if (removedSprite !== undefined) {
-      console.log(`removing sprite feature`);
       removedSprite.spriteTexture.release().then();
     }
 
