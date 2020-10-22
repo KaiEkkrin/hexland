@@ -3,6 +3,7 @@ import { IFeature, ITokenProperties } from '../../data/feature';
 import { InstancedFeatureObject } from './instancedFeatureObject';
 import { fromMatrix4Columns, InstanceMatrix3Column } from './instanceMatrix';
 import { TextureCache } from './textureCache';
+import { ICacheLease } from '../../services/objectCache';
 
 import * as THREE from 'three';
 
@@ -40,7 +41,7 @@ export class SpriteFeatureObject<
 
   private readonly _instanceUvColumns: InstanceMatrix3Column[] = [];
 
-  private readonly _texture: THREE.Texture; // borrowed from the texture cache, do not dispose
+  private readonly _texture: ICacheLease<THREE.Texture> | undefined;
   private readonly _material: THREE.ShaderMaterial;
   private readonly _uniforms: any;
 
@@ -48,13 +49,13 @@ export class SpriteFeatureObject<
   private readonly _scratchMatrix2 = new THREE.Matrix4();
 
   constructor(
+    textureCache: TextureCache,
     toIndex: (k: K) => string,
     transformTo: (m: THREE.Matrix4, position: K) => THREE.Matrix4,
     maxInstances: number,
     createGeometry: () => THREE.InstancedBufferGeometry,
     getUvTransform: (feature: F) => THREE.Matrix4 | undefined,
-    spritesheetUrl: string,
-    textureCache: TextureCache
+    spriteId: string
   ) {
     super(toIndex, transformTo, maxInstances);
     this._geometry = createGeometry();
@@ -66,7 +67,6 @@ export class SpriteFeatureObject<
       this._instanceUvColumns.push(col);
     }
 
-    this._texture = textureCache.borrow(spritesheetUrl);
     this._uniforms = THREE.UniformsUtils.clone(spriteShader.uniforms);
     this._material = new THREE.ShaderMaterial({
       blending: THREE.NormalBlending,
@@ -76,7 +76,9 @@ export class SpriteFeatureObject<
       fragmentShader: spriteShader.fragmentShader
     });
 
-    this._uniforms['spriteTex'].value = this._texture;
+    this._texture = textureCache.get(spriteId);
+    console.log(`resolved sprite feature ${spriteId} as ${this._texture}`);
+    this._uniforms['spriteTex'].value = this._texture?.value;
   }
 
   protected createMesh(maxInstances: number): THREE.InstancedMesh {
@@ -139,5 +141,6 @@ export class SpriteFeatureObject<
     super.dispose();
     this._geometry.dispose();
     this._material.dispose();
+    this._texture?.release().then();
   }
 }

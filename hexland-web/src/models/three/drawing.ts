@@ -3,7 +3,7 @@ import { IGridGeometry } from "../gridGeometry";
 import { IDrawing } from "../interfaces";
 import { FeatureColour } from "../featureColour";
 import { ITokenGeometry } from "../../data/tokenGeometry";
-import { IDownloadUrlCache } from "../../services/interfaces";
+import { IStorage } from "../../services/interfaces";
 
 // Implementation choice and testability adapter -- mock this to replace
 // the Three.js drawing implementations.
@@ -14,7 +14,8 @@ export function createDrawing(
   colours: FeatureColour[],
   mount: HTMLDivElement,
   seeEverything: boolean,
-  urlCache: IDownloadUrlCache
+  logError: (message: string, e: any) => void,
+  storage: IStorage
 ): IDrawing {
-  return new DrawingOrtho(gridGeometry, tokenGeometry, colours, mount, seeEverything, urlCache);
+  return new DrawingOrtho(gridGeometry, tokenGeometry, colours, mount, seeEverything, logError, storage);
 }

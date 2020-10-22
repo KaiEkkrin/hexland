@@ -38,7 +38,6 @@ import { Link, RouteComponentProps, useHistory } from 'react-router-dom';
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
 import { v4 as uuidv4 } from 'uuid';
-import { DownloadUrlCache } from './services/downloadUrlCache';
 
 // The map component is rather large because of all the state that got pulled into it...
 function Map({ adventureId, mapId }: IMapPageProps) {
@@ -189,9 +188,8 @@ function Map({ adventureId, mapId }: IMapPageProps) {
     }
 
     const userPolicy = uid === map.record.owner ? getUserPolicy(profile.level) : undefined;
-    const urlCache = new DownloadUrlCache(storage, logError);
     setStateMachine(new MapStateMachine(
-      dataService, map, uid, standardColours, mount, userPolicy, urlCache, setMapState
+      dataService, storage, map, uid, standardColours, mount, userPolicy, logError, setMapState
     ));
   }, [setMapState, setStateMachine]);
 

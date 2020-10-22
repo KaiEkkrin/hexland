@@ -1,5 +1,6 @@
 import { IGridEdge, edgeString, IGridCoord } from '../../data/coord';
 import { IFeature, IFeatureDictionary, ITokenProperties } from '../../data/feature';
+import { getSpritePath } from '../../data/sprite';
 import { IGridGeometry } from "../gridGeometry";
 import { IInstancedFeatureObject } from './instancedFeatureObject';
 import { InstancedFeatures } from './instancedFeatures';
@@ -65,17 +66,17 @@ export function createSpriteEdgeObject(
   z: number
 ) {
   const edgeGeometry = createTokenFillEdgeGeometry(gridGeometry, alpha, z);
-  return (maxInstances: number) => new MultipleFeatureObject<IGridEdge, IFeature<IGridEdge> & ITokenProperties & { basePosition: IGridCoord, spriteUrl: string }>(
+  return (maxInstances: number) => new MultipleFeatureObject<IGridEdge, IFeature<IGridEdge> & ITokenProperties & { basePosition: IGridCoord }>(
     (i: string, maxInstances: number) => new SpriteFeatureObject(
+      textureCache,
       edgeString,
       (o, p) => gridGeometry.transformToEdge(o, p),
       maxInstances,
       edgeGeometry,
       f => uvTransform.getFillEdgeTransform(f),
-      i,
-      textureCache
+      i
     ),
-    f => f.spriteUrl,
+    f => getSpritePath(f.sprites[0]),
     maxInstances
   );
 }

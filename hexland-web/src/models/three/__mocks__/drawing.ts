@@ -7,7 +7,7 @@ import { OutlinedRectangle } from "./overlayRectangle";
 
 import { ITokenGeometry } from "../../../data/tokenGeometry";
 import { SimpleTokenDrawing } from "../../../data/tokens";
-import { IDownloadUrlCache } from "../../../services/interfaces";
+import { IStorage } from "../../../services/interfaces";
 
 import { Subject } from 'rxjs';
 
@@ -26,7 +26,8 @@ export function createDrawing(
   colours: FeatureColour[],
   mount: HTMLDivElement,
   seeEverything: boolean,
-  urlCache: IDownloadUrlCache
+  logError: (message: string, e: any) => void,
+  storage: IStorage
 ): IDrawing {
   let mockDrawing = {
     gridGeometry: gridGeometry,

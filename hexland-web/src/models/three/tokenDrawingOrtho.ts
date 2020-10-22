@@ -4,7 +4,7 @@ import { getSpritePath } from "../../data/sprite";
 import { ITokenFace, ITokenFillEdge, ITokenFillVertex, SimpleTokenDrawing } from "../../data/tokens";
 import { IGridGeometry } from "../gridGeometry";
 import { RedrawFlag } from "../redrawFlag";
-import { IDownloadUrlCache } from "../../services/interfaces";
+import { ICacheLease } from "../../services/objectCache";
 
 import { createPaletteColouredAreaObject, createSelectedAreas, createSpriteAreaObject } from "./areas";
 import { IInstancedFeatureObject } from "./instancedFeatureObject";
@@ -31,8 +31,8 @@ export interface ITokenDrawingParameters {
 class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenProperties & { basePosition: IGridCoord })>
   extends InstancedFeatures<K, F>
 {
-  private readonly _urlCache: IDownloadUrlCache;
-  private readonly _spriteFeatures: InstancedFeatures<K, F & { spriteUrl: string }>;
+  private readonly _spriteFeatures: InstancedFeatures<K, F & { spriteTexture: ICacheLease<THREE.Texture> }>;
+  private readonly _textureCache: TextureCache;
 
   constructor(
     gridGeometry: IGridGeometry,
@@ -40,11 +40,11 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
     toIndex: (k: K) => string,
     createPaletteColouredObject: (maxInstances: number) => IInstancedFeatureObject<K, F>,
     createSpriteObject: (maxInstances: number) => IInstancedFeatureObject<K, F>,
-    urlCache: IDownloadUrlCache
+    textureCache: TextureCache
   ) {
     super(gridGeometry, needsRedraw, toIndex, createPaletteColouredObject);
-    this._urlCache = urlCache;
-    this._spriteFeatures = new InstancedFeatures<K, F & { spriteUrl: string }>(
+    this._textureCache = textureCache;
+    this._spriteFeatures = new InstancedFeatures<K, F & { spriteTexture: ICacheLease<THREE.Texture> }>(
       gridGeometry, needsRedraw, toIndex, createSpriteObject
     );
   }
@@ -72,14 +72,15 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
     // To be able to add the sprite feature we need to lookup the sprite URL.
     // After finding it we should check again whether this was removed...
     if (f.sprites.length > 0) {
-      this._urlCache.resolve(getSpritePath(f.sprites[0]))
-        .then(url => {
+      this._textureCache.resolve(getSpritePath(f.sprites[0]))
+        .then(t => {
           const f2 = super.get(f.position);
           if (f2?.id !== f.id) {
             return;
           }
 
-          this._spriteFeatures.add({ ...f, spriteUrl: url });
+          console.log(`adding sprite feature`);
+          this._spriteFeatures.add({ ...f, spriteTexture: t });
         });
     }
 
@@ -90,7 +91,8 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
     super.clear();
 
     // Remember to release all the sprite resources before emptying the dictionary!
-    this._spriteFeatures.forEach(f => this._urlCache.release(f.spriteUrl));
+    console.log(`releasing all sprite features`);
+    this._spriteFeatures.forEach(f => f.spriteTexture.release().then());
     this._spriteFeatures.clear();
   }
 
@@ -102,7 +104,8 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
 
     const removedSprite = this._spriteFeatures.remove(oldPosition);
     if (removedSprite !== undefined) {
-      this._urlCache.release(removedSprite.spriteUrl);
+      console.log(`removing sprite feature`);
+      removedSprite.spriteTexture.release().then();
     }
 
     return removed;

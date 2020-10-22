@@ -21,7 +21,7 @@ import { IUserPolicy } from '../data/policy';
 import { getTokenGeometry, ITokenGeometry } from '../data/tokenGeometry';
 import { createTokenDictionary } from '../data/tokens';
 
-import { IDataService, IDownloadUrlCache } from '../services/interfaces';
+import { IDataService, IStorage } from '../services/interfaces';
 import { createDrawing } from './three/drawing';
 
 import fluent from 'fluent-iterable';
@@ -142,12 +142,13 @@ export class MapStateMachine {
 
   constructor(
     dataService: IDataService,
+    storage: IStorage,
     map: IAdventureIdentified<IMap>,
     uid: string,
     colours: FeatureColour[],
     mount: HTMLDivElement,
     userPolicy: IUserPolicy | undefined,
-    urlCache: IDownloadUrlCache,
+    logError: (message: string, e: any) => void,
     setState: (state: IMapState) => void
   ) {
     this._dataService = dataService;
@@ -171,7 +172,7 @@ export class MapStateMachine {
 
     this._tokenGeometry = getTokenGeometry(map.record.ty);
     this._drawing = createDrawing(
-      this._gridGeometry, this._tokenGeometry, colours, mount, this.seeEverything, urlCache
+      this._gridGeometry, this._tokenGeometry, colours, mount, this.seeEverything, logError, storage
     );
 
     this._mapColouring = new MapColouring(this._gridGeometry);

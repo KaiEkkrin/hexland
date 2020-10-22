@@ -1,5 +1,6 @@
 import { coordString, IGridCoord } from '../../data/coord';
 import { IFeature, IIdFeature, IToken } from '../../data/feature';
+import { getSpritePath } from '../../data/sprite';
 import { IGridGeometry } from "../gridGeometry";
 import { IInstancedFeatureObject } from './instancedFeatureObject';
 import { InstancedFeatures } from './instancedFeatures';
@@ -62,17 +63,17 @@ export function createSpriteAreaObject(
   areaZ: number
 ) {
   const areaGeometry = createSingleAreaGeometry(gridGeometry, alpha, areaZ);
-  return (maxInstances: number) => new MultipleFeatureObject<IGridCoord, IToken & { basePosition: IGridCoord, spriteUrl: string }>(
+  return (maxInstances: number) => new MultipleFeatureObject<IGridCoord, IToken & { basePosition: IGridCoord }>(
     (i: string, maxInstances: number) => new SpriteFeatureObject(
+      textureCache,
       coordString,
       (o, p) => gridGeometry.transformToCoord(o, p),
       maxInstances,
       areaGeometry,
       f => uvTransform.getFaceTransform(f),
-      i,
-      textureCache
+      i
     ),
-    f => f.spriteUrl,
+    f => getSpritePath(f.sprites[0]),
     maxInstances
   );
 }

@@ -6,7 +6,7 @@ import { FeatureColour } from '../featureColour';
 import { IGridGeometry } from '../gridGeometry';
 import { IDrawing } from '../interfaces';
 import { RedrawFlag } from '../redrawFlag';
-import { IDownloadUrlCache } from '../../services/interfaces';
+import { IStorage } from '../../services/interfaces';
 
 import { Areas, createPaletteColouredAreaObject, createAreas, createSelectionColouredAreaObject } from './areas';
 import { Grid, IGridLoSPreRenderParameters } from './grid';
@@ -14,13 +14,13 @@ import { GridFilter } from './gridFilter';
 import { LoS } from './los';
 import { MapColourVisualisation } from './mapColourVisualisation';
 import { OutlinedRectangle } from './overlayRectangle';
+import { TextureCache } from './textureCache';
 import { SelectionDrawing, TokenDrawing } from './tokenDrawingOrtho';
 import { createLargeTokenUvTransform } from './uv';
 import { Vertices, createVertices, createSelectionColouredVertexObject, createSingleVertexGeometry, createTokenFillVertexGeometry, createPaletteColouredVertexObject } from './vertices';
 import { Walls, createPaletteColouredWallObject, createSelectionColouredWallObject, createWallGeometry, createTokenFillEdgeGeometry } from './walls';
 
 import * as THREE from 'three';
-import { TextureCache } from './textureCache';
 
 // Our Z values are in the range -1..1 so that they're the same in the shaders
 const areaZ = -0.5;
@@ -102,7 +102,8 @@ export class DrawingOrtho implements IDrawing {
     colours: FeatureColour[],
     mount: HTMLDivElement,
     seeEverything: boolean,
-    urlCache: IDownloadUrlCache
+    logError: (message: string, e: any) => void,
+    storage: IStorage
   ) {
     this._gridGeometry = gridGeometry;
     this._mount = mount;
@@ -233,7 +234,7 @@ export class DrawingOrtho implements IDrawing {
     );
 
     // The tokens
-    this._textureCache = new TextureCache(urlCache);
+    this._textureCache = new TextureCache(storage, logError);
     const uvTransform = createLargeTokenUvTransform(gridGeometry, tokenGeometry, tokenSpriteAlpha);
     this._tokens = new TokenDrawing(
       gridGeometry, this._textureCache, uvTransform, this._needsRedraw, this._textMaterial, {
