@@ -67,7 +67,7 @@ async function createMontage(
   } finally {
     for (const p of tmpPaths) {
       if (p !== "null:") {
-        fs.unlink(p, () => {});
+        fs.unlink(p, () => { /* nothing to do here */ });
       }
     }
   }

@@ -14,6 +14,7 @@ You will need:
   - Google Analytics (optionally, I think.)
   - Hosting.
 - The Firebase emulator suite.
+- gsutil, installed as per the [gsutil setup instructions](https://cloud.google.com/storage/docs/gsutil_install#linux).
 
 I develop using WSL 2 and Visual Studio Code, I can't vouch for the effectiveness of anything else ;)
 
@@ -32,6 +33,16 @@ yarn test
 ```
 
 The expected execution time of some of the tests is quite close to the timeout value.  If you encounter spurious timeouts, try adding longer timeout values to the `test(...)` declarations.
+
+## First time setup: enabling the CORS policy on your project's storage bucket (needed for deployment only)
+
+Make sure that `hexland-web/cors.json` contains the correct origin(s) for your project and then run
+
+```bash
+gsutil cors set cors.json gs://projectname.appspot.com
+```
+
+(replacing `projectname` with your project name).
 
 ## Deploying
 

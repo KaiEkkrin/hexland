@@ -1,0 +1,14 @@
+[
+  {
+    "origin": [
+      "https://wallandshadow.io",
+      "https://hexland.firebaseapp.com",
+      "https://hexland-test.firebaseapp.com",
+      "https://hexland.web.app",
+      "https://hexland-test.web.app",
+      "http://localhost:5000"
+    ],
+    "method": ["GET"],
+    "maxAgeSeconds": 3600
+  }
+]
