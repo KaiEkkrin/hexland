@@ -3,6 +3,7 @@ import './App.css';
 
 import AdventureModal from './components/AdventureModal';
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
+import BusyElement from './components/BusyElement';
 import ImageCardContent from './components/ImageCardContent';
 import ImageDeletionModal from './components/ImageDeletionModal';
 import ImagePickerModal from './components/ImagePickerModal';
@@ -140,11 +141,6 @@ function Adventure({ adventureId }: IAdventureProps) {
   // We want to be able to set the "create invite link" button's text to "Creating..." while it's
   // happening, which might take a moment:
   const [createInviteButtonDisabled, setCreateInviteButtonDisabled] = useState(false);
-  const createInviteText = useMemo(
-    () => createInviteButtonDisabled ? "Creating invite link..." : "Create invite link",
-    [createInviteButtonDisabled]
-  );
-
   useEffect(() => {
     if (adventureId) {
       setCreateInviteButtonDisabled(false);
@@ -429,7 +425,12 @@ function Adventure({ adventureId }: IAdventureProps) {
                       </div>
                       <div className="card-row-spaced">
                         {canEditAdventure !== true ? <div></div> : inviteLink === undefined ?
-                          <Button variant="primary" disabled={createInviteButtonDisabled} onClick={createInviteLink}>{createInviteText}</Button> :
+                          <Button variant="primary" disabled={createInviteButtonDisabled}
+                            onClick={createInviteLink}
+                          >
+                            <BusyElement normal="Create invite link"
+                              busy="Creating invite link..." isBusy={createInviteButtonDisabled} />
+                          </Button> :
                           <Link to={inviteLink}>Send this link to other players to invite them.</Link>
                         }
                         {canEditAdventure === true ?

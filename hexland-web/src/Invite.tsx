@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useMemo, useCallback } from 're
 import './App.css';
 
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
+import BusyElement from './components/BusyElement';
 import Navigation from './components/Navigation';
 import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
@@ -25,8 +26,6 @@ function Invite(props: IInvitePageProps) {
   // Because the `joinAdventure` function is likely to be cold-started and may take a
   // little while to run, we change the button to "Joining..." while it's happening:
   const [buttonDisabled, setButtonDisabled] = useState(false);
-  const buttonText = useMemo(() => buttonDisabled ? 'Joining...' : 'Join', [buttonDisabled]);
-
   useEffect(() => {
     if (props.inviteId) {
       setButtonDisabled(false);
@@ -71,7 +70,9 @@ function Invite(props: IInvitePageProps) {
       <Navigation />
       <header className="App-header">
         <h5>{profile?.name ?? "Unknown"}, you have been invited to join {inviteDescription}.</h5>
-        <Button variant="primary" disabled={buttonDisabled} onClick={handleJoin}>{buttonText}</Button>
+        <Button variant="primary" disabled={buttonDisabled} onClick={handleJoin}>
+          <BusyElement normal="Join" busy="Joining..." isBusy={buttonDisabled} />
+        </Button>
       </header>
     </div>
   );

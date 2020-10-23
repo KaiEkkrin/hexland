@@ -1,6 +1,8 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import '../App.css';
 
+import BusyElement from './BusyElement';
+
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
@@ -23,7 +25,6 @@ function AdventureModal(props: IAdventureModalProps) {
     [isSaving, props.description, props.name]
   );
 
-  const saveText = useMemo(() => isSaving ? "Saving..." : "Save adventure", [isSaving]);
   const { handleSave } = props;
   const doHandleSave = useCallback(() => {
     setIsSaving(true);
@@ -51,10 +52,9 @@ function AdventureModal(props: IAdventureModalProps) {
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={props.handleClose}>Close</Button>
-        <Button variant="primary" disabled={isSaveDisabled}
-          onClick={doHandleSave}>
-          {saveText}
-      </Button>
+        <Button variant="primary" disabled={isSaveDisabled} onClick={doHandleSave}>
+          <BusyElement normal="Save adventure" busy="Saving..." isBusy={isSaving} />
+        </Button>
       </Modal.Footer>
     </Modal>
   );

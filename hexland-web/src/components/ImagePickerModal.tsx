@@ -154,7 +154,6 @@ export function ImagePickerForm({ show, setActiveImage, setImageCount, handleDel
           <Button variant="primary" disabled={goForwardDisabled} onClick={goForward}>
             <FontAwesomeIcon icon={faChevronRight} color="white" />
           </Button>
-          <div>{/* empty div to provide alignment */}</div>
         </div>
       </div>
     </React.Fragment>

@@ -1,6 +1,7 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { AnalyticsContext } from './AnalyticsContextProvider';
+import BusyElement from './BusyElement';
 import ColourSelection from './ColourSelection';
 import { ImagePickerForm } from './ImagePickerModal';
 import { ProfileContext } from './ProfileContextProvider';
@@ -115,7 +116,6 @@ function TokenEditorModal(
   const canSetImage = useMemo(() => activeImage !== undefined, [activeImage]);
   const [busySettingImage, setBusySettingImage] = useState(false);
   const setImageDisabled = useMemo(() => busySettingImage || !canSetImage, [busySettingImage, canSetImage]);
-  const useImageText = useMemo(() => busySettingImage ? "Setting image..." : "Use image", [busySettingImage]);
 
   const handleDeleteImage = useCallback(
     () => handleImageDelete(activeImage),
@@ -225,7 +225,7 @@ function TokenEditorModal(
             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
               <Button variant="warning" onClick={handleUseNoImage}>Use no image</Button>
               <Button className="ml-2" variant="primary" onClick={handleUseImage} disabled={setImageDisabled}>
-                {useImageText}
+                <BusyElement normal="Use image" busy="Setting image..." isBusy={setImageDisabled} />
               </Button>
             </div>
           </Tab>
