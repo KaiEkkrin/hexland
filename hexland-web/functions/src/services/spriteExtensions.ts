@@ -352,26 +352,15 @@ export async function addSprites(
     throw new functions.https.HttpsError('permission-denied', 'You are not the owner of this map.');
   }
 
-  try {
-    // If we have too many, split them up
-    if (sources.length > 10) {
-      const sprites: ISprite[] = [];
-      for (let i = 0; i < sources.length; i += 10) {
-        sprites.push(...await addSpritesImpl(
-          dataService, logger, storage, adventureId, mapId, map, geometry,
-          sources.slice(i, Math.min(i + 10, sources.length)),
-          timestampProvider
-        ));
-      }
+  if (sources.length > 10) {
+    throw new functions.https.HttpsError('invalid-argument', 'Not more than 10 sources');
+  }
 
-      return sprites;
-    } else {
-      // We can do this all in one go
-      return await addSpritesImpl(
-        dataService, logger, storage, adventureId, mapId, map, geometry,
-        sources, timestampProvider
-      );
-    }
+  try {
+    return await addSpritesImpl(
+      dataService, logger, storage, adventureId, mapId, map, geometry,
+      sources, timestampProvider
+    );
   } catch (e) {
     logger.logError(`failed to add sprites ${sources}`, e);
     throw e;

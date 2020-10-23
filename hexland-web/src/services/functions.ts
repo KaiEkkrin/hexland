@@ -30,10 +30,20 @@ export class FunctionsService implements IFunctionsService {
   }
 
   async addSprites(adventureId: string, mapId: string, geometry: string, sources: string[]): Promise<ISprite[]> {
-    const result = await this._addSprites({
-      adventureId: adventureId, mapId: mapId, geometry: geometry, sources: sources
-    });
-    return Array.isArray(result.data) ? result.data.map(d => spriteConverter.convert(d)) : [];
+    // We split the sources list up into groups of 10, since that's the longest
+    // the Function will accept
+    const sprites: ISprite[] = [];
+    for (let i = 0; i < sources.length; i += 10) {
+      const result = await this._addSprites({
+        adventureId: adventureId, mapId: mapId, geometry: geometry,
+        sources: sources.slice(i, Math.min(i + 10, sources.length))
+      });
+      if (Array.isArray(result.data)) {
+        sprites.push(...result.data.map(d => spriteConverter.convert(d)));
+      }
+    }
+
+    return sprites;
   }
 
   async createAdventure(name: string, description: string): Promise<string> {
