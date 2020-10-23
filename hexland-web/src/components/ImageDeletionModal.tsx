@@ -16,7 +16,9 @@ interface IImageDeletionModalProps {
 function ImageDeletionModal(props: IImageDeletionModalProps) {
   const imageItem = useMemo(
     () => props.image === undefined ? <React.Fragment></React.Fragment> :
-      <ImageCollectionItem image={props.image} />,
+      <ImageCollectionItem image={props.image}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+      />,
     [props.image]
   );
 

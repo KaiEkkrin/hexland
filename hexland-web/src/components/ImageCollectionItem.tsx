@@ -9,9 +9,10 @@ import { from } from 'rxjs';
 
 interface IImageCollectionItemProps {
   image: IImage;
+  style?: React.CSSProperties | undefined;
 }
 
-function ImageCollectionItem({ image }: IImageCollectionItemProps) {
+function ImageCollectionItem({ image, style }: IImageCollectionItemProps) {
   const { logError } = useContext(AnalyticsContext);
   const { storageService } = useContext(UserContext);
   const [url, setUrl] = useState("");
@@ -29,7 +30,7 @@ function ImageCollectionItem({ image }: IImageCollectionItemProps) {
   }, [logError, storageService, image, setUrl]);
 
   return (
-    <div className="App-image-collection-item">
+    <div style={style}>
       <img className="App-image-collection-image" src={url} alt={image.name} />
       <p>{image.name}</p>
     </div>

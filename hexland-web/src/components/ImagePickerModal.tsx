@@ -108,7 +108,7 @@ export function ImagePickerForm({ show, setActiveImage, setImageCount, handleDel
   const [list, setList] = useState<React.ReactNode[]>([]);
   useEffect(() => {
     setList(images.map(i => (
-      <ImageCollectionItem key={i.path} image={i} />
+      <ImageCollectionItem key={i.path} image={i} style={{ gridRow: '1/span 3', gridColumn: '2' }} />
     )));
     console.log("new images arrived; resetting index to 0");
     setIndex(0);
@@ -142,19 +142,26 @@ export function ImagePickerForm({ show, setActiveImage, setImageCount, handleDel
         </Form.Group>
       </Form>
       <ImageStatus {...status} />
-      <div className="App-image-collection">
-        <Button variant="primary" disabled={goBackDisabled} onClick={goBack}>
+      <div style={{
+        display: 'grid', justifyContent: 'space-between', marginBottom: '1rem',
+        rowGap: '4px', columnGap: '4px'
+      }}>
+        <Button variant="primary" disabled={goBackDisabled} onClick={goBack}
+          style={{ gridRow: '1', gridColumn: '1', width: '2.5rem' }}
+        >
           <FontAwesomeIcon icon={faChevronLeft} color="white" />
         </Button>
         {shownItem}
-        <div className="App-image-collection-item">
-          <Button variant="danger" disabled={saveDisabled} onClick={handleDelete}>
-            <FontAwesomeIcon icon={faTimes} color="white" />
-          </Button>
-          <Button variant="primary" disabled={goForwardDisabled} onClick={goForward}>
-            <FontAwesomeIcon icon={faChevronRight} color="white" />
-          </Button>
-        </div>
+        <Button variant="primary" disabled={goForwardDisabled} onClick={goForward}
+          style={{ gridRow: '1', gridColumn: '3', width: '2.5rem' }}
+        >
+          <FontAwesomeIcon icon={faChevronRight} color="white" />
+        </Button>
+        <Button variant="danger" disabled={saveDisabled} onClick={handleDelete}
+          style={{ gridRow: '3', gridColumn: '3', width: '2.5rem' }}
+        >
+          <FontAwesomeIcon icon={faTimes} color="white" />
+        </Button>
       </div>
     </React.Fragment>
   );

@@ -71,25 +71,10 @@
   padding-right: 15px;
 }
 
-.App-image-collection {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-}
-
 .App-image-collection-image {
   max-height: 400px;
   object-fit: contain;
-  padding: 4px;
   width: 100%;
-}
-
-.App-image-collection-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
 }
 
 .App-image-error-status {
