@@ -244,11 +244,10 @@ export const addSprites = functions.region(region).runWith({ memory: '1GB' }).ht
   }
 
   const adventureId = data['adventureId'];
-  const mapId = data['mapId'];
   const geometry = data['geometry'];
   const sources = data['sources'];
-  if (!adventureId || !mapId || !sources) {
-    throw new functions.https.HttpsError('invalid-argument', 'No adventure id, map id or sources supplied');
+  if (!adventureId || !sources) {
+    throw new functions.https.HttpsError('invalid-argument', 'No adventure id or sources supplied');
   }
 
   const sourceList = Array.isArray(sources) ? sources.map(s => String(s)) : [];
@@ -257,7 +256,7 @@ export const addSprites = functions.region(region).runWith({ memory: '1GB' }).ht
   }
 
   return await SpriteExtensions.addSprites(
-    dataService, functionLogger, storage, uid, String(adventureId), String(mapId), String(geometry),
+    dataService, functionLogger, storage, uid, String(adventureId), String(geometry),
     sourceList, admin.firestore.Timestamp.now
   );
 })

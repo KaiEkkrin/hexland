@@ -29,13 +29,13 @@ export class FunctionsService implements IFunctionsService {
     this._joinAdventure = functions.httpsCallable('joinAdventure');
   }
 
-  async addSprites(adventureId: string, mapId: string, geometry: string, sources: string[]): Promise<ISprite[]> {
+  async addSprites(adventureId: string, geometry: string, sources: string[]): Promise<ISprite[]> {
     // We split the sources list up into groups of 10, since that's the longest
     // the Function will accept
     const sprites: ISprite[] = [];
     for (let i = 0; i < sources.length; i += 10) {
       const result = await this._addSprites({
-        adventureId: adventureId, mapId: mapId, geometry: geometry,
+        adventureId: adventureId, geometry: geometry,
         sources: sources.slice(i, Math.min(i + 10, sources.length))
       });
       if (Array.isArray(result.data)) {

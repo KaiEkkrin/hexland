@@ -8,18 +8,15 @@ export class SpritesheetCache implements ISpritesheetCache {
 
   private readonly _dataService: IDataService;
   private readonly _adventureId: string;
-  private readonly _mapId: string;
   private readonly _logError: (message: string, e: any) => void;
 
   constructor(
     dataService: IDataService,
     adventureId: string,
-    mapId: string,
     logError: (message: string, e: any) => void
   ) {
     this._dataService = dataService;
     this._adventureId = adventureId;
-    this._mapId = mapId;
     this._logError = logError;
 
     this._objectCache = new ObjectCache(logError);
@@ -34,7 +31,7 @@ export class SpritesheetCache implements ISpritesheetCache {
 
     // Load all spritesheets that have that image source
     const ss = await this._dataService.getSpritesheetsBySource(
-      this._adventureId, this._mapId, sprite.geometry, [sprite.source]
+      this._adventureId, sprite.geometry, [sprite.source]
     );
 
     return { value: ss.length > 0 ? ss[0] : undefined, cleanup: () => { /* nothing to do */ } };

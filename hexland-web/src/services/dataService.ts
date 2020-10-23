@@ -165,9 +165,9 @@ export class DataService implements IDataService {
     const d = this._db.collection(adventures).doc(id);
     return new DataReference<IAdventure>(d, Convert.adventureConverter);
   }
-  async getFirstSpritesheetBySource(adventureId: string, mapId: string, source: string): Promise<IDataAndReference<ISpritesheet>[]> {
+  async getFirstSpritesheetBySource(adventureId: string, source: string): Promise<IDataAndReference<ISpritesheet>[]> {
     const s = await this._db.collection(adventures).doc(adventureId)
-      .collection(maps).doc(mapId).collection(spritesheets)
+      .collection(spritesheets)
       .where("supersededBy", "==", "")
       .where("sprites", "array-contains", source)
       .limit(1)
@@ -248,9 +248,9 @@ export class DataService implements IDataService {
     return new DataReference<IProfile>(d, Convert.profileConverter);
   }
 
-  async getSpritesheetsBySource(adventureId: string, mapId: string, geometry: string, sources: string[]): Promise<IDataAndReference<ISpritesheet>[]> {
+  async getSpritesheetsBySource(adventureId: string, geometry: string, sources: string[]): Promise<IDataAndReference<ISpritesheet>[]> {
     const s = await this._db.collection(adventures).doc(adventureId)
-      .collection(maps).doc(mapId).collection(spritesheets)
+      .collection(spritesheets)
       .where("geometry", "==", geometry)
       .where("supersededBy", "==", "")
       .where("sprites", "array-contains-any", sources)

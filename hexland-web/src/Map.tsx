@@ -529,7 +529,7 @@ function Map({ adventureId, mapId }: IMapPageProps) {
         handleClose={() => ui?.modalClose()} handleSave={handleMapEditorSave} />
       <TokenEditorModal selectedColour={uiState.selectedColour} show={uiState.showTokenEditor}
         spritesheetCache={stateMachine?.spritesheetCache}
-        adventureId={adventureId} mapId={mapId}
+        adventureId={adventureId}
         sizes={tokenSizes} token={uiState.tokenToEdit}
         players={players} handleClose={handleModalClose}
         handleDelete={handleTokenEditorDelete}

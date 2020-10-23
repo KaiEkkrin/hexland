@@ -275,9 +275,9 @@ export class AdminDataService implements IAdminDataService {
     return new DataReference<IProfile>(d, Convert.profileConverter);
   }
 
-  async getSpritesheetsByFreeSpace(adventureId: string, mapId: string, geometry: string): Promise<IDataAndReference<ISpritesheet>[]> {
+  async getSpritesheetsByFreeSpace(adventureId: string, geometry: string): Promise<IDataAndReference<ISpritesheet>[]> {
     const s = await this._db.collection(adventures).doc(adventureId)
-      .collection(maps).doc(mapId).collection("spritesheets")
+      .collection("spritesheets")
       .where("geometry", "==", geometry)
       .where("supersededBy", "==", "")
       .where("freeSpaces", ">", 0)
@@ -287,9 +287,9 @@ export class AdminDataService implements IAdminDataService {
     ));
   }
 
-  async getSpritesheetsBySource(adventureId: string, mapId: string, geometry: string, sources: string[]): Promise<IDataAndReference<ISpritesheet>[]> {
+  async getSpritesheetsBySource(adventureId: string, geometry: string, sources: string[]): Promise<IDataAndReference<ISpritesheet>[]> {
     const s = await this._db.collection(adventures).doc(adventureId)
-      .collection(maps).doc(mapId).collection("spritesheets")
+      .collection("spritesheets")
       .where("geometry", "==", geometry)
       .where("supersededBy", "==", "")
       .where("sprites", "array-contains-any", sources)
@@ -299,9 +299,8 @@ export class AdminDataService implements IAdminDataService {
     ));
   }
 
-  getSpritesheetRef(adventureId: string, mapId: string, id: string): IDataReference<ISpritesheet> {
+  getSpritesheetRef(adventureId: string, id: string): IDataReference<ISpritesheet> {
     const d = this._db.collection(adventures).doc(adventureId)
-      .collection(maps).doc(mapId)
       .collection(spritesheets).doc(id);
     return new DataReference<ISpritesheet>(d, Convert.spritesheetConverter);
   }

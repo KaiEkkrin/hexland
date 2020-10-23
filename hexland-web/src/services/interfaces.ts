@@ -101,7 +101,7 @@ export interface IDataService extends IDataView {
 
   // Gets all spritesheets containing one of the supplied images.
   // No more than 10 sources in one go!
-  getSpritesheetsBySource(adventureId: string, mapId: string, geometry: string, sources: string[]): Promise<IDataAndReference<ISpritesheet>[]>;
+  getSpritesheetsBySource(adventureId: string, geometry: string, sources: string[]): Promise<IDataAndReference<ISpritesheet>[]>;
 
   // Runs a transaction. The `dataView` parameter accepted by the
   // transaction function does things in the transaction's context.
@@ -161,7 +161,7 @@ export interface IDataView {
 // Provides access to Firebase Functions.
 export interface IFunctionsService {
   // Adds images to spritesheets.
-  addSprites(adventureId: string, mapId: string, geometry: string, sources: string[]): Promise<ISprite[]>;
+  addSprites(adventureId: string, geometry: string, sources: string[]): Promise<ISprite[]>;
 
   // Creates a new adventure, returning its ID.
   createAdventure(name: string, description: string): Promise<string>;

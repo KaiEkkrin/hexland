@@ -63,7 +63,7 @@ service cloud.firestore {
       );
     }
 
-    match /adventures/{adventureId}/maps/{id}/spritesheets/{sheetId} {
+    match /adventures/{adventureId}/spritesheets/{sheetId} {
       // Only the Functions can edit these, but players can read them to look up sprites
       allow read: if request.auth != null && isPlayerOrOwner(adventureId);
     }

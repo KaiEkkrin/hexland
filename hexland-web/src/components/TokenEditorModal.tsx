@@ -27,7 +27,6 @@ import { v4 as uuidv4 } from 'uuid';
 
 interface ITokenEditorModalProps {
   adventureId: string;
-  mapId: string;
   spritesheetCache: ISpritesheetCache | undefined;
   selectedColour: number;
   sizes: TokenSize[] | undefined;
@@ -41,7 +40,7 @@ interface ITokenEditorModalProps {
 }
 
 function TokenEditorModal(
-  { adventureId, mapId, spritesheetCache, selectedColour, sizes, show, token, players,
+  { adventureId, spritesheetCache, selectedColour, sizes, show, token, players,
     handleClose, handleDelete, handleImageDelete, handleSave }: ITokenEditorModalProps
 ) {
   const { logError } = useContext(AnalyticsContext);
@@ -134,7 +133,7 @@ function TokenEditorModal(
 
     setBusySettingImage(true);
     functionsService.addSprites(
-      adventureId, mapId, toSpriteGeometryString(defaultSpriteGeometry), [image.path]
+      adventureId, toSpriteGeometryString(defaultSpriteGeometry), [image.path]
     ).then(s => {
       console.log(`setting sprite to ${image.path}`);
       setSprites(s.filter(s2 => s2.source === image.path));
@@ -143,7 +142,7 @@ function TokenEditorModal(
       logError(`Failed to set sprite to ${image.path}`, e);
       setBusySettingImage(false);
     })
-  }, [adventureId, functionsService, logError, mapId, setSprites]);
+  }, [adventureId, functionsService, logError, setSprites]);
 
   const handleUseNoImage = useCallback(() => handleSetImage(undefined), [handleSetImage]);
   const handleUseImage = useCallback(() => handleSetImage(activeImage), [activeImage, handleSetImage]);

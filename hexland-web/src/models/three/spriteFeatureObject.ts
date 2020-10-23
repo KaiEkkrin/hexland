@@ -77,7 +77,7 @@ export class SpriteFeatureObject<
     });
 
     this._texture = textureCache.get(spriteKey);
-    console.log(`resolved sprite feature ${spriteKey} as ${this._texture}`);
+    console.log(`resolved sprite feature ${spriteKey} as ${this._texture?.tex}`);
     this._uniforms['spriteTex'].value = this._texture?.tex;
   }
 

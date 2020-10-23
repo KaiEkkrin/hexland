@@ -172,7 +172,7 @@ export class MapStateMachine {
     this._gridGeometry = map.record.ty === MapType.Hex ?
       new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
 
-    this._spritesheetCache = new SpritesheetCache(dataService, map.adventureId, map.id, logError);
+    this._spritesheetCache = new SpritesheetCache(dataService, map.adventureId, logError);
     this._tokenGeometry = getTokenGeometry(map.record.ty);
     this._drawing = createDrawing(
       this._gridGeometry, this._tokenGeometry, colours, mount, this.seeEverything, logError, this._spritesheetCache, storage

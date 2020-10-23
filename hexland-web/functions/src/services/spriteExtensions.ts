@@ -1,4 +1,3 @@
-import { IMap } from "../data/map";
 import { fromSpriteGeometryString, getSpritePathFromId, ISprite, ISpritesheet } from "../data/sprite";
 import { Timestamp } from "../data/types";
 import { IAdminDataService } from "./extraInterfaces";
@@ -141,11 +140,10 @@ async function completeSpritesheetsTransaction(
 async function getExistingSprites(
   dataService: IAdminDataService,
   adventureId: string,
-  mapId: string,
   geometry: string,
   sources: string[]
 ) {
-  const already = await dataService.getSpritesheetsBySource(adventureId, mapId, geometry, sources);
+  const already = await dataService.getSpritesheetsBySource(adventureId, geometry, sources);
   const found: ISprite[] = [];
   const missing: string[] = [];
   for (const s of sources) {
@@ -184,11 +182,10 @@ async function allocateNewSpritesToSheets(
   dataService: IAdminDataService,
   logger: ILogger,
   adventureId: string,
-  mapId: string,
   geometry: string,
   sources: string[]
 ): Promise<IAllocatedSprites[]> {
-  const canExtend = await dataService.getSpritesheetsByFreeSpace(adventureId, mapId, geometry);
+  const canExtend = await dataService.getSpritesheetsByFreeSpace(adventureId, geometry);
   logger.logInfo(`found ${canExtend.length} extendable sheets`);
   
   const toAllocate = [...sources];
@@ -198,7 +195,7 @@ async function allocateNewSpritesToSheets(
     logger.logInfo(`trying to extend ${s.id} (${freeSpaces} free)`);
     const allocated: IAllocatedSprites = {
       sources: [...s.data.sprites], oldSheet: s,
-      newSheet: dataService.getSpritesheetRef(adventureId, mapId, uuidv4())
+      newSheet: dataService.getSpritesheetRef(adventureId, uuidv4())
     };
 
     while (freeSpaces > 0) {
@@ -231,7 +228,7 @@ async function allocateNewSpritesToSheets(
   if (toAllocate.length > 0) {
     allAllocated.push({
       sources: toAllocate, oldSheet: undefined,
-      newSheet: dataService.getSpritesheetRef(adventureId, mapId, uuidv4())
+      newSheet: dataService.getSpritesheetRef(adventureId, uuidv4())
     });
   }
 
@@ -278,20 +275,18 @@ async function addSpritesImpl(
   logger: ILogger,
   storage: IStorage,
   adventureId: string,
-  mapId: string,
-  map: IMap,
   geometry: string,
   sources: string[], // the image paths to make into sprites
   timestampProvider: () => Timestamp
 ): Promise<ISprite[]> {
   logger.logInfo(`looking for sprites: ${sources}`);
-  const { found, missing } = await getExistingSprites(dataService, adventureId, mapId, geometry, sources);
+  const { found, missing } = await getExistingSprites(dataService, adventureId, geometry, sources);
   if (missing.length === 0) {
     return found;
   }
 
   logger.logInfo(`found ${found.length}, missing ${missing.length}`);
-  const allocated = await allocateNewSpritesToSheets(dataService, logger, adventureId, mapId, geometry, missing);
+  const allocated = await allocateNewSpritesToSheets(dataService, logger, adventureId, geometry, missing);
   await writeNewSpritesheets(dataService, storage, logger, allocated, geometry, timestampProvider);
   for (const a of allocated) {
     found.push(...a.sources.map((s, i) => ({
@@ -312,19 +307,18 @@ export async function addSprites(
   storage: IStorage,
   uid: string,
   adventureId: string,
-  mapId: string,
   geometry: string,
   sources: string[], // the image paths to make into sprites
   timestampProvider: () => Timestamp
 ): Promise<ISprite[]> {
   // Do a bit of authorization
-  const map = await dataService.get(dataService.getMapRef(adventureId, mapId));
-  if (map === undefined) {
-    throw new functions.https.HttpsError('not-found', 'No such map');
+  const adventure = await dataService.get(dataService.getAdventureRef(adventureId));
+  if (adventure === undefined) {
+    throw new functions.https.HttpsError('not-found', 'No such adventure');
   }
 
-  if (map.owner !== uid) {
-    throw new functions.https.HttpsError('permission-denied', 'You are not the owner of this map.');
+  if (adventure.owner !== uid) {
+    throw new functions.https.HttpsError('permission-denied', 'You are not the owner of this adventure.');
   }
 
   if (sources.length > 10) {
@@ -333,8 +327,7 @@ export async function addSprites(
 
   try {
     return await addSpritesImpl(
-      dataService, logger, storage, adventureId, mapId, map, geometry,
-      sources, timestampProvider
+      dataService, logger, storage, adventureId, geometry, sources, timestampProvider
     );
   } catch (e) {
     logger.logError(`failed to add sprites ${sources}`, e);
