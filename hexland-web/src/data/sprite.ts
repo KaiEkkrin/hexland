@@ -1,13 +1,10 @@
 import { Timestamp } from './types';
 
-// We deliberately create a `sprite` record that contains info about the spritesheet too.  This
-// wastes a bit of database space (not much, it should be fine) in exchange for providing a very
-// convenient format that can be used in the token to specify what sprite to show for it.
+// The sprite record goes into the token.
 export interface ISprite {
   source: string; // the path of the user-uploaded image in Storage, e.g. `images/${uid}/${id}`
-  id: string; // the id of the spritesheet image in Storage, forming path `sprites/${id}`
+                  // use this to lookup the spritesheet with `array-contains`.
   geometry: string; // converted by "convertSpriteGeometry" below; a string so it can be indexed
-  position: number; // y * columns + x
 }
 
 // #149: The spritesheet record is stored per-map.
@@ -44,12 +41,24 @@ export function toSpriteGeometryString(g: ISpriteGeometry): string {
   return `${g.columns}x${g.rows}`;
 }
 
-// This helps create known sprite paths in storage.
-// We hardwire the ".png" extension for now to get around issues with content type
-export function getSpritePath(sprite: ISprite) {
-  return `sprites/${sprite.id}.png`;
+// We can also convert a whole sprite record into a string to allow its use as
+// a cache key
+export function fromSpriteCacheKey(k: string): ISprite | undefined {
+  const result = /^([^;]+);([^;]+)$/.exec(k);
+  if (result) {
+    return { source: result[1], geometry: result[2] };
+  } else {
+    return undefined;
+  }
 }
 
+export function toSpriteCacheKey(sprite: ISprite): string {
+  // ';' is not a valid character in a path
+  return `${sprite.source};${sprite.geometry}`;
+}
+
+// This helps create known sprite paths in storage.
+// We hardwire the ".png" extension for now to get around issues with content type
 export function getSpritePathFromId(id: string) {
   return `sprites/${id}.png`;
 }

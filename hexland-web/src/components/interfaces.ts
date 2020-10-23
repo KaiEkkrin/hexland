@@ -1,6 +1,6 @@
-import { Subject } from 'rxjs';
 import { IIdentified } from '../data/identified';
 import { IDataService, IUser, IAuth, IAuthProvider, IAnalytics, IFunctionsService, IStorage } from '../services/interfaces';
+import { Subject } from 'rxjs';
 
 export interface IContextProviderProps {
   children?: React.ReactNode;

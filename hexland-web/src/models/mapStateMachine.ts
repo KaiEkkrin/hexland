@@ -21,7 +21,8 @@ import { IUserPolicy } from '../data/policy';
 import { getTokenGeometry, ITokenGeometry } from '../data/tokenGeometry';
 import { createTokenDictionary } from '../data/tokens';
 
-import { IDataService, IStorage } from '../services/interfaces';
+import { IDataService, ISpritesheetCache, IStorage } from '../services/interfaces';
+import { SpritesheetCache } from '../services/spritesheetCache';
 import { createDrawing } from './three/drawing';
 
 import fluent from 'fluent-iterable';
@@ -90,6 +91,7 @@ export class MapStateMachine {
   private readonly _mapColouring: MapColouring;
   private readonly _notes: FeatureDictionary<IGridCoord, IAnnotation>;
   private readonly _notesNeedUpdate = new RedrawFlag();
+  private readonly _spritesheetCache: ISpritesheetCache;
   private readonly _tokenGeometry: ITokenGeometry;
 
   private readonly _selection: ITokenDictionary;
@@ -170,9 +172,10 @@ export class MapStateMachine {
     this._gridGeometry = map.record.ty === MapType.Hex ?
       new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
 
+    this._spritesheetCache = new SpritesheetCache(dataService, map.adventureId, map.id, logError);
     this._tokenGeometry = getTokenGeometry(map.record.ty);
     this._drawing = createDrawing(
-      this._gridGeometry, this._tokenGeometry, colours, mount, this.seeEverything, logError, storage
+      this._gridGeometry, this._tokenGeometry, colours, mount, this.seeEverything, logError, this._spritesheetCache, storage
     );
 
     this._mapColouring = new MapColouring(this._gridGeometry);
@@ -686,6 +689,7 @@ export class MapStateMachine {
   get objectCount() { return this._state.objectCount; }
   get panningX() { return this._panningX; }
   get panningY() { return this._panningY; }
+  get spritesheetCache() { return this._spritesheetCache; }
 
   async addChanges(changes: IChange[] | undefined, complain: (id: string, title: string, message: string) => void) {
     if (changes === undefined || changes.length === 0) {
@@ -1158,6 +1162,7 @@ export class MapStateMachine {
   dispose() {
     if (this._isDisposed === false) {
       this._drawing.dispose();
+      this._spritesheetCache.dispose();
       this._isDisposed = true;
     }
   }

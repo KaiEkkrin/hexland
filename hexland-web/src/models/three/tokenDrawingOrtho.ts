@@ -1,16 +1,14 @@
 import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from "../../data/coord";
 import { IFeature, IToken, ITokenProperties } from "../../data/feature";
-import { getSpritePath } from "../../data/sprite";
 import { ITokenFace, ITokenFillEdge, ITokenFillVertex, SimpleTokenDrawing } from "../../data/tokens";
 import { IGridGeometry } from "../gridGeometry";
 import { RedrawFlag } from "../redrawFlag";
-import { ICacheLease } from "../../services/objectCache";
 
 import { createPaletteColouredAreaObject, createSelectedAreas, createSpriteAreaObject } from "./areas";
 import { IInstancedFeatureObject } from "./instancedFeatureObject";
 import { InstancedFeatures } from "./instancedFeatures";
 import { IColourParameters } from "./paletteColouredFeatureObject";
-import { TextureCache } from "./textureCache";
+import { ITextureLease, TextureCache } from "./textureCache";
 import { TokenTexts } from "./tokenTexts";
 import { ITokenUvTransform } from "./uv";
 import { createPaletteColouredVertexObject, createSpriteVertexObject, createTokenFillVertexGeometry } from "./vertices";
@@ -31,7 +29,7 @@ export interface ITokenDrawingParameters {
 class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenProperties & { basePosition: IGridCoord })>
   extends InstancedFeatures<K, F>
 {
-  private readonly _spriteFeatures: InstancedFeatures<K, F & { spriteTexture: ICacheLease<THREE.Texture> }>;
+  private readonly _spriteFeatures: InstancedFeatures<K, F & { spriteTexture: ITextureLease }>;
   private readonly _textureCache: TextureCache;
 
   constructor(
@@ -44,7 +42,7 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
   ) {
     super(gridGeometry, needsRedraw, toIndex, createPaletteColouredObject);
     this._textureCache = textureCache;
-    this._spriteFeatures = new InstancedFeatures<K, F & { spriteTexture: ICacheLease<THREE.Texture> }>(
+    this._spriteFeatures = new InstancedFeatures<K, F & { spriteTexture: ITextureLease }>(
       gridGeometry, needsRedraw, toIndex, createSpriteObject
     );
   }
@@ -72,7 +70,7 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
     // To be able to add the sprite feature we need to lookup the sprite URL.
     // After finding it we should check again whether this was removed...
     if (f.sprites.length > 0) {
-      this._textureCache.resolve(getSpritePath(f.sprites[0]))
+      this._textureCache.resolve(f.sprites[0])
         .then(t => {
           const f2 = super.get(f.position);
           if (f2?.id !== f.id) {

@@ -1,7 +1,6 @@
 import { IMap } from "../data/map";
 import { fromSpriteGeometryString, getSpritePathFromId, ISprite, ISpritesheet } from "../data/sprite";
 import { Timestamp } from "../data/types";
-import { consolidateMapChanges } from "./extensions";
 import { IAdminDataService } from "./extraInterfaces";
 import { IDataAndReference, IDataReference, IDataService, IDataView, ILogger, IStorage, IStorageReference } from "./interfaces";
 
@@ -154,9 +153,7 @@ async function getExistingSprites(
     if (sheet !== undefined) {
       found.push({
         source: s,
-        id: sheet.id,
         geometry: sheet.data.geometry,
-        position: sheet.data.sprites.indexOf(s)
       });
     } else {
       missing.push(s);
@@ -303,28 +300,6 @@ async function addSpritesImpl(
       geometry: geometry,
       position: i
     })));
-  }
-
-  // If we've changed any existing spritesheets, we should sweep the map for tokens
-  // referencing those and have them reference the new ones instead.
-  const replaced = allocated.filter(a2 => a2.oldSheet !== undefined);
-  if (replaced.length > 0) {
-    logger.logInfo(`consolidating map changes...`);
-    await consolidateMapChanges(
-      dataService, logger, timestampProvider, adventureId, mapId, map, false, tokenDict => {
-        for (const t of tokenDict) {
-          for (const s of t.sprites) {
-            const a = replaced.find(r => r.oldSheet?.id === s.id);
-            if (a !== undefined) {
-              // The operation we've done doesn't move any existing sprites around,
-              // so we can confidently just splice in the new sheet id
-              logger.logInfo(`token ${t.text} : ${a.oldSheet?.id} -> ${a.newSheet.id}`);
-              s.id = a.newSheet.id;
-            }
-          }
-        }
-      }
-    );
   }
 
   return found;

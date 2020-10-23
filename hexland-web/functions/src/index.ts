@@ -234,8 +234,10 @@ export const deleteImage = functions.region(region).https.onCall(async (data, co
 });
 
 // Adds sprites.
+// This seems to chew a lot of memory, hence the higher memory limit setting.  Hopefully
+// this won't turn out overly expensive!
 
-export const addSprites = functions.region(region).https.onCall(async (data, context) => {
+export const addSprites = functions.region(region).runWith({ memory: '1GB' }).https.onCall(async (data, context) => {
   const uid = context.auth?.uid;
   if (uid === undefined) {
     throw new functions.https.HttpsError('unauthenticated', 'No uid found');

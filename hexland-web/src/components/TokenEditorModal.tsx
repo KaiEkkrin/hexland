@@ -14,6 +14,7 @@ import { IImage } from '../data/image';
 import { getUserPolicy } from '../data/policy';
 import { defaultSpriteGeometry, ISprite, toSpriteGeometryString } from '../data/sprite';
 import { hexColours } from '../models/featureColour';
+import { ISpritesheetCache } from '../services/interfaces';
 
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
@@ -26,6 +27,7 @@ import { v4 as uuidv4 } from 'uuid';
 interface ITokenEditorModalProps {
   adventureId: string;
   mapId: string;
+  spritesheetCache: ISpritesheetCache | undefined;
   selectedColour: number;
   sizes: TokenSize[] | undefined;
   show: boolean;
@@ -37,7 +39,7 @@ interface ITokenEditorModalProps {
 }
 
 function TokenEditorModal(
-  { adventureId, mapId, selectedColour, sizes, show, token, players, handleClose, handleDelete, handleSave }: ITokenEditorModalProps
+  { adventureId, mapId, spritesheetCache, selectedColour, sizes, show, token, players, handleClose, handleDelete, handleSave }: ITokenEditorModalProps
 ) {
   const { logError } = useContext(AnalyticsContext);
   const { functionsService } = useContext(UserContext);
@@ -94,11 +96,11 @@ function TokenEditorModal(
     return (
       <React.Fragment>
         Current image&nbsp;
-        <SpriteImage sprite={sprites[0]} altName={altName} size={128}
+        <SpriteImage sprite={sprites[0]} altName={altName} size={128} spritesheetCache={spritesheetCache}
           borderColour={hexColours[colour]} />
       </React.Fragment>
     );
-  }, [colour, sprites, text]);
+  }, [colour, sprites, spritesheetCache, text]);
 
   // Image picking
   // TODO #149 Show the image currently in use (if any) above the image picker.

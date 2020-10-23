@@ -1,20 +1,48 @@
-import { IStorage } from '../../services/interfaces';
-import { ICacheItem, ICacheLease, ObjectCache } from '../../services/objectCache';
+import { getSpritePathFromId, ISprite, ISpritesheet } from '../../data/sprite';
+import { ICacheLease, IDataAndReference, ISpritesheetCache, IStorage } from '../../services/interfaces';
+import { ICacheItem, ObjectCache } from '../../services/objectCache';
 
 import * as THREE from 'three';
 
 const textureLoader = new THREE.TextureLoader();
 
+export interface ITextureLease {
+  ss: IDataAndReference<ISpritesheet>;
+  tex: THREE.Texture;
+  release: () => Promise<void>;
+}
+
+function combineLeases(
+  ssLease: ICacheLease<IDataAndReference<ISpritesheet>>,
+  texLease: ICacheLease<THREE.Texture>
+): ITextureLease {
+  return {
+    ss: ssLease.value,
+    tex: texLease.value,
+    release: async () => {
+      await texLease.release();
+      await ssLease.release();
+    }
+  };
+}
+
 export class TextureCache {
-  private readonly _objectCache: ObjectCache<THREE.Texture>;
+  private readonly _spritesheetCache: ISpritesheetCache;
+  private readonly _textureCache: ObjectCache<THREE.Texture>;
+
   private readonly _storage: IStorage;
+  private readonly _logError: (message: string, e: any) => void;
 
   constructor(
+    spritesheetCache: ISpritesheetCache,
     storage: IStorage,
     logError: (message: string, e: any) => void
   ) {
+    this._spritesheetCache = spritesheetCache;
     this._storage = storage;
-    this._objectCache = new ObjectCache(logError);
+    this._logError = logError;
+
+    this._textureCache = new ObjectCache(logError);
     this.resolveTexture = this.resolveTexture.bind(this);
   }
 
@@ -38,15 +66,38 @@ export class TextureCache {
     });
   }
 
-  get(path: string): ICacheLease<THREE.Texture> | undefined {
-    return this._objectCache.get(path);
+  get(spriteKey: string): ITextureLease | undefined {
+    try {
+      const ss = this._spritesheetCache.get(spriteKey);
+      if (ss === undefined) {
+        return undefined;
+      }
+
+      const tex = this._textureCache.get(getSpritePathFromId(ss.value.id));
+      if (tex === undefined) {
+        return undefined;
+      }
+
+      return combineLeases(ss, tex);
+    } catch (e) {
+      this._logError("Failed to get sprite", e);
+      return undefined;
+    }
   }
 
-  resolve(path: string): Promise<ICacheLease<THREE.Texture>> {
-    return this._objectCache.resolve(path, this.resolveTexture);
+  async resolve(sprite: ISprite): Promise<ITextureLease> {
+    try {
+      const ss = await this._spritesheetCache.resolve(sprite);
+      const tex = await this._textureCache.resolve(getSpritePathFromId(ss.value.id), this.resolveTexture);
+      return combineLeases(ss, tex);
+    } catch (e) {
+      this._logError("Failed to resolve sprite", e);
+      throw e;
+    }
   }
 
   dispose() {
-    this._objectCache.dispose();
+    this._textureCache.dispose();
+    this._spritesheetCache.dispose();
   }
 }

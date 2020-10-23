@@ -247,6 +247,18 @@ export class DataService implements IDataService {
     return new DataReference<IProfile>(d, Convert.profileConverter);
   }
 
+  async getSpritesheetsBySource(adventureId: string, mapId: string, geometry: string, sources: string[]): Promise<IDataAndReference<ISpritesheet>[]> {
+    const s = await this._db.collection(adventures).doc(adventureId)
+      .collection(maps).doc(mapId).collection("spritesheets")
+      .where("geometry", "==", geometry)
+      .where("supersededBy", "==", "")
+      .where("sprites", "array-contains-any", sources)
+      .get();
+    return s.docs.map(d => new DataAndReference(
+      d.ref, Convert.spritesheetConverter.convert(d.data()), Convert.spritesheetConverter
+    ));
+  }
+
   runTransaction<T>(fn: (dataView: IDataView) => Promise<T>): Promise<T> {
     return this._db.runTransaction(tr => {
       const tdv = new TransactionalDataView(tr);

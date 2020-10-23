@@ -1,6 +1,6 @@
-import { ICacheLease, ObjectCache } from './objectCache';
+import { ICacheLease } from './interfaces';
+import { ObjectCache } from './objectCache';
 import { Subject } from 'rxjs';
-import { release } from 'os';
 
 function createFetch() {
   const trigger = new Subject<string>();

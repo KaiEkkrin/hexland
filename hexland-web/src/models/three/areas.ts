@@ -1,6 +1,6 @@
 import { coordString, IGridCoord } from '../../data/coord';
 import { IFeature, IIdFeature, IToken } from '../../data/feature';
-import { getSpritePath } from '../../data/sprite';
+import { toSpriteCacheKey } from '../../data/sprite';
 import { IGridGeometry } from "../gridGeometry";
 import { IInstancedFeatureObject } from './instancedFeatureObject';
 import { InstancedFeatures } from './instancedFeatures';
@@ -73,7 +73,7 @@ export function createSpriteAreaObject(
       f => uvTransform.getFaceTransform(f),
       i
     ),
-    f => getSpritePath(f.sprites[0]),
+    f => toSpriteCacheKey(f.sprites[0]),
     maxInstances
   );
 }

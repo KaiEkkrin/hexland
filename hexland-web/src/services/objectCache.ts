@@ -1,3 +1,4 @@
+import { ICacheLease } from './interfaces';
 import { ReplaySubject } from 'rxjs';
 import { first } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
@@ -13,11 +14,6 @@ interface ICacheEntry<T> {
   obj?: ICacheItem<T> | undefined; // if undefined, wait for the subject
   subj: ReplaySubject<ICacheItem<T>>;
   refCount: number;
-}
-
-export interface ICacheLease<T> {
-  value: T;
-  release: () => Promise<void>;
 }
 
 // TODO #149 unit test this carefully :) and then rewrite the download cache and texture cache

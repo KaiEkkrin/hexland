@@ -6,7 +6,7 @@ import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
 import { IInviteExpiryPolicy } from '../data/policy';
 import { IProfile } from '../data/profile';
-import { ISprite } from '../data/sprite';
+import { ISprite, ISpritesheet } from '../data/sprite';
 import { IConverter } from './converter';
 
 // Abstracts the Firebase authentication stuff, which isn't supported by the
@@ -99,6 +99,10 @@ export interface IDataService extends IDataView {
   // Gets the user's profile.
   getProfileRef(uid: string): IDataReference<IProfile>;
 
+  // Gets all spritesheets containing one of the supplied images.
+  // No more than 10 sources in one go!
+  getSpritesheetsBySource(adventureId: string, mapId: string, geometry: string, sources: string[]): Promise<IDataAndReference<ISpritesheet>[]>;
+
   // Runs a transaction. The `dataView` parameter accepted by the
   // transaction function does things in the transaction's context.
   runTransaction<T>(fn: (dataView: IDataView) => Promise<T>): Promise<T>;
@@ -189,6 +193,25 @@ export interface ILogger {
   logError(message: string, ...optionalParams: any[]): void;
   logInfo(message: string, ...optionalParams: any[]): void;
   logWarning(message: string, ...optionalParams: any[]): void;
+}
+
+// The object cache emits these.
+export interface ICacheLease<T> {
+  value: T;
+  release: () => Promise<void>;
+}
+
+// Helps avoid repeated lookups of spritesheets.
+export interface ISpritesheetCache {
+  // Gets a previously cached value, or undefined if none.
+  // The sprite key is the output from `toSpriteCacheKey`.
+  get(spriteKey: string): ICacheLease<IDataAndReference<ISpritesheet>> | undefined;
+
+  // Resolves a sprite into the spritesheet containing it.
+  resolve(sprite: ISprite): Promise<ICacheLease<IDataAndReference<ISpritesheet>>>;
+
+  // Cleans up this cache.
+  dispose(): void;
 }
 
 // A stripped-down abstraction around Firebase Storage that lets me use a mock one in local

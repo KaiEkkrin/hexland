@@ -6,7 +6,7 @@ import { FeatureColour } from '../featureColour';
 import { IGridGeometry } from '../gridGeometry';
 import { IDrawing } from '../interfaces';
 import { RedrawFlag } from '../redrawFlag';
-import { IStorage } from '../../services/interfaces';
+import { ISpritesheetCache, IStorage } from '../../services/interfaces';
 
 import { Areas, createPaletteColouredAreaObject, createAreas, createSelectionColouredAreaObject } from './areas';
 import { Grid, IGridLoSPreRenderParameters } from './grid';
@@ -103,6 +103,7 @@ export class DrawingOrtho implements IDrawing {
     mount: HTMLDivElement,
     seeEverything: boolean,
     logError: (message: string, e: any) => void,
+    spritesheetCache: ISpritesheetCache,
     storage: IStorage
   ) {
     this._gridGeometry = gridGeometry;
@@ -234,7 +235,7 @@ export class DrawingOrtho implements IDrawing {
     );
 
     // The tokens
-    this._textureCache = new TextureCache(storage, logError);
+    this._textureCache = new TextureCache(spritesheetCache, storage, logError);
     const uvTransform = createLargeTokenUvTransform(gridGeometry, tokenGeometry, tokenSpriteAlpha);
     this._tokens = new TokenDrawing(
       gridGeometry, this._textureCache, uvTransform, this._needsRedraw, this._textMaterial, {

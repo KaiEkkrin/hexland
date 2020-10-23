@@ -3,7 +3,8 @@ import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { AnalyticsContext } from './AnalyticsContextProvider';
 import { UserContext } from './UserContextProvider';
 
-import { fromSpriteGeometryString, getSpritePath, ISprite } from '../data/sprite';
+import { fromSpriteGeometryString, getSpritePathFromId, ISprite, ISpritesheet } from '../data/sprite';
+import { ISpritesheetCache } from '../services/interfaces';
 
 import { from } from 'rxjs';
 
@@ -11,6 +12,7 @@ import { from } from 'rxjs';
 
 interface ISpriteImageProps {
   sprite: ISprite;
+  spritesheetCache: ISpritesheetCache | undefined;
   altName: string;
   size?: number | undefined;
   borderColour?: string | undefined;
@@ -19,43 +21,60 @@ interface ISpriteImageProps {
 // TODO #149 Fix the hardwiring of spritesheet dimensions here (when I need different ones...)
 const sheetSize = 1024;
 
-function SpriteImage({ sprite, altName, size, borderColour }: ISpriteImageProps) {
+function SpriteImage({ sprite, spritesheetCache, altName, size, borderColour }: ISpriteImageProps) {
   const { logError } = useContext(AnalyticsContext);
   const { storageService } = useContext(UserContext);
 
-  // Get hold of the spritesheet URL
-  const [url, setUrl] = useState<string | undefined>(undefined);
+  // Get hold of the spritesheet and its URL
+  const [sheet, setSheet] = useState<{ data: ISpritesheet, url: string } | undefined>(undefined);
   useEffect(() => {
-    if (!storageService) {
-      setUrl(undefined);
-      return;
+    async function fetchDownloadURL() {
+      if (spritesheetCache === undefined || storageService === undefined) {
+        return undefined;
+      }
+
+      const { value, release } = await spritesheetCache.resolve(sprite);
+      try {
+        const url = await storageService.ref(getSpritePathFromId(value.id)).getDownloadURL();
+        return { data: value.data, url: url };
+      } finally {
+        await release();
+      }
     }
 
-    const spritePath = getSpritePath(sprite);
-    const sub = from(storageService.ref(spritePath).getDownloadURL()).subscribe(
-      u => setUrl(String(u)),
-      e => logError("Failed to get download URL for sprite " + sprite.id, e)
+    const sub = from(fetchDownloadURL()).subscribe(
+      setSheet,
+      e => logError("Failed to get download URL for sprite " + sprite.source, e)
     );
     return () => sub.unsubscribe();
-  }, [logError, setUrl, sprite, storageService]);
+  }, [logError, setSheet, sprite, spritesheetCache, storageService]);
 
-  const style: React.CSSProperties = useMemo(() => {
-    const geometry = fromSpriteGeometryString(sprite.geometry);
-    const x = sprite.position % geometry.columns;
-    const y = Math.floor(sprite.position / geometry.columns);
+  const style: React.CSSProperties | undefined = useMemo(() => {
+    if (sheet === undefined) {
+      return undefined;
+    }
+
+    const position = sheet.data.sprites.indexOf(sprite.source);
+    if (position < 0) {
+      return undefined;
+    }
+
+    const geometry = fromSpriteGeometryString(sheet.data.geometry);
+    const x = position % geometry.columns;
+    const y = Math.floor(position / geometry.columns);
     const spriteSize = sheetSize / geometry.columns; // `rows` won't be different
     const backgroundSize = size ? (sheetSize * size / spriteSize) : sheetSize;
     return {
       width: `${size ?? spriteSize}px`,
       height: `${size ?? spriteSize}px`,
-      backgroundImage: `url(${url})`,
+      backgroundImage: `url(${sheet.url})`,
       backgroundPosition: `${-x * (size ?? spriteSize)}px ${-y * (size ?? spriteSize)}px`,
       backgroundSize: `${backgroundSize}px ${backgroundSize}px`,
       border: '4px solid',
       borderColor: borderColour,
       borderRadius: '50%'
     };
-  }, [sprite, url, size, borderColour]);
+  }, [sheet, sprite, size, borderColour]);
 
   return (
     <img style={style} src="/tiny.png" alt={altName} />

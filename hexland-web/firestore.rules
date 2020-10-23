@@ -63,6 +63,11 @@ service cloud.firestore {
       );
     }
 
+    match /adventures/{adventureId}/maps/{id}/spritesheets/{sheetId} {
+      // Only the Functions can edit these, but players can read them to look up sprites
+      allow read: if request.auth != null && isPlayerOrOwner(adventureId);
+    }
+
     // Everyone can read all the images but nobody can write them (we do that with a Function)
     match /images/{id} {
       allow read: if request.auth != null;

@@ -20,10 +20,6 @@ export interface IAdminDataService extends IDataService {
   // Gets the first spritesheet that isn't full up.
   getSpritesheetsByFreeSpace(adventureId: string, mapId: string, geometry: string): Promise<IDataAndReference<ISpritesheet>[]>;
 
-  // Gets all spritesheets containing one of the supplied images.
-  // No more than 10 sources in one go!
-  getSpritesheetsBySource(adventureId: string, mapId: string, geometry: string, sources: string[]): Promise<IDataAndReference<ISpritesheet>[]>;
-
   // Gets a spritesheet reference.
   getSpritesheetRef(adventureId: string, mapId: string, id: string): IDataReference<ISpritesheet>;
 }

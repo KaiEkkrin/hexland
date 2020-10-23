@@ -7,7 +7,7 @@ import { OutlinedRectangle } from "./overlayRectangle";
 
 import { ITokenGeometry } from "../../../data/tokenGeometry";
 import { SimpleTokenDrawing } from "../../../data/tokens";
-import { IStorage } from "../../../services/interfaces";
+import { ISpritesheetCache, IStorage } from "../../../services/interfaces";
 
 import { Subject } from 'rxjs';
 
@@ -27,6 +27,7 @@ export function createDrawing(
   mount: HTMLDivElement,
   seeEverything: boolean,
   logError: (message: string, e: any) => void,
+  spritesheetCache: ISpritesheetCache,
   storage: IStorage
 ): IDrawing {
   let mockDrawing = {

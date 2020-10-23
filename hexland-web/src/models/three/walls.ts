@@ -1,6 +1,6 @@
 import { IGridEdge, edgeString, IGridCoord } from '../../data/coord';
 import { IFeature, IFeatureDictionary, ITokenProperties } from '../../data/feature';
-import { getSpritePath } from '../../data/sprite';
+import { toSpriteCacheKey } from '../../data/sprite';
 import { IGridGeometry } from "../gridGeometry";
 import { IInstancedFeatureObject } from './instancedFeatureObject';
 import { InstancedFeatures } from './instancedFeatures';
@@ -76,7 +76,7 @@ export function createSpriteEdgeObject(
       f => uvTransform.getFillEdgeTransform(f),
       i
     ),
-    f => getSpritePath(f.sprites[0]),
+    f => toSpriteCacheKey(f.sprites[0]),
     maxInstances
   );
 }

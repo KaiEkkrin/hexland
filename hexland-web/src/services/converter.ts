@@ -441,9 +441,7 @@ export function createChangesConverter() {
 
 export const spriteConverter = new ShallowConverter<ISprite>({
   source: "",
-  id: "",
-  geometry: toSpriteGeometryString(defaultSpriteGeometry),
-  position: 0
+  geometry: toSpriteGeometryString(defaultSpriteGeometry)
 });
 
 export const spritesheetConverter = new ShallowConverter<ISpritesheet>({

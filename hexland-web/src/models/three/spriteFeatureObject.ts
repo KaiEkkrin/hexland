@@ -2,8 +2,7 @@ import { IGridCoord } from '../../data/coord';
 import { IFeature, ITokenProperties } from '../../data/feature';
 import { InstancedFeatureObject } from './instancedFeatureObject';
 import { fromMatrix4Columns, InstanceMatrix3Column } from './instanceMatrix';
-import { TextureCache } from './textureCache';
-import { ICacheLease } from '../../services/objectCache';
+import { ITextureLease, TextureCache } from './textureCache';
 
 import * as THREE from 'three';
 import { fromSpriteGeometryString } from '../../data/sprite';
@@ -42,7 +41,7 @@ export class SpriteFeatureObject<
 
   private readonly _instanceUvColumns: InstanceMatrix3Column[] = [];
 
-  private readonly _texture: ICacheLease<THREE.Texture> | undefined;
+  private readonly _texture: ITextureLease | undefined;
   private readonly _material: THREE.ShaderMaterial;
   private readonly _uniforms: any;
 
@@ -56,7 +55,7 @@ export class SpriteFeatureObject<
     maxInstances: number,
     createGeometry: () => THREE.InstancedBufferGeometry,
     getUvTransform: (feature: F) => THREE.Matrix4 | undefined,
-    spriteId: string
+    spriteKey: string
   ) {
     super(toIndex, transformTo, maxInstances);
     this._geometry = createGeometry();
@@ -77,9 +76,9 @@ export class SpriteFeatureObject<
       fragmentShader: spriteShader.fragmentShader
     });
 
-    this._texture = textureCache.get(spriteId);
-    console.log(`resolved sprite feature ${spriteId} as ${this._texture}`);
-    this._uniforms['spriteTex'].value = this._texture?.value;
+    this._texture = textureCache.get(spriteKey);
+    console.log(`resolved sprite feature ${spriteKey} as ${this._texture}`);
+    this._uniforms['spriteTex'].value = this._texture?.tex;
   }
 
   protected createMesh(maxInstances: number): THREE.InstancedMesh {
@@ -89,13 +88,18 @@ export class SpriteFeatureObject<
   protected addFeature(f: F, instanceIndex: number) {
     super.addFeature(f, instanceIndex);
 
-    if (f.sprites.length > 0) { // likely :)
-      const { columns, rows } = fromSpriteGeometryString(f.sprites[0].geometry);
+    if (f.sprites[0] !== undefined && this._texture !== undefined) {
+      const position = this._texture.ss.data.sprites.indexOf(f.sprites[0].source);
+      if (position < 0) {
+        return;
+      }
+
+      const { columns, rows } = fromSpriteGeometryString(this._texture.ss.data.geometry);
       const scaleX = 1.0 / columns;
       const scaleY = 1.0 / rows;
 
-      const x = (f.sprites[0].position % columns);
-      const y = Math.floor(f.sprites[0].position / columns);
+      const x = (position % columns);
+      const y = Math.floor(position / columns);
 
       const baseTransform = this._getUvTransform(f);
       if (baseTransform === undefined) {
