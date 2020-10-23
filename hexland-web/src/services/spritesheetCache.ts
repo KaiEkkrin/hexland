@@ -2,17 +2,9 @@ import { fromSpriteCacheKey, ISprite, ISpritesheet, toSpriteCacheKey } from "../
 import { ICacheLease, IDataAndReference, IDataService, ISpritesheetCache } from "./interfaces";
 import { ICacheItem, ObjectCache } from "./objectCache";
 
-export class SpriteNotFoundError {
-  readonly message: string;
-
-  constructor(message: string) {
-    this.message = message;
-  }
-}
-
 // A simple wrapping around ObjectCache that caches spritesheets.
 export class SpritesheetCache implements ISpritesheetCache {
-  private readonly _objectCache: ObjectCache<IDataAndReference<ISpritesheet>>;
+  private readonly _objectCache: ObjectCache<IDataAndReference<ISpritesheet> | undefined>;
 
   private readonly _dataService: IDataService;
   private readonly _adventureId: string;
@@ -34,7 +26,7 @@ export class SpritesheetCache implements ISpritesheetCache {
     this.resolveSpritesheet = this.resolveSpritesheet.bind(this);
   }
 
-  private async resolveSpritesheet(key: string): Promise<ICacheItem<IDataAndReference<ISpritesheet>>> {
+  private async resolveSpritesheet(key: string): Promise<ICacheItem<IDataAndReference<ISpritesheet> | undefined>> {
     const sprite = fromSpriteCacheKey(key);
     if (sprite === undefined) {
       throw RangeError("Invalid sprite cache key: " + key);
@@ -45,14 +37,10 @@ export class SpritesheetCache implements ISpritesheetCache {
       this._adventureId, this._mapId, sprite.geometry, [sprite.source]
     );
 
-    if (ss.length === 0) {
-      throw new SpriteNotFoundError("No such sprite: " + key);
-    } else {
-      return { value: ss[0], cleanup: () => { /* nothing to do */ } };
-    }
+    return { value: ss.length > 0 ? ss[0] : undefined, cleanup: () => { /* nothing to do */ } };
   }
 
-  get(spriteKey: string): ICacheLease<IDataAndReference<ISpritesheet>> | undefined {
+  get(spriteKey: string): ICacheLease<IDataAndReference<ISpritesheet> | undefined> | undefined {
     try {
       return this._objectCache.get(spriteKey);
     } catch (e) {
@@ -61,7 +49,7 @@ export class SpritesheetCache implements ISpritesheetCache {
     }
   }
 
-  async resolve(sprite: ISprite): Promise<ICacheLease<IDataAndReference<ISpritesheet>>> {
+  async resolve(sprite: ISprite): Promise<ICacheLease<IDataAndReference<ISpritesheet> | undefined>> {
     try {
       return await this._objectCache.resolve(toSpriteCacheKey(sprite), this.resolveSpritesheet);
     } catch (e) {

@@ -189,6 +189,15 @@ export class AdminDataService implements IAdminDataService {
     ));
   }
 
+  async getAllSpritesheetsBySource(source: string): Promise<IDataAndReference<ISpritesheet>[]> {
+    const s = await this._db.collectionGroup(spritesheets)
+      .where("sprites", "array-contains", source)
+      .get();
+    return s.docs.map(d => new DataAndReference(
+      d.ref, Convert.spritesheetConverter.convert(d.data()), Convert.spritesheetConverter
+    ));
+  }
+
   getImagesRef(uid: string): IDataReference<IImages> {
     const d = this._db.collection(images).doc(uid);
     return new DataReference<IImages>(d, Convert.imagesConverter);

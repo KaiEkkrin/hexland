@@ -14,6 +14,9 @@ export interface IAdminDataService extends IDataService {
   // Gets all the adventures with a particular image path.
   getAdventureRefsByImagePath(path: string): Promise<IDataAndReference<IAdventure>[]>;
 
+  // Gets all spritesheets (across all maps) containing the supplied image.  (For deletion.)
+  getAllSpritesheetsBySource(source: string): Promise<IDataAndReference<ISpritesheet>[]>;
+
   // Gets all the maps with a particular image path.
   getMapRefsByImagePath(path: string): Promise<ICollectionGroupQueryResult<IMap, IAdventure>[]>;
 

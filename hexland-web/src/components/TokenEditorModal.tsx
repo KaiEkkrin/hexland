@@ -35,11 +35,13 @@ interface ITokenEditorModalProps {
   players: IPlayer[];
   handleClose: () => void;
   handleDelete: () => void;
+  handleImageDelete: (image: IImage | undefined) => void;
   handleSave: (properties: ITokenProperties) => void;
 }
 
 function TokenEditorModal(
-  { adventureId, mapId, spritesheetCache, selectedColour, sizes, show, token, players, handleClose, handleDelete, handleSave }: ITokenEditorModalProps
+  { adventureId, mapId, spritesheetCache, selectedColour, sizes, show, token, players,
+    handleClose, handleDelete, handleImageDelete, handleSave }: ITokenEditorModalProps
 ) {
   const { logError } = useContext(AnalyticsContext);
   const { functionsService } = useContext(UserContext);
@@ -109,15 +111,16 @@ function TokenEditorModal(
   const [imageCount, setImageCount] = useState(0);
   const imageTabTitle = useMemo(() => `Images (${imageCount}/${maxImages})`, [imageCount, maxImages]);
 
-  const handleImageDelete = useCallback(() => {
-    // TODO
-  }, []);
-
   // We'll hide "set image" while creating the sprite, since that might take a moment:
   const canSetImage = useMemo(() => activeImage !== undefined, [activeImage]);
   const [busySettingImage, setBusySettingImage] = useState(false);
   const setImageDisabled = useMemo(() => busySettingImage || !canSetImage, [busySettingImage, canSetImage]);
   const useImageText = useMemo(() => busySettingImage ? "Setting image..." : "Use image", [busySettingImage]);
+
+  const handleDeleteImage = useCallback(
+    () => handleImageDelete(activeImage),
+    [activeImage, handleImageDelete]
+  );
 
   const handleSetImage = useCallback((image: IImage | undefined) => {
     if (image === undefined) {
@@ -218,7 +221,7 @@ function TokenEditorModal(
               {currentImage}
             </div>
             <ImagePickerForm show={show} setActiveImage={setActiveImage} setImageCount={setImageCount}
-              handleDelete={handleImageDelete} />
+              handleDelete={handleDeleteImage} />
             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
               <Button variant="warning" onClick={handleUseNoImage}>Use no image</Button>
               <Button className="ml-2" variant="primary" onClick={handleUseImage} disabled={setImageDisabled}>

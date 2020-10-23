@@ -35,6 +35,10 @@ function SpriteImage({ sprite, spritesheetCache, altName, size, borderColour }: 
 
       const { value, release } = await spritesheetCache.resolve(sprite);
       try {
+        if (value === undefined) {
+          return undefined;
+        }
+
         const url = await storageService.ref(getSpritePathFromId(value.id)).getDownloadURL();
         return { data: value.data, url: url };
       } finally {

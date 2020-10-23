@@ -7,13 +7,13 @@ import * as THREE from 'three';
 const textureLoader = new THREE.TextureLoader();
 
 export interface ITextureLease {
-  ss: IDataAndReference<ISpritesheet>;
-  tex: THREE.Texture;
+  ss: IDataAndReference<ISpritesheet> | undefined;
+  tex: THREE.Texture | undefined;
   release: () => Promise<void>;
 }
 
 function combineLeases(
-  ssLease: ICacheLease<IDataAndReference<ISpritesheet>>,
+  ssLease: ICacheLease<IDataAndReference<ISpritesheet> | undefined>,
   texLease: ICacheLease<THREE.Texture>
 ): ITextureLease {
   return {
@@ -73,6 +73,10 @@ export class TextureCache {
         return undefined;
       }
 
+      if (ss.value === undefined) {
+        return { ss: undefined, tex: undefined, release: ss.release };
+      }
+
       const tex = this._textureCache.get(getSpritePathFromId(ss.value.id));
       if (tex === undefined) {
         return undefined;
@@ -88,6 +92,10 @@ export class TextureCache {
   async resolve(sprite: ISprite): Promise<ITextureLease> {
     try {
       const ss = await this._spritesheetCache.resolve(sprite);
+      if (ss.value === undefined) {
+        return { ss: undefined, tex: undefined, release: ss.release };
+      }
+
       const tex = await this._textureCache.resolve(getSpritePathFromId(ss.value.id), this.resolveTexture);
       return combineLeases(ss, tex);
     } catch (e) {

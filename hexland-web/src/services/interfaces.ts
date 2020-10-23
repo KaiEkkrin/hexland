@@ -205,10 +205,12 @@ export interface ICacheLease<T> {
 export interface ISpritesheetCache {
   // Gets a previously cached value, or undefined if none.
   // The sprite key is the output from `toSpriteCacheKey`.
-  get(spriteKey: string): ICacheLease<IDataAndReference<ISpritesheet>> | undefined;
+  // (Getting a cache lease for "undefined" means that there definitely isn't a sprite
+  // with that key, which is different from "we haven't fetched it yet.")
+  get(spriteKey: string): ICacheLease<IDataAndReference<ISpritesheet> | undefined> | undefined;
 
   // Resolves a sprite into the spritesheet containing it.
-  resolve(sprite: ISprite): Promise<ICacheLease<IDataAndReference<ISpritesheet>>>;
+  resolve(sprite: ISprite): Promise<ICacheLease<IDataAndReference<ISpritesheet> | undefined>>;
 
   // Cleans up this cache.
   dispose(): void;

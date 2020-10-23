@@ -20,6 +20,7 @@ const maps = "maps";
 const changes = "changes";
 const baseChange = "base";
 const players = "players";
+const spritesheets = "spritesheets";
 
 // A non-generic base data reference helps our isEqual implementation.
 
@@ -166,7 +167,7 @@ export class DataService implements IDataService {
   }
   async getFirstSpritesheetBySource(adventureId: string, mapId: string, source: string): Promise<IDataAndReference<ISpritesheet>[]> {
     const s = await this._db.collection(adventures).doc(adventureId)
-      .collection(maps).doc(mapId).collection("spritesheets")
+      .collection(maps).doc(mapId).collection(spritesheets)
       .where("supersededBy", "==", "")
       .where("sprites", "array-contains", source)
       .limit(1)
@@ -249,7 +250,7 @@ export class DataService implements IDataService {
 
   async getSpritesheetsBySource(adventureId: string, mapId: string, geometry: string, sources: string[]): Promise<IDataAndReference<ISpritesheet>[]> {
     const s = await this._db.collection(adventures).doc(adventureId)
-      .collection(maps).doc(mapId).collection("spritesheets")
+      .collection(maps).doc(mapId).collection(spritesheets)
       .where("geometry", "==", geometry)
       .where("supersededBy", "==", "")
       .where("sprites", "array-contains-any", sources)

@@ -203,11 +203,20 @@ export async function deleteImage(
   const adventures = await dataService.getAdventureRefsByImagePath(path);
   const maps = await dataService.getMapRefsByImagePath(path);
 
-  // TODO #149 Delete any associated sprites too?  (requires a complex query?)
-
   await dataService.runTransaction(
     tr => deleteImageTransaction(tr, images, adventures, maps, path)
   );
+
+  // Remove this image from any spritesheets that have it, leaving a gap that could be
+  // re-used by something else.
+  // These can be done as separate transactions, which should reduce the database load
+  const ss = await dataService.getAllSpritesheetsBySource(path);
+  await Promise.all(ss.map(r => dataService.runTransaction(async tr => {
+    const ss2 = await tr.get(r);
+    if (ss2 !== undefined) {
+      await tr.update(r, { sprites: ss2.sprites.map(s => s === path ? "" : s) });
+    }
+  })));
 
   await storage.ref(path).delete();
 }

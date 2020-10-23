@@ -13,6 +13,7 @@ import { Subject } from 'rxjs';
 import * as THREE from 'three';
 import { v4 as uuidv4 } from 'uuid';
 import { editMap } from "../services/extensions";
+import { IImage } from "../data/image";
 
 // This class manages a variety of map UI related state changes with side effects
 // that I don't trust React to do properly (React `useReducer` may dispatch actions
@@ -42,12 +43,15 @@ export interface IMapUiState {
   showTokenEditor: boolean;
   showNoteEditor: boolean;
   showTokenDeletion: boolean;
+  showTokenImageDeletion: boolean;
 
   tokenToEdit?: ITokenProperties | undefined;
   tokenToEditPosition?: THREE.Vector3 | undefined;
   noteToEdit?: IAnnotation | undefined;
   noteToEditPosition?: THREE.Vector3 | undefined;
   tokensToDelete: ITokenProperties[];
+
+  imageToDelete?: IImage | undefined;
 }
 
 export function createDefaultUiState(): IMapUiState {
@@ -66,6 +70,7 @@ export function createDefaultUiState(): IMapUiState {
     showTokenEditor: false,
     showNoteEditor: false,
     showTokenDeletion: false,
+    showTokenImageDeletion: false,
     tokensToDelete: [],
   };
 }
@@ -285,6 +290,15 @@ export class MapUi {
     if (this._state.showContextMenu === true) {
       this.changeState({ ...this._state, showContextMenu: false });
     }
+  }
+
+  imageDeletionClose() {
+    this.changeState({
+      ...this._state,
+      showTokenImageDeletion: false,
+      showTokenEditor: true, // hopefully the rest of its settings will be preserved :)
+      imageToDelete: undefined
+    });
   }
 
   keyDown(e: KeyboardEvent) {
@@ -527,6 +541,19 @@ export class MapUi {
     }
 
     this.modalClose();
+  }
+
+  tokenEditorDeleteImage(image: IImage | undefined) {
+    if (image === undefined) {
+      return;
+    }
+
+    this.changeState({
+      ...this._state,
+      showTokenEditor: false, // will be put back when the image deletion modal is closed
+      showTokenImageDeletion: true,
+      imageToDelete: image
+    });
   }
 
   tokenEditorSave(properties: ITokenProperties) {

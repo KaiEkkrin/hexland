@@ -88,7 +88,7 @@ export class SpriteFeatureObject<
   protected addFeature(f: F, instanceIndex: number) {
     super.addFeature(f, instanceIndex);
 
-    if (f.sprites[0] !== undefined && this._texture !== undefined) {
+    if (f.sprites[0] !== undefined && this._texture?.ss !== undefined) {
       const position = this._texture.ss.data.sprites.indexOf(f.sprites[0].source);
       if (position < 0) {
         return;

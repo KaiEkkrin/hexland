@@ -26,7 +26,7 @@ function ImageDeletionModal(props: IImageDeletionModalProps) {
         <Modal.Title>Delete image</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        <p>You are about to delete this image. This will remove it from any adventures and maps it is seen on. Are you sure?</p>
+        <p>You are about to delete this image. This will remove it from any adventures and maps it is seen on, and it will no longer be available as a token image. Are you sure?</p>
         {imageItem}
       </Modal.Body>
       <Modal.Footer>

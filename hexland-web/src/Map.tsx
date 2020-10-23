@@ -38,6 +38,8 @@ import { Link, RouteComponentProps, useHistory } from 'react-router-dom';
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
 import { v4 as uuidv4 } from 'uuid';
+import ImageDeletionModal from './components/ImageDeletionModal';
+import { IImage } from './data/image';
 
 // The map component is rather large because of all the state that got pulled into it...
 function Map({ adventureId, mapId }: IMapPageProps) {
@@ -340,6 +342,23 @@ function Map({ adventureId, mapId }: IMapPageProps) {
     [ui]
   );
 
+  const handleTokenImageDelete = useCallback(
+    (i: IImage | undefined) => ui?.tokenEditorDeleteImage(i),
+    [ui]
+  );
+
+  const handleImageDeletionSave = useCallback(() => {
+    ui?.imageDeletionClose();
+    const imageToDelete = uiState.imageToDelete;
+    if (imageToDelete === undefined || functionsService === undefined) {
+      return;
+    }
+
+    functionsService.deleteImage(imageToDelete.path)
+      .then(() => console.log(`deleted image ${imageToDelete.path}`))
+      .catch(e => logError(`failed to delete image ${imageToDelete}`, e));
+  }, [functionsService, logError, ui, uiState]);
+
   const handleNoteEditorDelete = useCallback(() => ui?.noteEditorDelete(), [ui]);
   const handleNoteEditorSave = useCallback((id: string, colour: number, text: string, visibleToPlayers: boolean) => {
     ui?.noteEditorSave(id, colour, text, visibleToPlayers);
@@ -513,7 +532,11 @@ function Map({ adventureId, mapId }: IMapPageProps) {
         adventureId={adventureId} mapId={mapId}
         sizes={tokenSizes} token={uiState.tokenToEdit}
         players={players} handleClose={handleModalClose}
-        handleDelete={handleTokenEditorDelete} handleSave={handleTokenEditorSave} />
+        handleDelete={handleTokenEditorDelete}
+        handleImageDelete={handleTokenImageDelete}
+        handleSave={handleTokenEditorSave} />
+      <ImageDeletionModal show={uiState.showTokenImageDeletion} image={uiState.imageToDelete}
+        handleClose={() => ui?.imageDeletionClose()} handleDelete={handleImageDeletionSave} />
       <TokenDeletionModal show={uiState.showTokenDeletion} tokens={uiState.tokensToDelete}
         handleClose={handleModalClose} handleDelete={handleTokenDeletion} />
       <NoteEditorModal show={uiState.showNoteEditor} note={uiState.noteToEdit} handleClose={handleModalClose}
