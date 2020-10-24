@@ -101,10 +101,14 @@ function Map({ adventureId, mapId }: IMapPageProps) {
     setMapStateProps?.({
       adventureId: adventureId,
       mapId: mapId,
-      drawingRef: drawingRef,
       couldNotLoadMap: couldNotLoadMap
     });
-  }, [adventureId, mapId, drawingRef, couldNotLoadMap, setMapStateProps]);
+  }, [adventureId, mapId, couldNotLoadMap, setMapStateProps]);
+
+  // Mount the drawing into our DOM tree
+  useEffect(() => {
+    stateMachine?.setMount(drawingRef?.current ?? undefined);
+  }, [drawingRef, stateMachine]);
 
   // Hide scroll bars whilst viewing the map.
   useEffect(() => {

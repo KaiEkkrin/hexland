@@ -94,7 +94,6 @@ function MapContextProvider(props: IContextProviderProps) {
   // Track changes to the map.
   // We don't start watching until we have an initialised state machine (which means the
   // consolidate is done).
-  const drawingRef = useMemo(() => mapStateProps.drawingRef, [mapStateProps.drawingRef]);
   useEffect(() => {
     async function openMap(): Promise<MapStateMachine | undefined> {
       const uid = user?.uid;
@@ -104,46 +103,45 @@ function MapContextProvider(props: IContextProviderProps) {
         storageService === undefined ||
         map === undefined ||
         uid === undefined ||
-        profile === undefined ||
-        !drawingRef?.current
+        profile === undefined
       ) {
         return undefined;
       }
 
+      const { adventureId, id, record } = map;
+      console.log(`opening map: ${adventureId}/${id}`);
+
       // These two calls are both done on a best-effort basis, because failing shouldn't
       // preclude us from opening the map (although hopefully they will succeed)
-      await Promise.all([
-        async () => {
-          try {
-            await registerMapAsRecent(dataService, uid, map.adventureId, map.id, map.record);
-          } catch (e) {
-            logError("Error registering map " + map.adventureId + "/" + map.id + " as recent", e);
-          }
-        },
-        async () => {
-          try {
-            console.log("consolidating map changes");
-            await functionsService.consolidateMapChanges(map.adventureId, map.id, false);
-          } catch (e) {
-            logError("Error consolidating map " + map.adventureId + "/" + map.id + " changes", e);
-          }
-        }
-      ]);
+      try {
+        await registerMapAsRecent(dataService, uid, adventureId, id, record);
+      } catch (e) {
+        logError("Error registering map " + adventureId + "/" + id + " as recent", e);
+      }
 
-      const userPolicy = uid === map.record.owner ? getUserPolicy(profile.level) : undefined;
+      try {
+        console.log("consolidating map changes");
+        await functionsService.consolidateMapChanges(adventureId, id, false);
+      } catch (e) {
+        logError("Error consolidating map " + adventureId + "/" + id + " changes", e);
+      }
+
+      const userPolicy = uid === record.owner ? getUserPolicy(profile.level) : undefined;
       return new MapStateMachine(
-        dataService, storageService, map, uid, standardColours, drawingRef.current,
-        userPolicy, logError, setMapState
+        dataService, storageService,
+        { adventureId: adventureId, id: id, record: record },
+        uid, standardColours, userPolicy, logError, setMapState
       );
     }
 
     const sub = from(openMap()).subscribe(setStateMachine);
     return () => {
+      console.log(`unsubscribing from map`);
       sub.unsubscribe();
       setStateMachine(undefined);
     }
   }, [
-    logError, map, drawingRef, profile, dataService, functionsService, storageService,
+    logError, map, profile, dataService, functionsService, storageService,
     user, setMapState, setStateMachine
   ]);
 

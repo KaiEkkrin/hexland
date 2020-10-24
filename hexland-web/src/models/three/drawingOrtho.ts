@@ -52,7 +52,6 @@ const vertexHighlightAlpha = 0.35;
 // An orthographic implementation of IDrawing using THREE.js.
 export class DrawingOrtho implements IDrawing {
   private readonly _gridGeometry: IGridGeometry;
-  private readonly _mount: HTMLDivElement;
 
   private readonly _camera: THREE.OrthographicCamera;
   private readonly _fixedCamera: THREE.OrthographicCamera;
@@ -92,6 +91,7 @@ export class DrawingOrtho implements IDrawing {
   private readonly _scratchMatrix1 = new THREE.Matrix4();
   private readonly _scratchQuaternion = new THREE.Quaternion();
 
+  private _mount: HTMLDivElement | undefined = undefined;
   private _showLoS = false;
   private _showMapColourVisualisation = false;
   private _disposed = false;
@@ -100,14 +100,12 @@ export class DrawingOrtho implements IDrawing {
     gridGeometry: IGridGeometry,
     tokenGeometry: ITokenGeometry,
     colours: FeatureColour[],
-    mount: HTMLDivElement,
     seeEverything: boolean,
     logError: (message: string, e: any) => void,
     spritesheetCache: ISpritesheetCache,
     storage: IStorage
   ) {
     this._gridGeometry = gridGeometry;
-    this._mount = mount;
 
     // We need these to initialise things, but they'll be updated dynamically
     const renderWidth = Math.max(1, Math.floor(window.innerWidth));
@@ -136,8 +134,6 @@ export class DrawingOrtho implements IDrawing {
     this._renderer = new THREE.WebGLRenderer();
     this._canvasClearColour = new THREE.Color(0.1, 0.1, 0.1);
     this._renderer.autoClear = false;
-    mount.appendChild(this._renderer.domElement);
-    this._mount = mount;
 
     // Texture of face co-ordinates within the tile.
     this._grid = new Grid(
@@ -423,6 +419,22 @@ export class DrawingOrtho implements IDrawing {
     this._losParameters.fullyHidden = seeEverything ? 0.25 : 0.0;
   }
 
+  setMount(newMount: HTMLDivElement | undefined) {
+    if (this._mount !== undefined) {
+      try {
+        this._mount.removeChild(this._renderer.domElement);
+      } catch (e) {
+        console.error("failed to unmount renderer dom element", e);
+      }
+    }
+
+    if (newMount !== undefined) {
+      newMount.appendChild(this._renderer.domElement);
+    }
+
+    this._mount = newMount;
+  }
+
   setShowMapColourVisualisation(show: boolean, mapColouring: MapColouring) {
     if (show === this._showMapColourVisualisation) {
       return;
@@ -452,12 +464,7 @@ export class DrawingOrtho implements IDrawing {
       return;
     }
 
-    try {
-      this._mount.removeChild(this._renderer.domElement);
-    } catch (e) {
-      console.error("failed to unmount renderer dom element", e);
-    }
-
+    this.setMount(undefined);
     this._renderer.dispose();
 
     this._grid.dispose();

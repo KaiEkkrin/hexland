@@ -55,6 +55,9 @@ export interface IDrawing {
   // Sets the token positions whose LoS we should draw, or undefined to show everything.
   setLoSPositions(positions: IGridCoord[] | undefined, seeEverything: boolean): void;
 
+  // Sets the mount point of the rendered drawing.
+  setMount(mount: HTMLDivElement | undefined): void;
+
   // Sets whether or not to show the map colour visualisation.
   setShowMapColourVisualisation(show: boolean, mapColouring: MapColouring): void;
 

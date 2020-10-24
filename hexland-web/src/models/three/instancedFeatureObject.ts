@@ -19,6 +19,7 @@ export interface IInstancedFeatureObject<K extends IGridCoord, F extends IFeatur
 // A base class that manages a collection of features all drawn using the
 // same instanced mesh added to a scene.
 export abstract class InstancedFeatureObject<K extends IGridCoord, F extends IFeature<K>> implements IInstancedFeatureObject<K, F> {
+  private readonly _toIndex: (k: K) => string;
   private readonly _transformTo: (m: THREE.Matrix4, position: K) => THREE.Matrix4;
   private readonly _maxInstances: number;
 
@@ -34,6 +35,7 @@ export abstract class InstancedFeatureObject<K extends IGridCoord, F extends IFe
     transformTo: (m: THREE.Matrix4, position: K) => THREE.Matrix4,
     maxInstances: number
   ) {
+    this._toIndex = toIndex;
     this._transformTo = transformTo;
     this._maxInstances = maxInstances;
     this._indexes = new FeatureDictionary<K, IFeature<K>>(toIndex);
@@ -48,6 +50,8 @@ export abstract class InstancedFeatureObject<K extends IGridCoord, F extends IFe
 
     return this._mesh;
   }
+
+  protected get toIndex() { return this._toIndex; }
 
   // Override this to describe how to create the mesh.
   protected abstract createMesh(maxInstances: number): THREE.InstancedMesh;

@@ -148,7 +148,6 @@ export class MapStateMachine {
     map: IAdventureIdentified<IMap>,
     uid: string,
     colours: FeatureColour[],
-    mount: HTMLDivElement,
     userPolicy: IUserPolicy | undefined,
     logError: (message: string, e: any) => void,
     setState: (state: IMapState) => void
@@ -175,7 +174,7 @@ export class MapStateMachine {
     this._spritesheetCache = new SpritesheetCache(dataService, map.adventureId, logError);
     this._tokenGeometry = getTokenGeometry(map.record.ty);
     this._drawing = createDrawing(
-      this._gridGeometry, this._tokenGeometry, colours, mount, this.seeEverything, logError, this._spritesheetCache, storage
+      this._gridGeometry, this._tokenGeometry, colours, this.seeEverything, logError, this._spritesheetCache, storage
     );
 
     this._mapColouring = new MapColouring(this._gridGeometry);
@@ -1065,6 +1064,10 @@ export class MapStateMachine {
         this._dragRectangle.start(cp);
       }
     }
+  }
+
+  setMount(mount: HTMLDivElement | undefined) {
+    this._drawing.setMount(mount);
   }
 
   setNote(cp: THREE.Vector3, id: string, colour: number, text: string, visibleToPlayers: boolean): IChange[] {

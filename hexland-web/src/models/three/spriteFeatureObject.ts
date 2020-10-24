@@ -1,11 +1,11 @@
 import { IGridCoord } from '../../data/coord';
 import { IFeature, ITokenProperties } from '../../data/feature';
+import { fromSpriteGeometryString } from '../../data/sprite';
 import { InstancedFeatureObject } from './instancedFeatureObject';
 import { fromMatrix4Columns, InstanceMatrix3Column } from './instanceMatrix';
 import { ITextureLease, TextureCache } from './textureCache';
 
 import * as THREE from 'three';
-import { fromSpriteGeometryString } from '../../data/sprite';
 
 const spriteShader = {
   uniforms: {
@@ -100,6 +100,7 @@ export class SpriteFeatureObject<
       const x = (position % columns);
       const y = Math.floor(position / columns);
 
+      // console.log(`adding sprite feature ${this.toIndex(f.position)} from ${coordString(f.basePosition)}`);
       const baseTransform = this._getUvTransform(f);
       if (baseTransform === undefined) {
         return;

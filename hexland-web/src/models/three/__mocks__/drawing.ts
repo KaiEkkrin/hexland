@@ -24,7 +24,6 @@ export function createDrawing(
   gridGeometry: IGridGeometry,
   tokenGeometry: ITokenGeometry,
   colours: FeatureColour[],
-  mount: HTMLDivElement,
   seeEverything: boolean,
   logError: (message: string, e: any) => void,
   spritesheetCache: ISpritesheetCache,
@@ -33,7 +32,7 @@ export function createDrawing(
   let mockDrawing = {
     gridGeometry: gridGeometry,
     colours: colours,
-    mount: mount,
+    mount: undefined,
     seeEverything: seeEverything,
 
     areas: new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
@@ -60,6 +59,7 @@ export function createDrawing(
     handleChangesApplied: jest.fn(),
     resize: jest.fn(),
     setLoSPositions: jest.fn(),
+    setMount: jest.fn(),
     setShowMapColourVisualisation: jest.fn(),
     dispose: jest.fn()
   };

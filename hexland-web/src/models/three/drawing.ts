@@ -12,13 +12,12 @@ export function createDrawing(
   gridGeometry: IGridGeometry,
   tokenGeometry: ITokenGeometry,
   colours: FeatureColour[],
-  mount: HTMLDivElement,
   seeEverything: boolean,
   logError: (message: string, e: any) => void,
   spritesheetCache: ISpritesheetCache,
   storage: IStorage
 ): IDrawing {
   return new DrawingOrtho(
-    gridGeometry, tokenGeometry, colours, mount, seeEverything, logError, spritesheetCache, storage
+    gridGeometry, tokenGeometry, colours, seeEverything, logError, spritesheetCache, storage
   );
 }

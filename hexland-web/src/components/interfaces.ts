@@ -53,7 +53,6 @@ export interface IStatusContext {
 export interface IMapStateProps {
   adventureId?: string | undefined;
   mapId?: string | undefined;
-  drawingRef?: React.RefObject<HTMLDivElement> | undefined;
   couldNotLoadMap?: ((message: string) => void) | undefined;
 }
 
