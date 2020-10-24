@@ -64,3 +64,9 @@ export interface IAnalyticsProps {
   getItem?: ((key: string) => string | null) | undefined;
   setItem?: ((key: string, value: string | null) => void) | undefined;
 }
+
+export interface IPageProps {
+  // Props passed to each webapp page
+  navbarTitle: string | JSX.Element;
+  setNavbarTitle: (title: string | JSX.Element) => void;
+}

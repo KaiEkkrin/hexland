@@ -33,8 +33,9 @@ function UserContextProvider(props: IContextProviderProps) {
     return auth?.onAuthStateChanged(u => {
       // Create the relevant storage service (if any.)  If webpack hot-plugging is enabled,
       // we use the mock storage service because there isn't an emulator
+      const hostname = document.location.hostname;
       const storageService = functionsService === undefined || !u ? undefined :
-        ('webpackHotUpdate' in window) ? new MockWebStorage(functionsService, 'http://localhost:7000') :
+        ('webpackHotUpdate' in window) ? new MockWebStorage(functionsService, `http://${hostname}:7000`) :
         realStorageService;
 
       setUserContext({

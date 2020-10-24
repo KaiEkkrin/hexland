@@ -1,5 +1,7 @@
 import React, { useContext, useMemo, useCallback, useState, useEffect } from 'react';
 import { useAsyncTask, useAsyncRun } from 'react-hooks-async';
+//import { RouteComponentProps } from 'react-router';
+//import { withRouter } from 'react-router-dom';
 
 import { AnalyticsContext } from './AnalyticsContextProvider';
 import { FirebaseContext } from './FirebaseContextProvider';
@@ -385,6 +387,7 @@ function NavLogin() {
   );
 }
 
+//interface INavigationProps extends RouteComponentProps {
 interface INavigationProps {
   children?: React.ReactNode | undefined;
 }
@@ -433,4 +436,5 @@ function Navigation(props: INavigationProps) {
   );
 }
 
+//export default withRouter(Navigation);
 export default Navigation;

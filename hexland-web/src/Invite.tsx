@@ -2,12 +2,12 @@ import React, { useState, useEffect, useContext, useMemo, useCallback } from 're
 import './App.css';
 
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
-import Navigation from './components/Navigation';
 import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { StatusContext } from './components/StatusContextProvider';
 import { UserContext } from './components/UserContextProvider';
 
+import { IPageProps } from './components/interfaces';
 import { IInvite } from './data/invite';
 
 import Button from 'react-bootstrap/Button';
@@ -15,12 +15,18 @@ import Button from 'react-bootstrap/Button';
 import { RouteComponentProps, useHistory } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 
-function Invite(props: IInvitePageProps) {
+function Invite(props: IInvitePageProps & IPageProps) {
   const userContext = useContext(UserContext);
   const profile = useContext(ProfileContext);
   const analyticsContext = useContext(AnalyticsContext);
   const statusContext = useContext(StatusContext);
   const history = useHistory();
+
+  useEffect(() => {
+    if (props.navbarTitle !== "") {
+      props.setNavbarTitle("");
+    }
+  }, [props.navbarTitle, props.setNavbarTitle]);
 
   // Because the `joinAdventure` function is likely to be cold-started and may take a
   // little while to run, we change the button to "Joining..." while it's happening:
@@ -68,7 +74,6 @@ function Invite(props: IInvitePageProps) {
 
   return (
     <div>
-      <Navigation />
       <header className="App-header">
         <h5>{profile?.name ?? "Unknown"}, you have been invited to join {inviteDescription}.</h5>
         <Button variant="primary" disabled={buttonDisabled} onClick={handleJoin}>{buttonText}</Button>
@@ -82,10 +87,15 @@ interface IInvitePageProps {
   inviteId: string;
 }
 
-function InvitePage(props: RouteComponentProps<IInvitePageProps>) {
+function InvitePage(props: RouteComponentProps<IInvitePageProps> & IPageProps) {
   return (
     <RequireLoggedIn>
-      <Invite adventureId={props.match.params.adventureId} inviteId={props.match.params.inviteId} />
+      <Invite
+        adventureId={props.match.params.adventureId}
+        inviteId={props.match.params.inviteId}
+        navbarTitle={props.navbarTitle}
+        setNavbarTitle={props.setNavbarTitle}
+      />
     </RequireLoggedIn>
   );
 }

@@ -3,11 +3,11 @@ import './App.css';
 
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
 import { FirebaseContext } from './components/FirebaseContextProvider';
-import Navigation from './components/Navigation';
 import * as Policy from './data/policy';
 import { ProfileContext } from './components/ProfileContextProvider';
 import { StatusContext } from './components/StatusContextProvider';
 
+import { IPageProps } from './components/interfaces';
 import { DataService } from './services/dataService';
 import { ensureProfile } from './services/extensions';
 import { IUser } from './services/interfaces';
@@ -176,7 +176,7 @@ function EmailPasswordModal({ shown, handleClose, handleSignIn, handleSignUp }: 
   );
 }
 
-function Login() {
+function Login({ navbarTitle, setNavbarTitle }: IPageProps) {
   const { auth, db, googleAuthProvider, timestampProvider } = useContext(FirebaseContext);
   const profileContext = useContext(ProfileContext);
   const { analytics, logError } = useContext(AnalyticsContext);
@@ -186,6 +186,12 @@ function Login() {
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [loginFailedVisible, setLoginFailedVisible] = useState(false);
   const [loginFailedText, setLoginFailedText] = useState("");
+
+  useEffect(() => {
+    if (navbarTitle !== "") {
+      setNavbarTitle("");
+    }
+  }, [navbarTitle, setNavbarTitle]);
 
   // Reset those message statuses as appropriate
   useEffect(() => {
@@ -279,7 +285,6 @@ function Login() {
 
   return (
     <div>
-      <Navigation />
       <header className="App-header">
         <div className="App-login-text">
           Sign in to get started with Wall &amp; Shadow.

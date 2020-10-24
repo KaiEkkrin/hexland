@@ -1,5 +1,14 @@
 import React, { useCallback, useContext, useMemo, useState } from 'react';
-import '../App.css';
+import { useHistory } from 'react-router-dom';
+
+/*import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+} from "@material-ui/core";*/
+import DecisionDialog from './DecisionDialog';
 
 import { AnalyticsContext } from './AnalyticsContextProvider';
 import MapCards from './MapCards';
@@ -11,10 +20,6 @@ import { UserContext } from './UserContextProvider';
 import { IMapSummary } from '../data/adventure';
 import { IMap } from '../data/map';
 import { IAdventureSummary } from '../data/profile';
-
-import Button from 'react-bootstrap/Button';
-import Modal from 'react-bootstrap/Modal';
-import { useHistory } from 'react-router-dom';
 
 import { v4 as uuidv4 } from 'uuid';
 import fluent from 'fluent-iterable';
@@ -106,6 +111,21 @@ function MapCollection({ adventures, maps, showNewMap, deleteMap, pickImage }: I
     [adventures, user]
   );
 
+      /*<Modal show={showDeleteMap} onHide={handleModalClose}>
+        <Modal.Header closeButton>
+          <Modal.Title>Delete map</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Do you really want to delete {editName}?</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleModalClose}>Cancel</Button>
+          <Button variant="danger" onClick={handleDeleteMapSave}>
+            Yes, delete map!
+          </Button>
+        </Modal.Footer>
+      </Modal>*/
+
   return (
     <div>
       <MapCards showNewMapCard={showNewMap} createMap={handleNewMapClick}
@@ -117,20 +137,15 @@ function MapCollection({ adventures, maps, showNewMap, deleteMap, pickImage }: I
         handleClose={handleModalClose} />
       <MapEditorModal show={showEditMap} adventures={newMapAdventures} map={undefined}
         handleClose={handleModalClose} handleSave={handleNewMapSave} />
-      <Modal show={showDeleteMap} onHide={handleModalClose}>
-        <Modal.Header closeButton>
-          <Modal.Title>Delete map</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>Do you really want to delete {editName}?</p>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleModalClose}>Cancel</Button>
-          <Button variant="danger" onClick={handleDeleteMapSave}>
-            Yes, delete map!
-            </Button>
-        </Modal.Footer>
-      </Modal>
+      <DecisionDialog
+        open={showDeleteMap}
+        textAccept="Yes, delete map!"
+        title="Delete map"
+        onAccept={handleDeleteMapSave}
+        onCancel={handleModalClose}
+      >
+        Do you really want to delete {editName}?
+      </DecisionDialog>
     </div>
   );
 }

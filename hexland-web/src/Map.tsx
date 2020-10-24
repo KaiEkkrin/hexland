@@ -9,7 +9,6 @@ import MapControls, { MapColourVisualisationMode } from './components/MapControl
 import MapAnnotations, { ShowAnnotationFlags } from './components/MapAnnotations';
 import MapEditorModal from './components/MapEditorModal';
 import MapInfo from './components/MapInfo';
-import Navigation from './components/Navigation';
 import NoteEditorModal from './components/NoteEditorModal';
 import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
@@ -18,6 +17,7 @@ import TokenDeletionModal from './components/TokenDeletionModal';
 import TokenEditorModal from './components/TokenEditorModal';
 import { UserContext } from './components/UserContextProvider';
 
+import { IPageProps } from './components/interfaces';
 import { IPlayer } from './data/adventure';
 import { trackChanges } from './data/changeTracking';
 import { ITokenProperties } from './data/feature';
@@ -40,7 +40,7 @@ import fluent from 'fluent-iterable';
 import { v4 as uuidv4 } from 'uuid';
 
 // The map component is rather large because of all the state that got pulled into it...
-function Map({ adventureId, mapId }: IMapPageProps) {
+function Map({ adventureId, mapId, navbarTitle, setNavbarTitle }: IMapPageProps & IPageProps) {
   const { dataService, functionsService, user } = useContext(UserContext);
   const { analytics, logError, logEvent } = useContext(AnalyticsContext);
   const profile = useContext(ProfileContext);
@@ -66,7 +66,7 @@ function Map({ adventureId, mapId }: IMapPageProps) {
   // Create a suitable title
   const title = useMemo(() => {
     if (map === undefined || profile === undefined) {
-      return undefined;
+      return "";
     }
 
     const adventureLink = "/adventure/" + map.adventureId;
@@ -79,6 +79,11 @@ function Map({ adventureId, mapId }: IMapPageProps) {
       </div>
     );
   }, [profile, map, mapState, userPolicy]);
+  useEffect(() => {
+    if (title !== navbarTitle) {
+      setNavbarTitle(title);
+    }
+  }, [navbarTitle, setNavbarTitle, title]);
 
   // Track network status
   const [resyncCount, setResyncCount] = useState(0);
@@ -472,9 +477,6 @@ function Map({ adventureId, mapId }: IMapPageProps) {
 
   return (
     <div className={mapContainerClassName}>
-      <div className="Map-nav">
-        <Navigation>{title}</Navigation>
-      </div>
       <div className="Map-overlay">
         <MapControls
           editMode={uiState.editMode}
@@ -539,10 +541,15 @@ interface IMapPageProps {
   mapId: string;
 }
 
-function MapPage(props: RouteComponentProps<IMapPageProps>) {
+function MapPage(props: RouteComponentProps<IMapPageProps> & IPageProps) {
   return (
     <RequireLoggedIn>
-      <Map adventureId={props.match.params.adventureId} mapId={props.match.params.mapId} />
+      <Map
+        adventureId={props.match.params.adventureId}
+        mapId={props.match.params.mapId}
+        navbarTitle={props.navbarTitle}
+        setNavbarTitle={props.setNavbarTitle}
+      />
     </RequireLoggedIn>
   );
 }

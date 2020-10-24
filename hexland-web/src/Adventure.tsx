@@ -7,13 +7,13 @@ import ImageCardContent from './components/ImageCardContent';
 import ImageDeletionModal from './components/ImageDeletionModal';
 import ImagePickerModal from './components/ImagePickerModal';
 import MapCollection from './components/MapCollection';
-import Navigation from './components/Navigation';
 import PlayerInfoList from './components/PlayerInfoList';
 import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { StatusContext } from './components/StatusContextProvider';
 import { UserContext } from './components/UserContextProvider';
 
+import { IPageProps } from './components/interfaces';
 import { IAdventure, summariseAdventure, IPlayer, IMapSummary } from './data/adventure';
 import { IIdentified } from './data/identified';
 import { IImage } from './data/image';
@@ -40,7 +40,7 @@ interface IAdventureProps {
   adventureId: string;
 }
 
-function Adventure({ adventureId }: IAdventureProps) {
+function Adventure({ adventureId, navbarTitle, setNavbarTitle }: IAdventureProps & IPageProps) {
   const { dataService, functionsService, user } = useContext(UserContext);
   const { analytics, logError } = useContext(AnalyticsContext);
   const profile = useContext(ProfileContext);
@@ -115,6 +115,11 @@ function Adventure({ adventureId }: IAdventureProps) {
 
     return (adventure?.record.name ?? "") + " (" + (adventure?.record.maps.length ?? 0) + "/" + (userPolicy?.maps ?? 0) + ")";
   }, [adventure, user, userPolicy]);
+  useEffect(() => {
+    if (title !== navbarTitle) {
+      setNavbarTitle(title);
+    }
+  }, [navbarTitle, setNavbarTitle, title]);
 
   // Track changes to the adventure
   useEffect(() => {
@@ -403,7 +408,6 @@ function Adventure({ adventureId }: IAdventureProps) {
 
   return (
     <div>
-      <Navigation>{title}</Navigation>
       <Container>
         {adventure !== undefined ?
           <Row className="mt-4">
@@ -550,10 +554,14 @@ function Adventure({ adventureId }: IAdventureProps) {
   );
 }
 
-function AdventurePage(props: RouteComponentProps<IAdventureProps>) {
+function AdventurePage(props: RouteComponentProps<IAdventureProps> & IPageProps) {
   return (
     <RequireLoggedIn>
-      <Adventure adventureId={props.match.params.adventureId} />
+      <Adventure
+        adventureId={props.match.params.adventureId}
+        navbarTitle={props.navbarTitle}
+        setNavbarTitle={props.setNavbarTitle}
+      />
     </RequireLoggedIn>
   );
 }
