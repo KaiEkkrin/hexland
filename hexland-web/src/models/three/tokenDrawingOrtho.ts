@@ -15,6 +15,7 @@ import { createPaletteColouredVertexObject, createSpriteVertexObject, createToke
 import { createPaletteColouredWallObject, createSpriteEdgeObject, createTokenFillEdgeGeometry } from "./walls";
 
 import * as THREE from 'three';
+import fluent from "fluent-iterable";
 
 export interface ITokenDrawingParameters {
   alpha: number;
@@ -88,8 +89,9 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
     super.clear();
 
     // Remember to release all the sprite resources before emptying the dictionary!
-    console.log(`releasing all sprite features`);
-    this._spriteFeatures.forEach(f => f.spriteTexture.release().then());
+    const toRelease = [...fluent(this._spriteFeatures)];
+    Promise.all(toRelease.map(f => f.spriteTexture.release()))
+      .then(done => console.log(`${done.length} sprite features released`));
     this._spriteFeatures.clear();
   }
 
@@ -101,7 +103,7 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
 
     const removedSprite = this._spriteFeatures.remove(oldPosition);
     if (removedSprite !== undefined) {
-      removedSprite.spriteTexture.release().then();
+      removedSprite.spriteTexture.release().then(() => { /* done */ });
     }
 
     return removed;

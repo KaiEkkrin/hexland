@@ -77,7 +77,6 @@ export class SpriteFeatureObject<
     });
 
     this._texture = textureCache.get(spriteKey);
-    console.log(`resolved sprite feature ${spriteKey} as ${this._texture?.tex}`);
     this._uniforms['spriteTex'].value = this._texture?.tex;
   }
 
@@ -144,6 +143,8 @@ export class SpriteFeatureObject<
     super.dispose();
     this._geometry.dispose();
     this._material.dispose();
-    this._texture?.release().then();
+    if (this._texture) {
+      this._texture.release().then(() => { /* done :) */ });
+    }
   }
 }

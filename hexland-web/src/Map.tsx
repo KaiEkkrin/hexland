@@ -4,6 +4,7 @@ import './Map.css';
 
 import { addToast } from './components/extensions';
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
+import ImageDeletionModal from './components/ImageDeletionModal';
 import MapContextMenu from './components/MapContextMenu';
 import MapControls, { MapColourVisualisationMode } from './components/MapControls';
 import MapAnnotations, { ShowAnnotationFlags } from './components/MapAnnotations';
@@ -22,11 +23,10 @@ import { IPlayer } from './data/adventure';
 import { trackChanges } from './data/changeTracking';
 import { ITokenProperties } from './data/feature';
 import { IAdventureIdentified } from './data/identified';
+import { IImage } from './data/image';
 import { createTokenSizes, IMap, MAP_CONTAINER_CLASS } from './data/map';
 import { getUserPolicy } from './data/policy';
-import { IProfile } from './data/profile';
 import { registerMapAsRecent, watchChangesAndConsolidate, removeMapFromRecent } from './services/extensions';
-import { IDataService, IFunctionsService, IStorage } from './services/interfaces';
 
 import { standardColours } from './models/featureColour';
 import { MapStateMachine, createDefaultState, zoomMax, zoomMin } from './models/mapStateMachine';
@@ -35,11 +35,10 @@ import { networkStatusTracker } from './models/networkStatusTracker';
 
 import { Link, RouteComponentProps, useHistory } from 'react-router-dom';
 
+import { from } from 'rxjs';
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
 import { v4 as uuidv4 } from 'uuid';
-import ImageDeletionModal from './components/ImageDeletionModal';
-import { IImage } from './data/image';
 
 // The map component is rather large because of all the state that got pulled into it...
 function Map({ adventureId, mapId }: IMapPageProps) {
@@ -162,57 +161,57 @@ function Map({ adventureId, mapId }: IMapPageProps) {
   // Track changes to the map.
   // We don't start watching until we have an initialised state machine (which means the
   // consolidate is done).
-  // The "openMap" utility's dependencies are deliberately limited to prevent it from being
-  // re-created and causing lots of extra Firebase work.
-  const openMap = useCallback(async (
-    logError: (message: string, e: any, fatal?: boolean | undefined) => void,
-    dataService: IDataService,
-    functionsService: IFunctionsService,
-    storage: IStorage,
-    uid: string,
-    profile: IProfile,
-    map: IAdventureIdentified<IMap>,
-    mount: HTMLDivElement
-  ) => {
-    // These two calls are both done on a best-effort basis, because failing shouldn't
-    // preclude us from opening the map (although hopefully they will succeed)
-    try {
-      registerMapAsRecent(dataService, uid, map.adventureId, map.id, map.record);
-    } catch (e) {
-      logError("Error registering map " + map.adventureId + "/" + map.id + " as recent", e);
-    }
-
-    try {
-      console.log("consolidating map changes");
-      functionsService.consolidateMapChanges(map.adventureId, map.id, false);
-    } catch (e) {
-      logError("Error consolidating map " + map.adventureId + "/" + map.id + " changes", e);
-    }
-
-    const userPolicy = uid === map.record.owner ? getUserPolicy(profile.level) : undefined;
-    setStateMachine(new MapStateMachine(
-      dataService, storage, map, uid, standardColours, mount, userPolicy, logError, setMapState
-    ));
-  }, [setMapState, setStateMachine]);
-
   useEffect(() => {
-    const uid = user?.uid;
-    if (
-      dataService === undefined ||
-      functionsService === undefined ||
-      storageService === undefined ||
-      map === undefined ||
-      uid === undefined ||
-      profile === undefined ||
-      drawingRef?.current === null
-    ) {
-      setStateMachine(undefined);
-      return;
+    async function openMap(): Promise<MapStateMachine | undefined> {
+      const uid = user?.uid;
+      if (
+        dataService === undefined ||
+        functionsService === undefined ||
+        storageService === undefined ||
+        map === undefined ||
+        uid === undefined ||
+        profile === undefined ||
+        drawingRef?.current === null
+      ) {
+        return undefined;
+      }
+
+      // These two calls are both done on a best-effort basis, because failing shouldn't
+      // preclude us from opening the map (although hopefully they will succeed)
+      await Promise.all([
+        async () => {
+          try {
+            await registerMapAsRecent(dataService, uid, map.adventureId, map.id, map.record);
+          } catch (e) {
+            logError("Error registering map " + map.adventureId + "/" + map.id + " as recent", e);
+          }
+        },
+        async () => {
+          try {
+            console.log("consolidating map changes");
+            await functionsService.consolidateMapChanges(map.adventureId, map.id, false);
+          } catch (e) {
+            logError("Error consolidating map " + map.adventureId + "/" + map.id + " changes", e);
+          }
+        }
+      ]);
+
+      const userPolicy = uid === map.record.owner ? getUserPolicy(profile.level) : undefined;
+      return new MapStateMachine(
+        dataService, storageService, map, uid, standardColours, drawingRef.current,
+        userPolicy, logError, setMapState
+      );
     }
 
-    openMap(logError, dataService, functionsService, storageService, uid, profile, map, drawingRef?.current)
-      .catch(e => logError("Error opening map", e));
-  }, [logError, drawingRef, openMap, map, profile, dataService, functionsService, storageService, user]);
+    const sub = from(openMap()).subscribe(setStateMachine);
+    return () => {
+      sub.unsubscribe();
+      setStateMachine(undefined);
+    }
+  }, [
+    logError, drawingRef, map, profile, dataService, functionsService, storageService,
+    user, setMapState, setStateMachine
+  ]);
 
   useEffect(() => {
     if (stateMachine === undefined) {

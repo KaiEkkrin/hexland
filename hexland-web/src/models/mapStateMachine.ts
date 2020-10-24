@@ -1161,6 +1161,7 @@ export class MapStateMachine {
 
   dispose() {
     if (this._isDisposed === false) {
+      console.log("disposing map state machine");
       this._drawing.dispose();
       this._spritesheetCache.dispose();
       this._isDisposed = true;

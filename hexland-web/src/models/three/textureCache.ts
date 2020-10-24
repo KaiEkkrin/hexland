@@ -79,7 +79,7 @@ export class TextureCache {
 
       const tex = this._textureCache.get(getSpritePathFromId(ss.value.id));
       if (tex === undefined) {
-        return undefined;
+        return { ss: undefined, tex: undefined, release: ss.release };
       }
 
       return combineLeases(ss, tex);

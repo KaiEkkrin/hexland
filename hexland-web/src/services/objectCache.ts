@@ -33,7 +33,7 @@ export class ObjectCache<T> {
       throw Error(entry.error.message);
     }
 
-    // console.log(`acquire: refCount = ${entry.refCount}`);
+    // console.log(`acquire ${id}: refCount = ${entry.refCount}`);
     ++entry.refCount;
     if (entry.obj !== undefined) {
       return { value: entry.obj.value, release: this.createRelease(id, entry) };
@@ -54,7 +54,7 @@ export class ObjectCache<T> {
       }
 
       done = true;
-      // console.log(`release: refCount = ${entry.refCount}`);
+      // console.log(`release ${id}: refCount = ${entry.refCount}`);
       if (--entry.refCount === 0) {
         this.removeEntry(id, entry);
         try {
@@ -146,7 +146,7 @@ export class ObjectCache<T> {
       if (entry.refCount > 0) {
       entry.subj.pipe(first()).toPromise()
         .then(o => o.cleanup())
-        .then()
+        .then(() => console.log(`disposed ${id}`))
         .catch(e => this._logError(`Error disposing ${id}`, e));
       }
     }
