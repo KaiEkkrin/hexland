@@ -10,6 +10,7 @@ import Home from './Home';
 import InvitePage from './Invite';
 import Login from './Login';
 import MapPage from './Map';
+import MapContextProvider from './components/MapContextProvider';
 import ProfileContextProvider from './components/ProfileContextProvider';
 import Routing from './components/Routing';
 import { IRoutingProps, IFirebaseProps, IAnalyticsProps } from './components/interfaces';
@@ -29,17 +30,19 @@ function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
           <AnalyticsContextProvider {...props}>
             <ProfileContextProvider>
               <StatusContextProvider>
-                <Routing {...props}>
-                  <Switch>
-                    <Route exact path="/" component={Home} />
-                    <Route exact path="/all" component={All} />
-                    <Route exact path="/adventure/:adventureId" component={AdventurePage} />
-                    <Route exact path="/adventure/:adventureId/invite/:inviteId" component={InvitePage} />
-                    <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
-                    <Route exact path="/login" component={Login} />
-                    <Route exact page="/shared" component={Shared} />
-                  </Switch>
-                </Routing>
+                <MapContextProvider>
+                  <Routing {...props}>
+                    <Switch>
+                      <Route exact path="/" component={Home} />
+                      <Route exact path="/all" component={All} />
+                      <Route exact path="/adventure/:adventureId" component={AdventurePage} />
+                      <Route exact path="/adventure/:adventureId/invite/:inviteId" component={InvitePage} />
+                      <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
+                      <Route exact path="/login" component={Login} />
+                      <Route exact page="/shared" component={Shared} />
+                    </Switch>
+                  </Routing>
+                </MapContextProvider>
                 <Consent />
                 <Status />
                 <ToastCollection />

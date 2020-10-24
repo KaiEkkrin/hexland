@@ -1,10 +1,11 @@
-import React, { useEffect, useRef, useState, useContext, useMemo, useCallback, useReducer } from 'react';
+import React, { useEffect, useRef, useState, useContext, useMemo, useCallback } from 'react';
 import './App.css';
 import './Map.css';
 
 import { addToast } from './components/extensions';
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
 import ImageDeletionModal from './components/ImageDeletionModal';
+import { MapContext } from './components/MapContextProvider';
 import MapContextMenu from './components/MapContextMenu';
 import MapControls, { MapColourVisualisationMode } from './components/MapControls';
 import MapAnnotations, { ShowAnnotationFlags } from './components/MapAnnotations';
@@ -20,39 +21,33 @@ import TokenEditorModal from './components/TokenEditorModal';
 import { UserContext } from './components/UserContextProvider';
 
 import { IPlayer } from './data/adventure';
-import { trackChanges } from './data/changeTracking';
 import { ITokenProperties } from './data/feature';
-import { IAdventureIdentified } from './data/identified';
 import { IImage } from './data/image';
 import { createTokenSizes, IMap, MAP_CONTAINER_CLASS } from './data/map';
 import { getUserPolicy } from './data/policy';
-import { registerMapAsRecent, watchChangesAndConsolidate, removeMapFromRecent } from './services/extensions';
 
-import { standardColours } from './models/featureColour';
-import { MapStateMachine, createDefaultState, zoomMax, zoomMin } from './models/mapStateMachine';
+import { zoomMax, zoomMin } from './models/mapStateMachine';
 import { createDefaultUiState, isAnEditorOpen, MapUi } from './models/mapUi';
 import { networkStatusTracker } from './models/networkStatusTracker';
 
 import { Link, RouteComponentProps, useHistory } from 'react-router-dom';
 
-import { from } from 'rxjs';
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
 import { v4 as uuidv4 } from 'uuid';
 
 // The map component is rather large because of all the state that got pulled into it...
 function Map({ adventureId, mapId }: IMapPageProps) {
-  const { dataService, functionsService, storageService, user } = useContext(UserContext);
-  const { analytics, logError, logEvent } = useContext(AnalyticsContext);
+  const { dataService, functionsService, user } = useContext(UserContext);
+  const { logError } = useContext(AnalyticsContext);
+  const { map, mapState, stateMachine, setMapStateProps } = useContext(MapContext);
   const profile = useContext(ProfileContext);
   const statusContext = useContext(StatusContext);
   const history = useHistory();
 
   const drawingRef = useRef<HTMLDivElement>(null);
 
-  const [map, setMap] = useState(undefined as IAdventureIdentified<IMap> | undefined);
   const [players, setPlayers] = useState([] as IPlayer[]);
-  const [mapState, setMapState] = useState(createDefaultState());
   const [uiState, setUiState] = useState(createDefaultUiState());
 
   // We only track a user policy if the user is the map owner
@@ -66,7 +61,7 @@ function Map({ adventureId, mapId }: IMapPageProps) {
 
   // Create a suitable title
   const title = useMemo(() => {
-    if (map === undefined || profile === undefined) {
+    if (map === undefined || mapState === undefined || profile === undefined) {
       return undefined;
     }
 
@@ -90,15 +85,26 @@ function Map({ adventureId, mapId }: IMapPageProps) {
     }
   }, [setResyncCount]);
 
-  // Building the map state machine like this lets us auto-dispose old ones.
-  // Careful, the function may be called more than once for any given pair of
-  // arguments (state, action) (wtf, React?!)
-  const [stateMachine, setStateMachine] = useReducer(
-    (state: MapStateMachine | undefined, action: MapStateMachine | undefined) => {
-      state?.dispose();
-      return action;
-    }, undefined
-  );
+  // If we fail to load the map, redirect back to the home page
+  const couldNotLoadMap = useCallback((message: string) => {
+    statusContext.toasts.next({
+      id: uuidv4(),
+      record: { title: 'Error loading map', message: message }
+    });
+
+    history.replace('/');
+  }, [history, statusContext]);
+
+  // The map context manages the map state for us, which allows it to handle caching and
+  // disposal of resources when switching maps
+  useEffect(() => {
+    setMapStateProps?.({
+      adventureId: adventureId,
+      mapId: mapId,
+      drawingRef: drawingRef,
+      couldNotLoadMap: couldNotLoadMap
+    });
+  }, [adventureId, mapId, drawingRef, couldNotLoadMap, setMapStateProps]);
 
   // Hide scroll bars whilst viewing the map.
   useEffect(() => {
@@ -107,133 +113,12 @@ function Map({ adventureId, mapId }: IMapPageProps) {
     return () => { document.body.style.overflow = previousOverflow; };
   }, []);
 
-  // Watch the map when it changes
-  useEffect(() => {
-    if (dataService === undefined) {
-      return;
-    }
-
-    const mapRef = dataService.getMapRef(adventureId, mapId);
-
-    // How to handle a map load failure.
-    function couldNotLoad(message: string) {
-      statusContext.toasts.next({
-        id: uuidv4(),
-        record: { title: 'Error loading map', message: message }
-      });
-
-      const uid = user?.uid;
-      if (uid && mapRef) {
-        removeMapFromRecent(dataService, uid, mapRef.id)
-          .catch(e => logError("Error removing map from recent", e));
-      }
-
-      history.replace('/');
-    }
-
-    // Check this map exists and can be fetched (the watch doesn't do this for us)
-    dataService.get(mapRef)
-      .then(r => {
-        if (r === undefined) {
-          couldNotLoad('That map does not exist.');
-        }
-      })
-      .catch(e => {
-        logError("Error checking for map " + mapId + ": ", e);
-        couldNotLoad(e.message);
-      });
-
-    analytics?.logEvent("select_content", {
-      "content_type": "map",
-      "item_id": mapId
-    });
-
-    return dataService.watch<IMap>(
-      mapRef, m => setMap(m === undefined ? undefined : {
-        adventureId: adventureId,
-        id: mapId,
-        record: m
-      }),
-      e => logError("Error watching map " + mapId, e)
-    );
-  }, [dataService, user, analytics, logError, history, adventureId, mapId, statusContext]);
-
-  // Track changes to the map.
-  // We don't start watching until we have an initialised state machine (which means the
-  // consolidate is done).
-  useEffect(() => {
-    async function openMap(): Promise<MapStateMachine | undefined> {
-      const uid = user?.uid;
-      if (
-        dataService === undefined ||
-        functionsService === undefined ||
-        storageService === undefined ||
-        map === undefined ||
-        uid === undefined ||
-        profile === undefined ||
-        drawingRef?.current === null
-      ) {
-        return undefined;
-      }
-
-      // These two calls are both done on a best-effort basis, because failing shouldn't
-      // preclude us from opening the map (although hopefully they will succeed)
-      await Promise.all([
-        async () => {
-          try {
-            await registerMapAsRecent(dataService, uid, map.adventureId, map.id, map.record);
-          } catch (e) {
-            logError("Error registering map " + map.adventureId + "/" + map.id + " as recent", e);
-          }
-        },
-        async () => {
-          try {
-            console.log("consolidating map changes");
-            await functionsService.consolidateMapChanges(map.adventureId, map.id, false);
-          } catch (e) {
-            logError("Error consolidating map " + map.adventureId + "/" + map.id + " changes", e);
-          }
-        }
-      ]);
-
-      const userPolicy = uid === map.record.owner ? getUserPolicy(profile.level) : undefined;
-      return new MapStateMachine(
-        dataService, storageService, map, uid, standardColours, drawingRef.current,
-        userPolicy, logError, setMapState
-      );
-    }
-
-    const sub = from(openMap()).subscribe(setStateMachine);
-    return () => {
-      sub.unsubscribe();
-      setStateMachine(undefined);
-    }
-  }, [
-    logError, drawingRef, map, profile, dataService, functionsService, storageService,
-    user, setMapState, setStateMachine
-  ]);
-
-  useEffect(() => {
-    if (stateMachine === undefined) {
-      return undefined;
-    }
-
-    console.log("Watching changes to map " + stateMachine.map.id);
-    networkStatusTracker.clear();
-    return watchChangesAndConsolidate(
-      dataService, functionsService,
-      stateMachine.map.adventureId, stateMachine.map.id,
-      chs => {
-        networkStatusTracker.onChanges(chs);
-        return trackChanges(stateMachine.map.record, stateMachine.changeTracker, chs.chs, chs.user);
-      },
-      () => stateMachine.changeTracker.clear(),
-      logEvent,
-      e => logError("Error watching map changes", e));
-  }, [logError, logEvent, stateMachine, dataService, functionsService]);
-
   // If we can't see anything, notify the user
   const canSeeAnything = useMemo(() => {
+    if (mapState === undefined) {
+      return false;
+    }
+
     return mapState.seeEverything || fluent(mapState.tokens).any(t => t.selectable);
   }, [mapState]);
 
@@ -307,8 +192,8 @@ function Map({ adventureId, mapId }: IMapPageProps) {
   const resetView = useCallback((c?: string | undefined) => stateMachine?.resetView(c), [stateMachine]);
   const zoomIn = useCallback(() => stateMachine?.zoomBy(-0.5, 2), [stateMachine]);
   const zoomOut = useCallback(() => stateMachine?.zoomBy(0.5, 2), [stateMachine]);
-  const zoomInDisabled = useMemo(() => mapState.zoom >= zoomMax, [mapState]);
-  const zoomOutDisabled = useMemo(() => mapState.zoom <= zoomMin, [mapState]);
+  const zoomInDisabled = useMemo(() => mapState.zoom >= zoomMax, [mapState.zoom]);
+  const zoomOutDisabled = useMemo(() => mapState.zoom <= zoomMin, [mapState.zoom]);
 
   // Sync the drawing with the map colour mode
   useEffect(() => {

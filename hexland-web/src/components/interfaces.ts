@@ -1,4 +1,6 @@
-import { IIdentified } from '../data/identified';
+import { IAdventureIdentified, IIdentified } from '../data/identified';
+import { IMap } from '../data/map';
+import { IMapState, MapStateMachine } from '../models/mapStateMachine';
 import { IDataService, IUser, IAuth, IAuthProvider, IAnalytics, IFunctionsService, IStorage } from '../services/interfaces';
 import { Subject } from 'rxjs';
 
@@ -46,6 +48,20 @@ export interface IToast {
 export interface IStatusContext {
   // The subject of toast additions (record set) or removals (record not set.)
   toasts: Subject<IIdentified<IToast | undefined>>;
+}
+
+export interface IMapStateProps {
+  adventureId?: string | undefined;
+  mapId?: string | undefined;
+  drawingRef?: React.RefObject<HTMLDivElement> | undefined;
+  couldNotLoadMap?: ((message: string) => void) | undefined;
+}
+
+export interface IMapContext {
+  map?: IAdventureIdentified<IMap> | undefined;
+  mapState: IMapState;
+  stateMachine?: MapStateMachine | undefined;
+  setMapStateProps?: ((props: IMapStateProps) => void) | undefined;
 }
 
 export interface IFirebaseProps {
