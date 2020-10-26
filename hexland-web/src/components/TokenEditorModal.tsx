@@ -149,10 +149,8 @@ function TokenEditorModal(
   
   // Save
 
-  const [saveDisabled, setSaveDisabled] = useState(false);
-  useEffect(() => {
-    setSaveDisabled(text.length === 0);
-  }, [text]);
+  // We can't save if there's no text, or if we're busy handling an image:
+  const saveDisabled = useMemo(() => text.length === 0 || setImageDisabled, [setImageDisabled, text]);
 
   const doHandleSave = useCallback(() => {
     handleSave({
