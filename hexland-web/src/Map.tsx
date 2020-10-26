@@ -16,6 +16,7 @@ import NoteEditorModal from './components/NoteEditorModal';
 import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { StatusContext } from './components/StatusContextProvider';
+import Throbber from './components/Throbber';
 import TokenDeletionModal from './components/TokenDeletionModal';
 import TokenEditorModal from './components/TokenEditorModal';
 import { UserContext } from './components/UserContextProvider';
@@ -84,6 +85,11 @@ function Map({ adventureId, mapId }: IMapPageProps) {
       resyncSub.unsubscribe();
     }
   }, [setResyncCount]);
+
+  // While we have no map to show, show a spinner instead
+  const loadingSpinner = useMemo(() => stateMachine !== undefined ? <React.Fragment></React.Fragment> :
+    (<Throbber />),
+    [stateMachine]);
 
   // If we fail to load the map, redirect back to the home page
   const couldNotLoadMap = useCallback((message: string) => {
@@ -413,6 +419,7 @@ function Map({ adventureId, mapId }: IMapPageProps) {
           onTouchMove={handleTouchMove}
           onTouchStart={handleTouchStart} />
       </div>
+      {loadingSpinner}
       <MapEditorModal show={uiState.showMapEditor} map={map}
         handleClose={() => ui?.modalClose()} handleSave={handleMapEditorSave} />
       <TokenEditorModal selectedColour={uiState.selectedColour} show={uiState.showTokenEditor}
