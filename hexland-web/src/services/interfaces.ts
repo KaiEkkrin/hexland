@@ -203,6 +203,10 @@ export interface ICacheLease<T> {
 
 // Helps avoid repeated lookups of spritesheets.
 export interface ISpritesheetCache {
+  // This cache is associated with an adventure and its entries wouldn't be valid for
+  // a different one.
+  adventureId: string;
+
   // Gets a previously cached value, or undefined if none.
   // The sprite key is the output from `toSpriteCacheKey`.
   // (Getting a cache lease for "undefined" means that there definitely isn't a sprite

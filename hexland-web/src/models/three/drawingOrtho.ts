@@ -56,7 +56,7 @@ export class DrawingOrtho implements IDrawing {
   private readonly _camera: THREE.OrthographicCamera;
   private readonly _fixedCamera: THREE.OrthographicCamera;
   private readonly _overlayCamera: THREE.OrthographicCamera;
-  private readonly _renderer: THREE.WebGLRenderer;
+  private readonly _renderer: THREE.WebGLRenderer; // this is a singleton, we don't own it
   private readonly _canvasClearColour: THREE.Color;
 
   private readonly _mapScene: THREE.Scene;
@@ -97,6 +97,7 @@ export class DrawingOrtho implements IDrawing {
   private _disposed = false;
 
   constructor(
+    renderer: THREE.WebGLRenderer,
     gridGeometry: IGridGeometry,
     tokenGeometry: ITokenGeometry,
     colours: FeatureColour[],
@@ -105,6 +106,7 @@ export class DrawingOrtho implements IDrawing {
     spritesheetCache: ISpritesheetCache,
     storage: IStorage
   ) {
+    this._renderer = renderer;
     this._gridGeometry = gridGeometry;
 
     // We need these to initialise things, but they'll be updated dynamically
@@ -131,7 +133,6 @@ export class DrawingOrtho implements IDrawing {
     this._filterScene = new THREE.Scene();
     this._overlayScene = new THREE.Scene();
 
-    this._renderer = new THREE.WebGLRenderer();
     this._canvasClearColour = new THREE.Color(0.1, 0.1, 0.1);
     this._renderer.autoClear = false;
 
@@ -465,7 +466,6 @@ export class DrawingOrtho implements IDrawing {
     }
 
     this.setMount(undefined);
-    this._renderer.dispose();
 
     this._grid.dispose();
     this._gridFilter.dispose();
@@ -485,6 +485,8 @@ export class DrawingOrtho implements IDrawing {
 
     this._textMaterial.dispose();
     this._textureCache.dispose();
+
+    // do *not* dispose the renderer, it'll be re-used for the next drawing context
 
     this._disposed = true;
   }

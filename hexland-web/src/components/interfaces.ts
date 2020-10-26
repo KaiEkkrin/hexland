@@ -1,7 +1,9 @@
+import { IAdventure, IPlayer } from '../data/adventure';
 import { IAdventureIdentified, IIdentified } from '../data/identified';
 import { IMap } from '../data/map';
 import { IMapState, MapStateMachine } from '../models/mapStateMachine';
-import { IDataService, IUser, IAuth, IAuthProvider, IAnalytics, IFunctionsService, IStorage } from '../services/interfaces';
+import { IDataService, IUser, IAuth, IAuthProvider, IAnalytics, IFunctionsService, IStorage, ISpritesheetCache } from '../services/interfaces';
+
 import { Subject } from 'rxjs';
 
 export interface IContextProviderProps {
@@ -48,6 +50,18 @@ export interface IToast {
 export interface IStatusContext {
   // The subject of toast additions (record set) or removals (record not set.)
   toasts: Subject<IIdentified<IToast | undefined>>;
+}
+
+export interface IAdventureStateProps {
+  adventureId?: string | undefined;
+  couldNotLoadAdventure?: ((message: string) => void) | undefined;
+}
+
+export interface IAdventureContext {
+  adventure?: IIdentified<IAdventure> | undefined;
+  players: IPlayer[];
+  spritesheetCache?: ISpritesheetCache | undefined;
+  setAdventureStateProps?: ((props: IAdventureStateProps) => void) | undefined;
 }
 
 export interface IMapStateProps {

@@ -37,6 +37,8 @@ export class SpritesheetCache implements ISpritesheetCache {
     return { value: ss.length > 0 ? ss[0] : undefined, cleanup: () => { /* nothing to do */ } };
   }
 
+  get adventureId() { return this._adventureId; }
+
   get(spriteKey: string): ICacheLease<IDataAndReference<ISpritesheet> | undefined> | undefined {
     try {
       return this._objectCache.get(spriteKey);

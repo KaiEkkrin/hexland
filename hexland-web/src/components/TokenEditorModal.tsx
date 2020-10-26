@@ -15,7 +15,6 @@ import { IImage } from '../data/image';
 import { getUserPolicy } from '../data/policy';
 import { defaultSpriteGeometry, ISprite, toSpriteGeometryString } from '../data/sprite';
 import { hexColours } from '../models/featureColour';
-import { ISpritesheetCache } from '../services/interfaces';
 
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
@@ -24,10 +23,10 @@ import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 
 import { v4 as uuidv4 } from 'uuid';
+import { AdventureContext } from './AdventureContextProvider';
 
 interface ITokenEditorModalProps {
   adventureId: string;
-  spritesheetCache: ISpritesheetCache | undefined;
   selectedColour: number;
   sizes: TokenSize[] | undefined;
   show: boolean;
@@ -40,12 +39,13 @@ interface ITokenEditorModalProps {
 }
 
 function TokenEditorModal(
-  { adventureId, spritesheetCache, selectedColour, sizes, show, token, players,
+  { adventureId, selectedColour, sizes, show, token, players,
     handleClose, handleDelete, handleImageDelete, handleSave }: ITokenEditorModalProps
 ) {
   const { logError } = useContext(AnalyticsContext);
   const { functionsService } = useContext(UserContext);
   const profile = useContext(ProfileContext);
+  const { spritesheetCache } = useContext(AdventureContext);
   const maxImages = useMemo(
     () => profile === undefined ? undefined : getUserPolicy(profile.level).images,
     [profile]

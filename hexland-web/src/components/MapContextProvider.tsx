@@ -9,6 +9,7 @@ import { createDefaultState, IMapState, MapStateMachine } from '../models/mapSta
 import { networkStatusTracker } from '../models/networkStatusTracker';
 import { registerMapAsRecent, removeMapFromRecent, watchChangesAndConsolidate } from '../services/extensions';
 
+import { AdventureContext } from './AdventureContextProvider';
 import { AnalyticsContext } from './AnalyticsContextProvider';
 import { IContextProviderProps, IMapContext, IMapStateProps } from './interfaces';
 import { ProfileContext } from './ProfileContextProvider';
@@ -28,6 +29,7 @@ function MapContextProvider(props: IContextProviderProps) {
   const { analytics, logError, logEvent } = useContext(AnalyticsContext);
   const profile = useContext(ProfileContext);
   const { dataService, functionsService, storageService, user } = useContext(UserContext);
+  const { spritesheetCache } = useContext(AdventureContext);
 
   const [mapStateProps, setMapStateProps] = useState<IMapStateProps>({});
 
@@ -103,7 +105,8 @@ function MapContextProvider(props: IContextProviderProps) {
         storageService === undefined ||
         map === undefined ||
         uid === undefined ||
-        profile === undefined
+        profile === undefined ||
+        spritesheetCache?.adventureId !== map.adventureId
       ) {
         return undefined;
       }
@@ -120,7 +123,7 @@ function MapContextProvider(props: IContextProviderProps) {
       }
 
       try {
-        console.log("consolidating map changes");
+        console.log(`consolidating map changes for ${adventureId}/${id}`);
         await functionsService.consolidateMapChanges(adventureId, id, false);
       } catch (e) {
         logError("Error consolidating map " + adventureId + "/" + id + " changes", e);
@@ -130,7 +133,8 @@ function MapContextProvider(props: IContextProviderProps) {
       return new MapStateMachine(
         dataService, storageService,
         { adventureId: adventureId, id: id, record: record },
-        uid, standardColours, userPolicy, logError, setMapState
+        uid, standardColours, userPolicy, logError, setMapState,
+        spritesheetCache
       );
     }
 
@@ -142,7 +146,7 @@ function MapContextProvider(props: IContextProviderProps) {
     }
   }, [
     logError, map, profile, dataService, functionsService, storageService,
-    user, setMapState, setStateMachine
+    user, setMapState, setStateMachine, spritesheetCache
   ]);
 
   useEffect(() => {

@@ -1,6 +1,7 @@
 import React from 'react';
 import './App.css';
 
+import AdventureContextProvider from './components/AdventureContextProvider';
 import AdventurePage from './Adventure';
 import All from './All';
 import { AnalyticsContextProvider } from './components/AnalyticsContextProvider';
@@ -30,19 +31,21 @@ function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
           <AnalyticsContextProvider {...props}>
             <ProfileContextProvider>
               <StatusContextProvider>
-                <MapContextProvider>
-                  <Routing {...props}>
-                    <Switch>
-                      <Route exact path="/" component={Home} />
-                      <Route exact path="/all" component={All} />
-                      <Route exact path="/adventure/:adventureId" component={AdventurePage} />
-                      <Route exact path="/adventure/:adventureId/invite/:inviteId" component={InvitePage} />
-                      <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
-                      <Route exact path="/login" component={Login} />
-                      <Route exact page="/shared" component={Shared} />
-                    </Switch>
-                  </Routing>
-                </MapContextProvider>
+                <AdventureContextProvider>
+                  <MapContextProvider>
+                    <Routing {...props}>
+                      <Switch>
+                        <Route exact path="/" component={Home} />
+                        <Route exact path="/all" component={All} />
+                        <Route exact path="/adventure/:adventureId" component={AdventurePage} />
+                        <Route exact path="/adventure/:adventureId/invite/:inviteId" component={InvitePage} />
+                        <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
+                        <Route exact path="/login" component={Login} />
+                        <Route exact page="/shared" component={Shared} />
+                      </Switch>
+                    </Routing>
+                  </MapContextProvider>
+                </AdventureContextProvider>
                 <Consent />
                 <Status />
                 <ToastCollection />

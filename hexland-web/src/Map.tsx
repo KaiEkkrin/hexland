@@ -2,8 +2,9 @@ import React, { useEffect, useRef, useState, useContext, useMemo, useCallback } 
 import './App.css';
 import './Map.css';
 
-import { addToast } from './components/extensions';
+import { AdventureContext } from './components/AdventureContextProvider';
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
+import { addToast } from './components/extensions';
 import ImageDeletionModal from './components/ImageDeletionModal';
 import { MapContext } from './components/MapContextProvider';
 import MapContextMenu from './components/MapContextMenu';
@@ -21,7 +22,6 @@ import TokenDeletionModal from './components/TokenDeletionModal';
 import TokenEditorModal from './components/TokenEditorModal';
 import { UserContext } from './components/UserContextProvider';
 
-import { IPlayer } from './data/adventure';
 import { ITokenProperties } from './data/feature';
 import { IImage } from './data/image';
 import { createTokenSizes, IMap, MAP_CONTAINER_CLASS } from './data/map';
@@ -41,6 +41,7 @@ import { v4 as uuidv4 } from 'uuid';
 function Map({ adventureId, mapId }: IMapPageProps) {
   const { dataService, functionsService, user } = useContext(UserContext);
   const { logError } = useContext(AnalyticsContext);
+  const { players, setAdventureStateProps } = useContext(AdventureContext);
   const { map, mapState, stateMachine, setMapStateProps } = useContext(MapContext);
   const profile = useContext(ProfileContext);
   const statusContext = useContext(StatusContext);
@@ -48,7 +49,6 @@ function Map({ adventureId, mapId }: IMapPageProps) {
 
   const drawingRef = useRef<HTMLDivElement>(null);
 
-  const [players, setPlayers] = useState([] as IPlayer[]);
   const [uiState, setUiState] = useState(createDefaultUiState());
 
   // We only track a user policy if the user is the map owner
@@ -92,7 +92,7 @@ function Map({ adventureId, mapId }: IMapPageProps) {
     [stateMachine]);
 
   // If we fail to load the map, redirect back to the home page
-  const couldNotLoadMap = useCallback((message: string) => {
+  const couldNotLoad = useCallback((message: string) => {
     statusContext.toasts.next({
       id: uuidv4(),
       record: { title: 'Error loading map', message: message }
@@ -101,15 +101,20 @@ function Map({ adventureId, mapId }: IMapPageProps) {
     history.replace('/');
   }, [history, statusContext]);
 
+  // The adventure context manages the adventure state for us
+  useEffect(() => {
+    setAdventureStateProps?.({ adventureId: adventureId, couldNotLoadAdventure: couldNotLoad });
+  }, [adventureId, couldNotLoad, setAdventureStateProps]);
+
   // The map context manages the map state for us, which allows it to handle caching and
   // disposal of resources when switching maps
   useEffect(() => {
     setMapStateProps?.({
       adventureId: adventureId,
       mapId: mapId,
-      couldNotLoadMap: couldNotLoadMap
+      couldNotLoadMap: couldNotLoad
     });
-  }, [adventureId, mapId, couldNotLoadMap, setMapStateProps]);
+  }, [adventureId, mapId, couldNotLoad, setMapStateProps]);
 
   // Mount the drawing into our DOM tree
   useEffect(() => {
@@ -149,17 +154,6 @@ function Map({ adventureId, mapId }: IMapPageProps) {
       return undefined;
     }
   }, [statusContext, canSeeAnything, stateMachine]);
-
-  // Track the adventure's players
-  useEffect(() => {
-    if (dataService === undefined) {
-      return () => {};
-    }
-
-    console.log("Watching players in adventure " + adventureId);
-    return dataService.watchPlayers(adventureId, setPlayers,
-      e => logError("Error watching players", e));
-  }, [logError, dataService, adventureId]);
 
   // == UI STUFF ==
 
@@ -423,7 +417,6 @@ function Map({ adventureId, mapId }: IMapPageProps) {
       <MapEditorModal show={uiState.showMapEditor} map={map}
         handleClose={() => ui?.modalClose()} handleSave={handleMapEditorSave} />
       <TokenEditorModal selectedColour={uiState.selectedColour} show={uiState.showTokenEditor}
-        spritesheetCache={stateMachine?.spritesheetCache}
         adventureId={adventureId}
         sizes={tokenSizes} token={uiState.tokenToEdit}
         players={players} handleClose={handleModalClose}

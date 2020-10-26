@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useReducer, useState, useMemo, useCallback } from 'react';
 import './App.css';
 
+import { AdventureContext } from './components/AdventureContextProvider';
 import AdventureModal from './components/AdventureModal';
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
 import BusyElement from './components/BusyElement';
@@ -16,11 +17,10 @@ import { StatusContext } from './components/StatusContextProvider';
 import { UserContext } from './components/UserContextProvider';
 
 import { IAdventure, summariseAdventure, IPlayer, IMapSummary } from './data/adventure';
-import { IIdentified } from './data/identified';
 import { IImage } from './data/image';
 import { IMap } from './data/map';
 import { getUserPolicy } from './data/policy';
-import { deleteMap, registerAdventureAsRecent, editAdventure, deleteAdventure, leaveAdventure, removeAdventureFromRecent, editMap } from './services/extensions';
+import { deleteMap, editAdventure, deleteAdventure, leaveAdventure, editMap } from './services/extensions';
 
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
@@ -36,6 +36,7 @@ import { faImage } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { v4 as uuidv4 } from 'uuid';
+import { MapContext } from './components/MapContextProvider';
 
 interface IAdventureProps {
   adventureId: string;
@@ -46,6 +47,8 @@ function Adventure({ adventureId }: IAdventureProps) {
   const { analytics, logError } = useContext(AnalyticsContext);
   const profile = useContext(ProfileContext);
   const { toasts } = useContext(StatusContext);
+  const { adventure, players, setAdventureStateProps } = useContext(AdventureContext);
+  const { setMapStateProps } = useContext(MapContext);
   const history = useHistory();
 
   const userPolicy = useMemo(
@@ -53,61 +56,26 @@ function Adventure({ adventureId }: IAdventureProps) {
     [profile]
   );
 
-  const [adventure, setAdventure] = useState<IIdentified<IAdventure> | undefined>(undefined);
-  useEffect(() => {
-    const uid = user?.uid;
-    if (uid === undefined) {
-      return;
-    }
-
-    const d = dataService?.getAdventureRef(adventureId);
-    const playerRef = dataService?.getPlayerRef(adventureId, uid);
-    if (d === undefined || playerRef === undefined) {
-      return;
-    }
-
-    // How to handle an adventure load failure.
-    function couldNotLoad(message: string) {
-      toasts.next({
-        id: uuidv4(),
-        record: { title: 'Error loading adventure', message: message }
-      });
-
-      const uid = user?.uid;
-      if (uid && d) {
-        removeAdventureFromRecent(dataService, uid, d.id)
-          .catch(e => logError("Error removing adventure from recent", e));
-      }
-
-      history.replace('/');
-    }
-
-    // Check this adventure exists and can be fetched (the watch doesn't do this for us)
-    // We do this by checking for the player record because that also allows us to check if
-    // we're blocked; being blocked necessarily doesn't stop us from getting the adventure
-    // from the db (only the maps), but showing it to the user in that state would *not*
-    // be a helpful thing to do
-    dataService?.get(playerRef)
-      .then(r => {
-        // Deliberately try not to show the player the difference between the adventure being
-        // deleted and the player being blocked!  Might avoid a confrontation...
-        if (r === undefined || r?.allowed === false) {
-          couldNotLoad("That adventure does not exist.");
-        }
-      })
-      .catch(e => {
-        logError("Error checking for adventure " + adventureId + ": ", e);
-        couldNotLoad(e.message);
-      });
-
-    analytics?.logEvent("select_content", {
-      "content_type": "adventure",
-      "item_id": adventureId
+  // How to handle a load failure.
+  const couldNotLoad = useCallback((message: string) => {
+    toasts.next({
+      id: uuidv4(),
+      record: { title: 'Error loading adventure', message: message }
     });
-    return dataService?.watch(d,
-      a => setAdventure(a === undefined ? undefined : { id: adventureId, record: a }),
-      e => logError("Error watching adventure " + adventureId + ": ", e));
-  }, [dataService, user, analytics, logError, history, adventureId, toasts]);
+
+    setAdventureStateProps?.({});
+    history.replace('/');
+  }, [history, setAdventureStateProps, toasts]);
+
+  // Clear any map context so we don't keep poking it
+  useEffect(() => {
+    setMapStateProps?.({ adventureId: adventureId, mapId: undefined });
+  }, [adventureId, setMapStateProps]);
+
+  // Update the adventure context
+  useEffect(() => {
+    setAdventureStateProps?.({ adventureId: adventureId, couldNotLoadAdventure: couldNotLoad });
+  }, [adventureId, couldNotLoad, setAdventureStateProps]);
 
   const title = useMemo(() => {
     if (adventure?.record.owner !== user?.uid) {
@@ -116,21 +84,6 @@ function Adventure({ adventureId }: IAdventureProps) {
 
     return (adventure?.record.name ?? "") + " (" + (adventure?.record.maps.length ?? 0) + "/" + (userPolicy?.maps ?? 0) + ")";
   }, [adventure, user, userPolicy]);
-
-  // Track changes to the adventure
-  useEffect(() => {
-    const uid = user?.uid;
-    if (
-      dataService === undefined || adventure === undefined ||
-      uid === undefined
-    ) {
-      return;
-    }
-
-    registerAdventureAsRecent(dataService, uid, adventure.id, adventure.record)
-      .then(() => console.log("registered adventure " + adventure.id + " as recent"))
-      .catch(e => logError("Failed to register adventure " + adventure.id + " as recent", e));
-  }, [logError, dataService, user, adventure]);
 
   // Derive the adventures list for the map collection
   const adventures = useMemo(
@@ -165,20 +118,6 @@ function Adventure({ adventureId }: IAdventureProps) {
   }, [adventure, analytics, logError, adventureId, setCreateInviteButtonDisabled, setInviteLink, functionsService]);
 
   // Adventure editing support
-  const [players, setPlayers] = useState<IPlayer[]>([]);
-  useEffect(() => {
-    if (dataService === undefined) {
-      setPlayers([]);
-      return () => {};
-    }
-
-    return dataService.watchPlayers(
-      adventureId,
-      setPlayers,
-      e => logError("Failed to watch players of adventure " + adventureId, e)
-    );
-  }, [logError, dataService, adventureId]);
-
   const playersTitle = useMemo(() => {
     if (adventure?.record.owner !== user?.uid) {
       return "Players";
