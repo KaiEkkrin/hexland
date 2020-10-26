@@ -2,13 +2,13 @@ import { IAdventure, IPlayer, summariseAdventure } from '../data/adventure';
 import { IAnnotation } from '../data/annotation';
 import { IChange, IChanges } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
-import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
-import { FeatureDictionary, IFeature, ITokenDictionary } from '../data/feature';
+import { IGridCoord, IGridEdge, coordString, edgeString, IGridVertex, vertexString } from '../data/coord';
+import { FeatureDictionary, IFeature, IFeatureDictionary, ITokenDictionary, ITokenText } from '../data/feature';
 import { IInvite } from '../data/invite';
 import { IMap, MapType, summariseMap } from '../data/map';
 import { getUserPolicy, IInviteExpiryPolicy } from '../data/policy';
 import { IAdventureSummary, IProfile } from '../data/profile';
-import { createTokenDictionary, SimpleTokenDrawing } from '../data/tokens';
+import { createTokenDictionary, ITokenFace, ITokenFillEdge, ITokenFillVertex, SimpleTokenDrawing } from '../data/tokens';
 import * as Convert from './converter';
 import { updateProfileAdventures, updateProfileMaps, updateAdventureMaps } from './helpers';
 import { IDataService, IDataView, IDataReference, IDataAndReference, ILogger } from './interfaces';
@@ -298,7 +298,17 @@ async function tryConsolidateMapChanges(
   // technically cheat and non-owners would believe them), but it will save huge amounts of
   // CPU time (especially valuable if this is going to be called in a Firebase Function.)
   const ownerPolicy = getUserPolicy(ownerProfile.level);
-  const tokenDictionary = createTokenDictionary(m.ty, new SimpleTokenDrawing());
+  const tokenDictionary = createTokenDictionary(m.ty, new SimpleTokenDrawing<
+    IFeatureDictionary<IGridCoord, ITokenFace>,
+    IFeatureDictionary<IGridEdge, ITokenFillEdge>,
+    IFeatureDictionary<IGridVertex, ITokenFillVertex>,
+    IFeatureDictionary<IGridCoord, ITokenText>
+    >(
+      new FeatureDictionary<IGridCoord, ITokenFace>(coordString),
+      new FeatureDictionary<IGridEdge, ITokenFillEdge>(edgeString),
+      new FeatureDictionary<IGridVertex, ITokenFillVertex>(vertexString),
+      new FeatureDictionary<IGridCoord, ITokenText>(coordString)
+    ));
   const tracker = new SimpleChangeTracker(
     new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
     tokenDictionary,

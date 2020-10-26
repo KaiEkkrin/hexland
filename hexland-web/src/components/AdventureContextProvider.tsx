@@ -1,13 +1,12 @@
-import React, { useEffect, useMemo, useReducer, useState, useContext } from 'react';
+import React, { useEffect, useMemo, useState, useContext } from 'react';
 
 import { UserContext } from './UserContextProvider';
 import { AnalyticsContext } from './AnalyticsContextProvider';
+import { IAdventureContext, IAdventureStateProps, IContextProviderProps } from './interfaces';
 
 import { IAdventure, IPlayer } from '../data/adventure';
 import { IIdentified } from '../data/identified';
-import { IAdventureContext, IAdventureStateProps, IContextProviderProps } from './interfaces';
-import { ISpritesheetCache } from '../services/interfaces';
-import { SpritesheetCache } from '../services/spritesheetCache';
+import lcm from '../models/mapLifecycleManager';
 import { registerAdventureAsRecent, removeAdventureFromRecent } from '../services/extensions';
 
 // Providing an adventure context like this lets us maintain the same watchers
@@ -22,7 +21,6 @@ function AdventureContextProvider(props: IContextProviderProps) {
   const { analytics, logError } = useContext(AnalyticsContext);
 
   const [adventureStateProps, setAdventureStateProps] = useState<IAdventureStateProps>({});
-
   const [adventure, setAdventure] = useState<IIdentified<IAdventure> | undefined>(undefined);
   useEffect(() => {
     const uid = user?.uid;
@@ -91,21 +89,11 @@ function AdventureContextProvider(props: IContextProviderProps) {
     );
   }, [adventure, dataService, logError, setPlayers, user]);
 
-  // We store a rolling spritesheet cache, disposing the old one when we get a new one:
-  const [spritesheetCache, setSpritesheetCache] = useReducer(
-    (state: ISpritesheetCache | undefined, action: ISpritesheetCache | undefined) => {
-      state?.dispose();
-      return action;
-    }, undefined
-  );
-
-  useEffect(
-    () => setSpritesheetCache(
-      dataService && adventureStateProps.adventureId ?
-        new SpritesheetCache(dataService, adventureStateProps.adventureId, logError) :
-        undefined
-    ),
-    [dataService, adventureStateProps.adventureId, logError]
+  // The lifecycle manager releases a spritesheet cache for us to publish
+  const spritesheetCache = useMemo(
+    () => adventureStateProps.adventureId === undefined ? undefined :
+      lcm.getSpritesheetCache(dataService, logError, user?.uid, adventureStateProps.adventureId),
+    [dataService, logError, user, adventureStateProps.adventureId]
   );
 
   const adventureContext: IAdventureContext = useMemo(

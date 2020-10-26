@@ -1,4 +1,4 @@
-import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from "./coord";
+import { coordString, IGridCoord, IGridEdge, IGridVertex } from "./coord";
 import { FeatureDictionary, IFeature, IFeatureDictionary, IToken, ITokenDictionary, ITokenProperties, ITokenText } from "./feature";
 import { MapType } from "./map";
 import { getTokenGeometry, ITokenGeometry } from "./tokenGeometry";
@@ -23,6 +23,9 @@ export interface ITokenDrawing {
   fillVertices: IFeatureDictionary<IGridVertex, ITokenFillVertex>;
   texts: IFeatureDictionary<IGridVertex, ITokenText>;
 
+  // Clears all of this object.
+  clear(): void;
+
   // Makes a clone of this object.
   clone(): ITokenDrawing;
 
@@ -37,28 +40,40 @@ export interface ITokenDrawing {
 }
 
 // A super basic one for non-displayed use
-export class SimpleTokenDrawing implements ITokenDrawing {
-  private readonly _faces: IFeatureDictionary<IGridCoord, ITokenFace>;
-  private readonly _fillEdges: IFeatureDictionary<IGridEdge, ITokenFillEdge>;
-  private readonly _fillVertices: IFeatureDictionary<IGridVertex, ITokenFillVertex>;
-  private readonly _texts: IFeatureDictionary<IGridVertex, ITokenText>;
+export class SimpleTokenDrawing<
+  TFacesDict extends IFeatureDictionary<IGridCoord, ITokenFace>,
+  TFillEdgesDict extends IFeatureDictionary<IGridEdge, ITokenFillEdge>,
+  TFillVerticesDict extends IFeatureDictionary<IGridVertex, ITokenFillVertex>,
+  TTextsDict extends IFeatureDictionary<IGridVertex, ITokenText>
+> implements ITokenDrawing {
+  private readonly _faces: TFacesDict;
+  private readonly _fillEdges: TFillEdgesDict;
+  private readonly _fillVertices: TFillVerticesDict;
+  private readonly _texts: TTextsDict;
 
   constructor(
-    faces?: IFeatureDictionary<IGridCoord, ITokenFace> | undefined,
-    fillEdges?: IFeatureDictionary<IGridEdge, ITokenFillEdge> | undefined,
-    fillVertices?: IFeatureDictionary<IGridVertex, ITokenFillVertex> | undefined,
-    texts?: IFeatureDictionary<IGridVertex, ITokenText> | undefined
+    faces: TFacesDict,
+    fillEdges: TFillEdgesDict,
+    fillVertices: TFillVerticesDict,
+    texts: TTextsDict
   ) {
-    this._faces = faces ?? new FeatureDictionary<IGridCoord, ITokenFace>(coordString);
-    this._fillEdges = fillEdges ?? new FeatureDictionary<IGridEdge, ITokenFillEdge>(edgeString);
-    this._fillVertices = fillVertices ?? new FeatureDictionary<IGridVertex, ITokenFillVertex>(vertexString);
-    this._texts = texts ?? new FeatureDictionary<IGridVertex, ITokenText>(vertexString);
+    this._faces = faces;
+    this._fillEdges = fillEdges;
+    this._fillVertices = fillVertices;
+    this._texts = texts;
   }
 
   get faces() { return this._faces; }
   get fillEdges() { return this._fillEdges; }
   get fillVertices() { return this._fillVertices; }
   get texts() { return this._texts; }
+
+  clear() {
+    this._faces.clear();
+    this._fillEdges.clear();
+    this._fillVertices.clear();
+    this._texts.clear();
+  }
 
   clone() {
     return new SimpleTokenDrawing(

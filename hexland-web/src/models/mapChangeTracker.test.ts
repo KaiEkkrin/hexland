@@ -4,10 +4,10 @@ import { MapChangeTracker } from './mapChangeTracker';
 import { ChangeType, ChangeCategory } from '../data/change';
 import { trackChanges, IChangeTracker } from '../data/changeTracking';
 import { IGridEdge, IGridCoord, coordString, edgeString, IGridVertex, vertexString } from '../data/coord';
-import { FeatureDictionary, IFeature, IToken } from '../data/feature';
+import { FeatureDictionary, IFeature, IFeatureDictionary, ITokenText } from '../data/feature';
 import { MapType } from '../data/map';
 import { IAnnotation } from '../data/annotation';
-import { createTokenDictionary, SimpleTokenDrawing } from '../data/tokens';
+import { createTokenDictionary, ITokenFace, ITokenFillEdge, ITokenFillVertex, SimpleTokenDrawing } from '../data/tokens';
 
 const ownerUid = "owner";
 const uid1 = "uid1";
@@ -18,7 +18,8 @@ const map = {
   description: "A test",
   owner: ownerUid,
   ty: MapType.Hex,
-  ffa: false
+  ffa: false,
+  imagePath: ""
 };
 
 // This function builds the same walls around three hexes, with the 0,0 hex
@@ -52,10 +53,16 @@ function buildWallsOfThreeHexes(changeTracker: IChangeTracker) {
 
 test('Unprivileged users cannot move other users\' tokens', () => {
   const areas = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
-  const tokens = createTokenDictionary(MapType.Hex, new SimpleTokenDrawing(
-    new FeatureDictionary<IGridCoord, IToken>(coordString),
-    new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
-    new FeatureDictionary<IGridVertex, IFeature<IGridVertex>>(vertexString)
+  const tokens = createTokenDictionary(MapType.Hex, new SimpleTokenDrawing<
+      IFeatureDictionary<IGridCoord, ITokenFace>,
+      IFeatureDictionary<IGridEdge, ITokenFillEdge>,
+      IFeatureDictionary<IGridVertex, ITokenFillVertex>,
+      IFeatureDictionary<IGridCoord, ITokenText>
+    >(
+    new FeatureDictionary<IGridCoord, ITokenFace>(coordString),
+    new FeatureDictionary<IGridEdge, ITokenFillEdge>(edgeString),
+    new FeatureDictionary<IGridVertex, ITokenFillVertex>(vertexString),
+    new FeatureDictionary<IGridCoord, ITokenText>(coordString)
   ));
   const walls = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
   const notes = new FeatureDictionary<IGridCoord, IAnnotation>(coordString);
@@ -160,10 +167,16 @@ test('Unprivileged users cannot move other users\' tokens', () => {
 
 test('Unprivileged tokens cannot escape from bounded areas', () => {
   const areas = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
-  const tokens = createTokenDictionary(MapType.Hex, new SimpleTokenDrawing(
-    new FeatureDictionary<IGridCoord, IToken>(coordString),
-    new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
-    new FeatureDictionary<IGridVertex, IFeature<IGridVertex>>(vertexString)
+  const tokens = createTokenDictionary(MapType.Hex, new SimpleTokenDrawing<
+      IFeatureDictionary<IGridCoord, ITokenFace>,
+      IFeatureDictionary<IGridEdge, ITokenFillEdge>,
+      IFeatureDictionary<IGridVertex, ITokenFillVertex>,
+      IFeatureDictionary<IGridCoord, ITokenText>
+    >(
+    new FeatureDictionary<IGridCoord, ITokenFace>(coordString),
+    new FeatureDictionary<IGridEdge, ITokenFillEdge>(edgeString),
+    new FeatureDictionary<IGridVertex, ITokenFillVertex>(vertexString),
+    new FeatureDictionary<IGridCoord, ITokenText>(coordString)
   ));
   const walls = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
   const notes = new FeatureDictionary<IGridCoord, IAnnotation>(coordString);

@@ -52,6 +52,8 @@ const vertexHighlightAlpha = 0.35;
 // An orthographic implementation of IDrawing using THREE.js.
 export class DrawingOrtho implements IDrawing {
   private readonly _gridGeometry: IGridGeometry;
+  private readonly _logError: (message: string, e: any) => void;
+  private readonly _storage: IStorage;
 
   private readonly _camera: THREE.OrthographicCamera;
   private readonly _fixedCamera: THREE.OrthographicCamera;
@@ -64,8 +66,6 @@ export class DrawingOrtho implements IDrawing {
   private readonly _filterScene: THREE.Scene;
   private readonly _overlayScene: THREE.Scene;
 
-  private readonly _textureCache: TextureCache;
-
   private readonly _grid: Grid;
   private readonly _gridFilter: GridFilter;
   private readonly _areas: Areas;
@@ -77,7 +77,7 @@ export class DrawingOrtho implements IDrawing {
   private readonly _selection: ITokenDrawing;
   private readonly _selectionDrag: ITokenDrawing; // a copy of the selection shown only while dragging it
   private readonly _selectionDragRed: ITokenDrawing; // likewise, but shown if the selection couldn't be dropped there
-  private readonly _tokens: ITokenDrawing;
+  private readonly _tokens: TokenDrawing;
   private readonly _walls: Walls;
   private readonly _mapColourVisualisation: MapColourVisualisation;
 
@@ -90,6 +90,9 @@ export class DrawingOrtho implements IDrawing {
 
   private readonly _scratchMatrix1 = new THREE.Matrix4();
   private readonly _scratchQuaternion = new THREE.Quaternion();
+
+  private _spritesheetCache: ISpritesheetCache;
+  private _textureCache: TextureCache;
 
   private _mount: HTMLDivElement | undefined = undefined;
   private _showLoS = false;
@@ -108,6 +111,9 @@ export class DrawingOrtho implements IDrawing {
   ) {
     this._renderer = renderer;
     this._gridGeometry = gridGeometry;
+    this._logError = logError;
+    this._spritesheetCache = spritesheetCache;
+    this._storage = storage;
 
     // We need these to initialise things, but they'll be updated dynamically
     const renderWidth = Math.max(1, Math.floor(window.innerWidth));
@@ -453,6 +459,19 @@ export class DrawingOrtho implements IDrawing {
       this._mapColourVisualisation.removeFromScene();
       this._areas.addToScene(this._mapScene);
     }
+  }
+
+  setSpritesheetCache(spritesheetCache: ISpritesheetCache) {
+    if (spritesheetCache === this._spritesheetCache) {
+      // Nothing to do
+      return;
+    }
+
+    const oldTextureCache = this._textureCache;
+    this._spritesheetCache = spritesheetCache;
+    this._textureCache = new TextureCache(spritesheetCache, this._storage, this._logError);
+    this._tokens.setTextureCache(this._textureCache);
+    oldTextureCache.dispose();
   }
 
   worldToViewport(target: THREE.Vector3) {

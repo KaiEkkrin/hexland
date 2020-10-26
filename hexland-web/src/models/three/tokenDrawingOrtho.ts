@@ -1,5 +1,5 @@
 import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from "../../data/coord";
-import { IFeature, IToken, ITokenProperties } from "../../data/feature";
+import { FeatureDictionary, IFeature, IFeatureDictionary, IToken, ITokenProperties, ITokenText } from "../../data/feature";
 import { ITokenFace, ITokenFillEdge, ITokenFillVertex, SimpleTokenDrawing } from "../../data/tokens";
 import { IGridGeometry } from "../gridGeometry";
 import { RedrawFlag } from "../redrawFlag";
@@ -31,7 +31,7 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
   extends InstancedFeatures<K, F>
 {
   private readonly _spriteFeatures: InstancedFeatures<K, F & { spriteTexture: ITextureLease }>;
-  private readonly _textureCache: TextureCache;
+  private _textureCache: TextureCache;
 
   constructor(
     gridGeometry: IGridGeometry,
@@ -109,6 +109,10 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
     return removed;
   }
 
+  setTextureCache(textureCache: TextureCache) {
+    this._textureCache = textureCache;
+  }
+
   dispose() {
     this.clear(); // to ensure sprite resources are released
     super.dispose();
@@ -117,7 +121,12 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
 }
 
 // A handy wrapper for the various thingies that go into token drawing.
-export class TokenDrawing extends SimpleTokenDrawing {
+export class TokenDrawing extends SimpleTokenDrawing<
+  TokenFeatures<IGridCoord, IFeature<IGridCoord> & ITokenProperties & { basePosition: IGridCoord }>,
+  TokenFeatures<IGridEdge, IFeature<IGridEdge> & ITokenProperties & { basePosition: IGridCoord }>,
+  TokenFeatures<IGridVertex, IFeature<IGridVertex> & ITokenProperties & { basePosition: IGridCoord }>,
+  TokenTexts
+> {
   constructor(
     gridGeometry: IGridGeometry,
     textureCache: TextureCache,
@@ -154,20 +163,32 @@ export class TokenDrawing extends SimpleTokenDrawing {
       new TokenTexts(gridGeometry, needsRedraw, textMaterial, scene, drawingParameters.textZ)
     );
 
-    (this.faces as InstancedFeatures<IGridCoord, ITokenFace>).addToScene(scene);
-    (this.fillEdges as InstancedFeatures<IGridEdge, ITokenFillEdge>).addToScene(scene);
-    (this.fillVertices as InstancedFeatures<IGridVertex, ITokenFillVertex>).addToScene(scene);
+    this.faces.addToScene(scene);
+    this.fillEdges.addToScene(scene);
+    this.fillVertices.addToScene(scene);
+  }
+
+  setTextureCache(textureCache: TextureCache) {
+    this.faces.setTextureCache(textureCache);
+    this.fillEdges.setTextureCache(textureCache);
+    this.fillVertices.setTextureCache(textureCache);
   }
 
   dispose() {
-    (this.faces as InstancedFeatures<IGridCoord, ITokenFace>).dispose();
-    (this.fillEdges as InstancedFeatures<IGridEdge, ITokenFillEdge>).dispose();
-    (this.fillVertices as InstancedFeatures<IGridVertex, ITokenFillVertex>).dispose();
-    (this.texts as TokenTexts).dispose();
+    super.dispose();
+    this.faces.dispose();
+    this.fillEdges.dispose();
+    this.fillVertices.dispose();
+    this.texts.dispose();
   }
 }
 
-export class SelectionDrawing extends SimpleTokenDrawing {
+export class SelectionDrawing extends SimpleTokenDrawing<
+  InstancedFeatures<IGridCoord, IFeature<IGridCoord> & ITokenProperties & { basePosition: IGridCoord }>,
+  InstancedFeatures<IGridEdge, IFeature<IGridEdge> & ITokenProperties & { basePosition: IGridCoord }>,
+  InstancedFeatures<IGridVertex, IFeature<IGridVertex> & ITokenProperties & { basePosition: IGridCoord }>,
+  IFeatureDictionary<IGridCoord, ITokenText>
+> {
   constructor(
     gridGeometry: IGridGeometry,
     needsRedraw: RedrawFlag,
@@ -183,12 +204,13 @@ export class SelectionDrawing extends SimpleTokenDrawing {
       ),
       new InstancedFeatures<IGridVertex, ITokenFillVertex>(
         gridGeometry, needsRedraw, vertexString, createVertexObject, 100
-      )
+      ),
+      new FeatureDictionary<IGridCoord, ITokenText>(coordString) // not rendered
     );
 
-    (this.faces as InstancedFeatures<IGridCoord, ITokenFace>).addToScene(scene);
-    (this.fillEdges as InstancedFeatures<IGridEdge, ITokenFillEdge>).addToScene(scene);
-    (this.fillVertices as InstancedFeatures<IGridVertex, ITokenFillVertex>).addToScene(scene);
+    this.faces.addToScene(scene);
+    this.fillEdges.addToScene(scene);
+    this.fillVertices.addToScene(scene);
   }
 
   // We need to squash the colour for this one; selections have their own meaning of colour
@@ -205,8 +227,9 @@ export class SelectionDrawing extends SimpleTokenDrawing {
   }
 
   dispose() {
-    (this.faces as InstancedFeatures<IGridCoord, ITokenFace>).dispose();
-    (this.fillEdges as InstancedFeatures<IGridEdge, ITokenFillEdge>).dispose();
-    (this.fillVertices as InstancedFeatures<IGridVertex, ITokenFillVertex>).dispose();
+    super.dispose();
+    this.faces.dispose();
+    this.fillEdges.dispose();
+    this.fillVertices.dispose();
   }
 }

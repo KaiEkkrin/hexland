@@ -2,6 +2,7 @@ import { MapColouring } from "./colouring";
 import { IGridCoord, IGridEdge, IGridVertex } from "../data/coord";
 import { IFeature, IFeatureDictionary } from "../data/feature";
 import { ITokenDrawing } from "../data/tokens";
+import { ISpritesheetCache } from "../services/interfaces";
 
 // Describes the interface to our drawing subsystem,
 // which could be substituted out, won't exist in auto tests, etc.
@@ -60,6 +61,9 @@ export interface IDrawing {
 
   // Sets whether or not to show the map colour visualisation.
   setShowMapColourVisualisation(show: boolean, mapColouring: MapColouring): void;
+
+  // Swaps to a different spritesheet cache.
+  setSpritesheetCache(spritesheetCache: ISpritesheetCache): void;
 
   // Cleans up and releases all resources.
   dispose(): void;

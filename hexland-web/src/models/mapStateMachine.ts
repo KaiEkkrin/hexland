@@ -3,11 +3,9 @@ import { FaceHighlighter } from './dragHighlighter';
 import { DragRectangle } from './dragRectangle';
 import { FeatureColour } from './featureColour';
 import { IGridGeometry } from './gridGeometry';
-import { HexGridGeometry } from './hexGridGeometry';
 import { IDrawing, IDragRectangle } from './interfaces';
 import { MapChangeTracker } from './mapChangeTracker';
 import { RedrawFlag } from './redrawFlag';
-import { SquareGridGeometry } from './squareGridGeometry';
 import { WallHighlighter, WallRectangleHighlighter, RoomHighlighter } from './wallHighlighter';
 
 import { IAnnotation, IPositionedAnnotation } from '../data/annotation';
@@ -16,22 +14,20 @@ import { netObjectCount, trackChanges } from '../data/changeTracking';
 import { IGridCoord, coordString, coordsEqual, coordSub, coordAdd } from '../data/coord';
 import { FeatureDictionary, flipToken, IToken, ITokenDictionary, ITokenProperties, TokenSize } from '../data/feature';
 import { IAdventureIdentified } from '../data/identified';
-import { IMap, MapType } from '../data/map';
+import { IMap } from '../data/map';
 import { IUserPolicy } from '../data/policy';
-import { getTokenGeometry, ITokenGeometry } from '../data/tokenGeometry';
+import { ITokenGeometry } from '../data/tokenGeometry';
 import { createTokenDictionary } from '../data/tokens';
 
 import { IDataService, ISpritesheetCache, IStorage } from '../services/interfaces';
 import { createDrawing } from './three/drawing';
 
 import fluent from 'fluent-iterable';
+import { Observable, ReplaySubject } from 'rxjs';
 import * as THREE from 'three';
 
 const noteAlpha = 0.9;
 const tokenNoteAlpha = 0.6;
-
-const spacing = 75.0;
-const tileDim = 12;
 
 const panMargin = 100;
 const panStep = 0.2; // per millisecond.  Try proportion of screen size instead?
@@ -81,9 +77,7 @@ export function createDefaultState(): IMapState {
 // never find out about.
 export class MapStateMachine {
   private readonly _dataService: IDataService;
-  private readonly _map: IAdventureIdentified<IMap>;
   private readonly _uid: string;
-  private readonly _userPolicy: IUserPolicy | undefined;
 
   private readonly _drawing: IDrawing;
   private readonly _gridGeometry: IGridGeometry;
@@ -97,15 +91,11 @@ export class MapStateMachine {
   private readonly _selectionDragRed: ITokenDictionary;
   private readonly _tokens: ITokenDictionary;
 
-  private readonly _changeTracker: MapChangeTracker;
-
   private readonly _dragRectangle: IDragRectangle;
   private readonly _faceHighlighter: FaceHighlighter;
   private readonly _wallHighlighter: WallHighlighter;
   private readonly _wallRectangleHighlighter: WallRectangleHighlighter;
   private readonly _roomHighlighter: RoomHighlighter;
-
-  private readonly _setState: (state: IMapState) => void;
 
   private readonly _cameraTranslation = new THREE.Vector3();
   private readonly _cameraRotation = new THREE.Quaternion();
@@ -121,7 +111,13 @@ export class MapStateMachine {
   private readonly _scratchVector2 = new THREE.Vector3();
   private readonly _scratchVector3 = new THREE.Vector3();
 
+  private readonly _stateSubj = new ReplaySubject<IMapState>(1);
+
+  private _map: IAdventureIdentified<IMap>;
   private _state: IMapState;
+  private _userPolicy: IUserPolicy | undefined;
+
+  private _changeTracker: MapChangeTracker;
 
   private _lastAnimationTime: number | undefined;
 
@@ -145,17 +141,17 @@ export class MapStateMachine {
     storage: IStorage,
     map: IAdventureIdentified<IMap>,
     uid: string,
+    gridGeometry: IGridGeometry,
+    tokenGeometry: ITokenGeometry,
     colours: FeatureColour[],
     userPolicy: IUserPolicy | undefined,
     logError: (message: string, e: any) => void,
-    setState: (state: IMapState) => void,
     spritesheetCache: ISpritesheetCache
   ) {
     this._dataService = dataService;
     this._map = map;
     this._uid = uid;
     this._userPolicy = userPolicy;
-    this._setState = setState;
 
     this._state = {
       isOwner: this.isOwner,
@@ -165,12 +161,10 @@ export class MapStateMachine {
       objectCount: undefined,
       zoom: zoomDefault
     };
-    this._setState(this._state);
+    this._stateSubj.next(this._state);
 
-    this._gridGeometry = map.record.ty === MapType.Hex ?
-      new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
-
-    this._tokenGeometry = getTokenGeometry(map.record.ty);
+    this._gridGeometry = gridGeometry;
+    this._tokenGeometry = tokenGeometry;
     this._drawing = createDrawing(
       this._gridGeometry, this._tokenGeometry, colours, this.seeEverything, logError, spritesheetCache, storage
     );
@@ -193,31 +187,6 @@ export class MapStateMachine {
     this._tokens = createTokenDictionary(
       map.record.ty, this._drawing.tokens,
       // TODO #119 Provide a way to separately mark which face gets the text written on...?
-    );
-
-    this._changeTracker = new MapChangeTracker(
-      this._drawing.areas,
-      this._tokens,
-      this._drawing.walls,
-      this._notes,
-      userPolicy,
-      this._mapColouring,
-      (haveTokensChanged: boolean, objectCount: number) => {
-        this.withStateChange(getState => {
-          const state = getState();
-          if (haveTokensChanged) {
-            this.cleanUpSelection();
-          }
-
-          this.buildLoS(state);
-          this._drawing.handleChangesApplied(this._mapColouring);
-          if (haveTokensChanged) {
-            this.updateTokens(state);
-          }
-          state.objectCount = this._userPolicy === undefined ? undefined : objectCount;
-          return true;
-        });
-      }
     );
 
     this._faceHighlighter = new FaceHighlighter(
@@ -243,6 +212,7 @@ export class MapStateMachine {
       this._drawing.highlightedAreas, this.validateWallChanges, this._dragRectangle
     );
 
+    this._changeTracker = this.createChangeTracker();
     this.resize();
 
     this.onPostAnimate = this.onPostAnimate.bind(this);
@@ -357,6 +327,33 @@ export class MapStateMachine {
         this._selection.add(token);
       }
     }
+  }
+
+  private createChangeTracker(): MapChangeTracker {
+    return new MapChangeTracker(
+      this._drawing.areas,
+      this._tokens,
+      this._drawing.walls,
+      this._notes,
+      this._userPolicy,
+      this._mapColouring,
+      (haveTokensChanged: boolean, objectCount: number) => {
+        this.withStateChange(getState => {
+          const state = getState();
+          if (haveTokensChanged) {
+            this.cleanUpSelection();
+          }
+
+          this.buildLoS(state);
+          this._drawing.handleChangesApplied(this._mapColouring);
+          if (haveTokensChanged) {
+            this.updateTokens(state);
+          }
+          state.objectCount = this._userPolicy === undefined ? undefined : objectCount;
+          return true;
+        });
+      }
+    );
   }
 
   private *enumerateAnnotations() {
@@ -674,7 +671,7 @@ export class MapStateMachine {
 
     if (fn(getState) && updated.length > 0) {
       this._state = updated[0];
-      this._setState(updated[0]);
+      this._stateSubj.next(updated[0]);
       return true;
     }
 
@@ -686,6 +683,7 @@ export class MapStateMachine {
   get objectCount() { return this._state.objectCount; }
   get panningX() { return this._panningX; }
   get panningY() { return this._panningY; }
+  get state(): Observable<IMapState> { return this._stateSubj; }
 
   async addChanges(changes: IChange[] | undefined, complain: (id: string, title: string, message: string) => void) {
     if (changes === undefined || changes.length === 0) {
@@ -747,6 +745,40 @@ export class MapStateMachine {
         return true;
       });
     }
+  }
+
+  configure(
+    map: IAdventureIdentified<IMap>,
+    spritesheetCache: ISpritesheetCache,
+    userPolicy: IUserPolicy | undefined
+  ) {
+    if (map.record.ty !== this._map.record.ty) {
+      throw RangeError(`Incompatible map types: ${map.record.ty} and ${this._map.record.ty}`);
+    }
+
+    // Make sure changes are loaded *after* we do this, otherwise an empty map
+    // will be shown!
+    this._faceHighlighter.clear();
+    this._wallHighlighter.clear();
+    this._wallRectangleHighlighter.clear();
+    this._roomHighlighter.clear();
+    this._dragRectangle.reset();
+
+    this.clearSelection();
+
+    this._drawing.areas.clear();
+    this._tokens.clear();
+    this._drawing.walls.clear();
+    this._notes.clear();
+    this._notesNeedUpdate.setNeedsRedraw();
+    this._mapColouring.clear();
+
+    // Switch ourselves to the new map
+    this._map = map;
+    this._userPolicy = userPolicy;
+    this._changeTracker = this.createChangeTracker();
+    this._drawing.setSpritesheetCache(spritesheetCache);
+    this.resetView();
   }
 
   // For editing
@@ -1162,6 +1194,7 @@ export class MapStateMachine {
   dispose() {
     if (this._isDisposed === false) {
       console.log("disposing map state machine");
+      this._stateSubj.complete();
       this._drawing.dispose();
       this._isDisposed = true;
     }
