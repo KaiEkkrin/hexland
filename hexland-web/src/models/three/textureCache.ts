@@ -31,7 +31,6 @@ export class TextureCache {
   private readonly _textureCache: ObjectCache<THREE.Texture>;
 
   private readonly _storage: IStorage;
-  private readonly _logError: (message: string, e: any) => void;
 
   constructor(
     spritesheetCache: ISpritesheetCache,
@@ -40,7 +39,6 @@ export class TextureCache {
   ) {
     this._spritesheetCache = spritesheetCache;
     this._storage = storage;
-    this._logError = logError;
 
     this._textureCache = new ObjectCache(logError);
     this.resolveTexture = this.resolveTexture.bind(this);
@@ -84,7 +82,7 @@ export class TextureCache {
 
       return combineLeases(ss, tex);
     } catch (e) {
-      this._logError("Failed to get sprite", e);
+      console.warn("Failed to get sprite. It may have been replaced", e);
       return undefined;
     }
   }
@@ -99,7 +97,7 @@ export class TextureCache {
       const tex = await this._textureCache.resolve(getSpritePathFromId(ss.value.id), this.resolveTexture);
       return combineLeases(ss, tex);
     } catch (e) {
-      this._logError("Failed to resolve sprite", e);
+      console.warn("Failed to resolve sprite. It may have been replaced", e);
       throw e;
     }
   }

@@ -125,7 +125,6 @@ export class ObjectCache<T> {
       .catch(ex => {
         newEntry.error = { message: `Failed to fetch ${id}`, e: ex };
         newEntry.subj.error(newEntry.error);
-        this._logError(newEntry.error.message, newEntry.error.e);
       });
 
     // ...and wait
