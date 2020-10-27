@@ -150,7 +150,7 @@ function TokenEditorModal(
   // Save
 
   // We can't save if there's no text, or if we're busy handling an image:
-  const saveDisabled = useMemo(() => text.length === 0 || setImageDisabled, [setImageDisabled, text]);
+  const saveDisabled = useMemo(() => text.length === 0 || busySettingImage, [busySettingImage, text]);
 
   const doHandleSave = useCallback(() => {
     handleSave({
@@ -222,7 +222,7 @@ function TokenEditorModal(
             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
               <Button variant="warning" onClick={handleUseNoImage}>Use no image</Button>
               <Button className="ml-2" variant="primary" onClick={handleUseImage} disabled={setImageDisabled}>
-                <BusyElement normal="Use image" busy="Setting image..." isBusy={setImageDisabled} />
+                <BusyElement normal="Use image" busy="Setting image..." isBusy={busySettingImage} />
               </Button>
             </div>
           </Tab>
