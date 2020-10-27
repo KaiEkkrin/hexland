@@ -1215,20 +1215,18 @@ describe('test functions', () => {
       await storage.ref(path).put(buffer, { customMetadata: { originalName: 'st01.png' } });
 
       // Create a sprite of that image
-      const sprite = await functionsService.editSprite(a1Id, path);
-      expect(sprite.source).toBe(path);
-      expect(sprite.columns).toBe(4);
-      expect(sprite.rows).toBe(4);
-      expect(sprite.position).toBe(0);
+      const sprite = await functionsService.addSprites(a1Id, "4x4", [path]);
+      expect(sprite).toHaveLength(1);
+      expect(sprite[0].source).toBe(path);
+      expect(sprite[0].geometry).toBe("4x4");
 
-      // It should have popped up in the spritesheet too
-      let spritesheets = await dataService.get(dataService.getSpritesRef(a1Id));
-      expect(spritesheets?.sprites).toHaveLength(1);
-      expect(spritesheets?.sprites[0].source).toBe(path);
-      expect(spritesheets?.sprites[0].id).toBe(sprite.id);
-      expect(spritesheets?.sprites[0].columns).toBe(4);
-      expect(spritesheets?.sprites[0].rows).toBe(4);
-      expect(spritesheets?.sprites[0].position).toBe(0);
+      // A spritesheet should have appeared
+      let spritesheets = await dataService.getSpritesheetsBySource(a1Id, "4x4", [path]);
+      expect(spritesheets).toHaveLength(1);
+      expect(spritesheets?.[0].data.sprites).toHaveLength(1);
+      expect(spritesheets?.[0].data.sprites).toContain(path);
+      expect(spritesheets?.[0].data.geometry).toBe("4x4");
+      expect(spritesheets?.[0].data.freeSpaces).toBe(15);
 
       // Upload another image
       const buffer2 = fs.readFileSync(testImages[1]);
@@ -1236,56 +1234,25 @@ describe('test functions', () => {
       await storage.ref(path2).put(buffer2, { customMetadata: { originalName: 'st02.png' } });
 
       // Create a sprite of it
-      const sprite2 = await functionsService.editSprite(a1Id, path2);
-      expect(sprite2.source).toBe(path2);
-      expect(sprite2.columns).toBe(4);
-      expect(sprite2.rows).toBe(4);
-      expect(sprite2.position).toBe(1);
+      // `addSprites` may return other sprites that it moved to a new spritesheet while
+      // doing this.
+      const sprite2 = await functionsService.addSprites(a1Id, "4x4", [path2]);
+      const sr2 = sprite2.find(r => r.source === path2);
+      expect(sr2).not.toBeUndefined();
+      expect(sr2?.geometry).toBe("4x4");
 
-      // The spritesheet should now have two entries, both with the same *new* id
-      // (because a new spritesheet was generated to cover those two)
-      const oldId = sprite.id;
-      const newId = sprite2.id;
-      expect(newId).not.toBe(oldId);
+      // That image should have gone into a new spritesheet replacing the old one, because it
+      // had free space
+      spritesheets = await dataService.getSpritesheetsBySource(a1Id, "4x4", [path, path2]);
+      expect(spritesheets).toHaveLength(1);
+      expect(spritesheets?.[0].data.sprites).toHaveLength(2);
+      expect(spritesheets?.[0].data.sprites).toContain(path);
+      expect(spritesheets?.[0].data.sprites).toContain(path2);
+      expect(spritesheets?.[0].data.geometry).toBe("4x4");
+      expect(spritesheets?.[0].data.freeSpaces).toBe(14);
 
-      spritesheets = await dataService.get(dataService.getSpritesRef(a1Id));
-      expect(spritesheets?.sprites).toHaveLength(2);
-
-      expect(spritesheets?.sprites[0].source).toBe(path);
-      expect(spritesheets?.sprites[0].id).toBe(newId);
-      expect(spritesheets?.sprites[0].position).toBe(0);
-
-      expect(spritesheets?.sprites[1].source).toBe(path2);
-      expect(spritesheets?.sprites[1].id).toBe(newId);
-      expect(spritesheets?.sprites[1].position).toBe(1);
-
-      // Upload a third image and swap it for the second one
-      const buffer3 = fs.readFileSync(testImages[2]);
-      const path3 = `images/${owner.uid}/three`;
-      await storage.ref(path3).put(buffer3, { customMetadata: { originalName: 'st03.png' } });
-
-      const sprite3 = await functionsService.editSprite(a1Id, path3, path2);
-      expect(sprite3.source).toBe(path3);
-      expect(sprite3.position).toBe(1);
-
-      // This will have regenerated the spritesheet in the same way again
-      const newerId = sprite3.id;
-      expect(newerId).not.toBe(newId);
-      expect(newerId).not.toBe(oldId);
-
-      spritesheets = await dataService.get(dataService.getSpritesRef(a1Id));
-      expect(spritesheets?.sprites).toHaveLength(2);
-
-      expect(spritesheets?.sprites[0].source).toBe(path);
-      expect(spritesheets?.sprites[0].id).toBe(newerId);
-      expect(spritesheets?.sprites[0].position).toBe(0);
-
-      expect(spritesheets?.sprites[1].source).toBe(path3);
-      expect(spritesheets?.sprites[1].id).toBe(newerId);
-      expect(spritesheets?.sprites[1].position).toBe(1);
-
-      // (I'm not sure I need more in-depth testing of this API here; dealing with large and
-      // multiple spritesheets is hopefully covered enough by the sprite manager unit test...)
+      // TODO #149 Plenty more to test here.  Filling the sheet so it starts another;
+      // deleting images and having their spaces re-used.
     });
   });
 });

@@ -165,17 +165,6 @@ export class DataService implements IDataService {
     const d = this._db.collection(adventures).doc(id);
     return new DataReference<IAdventure>(d, Convert.adventureConverter);
   }
-  async getFirstSpritesheetBySource(adventureId: string, source: string): Promise<IDataAndReference<ISpritesheet>[]> {
-    const s = await this._db.collection(adventures).doc(adventureId)
-      .collection(spritesheets)
-      .where("supersededBy", "==", "")
-      .where("sprites", "array-contains", source)
-      .limit(1)
-      .get();
-    return s.docs.map(d => new DataAndReference(
-      d.ref, Convert.spritesheetConverter.convert(d.data()), Convert.spritesheetConverter
-    ));
-  }
 
   getImagesRef(uid: string): IDataReference<IImages> {
     const d = this._db.collection(images).doc(uid);
