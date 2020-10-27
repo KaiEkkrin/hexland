@@ -1,19 +1,25 @@
 import { ChangeType, ChangeCategory, ITokenMove, ITokenRemove, createTokenAdd, createWallAdd, createTokenMove, createWallRemove } from './change';
 import { trackChanges, SimpleChangeTracker } from './changeTracking';
 import { IGridCoord, coordString, edgeString, IGridEdge, IGridVertex, vertexString } from './coord';
-import { FeatureDictionary, IFeature, IToken } from './feature';
+import { FeatureDictionary, IFeature, IFeatureDictionary, ITokenText } from './feature';
 import { IMap, MapType } from './map';
 import { IAnnotation } from './annotation';
 import { IUserPolicy, standardUser } from './policy';
-import { createTokenDictionary, SimpleTokenDrawing } from './tokens';
+import { createTokenDictionary, ITokenFace, ITokenFillEdge, ITokenFillVertex, SimpleTokenDrawing } from './tokens';
 
 function createChangeTracker(ty: MapType, userPolicy?: IUserPolicy | undefined) {
   return new SimpleChangeTracker(
     new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
-    createTokenDictionary(ty, new SimpleTokenDrawing(
-      new FeatureDictionary<IGridCoord, IToken>(coordString),
-      new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
-      new FeatureDictionary<IGridVertex, IFeature<IGridVertex>>(vertexString)
+    createTokenDictionary(ty, new SimpleTokenDrawing<
+        IFeatureDictionary<IGridCoord, ITokenFace>,
+        IFeatureDictionary<IGridEdge, ITokenFillEdge>,
+        IFeatureDictionary<IGridVertex, ITokenFillVertex>,
+        IFeatureDictionary<IGridCoord, ITokenText>
+      >(
+      new FeatureDictionary<IGridCoord, ITokenFace>(coordString),
+      new FeatureDictionary<IGridEdge, ITokenFillEdge>(edgeString),
+      new FeatureDictionary<IGridVertex, ITokenFillVertex>(vertexString),
+      new FeatureDictionary<IGridCoord, ITokenText>(coordString)
     )),
     new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
     new FeatureDictionary<IGridCoord, IAnnotation>(coordString),
