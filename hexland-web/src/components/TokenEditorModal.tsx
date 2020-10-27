@@ -23,7 +23,6 @@ import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 
 import { v4 as uuidv4 } from 'uuid';
-import { AdventureContext } from './AdventureContextProvider';
 
 interface ITokenEditorModalProps {
   adventureId: string;
@@ -45,7 +44,6 @@ function TokenEditorModal(
   const { logError } = useContext(AnalyticsContext);
   const { functionsService } = useContext(UserContext);
   const profile = useContext(ProfileContext);
-  const { spritesheetCache } = useContext(AdventureContext);
   const maxImages = useMemo(
     () => profile === undefined ? undefined : getUserPolicy(profile.level).images,
     [profile]
@@ -98,11 +96,10 @@ function TokenEditorModal(
     return (
       <React.Fragment>
         Current image&nbsp;
-        <SpriteImage sprite={sprites[0]} altName={altName} size={128} spritesheetCache={spritesheetCache}
-          borderColour={hexColours[colour]} />
+        <SpriteImage sprite={sprites[0]} altName={altName} size={128} borderColour={hexColours[colour]} />
       </React.Fragment>
     );
-  }, [colour, sprites, spritesheetCache, text]);
+  }, [colour, sprites, text]);
 
   // Image picking
   // TODO #149 Show the image currently in use (if any) above the image picker.

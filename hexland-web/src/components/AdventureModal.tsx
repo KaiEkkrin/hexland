@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import '../App.css';
 
 import BusyElement from './BusyElement';
@@ -19,6 +19,11 @@ interface IAdventureModalProps {
 
 function AdventureModal(props: IAdventureModalProps) {
   const [isSaving, setIsSaving] = useState(false);
+  useEffect(() => {
+    if (props.name) {
+      setIsSaving(false);
+    }
+  }, [props.name]);
 
   const isSaveDisabled = useMemo(
     () => props.name.length === 0 || props.description.length === 0 || isSaving,
@@ -29,7 +34,6 @@ function AdventureModal(props: IAdventureModalProps) {
   const doHandleSave = useCallback(() => {
     setIsSaving(true);
     handleSave().then(() => {
-      setIsSaving(false);
       console.log("created adventure successfully");
     });
   }, [handleSave]);

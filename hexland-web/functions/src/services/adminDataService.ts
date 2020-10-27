@@ -384,6 +384,20 @@ export class AdminDataService implements IAdminDataService {
       onNext(s.docs.map(d => Convert.playerConverter.convert(d.data())));
     }, onError);
   }
+
+  watchSpritesheets(
+    adventureId: string,
+    onNext: (spritesheets: IDataAndReference<ISpritesheet>[]) => void,
+    onError?: ((error: Error) => void) | undefined
+  ) {
+    return this._db.collection(adventures).doc(adventureId).collection(spritesheets)
+      .where("supersededBy", "==", "")
+      .onSnapshot(s => {
+        onNext(s.docs.map(d => new DataAndReference(
+          d.ref, Convert.spritesheetConverter.convert(d.data), Convert.spritesheetConverter
+        )));
+      }, onError);
+  }
 }
 
 class TransactionalDataView implements IDataView {

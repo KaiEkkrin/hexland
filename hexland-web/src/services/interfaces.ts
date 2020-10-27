@@ -9,6 +9,8 @@ import { IProfile } from '../data/profile';
 import { ISprite, ISpritesheet } from '../data/sprite';
 import { IConverter } from './converter';
 
+import { Observable } from 'rxjs';
+
 // Abstracts the Firebase authentication stuff, which isn't supported by the
 // simulator.
 export interface IAuth {
@@ -147,6 +149,14 @@ export interface IDataService extends IDataView {
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ): () => void;
+
+  // Watches all (current) spritesheets in this adventure.
+  watchSpritesheets(
+    adventureId: string,
+    onNext: (spritesheets: IDataAndReference<ISpritesheet>[]) => void,
+    onError?: ((error: Error) => void) | undefined,
+    onCompletion?: (() => void) | undefined
+  ): () => void;
 }
 
 // A view of data, either the generalised data service or a transaction.
@@ -202,6 +212,7 @@ export interface ICacheLease<T> {
 }
 
 // Helps avoid repeated lookups of spritesheets.
+// TODO #149 NOPE!  Remove this.  Make something different.
 export interface ISpritesheetCache {
   // This cache is associated with an adventure and its entries wouldn't be valid for
   // a different one.
@@ -217,6 +228,21 @@ export interface ISpritesheetCache {
   resolve(sprite: ISprite): Promise<ICacheLease<IDataAndReference<ISpritesheet> | undefined>>;
 
   // Cleans up this cache.
+  dispose(): void;
+}
+
+export interface ISpritesheetEntry {
+  sheet: ISpritesheet,
+  position: number,
+  url: string
+}
+
+// Looks up sprites for us with caching.
+export interface ISpriteManager {
+  // Looks up a sprite, returning a feed of its latest entries and download URLs.
+  lookup(sprite: ISprite): Observable<ISpritesheetEntry>;
+
+  // Cleans up this manager, stopping subscriptions.
   dispose(): void;
 }
 

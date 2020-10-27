@@ -336,6 +336,20 @@ export class DataService implements IDataService {
       onNext(s.docs.map(d => Convert.playerConverter.convert(d.data())));
     }, onError, onCompletion);
   }
+
+  watchSpritesheets(
+    adventureId: string,
+    onNext: (spritesheets: IDataAndReference<ISpritesheet>[]) => void,
+    onError?: ((error: Error) => void) | undefined,
+    onCompletion?: (() => void) | undefined
+  ) {
+    return this._db.collection(adventures).doc(adventureId).collection(spritesheets)
+      .onSnapshot(s => {
+        onNext(s.docs.map(d => new DataAndReference(
+          d.ref, Convert.spritesheetConverter.convert(d.data()), Convert.spritesheetConverter
+        )));
+      }, onError, onCompletion);
+  }
 }
 
 class TransactionalDataView implements IDataView {

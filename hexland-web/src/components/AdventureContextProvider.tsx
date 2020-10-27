@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useContext } from 'react';
+import React, { useEffect, useMemo, useState, useContext, useReducer } from 'react';
 
 import { UserContext } from './UserContextProvider';
 import { AnalyticsContext } from './AnalyticsContextProvider';
@@ -9,9 +9,11 @@ import { IAdventure, IPlayer } from '../data/adventure';
 import { IIdentified } from '../data/identified';
 import lcm from '../models/mapLifecycleManager';
 import { registerAdventureAsRecent, removeAdventureFromRecent } from '../services/extensions';
+import { ISpriteManager } from '../services/interfaces';
 
 import { useHistory, useLocation } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
+import { SpriteManager } from '../services/spriteManager';
 
 // Providing an adventure context like this lets us maintain the same watchers
 // while the user navigates between maps in the adventure, etc.
@@ -21,7 +23,7 @@ export const AdventureContext = React.createContext<IAdventureContext>({
 });
 
 function AdventureContextProvider(props: IContextProviderProps) {
-  const { dataService, user } = useContext(UserContext);
+  const { dataService, storageService, user } = useContext(UserContext);
   const { analytics, logError } = useContext(AnalyticsContext);
   const { toasts } = useContext(StatusContext);
 
@@ -114,13 +116,33 @@ function AdventureContextProvider(props: IContextProviderProps) {
     [dataService, logError, user, adventureId]
   );
 
+  // Old sprite managers need to be disposed, so we create them on a rolling basis
+  // thus:
+  const [spriteManager, setSpriteManager] = useReducer(
+    (state: ISpriteManager | undefined, action: ISpriteManager | undefined) => {
+      state?.dispose();
+      return action;
+    }, undefined
+  );
+
+  useEffect(() => {
+    if (dataService === undefined || storageService === undefined || adventureId === undefined) {
+      setSpriteManager(undefined);
+      return;
+    }
+
+    console.log('creating sprite manager');
+    setSpriteManager(new SpriteManager(dataService, storageService, adventureId));
+  }, [adventureId, dataService, setSpriteManager, storageService]);
+
   const adventureContext: IAdventureContext = useMemo(
     () => ({
       adventure: adventure,
       players: players,
       spritesheetCache: spritesheetCache,
+      spriteManager: spriteManager
     }),
-    [adventure, players, spritesheetCache]
+    [adventure, players, spritesheetCache, spriteManager]
   );
 
   return (
