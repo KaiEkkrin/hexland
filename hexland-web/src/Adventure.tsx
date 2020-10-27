@@ -13,7 +13,6 @@ import Navigation from './components/Navigation';
 import PlayerInfoList from './components/PlayerInfoList';
 import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
-import { StatusContext } from './components/StatusContextProvider';
 import { UserContext } from './components/UserContextProvider';
 
 import { IAdventure, summariseAdventure, IPlayer, IMapSummary } from './data/adventure';
@@ -35,9 +34,6 @@ import { Link, RouteComponentProps, useHistory } from 'react-router-dom';
 import { faImage } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-import { v4 as uuidv4 } from 'uuid';
-import { MapContext } from './components/MapContextProvider';
-
 interface IAdventureProps {
   adventureId: string;
 }
@@ -46,36 +42,13 @@ function Adventure({ adventureId }: IAdventureProps) {
   const { dataService, functionsService, user } = useContext(UserContext);
   const { analytics, logError } = useContext(AnalyticsContext);
   const profile = useContext(ProfileContext);
-  const { toasts } = useContext(StatusContext);
-  const { adventure, players, setAdventureStateProps } = useContext(AdventureContext);
-  const { setMapStateProps } = useContext(MapContext);
+  const { adventure, players } = useContext(AdventureContext);
   const history = useHistory();
 
   const userPolicy = useMemo(
     () => profile === undefined ? undefined : getUserPolicy(profile.level),
     [profile]
   );
-
-  // How to handle a load failure.
-  const couldNotLoad = useCallback((message: string) => {
-    toasts.next({
-      id: uuidv4(),
-      record: { title: 'Error loading adventure', message: message }
-    });
-
-    setAdventureStateProps?.({});
-    history.replace('/');
-  }, [history, setAdventureStateProps, toasts]);
-
-  // Clear any map context so we don't keep poking it
-  useEffect(() => {
-    setMapStateProps?.({ adventureId: adventureId, mapId: undefined });
-  }, [adventureId, setMapStateProps]);
-
-  // Update the adventure context
-  useEffect(() => {
-    setAdventureStateProps?.({ adventureId: adventureId, couldNotLoadAdventure: couldNotLoad });
-  }, [adventureId, couldNotLoad, setAdventureStateProps]);
 
   const title = useMemo(() => {
     if (adventure?.record.owner !== user?.uid) {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useContext } from 'react';
+import React, { useEffect, useMemo, useState, useContext, useReducer } from 'react';
 
 import { trackChanges } from '../data/changeTracking';
 import { IAdventureIdentified } from '../data/identified';
@@ -10,11 +10,14 @@ import { registerMapAsRecent, removeMapFromRecent, watchChangesAndConsolidate } 
 
 import { AdventureContext } from './AdventureContextProvider';
 import { AnalyticsContext } from './AnalyticsContextProvider';
-import { IContextProviderProps, IMapContext, IMapStateProps } from './interfaces';
+import { IContextProviderProps, IMapContext } from './interfaces';
 import { ProfileContext } from './ProfileContextProvider';
+import { StatusContext } from './StatusContextProvider';
 import { UserContext } from './UserContextProvider';
 
+import { useHistory, useLocation } from 'react-router-dom';
 import { from } from 'rxjs';
+import { v4 as uuidv4 } from 'uuid';
 
 // Providing the map state machine like this allows us to ensure cleanup
 // despite React Router shenanigans where it appears to drop components on
@@ -28,21 +31,31 @@ function MapContextProvider(props: IContextProviderProps) {
   const { analytics, logError, logEvent } = useContext(AnalyticsContext);
   const { dataService, functionsService, storageService, user } = useContext(UserContext);
   const profile = useContext(ProfileContext);
+  const { toasts } = useContext(StatusContext);
   const { spritesheetCache } = useContext(AdventureContext);
 
-  const [mapStateProps, setMapStateProps] = useState<IMapStateProps>({});
+  const history = useHistory();
+  const location = useLocation();
 
   const [map, setMap] = useState<IAdventureIdentified<IMap> | undefined>(undefined);
   const [mapState, setMapState] = useState<IMapState>(createDefaultState());
-  const [stateMachine, setStateMachine] = useState<MapStateMachine | undefined>(undefined);
+
+  // This reducer lets us unmount previous state machines when we get a new one
+  const [stateMachine, setStateMachine] = useReducer(
+    (state: MapStateMachine | undefined, action: MapStateMachine | undefined) => {
+      state?.setMount(undefined);
+      return action;
+    }, undefined
+  );
 
   // Watch the map when it changes
   useEffect(() => {
-    const { adventureId, mapId, couldNotLoadMap } = mapStateProps;
-    if (dataService === undefined || adventureId === undefined || mapId === undefined) {
+    const matches = /^\/adventure\/([^/]+)\/map\/([^/]+)$/.exec(location?.pathname);
+    if (!dataService || !matches) {
       return;
     }
 
+    const [adventureId, mapId] = [matches[1], matches[2]];
     const mapRef = dataService.getMapRef(adventureId, mapId);
 
     // How to handle a map load failure.
@@ -53,7 +66,12 @@ function MapContextProvider(props: IContextProviderProps) {
           .catch(e => logError("Error removing map from recent", e));
       }
 
-      couldNotLoadMap?.(message);
+      toasts.next({
+        id: uuidv4(),
+        record: { title: 'Error loading map', message: message }
+      });
+
+      history.replace('/');
     }
 
     // Check this map exists and can be fetched (the watch doesn't do this for us)
@@ -81,7 +99,7 @@ function MapContextProvider(props: IContextProviderProps) {
       }),
       e => logError("Error watching map " + mapId, e)
     );
-  }, [analytics, dataService, logError, mapStateProps, setMap, user]);
+  }, [analytics, dataService, history, location, logError, setMap, toasts, user]);
 
   // Track changes to the map.
   // We don't start watching until we have an initialised state machine (which means the
@@ -126,7 +144,7 @@ function MapContextProvider(props: IContextProviderProps) {
     return () => {
       sub.unsubscribe();
       setStateMachine(undefined);
-    }
+    };
   }, [
     logError, map, profile, dataService, functionsService, storageService,
     user, setMapState, setStateMachine, spritesheetCache
@@ -160,8 +178,8 @@ function MapContextProvider(props: IContextProviderProps) {
   }, [logError, logEvent, stateMachine, dataService, functionsService]);
 
   const mapContext: IMapContext = useMemo(
-    () => ({ map: map, mapState: mapState, stateMachine: stateMachine, setMapStateProps: setMapStateProps }),
-    [map, mapState, stateMachine, setMapStateProps]
+    () => ({ map: map, mapState: mapState, stateMachine: stateMachine }),
+    [map, mapState, stateMachine]
   );
 
   return (

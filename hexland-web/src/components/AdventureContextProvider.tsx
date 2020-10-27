@@ -2,12 +2,16 @@ import React, { useEffect, useMemo, useState, useContext } from 'react';
 
 import { UserContext } from './UserContextProvider';
 import { AnalyticsContext } from './AnalyticsContextProvider';
-import { IAdventureContext, IAdventureStateProps, IContextProviderProps } from './interfaces';
+import { IAdventureContext, IContextProviderProps } from './interfaces';
+import { StatusContext } from './StatusContextProvider';
 
 import { IAdventure, IPlayer } from '../data/adventure';
 import { IIdentified } from '../data/identified';
 import lcm from '../models/mapLifecycleManager';
 import { registerAdventureAsRecent, removeAdventureFromRecent } from '../services/extensions';
+
+import { useHistory, useLocation } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
 
 // Providing an adventure context like this lets us maintain the same watchers
 // while the user navigates between maps in the adventure, etc.
@@ -19,12 +23,19 @@ export const AdventureContext = React.createContext<IAdventureContext>({
 function AdventureContextProvider(props: IContextProviderProps) {
   const { dataService, user } = useContext(UserContext);
   const { analytics, logError } = useContext(AnalyticsContext);
+  const { toasts } = useContext(StatusContext);
 
-  const [adventureStateProps, setAdventureStateProps] = useState<IAdventureStateProps>({});
+  const history = useHistory();
+  const location = useLocation();
+
+  const adventureId = useMemo(() => {
+    const matches = /^\/adventure\/([^/]+)/.exec(location?.pathname);
+    return matches ? matches[1] : undefined;
+  }, [location]);
+
   const [adventure, setAdventure] = useState<IIdentified<IAdventure> | undefined>(undefined);
   useEffect(() => {
     const uid = user?.uid;
-    const { adventureId, couldNotLoadAdventure } = adventureStateProps;
     if (uid === undefined || adventureId === undefined) {
       return undefined;
     }
@@ -41,7 +52,12 @@ function AdventureContextProvider(props: IContextProviderProps) {
           .catch(e => logError("Error removing adventure from recent", e));
       }
 
-      couldNotLoadAdventure?.(message);
+      toasts.next({
+        id: uuidv4(),
+        record: { title: 'Error loading adventure', message: message }
+      });
+
+      history.replace('/');
     }
 
     // Check this adventure exists and can be fetched (the watch doesn't do this for us)
@@ -69,7 +85,7 @@ function AdventureContextProvider(props: IContextProviderProps) {
     return dataService?.watch(d,
       a => setAdventure(a === undefined ? undefined : { id: adventureId, record: a }),
       e => logError("Error watching adventure " + adventureId + ": ", e));
-  }, [dataService, user, analytics, logError, adventureStateProps]);
+  }, [adventureId, analytics, dataService, history, logError, toasts, user]);
 
   // Handle a successful adventure load by watching its players, etc.
   const [players, setPlayers] = useState<IPlayer[]>([]);
@@ -90,10 +106,12 @@ function AdventureContextProvider(props: IContextProviderProps) {
   }, [adventure, dataService, logError, setPlayers, user]);
 
   // The lifecycle manager releases a spritesheet cache for us to publish
+  // TODO #149 No -- take the spritesheet cache away entirely in favour of a
+  // spritesheets watch
   const spritesheetCache = useMemo(
-    () => adventureStateProps.adventureId === undefined ? undefined :
-      lcm.getSpritesheetCache(dataService, logError, user?.uid, adventureStateProps.adventureId),
-    [dataService, logError, user, adventureStateProps.adventureId]
+    () => adventureId === undefined ? undefined :
+      lcm.getSpritesheetCache(dataService, logError, user?.uid, adventureId),
+    [dataService, logError, user, adventureId]
   );
 
   const adventureContext: IAdventureContext = useMemo(
@@ -101,9 +119,8 @@ function AdventureContextProvider(props: IContextProviderProps) {
       adventure: adventure,
       players: players,
       spritesheetCache: spritesheetCache,
-      setAdventureStateProps: setAdventureStateProps
     }),
-    [adventure, players, spritesheetCache, setAdventureStateProps]
+    [adventure, players, spritesheetCache]
   );
 
   return (

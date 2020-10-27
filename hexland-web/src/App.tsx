@@ -31,9 +31,9 @@ function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
           <AnalyticsContextProvider {...props}>
             <ProfileContextProvider>
               <StatusContextProvider>
-                <AdventureContextProvider>
-                  <MapContextProvider>
-                    <Routing {...props}>
+                <Routing {...props}>
+                  <AdventureContextProvider>
+                    <MapContextProvider>
                       <Switch>
                         <Route exact path="/" component={Home} />
                         <Route exact path="/all" component={All} />
@@ -43,9 +43,9 @@ function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
                         <Route exact path="/login" component={Login} />
                         <Route exact page="/shared" component={Shared} />
                       </Switch>
-                    </Routing>
-                  </MapContextProvider>
-                </AdventureContextProvider>
+                    </MapContextProvider>
+                  </AdventureContextProvider>
+                </Routing>
                 <Consent />
                 <Status />
                 <ToastCollection />

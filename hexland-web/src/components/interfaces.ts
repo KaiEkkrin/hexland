@@ -52,29 +52,16 @@ export interface IStatusContext {
   toasts: Subject<IIdentified<IToast | undefined>>;
 }
 
-export interface IAdventureStateProps {
-  adventureId?: string | undefined;
-  couldNotLoadAdventure?: ((message: string) => void) | undefined;
-}
-
 export interface IAdventureContext {
   adventure?: IIdentified<IAdventure> | undefined;
   players: IPlayer[];
   spritesheetCache?: ISpritesheetCache | undefined;
-  setAdventureStateProps?: ((props: IAdventureStateProps) => void) | undefined;
-}
-
-export interface IMapStateProps {
-  adventureId?: string | undefined;
-  mapId?: string | undefined;
-  couldNotLoadMap?: ((message: string) => void) | undefined;
 }
 
 export interface IMapContext {
   map?: IAdventureIdentified<IMap> | undefined;
   mapState: IMapState;
   stateMachine?: MapStateMachine | undefined;
-  setMapStateProps?: ((props: IMapStateProps) => void) | undefined;
 }
 
 export interface IFirebaseProps {

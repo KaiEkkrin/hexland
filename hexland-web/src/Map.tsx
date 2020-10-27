@@ -31,7 +31,7 @@ import { zoomMax, zoomMin } from './models/mapStateMachine';
 import { createDefaultUiState, isAnEditorOpen, MapUi } from './models/mapUi';
 import { networkStatusTracker } from './models/networkStatusTracker';
 
-import { Link, RouteComponentProps, useHistory } from 'react-router-dom';
+import { Link, RouteComponentProps } from 'react-router-dom';
 
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
@@ -41,11 +41,10 @@ import { v4 as uuidv4 } from 'uuid';
 function Map({ adventureId, mapId }: IMapPageProps) {
   const { dataService, functionsService, user } = useContext(UserContext);
   const { logError } = useContext(AnalyticsContext);
-  const { players, setAdventureStateProps } = useContext(AdventureContext);
-  const { map, mapState, stateMachine, setMapStateProps } = useContext(MapContext);
+  const { players } = useContext(AdventureContext);
+  const { map, mapState, stateMachine } = useContext(MapContext);
   const profile = useContext(ProfileContext);
   const statusContext = useContext(StatusContext);
-  const history = useHistory();
 
   const drawingRef = useRef<HTMLDivElement>(null);
 
@@ -90,31 +89,6 @@ function Map({ adventureId, mapId }: IMapPageProps) {
   const loadingSpinner = useMemo(() => stateMachine !== undefined ? <React.Fragment></React.Fragment> :
     (<Throbber />),
     [stateMachine]);
-
-  // If we fail to load the map, redirect back to the home page
-  const couldNotLoad = useCallback((message: string) => {
-    statusContext.toasts.next({
-      id: uuidv4(),
-      record: { title: 'Error loading map', message: message }
-    });
-
-    history.replace('/');
-  }, [history, statusContext]);
-
-  // The adventure context manages the adventure state for us
-  useEffect(() => {
-    setAdventureStateProps?.({ adventureId: adventureId, couldNotLoadAdventure: couldNotLoad });
-  }, [adventureId, couldNotLoad, setAdventureStateProps]);
-
-  // The map context manages the map state for us, which allows it to handle caching and
-  // disposal of resources when switching maps
-  useEffect(() => {
-    setMapStateProps?.({
-      adventureId: adventureId,
-      mapId: mapId,
-      couldNotLoadMap: couldNotLoad
-    });
-  }, [adventureId, mapId, couldNotLoad, setMapStateProps]);
 
   // Mount the drawing into our DOM tree
   useEffect(() => {
