@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useState, useContext, useReducer } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 
 import { trackChanges } from '../data/changeTracking';
 import { IAdventureIdentified } from '../data/identified';
 import { IMap } from '../data/map';
 import lcm from '../models/mapLifecycleManager';
-import { createDefaultState, IMapState, MapStateMachine } from '../models/mapStateMachine';
+import { createDefaultState, MapStateMachine } from '../models/mapStateMachine';
 import { networkStatusTracker } from '../models/networkStatusTracker';
 import { registerMapAsRecent, removeMapFromRecent, watchChangesAndConsolidate } from '../services/extensions';
 
@@ -16,12 +16,9 @@ import { StatusContext } from './StatusContextProvider';
 import { UserContext } from './UserContextProvider';
 
 import { useHistory, useLocation } from 'react-router-dom';
-import { from } from 'rxjs';
+import { from, Observable } from 'rxjs';
+import { first, map, scan, share, switchMap } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
-
-// Providing the map state machine like this allows us to ensure cleanup
-// despite React Router shenanigans where it appears to drop components on
-// the floor ignoring any useEffect cleanups.
 
 export const MapContext = React.createContext<IMapContext>({
   mapState: createDefaultState()
@@ -29,7 +26,7 @@ export const MapContext = React.createContext<IMapContext>({
 
 function MapContextProvider(props: IContextProviderProps) {
   const { analytics, logError, logEvent } = useContext(AnalyticsContext);
-  const { dataService, functionsService, storageService, user } = useContext(UserContext);
+  const { dataService, functionsService, user } = useContext(UserContext);
   const profile = useContext(ProfileContext);
   const { toasts } = useContext(StatusContext);
   const { spriteManager } = useContext(AdventureContext);
@@ -37,21 +34,12 @@ function MapContextProvider(props: IContextProviderProps) {
   const history = useHistory();
   const location = useLocation();
 
-  const [map, setMap] = useState<IAdventureIdentified<IMap> | undefined>(undefined);
-  const [mapState, setMapState] = useState<IMapState>(createDefaultState());
-
-  // This reducer lets us unmount previous state machines when we get a new one
-  const [stateMachine, setStateMachine] = useReducer(
-    (state: MapStateMachine | undefined, action: MapStateMachine | undefined) => {
-      state?.setMount(undefined);
-      return action;
-    }, undefined
-  );
-
   // Watch the map when it changes
+  const [mapContext, setMapContext] = useState<IMapContext>({ mapState: createDefaultState() });
   useEffect(() => {
     const matches = /^\/adventure\/([^/]+)\/map\/([^/]+)$/.exec(location?.pathname);
-    if (!dataService || !matches) {
+    const uid = user?.uid;
+    if (!dataService || !matches || !profile || !spriteManager || !uid) {
       return;
     }
 
@@ -74,113 +62,96 @@ function MapContextProvider(props: IContextProviderProps) {
       history.replace('/');
     }
 
-    // Check this map exists and can be fetched (the watch doesn't do this for us)
-    dataService.get(mapRef)
-      .then(r => {
-        if (r === undefined) {
-          couldNotLoad('That map does not exist.');
-        }
-      })
-      .catch(e => {
-        logError("Error checking for map " + mapId + ": ", e);
-        couldNotLoad(e.message);
-      });
+    // We're going to do several things with this
+    const watchMap = new Observable<IAdventureIdentified<IMap>>(sub => {
+      return dataService.watch(
+        mapRef,
+        m => {
+          if (m === undefined) {
+            sub.error("That map does not exist.");
+          } else {
+            analytics?.logEvent("select_content", {
+              "content_type": "map",
+              "item_id": mapId
+            });
+            sub.next({ adventureId: adventureId, id: mapId, record: m });
+          }
+        },
+        e => sub.error(e)
+      );
+    }).pipe(share());
 
-    analytics?.logEvent("select_content", {
-      "content_type": "map",
-      "item_id": mapId
-    });
-
-    return dataService.watch<IMap>(
-      mapRef, m => setMap(m === undefined ? undefined : {
-        adventureId: adventureId,
-        id: mapId,
-        record: m
-      }),
-      e => logError("Error watching map " + mapId, e)
+    // On first load, register the map as recent, and fire a consolidate.
+    // Neither of these is fatal if it goes wrong
+    const registerAsRecentSub = watchMap.pipe(first(), switchMap(m =>
+      from(registerMapAsRecent(dataService, uid, m.adventureId, m.id, m.record))
+    )).subscribe(
+      () => {},
+      e => logError(`Error registering map ${adventureId}/${mapId} as recent`, e)
     );
-  }, [analytics, dataService, history, location, logError, setMap, toasts, user]);
 
-  // Track changes to the map.
-  // We don't start watching until we have an initialised state machine (which means the
-  // consolidate is done).
-  useEffect(() => {
-    async function openMap(): Promise<MapStateMachine | undefined> {
-      const uid = user?.uid;
-      if (
-        dataService === undefined ||
-        functionsService === undefined ||
-        storageService === undefined ||
-        map === undefined ||
-        uid === undefined ||
-        profile === undefined ||
-        spriteManager?.adventureId !== map.adventureId
-      ) {
-        return undefined;
+    const consolidateSub = watchMap.pipe(first(), switchMap(m =>
+      from((async () => {
+        console.log(`consolidating map changes for ${m.adventureId}/${m.id}`);
+        await functionsService?.consolidateMapChanges(m.adventureId, m.id, false);
+      })())
+    )).subscribe(
+      () => {},
+      e => logError(`Error consolidating map ${adventureId}/${mapId} changes`, e)
+    );
+
+    // Provide the map state machine, updating its state as the map changes.
+    // We update the map context all in one go like this to avoid transient states
+    // (map field pointing to a different one to the state machine for example) which
+    // might cause subscribers to double-execute operations.
+    const watchSub = watchMap.pipe(switchMap(m => new Observable<MapStateMachine>(sub => {
+      const sm = lcm.getStateMachine(
+        dataService, logError, uid, m, profile, spriteManager
+      );
+
+      networkStatusTracker.clear();
+      const stop = watchChangesAndConsolidate(
+        dataService,
+        functionsService,
+        m.adventureId,
+        m.id,
+        chs => {
+          networkStatusTracker.onChanges(chs);
+          return trackChanges(m.record, sm.changeTracker, chs.chs, chs.user);
+        },
+        () => sm.changeTracker.clear(),
+        logEvent,
+        e => logError("Error watching map changes", e)
+      );
+
+      sub.next(sm);
+      return stop;
+    })), scan((oldSm, newSm) => {
+      // When we get a new state machine, unmount the old one (the map component will
+      // mount the new one if it has a mount point.)
+      if (oldSm !== newSm) {
+        oldSm.setMount(undefined);
       }
-
-      const { adventureId, id, record } = map;
-      console.log(`opening map: ${adventureId}/${id}`);
-
-      // These two calls are both done on a best-effort basis, because failing shouldn't
-      // preclude us from opening the map (although hopefully they will succeed)
-      try {
-        await registerMapAsRecent(dataService, uid, adventureId, id, record);
-      } catch (e) {
-        logError("Error registering map " + adventureId + "/" + id + " as recent", e);
+      return newSm;
+    }), switchMap(sm => sm.state.pipe(map(st => ({
+      map: sm.map, mapState: st, stateMachine: sm
+    }))))).subscribe(
+      setMapContext,
+      e => {
+        logError(`Error watching changes of map ${adventureId}/${mapId}`, e);
+        couldNotLoad(String(e?.message));
       }
+    );
 
-      try {
-        console.log(`consolidating map changes for ${adventureId}/${id}`);
-        await functionsService.consolidateMapChanges(adventureId, id, false);
-      } catch (e) {
-        logError("Error consolidating map " + adventureId + "/" + id + " changes", e);
-      }
-
-      return lcm.getStateMachine(dataService, logError, storageService, uid, map, profile, spriteManager);
-    }
-
-    const sub = from(openMap()).subscribe(setStateMachine);
     return () => {
-      sub.unsubscribe();
-      setStateMachine(undefined);
+      watchSub.unsubscribe();
+      consolidateSub.unsubscribe();
+      registerAsRecentSub.unsubscribe();
     };
   }, [
-    logError, map, profile, dataService, functionsService, storageService,
-    user, setStateMachine, spriteManager
+    analytics, dataService, functionsService, history, location, logError, logEvent,
+    profile, setMapContext, spriteManager, toasts, user
   ]);
-
-  useEffect(() => {
-    if (stateMachine === undefined) {
-      return undefined;
-    }
-
-    // Watch for map changes
-    console.log("Watching changes to map " + stateMachine.map.id);
-    networkStatusTracker.clear();
-    const stopWatching = watchChangesAndConsolidate(
-      dataService, functionsService,
-      stateMachine.map.adventureId, stateMachine.map.id,
-      chs => {
-        networkStatusTracker.onChanges(chs);
-        return trackChanges(stateMachine.map.record, stateMachine.changeTracker, chs.chs, chs.user);
-      },
-      () => stateMachine.changeTracker.clear(),
-      logEvent,
-      e => logError("Error watching map changes", e));
-
-    // Provide a feed of the map state
-    const sub = stateMachine.state.subscribe(setMapState);
-    return () => {
-      sub.unsubscribe();
-      stopWatching?.();
-    };
-  }, [logError, logEvent, setMapState, stateMachine, dataService, functionsService]);
-
-  const mapContext: IMapContext = useMemo(
-    () => ({ map: map, mapState: mapState, stateMachine: stateMachine }),
-    [map, mapState, stateMachine]
-  );
 
   return (
     <MapContext.Provider value={mapContext}>

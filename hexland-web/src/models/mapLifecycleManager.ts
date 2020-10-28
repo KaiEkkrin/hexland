@@ -3,7 +3,7 @@ import { IMap, MapType } from "../data/map";
 import { getUserPolicy } from "../data/policy";
 import { IProfile } from "../data/profile";
 import { getTokenGeometry } from "../data/tokenGeometry";
-import { IDataService, ISpriteManager, IStorage } from "../services/interfaces";
+import { IDataService, ISpriteManager } from "../services/interfaces";
 
 import { standardColours } from "./featureColour";
 import { HexGridGeometry } from "./hexGridGeometry";
@@ -27,24 +27,13 @@ class MapLifecycleManager {
 
   // Gets a map state machine
   getStateMachine(
-    dataService: IDataService | undefined,
-    logError: ((message: string, e: any) => void) | undefined,
-    storage: IStorage | undefined,
-    uid: string | undefined,
+    dataService: IDataService,
+    logError: (message: string, e: any) => void,
+    uid: string,
     map: IAdventureIdentified<IMap>,
     profile: IProfile,
-    spriteManager: ISpriteManager | undefined
-  ): MapStateMachine | undefined {
-    if (
-      dataService === undefined ||
-      logError === undefined ||
-      storage === undefined ||
-      uid === undefined ||
-      spriteManager === undefined
-    ) {
-      return undefined;
-    }
-
+    spriteManager: ISpriteManager
+  ): MapStateMachine {
     const userPolicy = map.record.owner === uid ? getUserPolicy(profile.level) : undefined;
     const already = this._stateMachines.get(map.record.ty);
     if (already !== undefined) {

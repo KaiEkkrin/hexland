@@ -777,7 +777,7 @@ export class MapStateMachine {
     this._userPolicy = userPolicy;
     this._changeTracker = this.createChangeTracker();
     this._drawing.setSpriteManager(spriteManager);
-    this.resetView();
+    this.resetView(); // provides a state update
   }
 
   // For editing
