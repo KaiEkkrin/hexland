@@ -146,17 +146,9 @@ function Map() {
   // different parts of the UI
   const ui = useMemo(
     () => statusContext.toasts === undefined ? undefined :
-      new MapUi(setUiState, getClientPosition, logError, statusContext.toasts),
-    [logError, getClientPosition, setUiState, statusContext.toasts]
+      new MapUi(stateMachine, setUiState, getClientPosition, logError, statusContext.toasts),
+    [logError, getClientPosition, setUiState, stateMachine, statusContext.toasts]
   );
-
-  // This is a bit nasty, but if we didn't update our ui object with any new map state machine
-  // we'd have to make said state machine a parameter of basically everything
-  useEffect(() => {
-    if (ui !== undefined) {
-      ui.stateMachine = stateMachine;
-    }
-  }, [stateMachine, ui]);
 
   const mapContainerClassName = useMemo(
     () => uiState.touch !== undefined || uiState.mouseDown ?

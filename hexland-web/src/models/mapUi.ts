@@ -81,20 +81,22 @@ export function isAnEditorOpen(state: IMapUiState): boolean {
 }
 
 export class MapUi {
+  private readonly _stateMachine: MapStateMachine | undefined;
   private readonly _setState: (state: IMapUiState) => void;
   private readonly _getClientPosition: (x: number, y: number) => THREE.Vector3 | undefined;
   private readonly _logError: (message: string, e: any, fatal?: boolean | undefined) => void;
   private readonly _toasts: Subject<IIdentified<IToast | undefined>>;
 
   private _state = createDefaultUiState();
-  private _stateMachine: MapStateMachine | undefined;
 
   constructor(
+    stateMachine: MapStateMachine | undefined,
     setState: (state: IMapUiState) => void,
     getClientPosition: (x: number, y: number) => THREE.Vector3 | undefined,
     logError: (message: string, e: any, fatal?: boolean | undefined) => void,
     toasts: Subject<IIdentified<IToast | undefined>>
   ) {
+    this._stateMachine = stateMachine;
     this._setState = setState;
     this._getClientPosition = getClientPosition;
     this._logError = logError;
@@ -218,9 +220,6 @@ export class MapUi {
     return undefined;
   }
 
-  get stateMachine() { return this._stateMachine; }
-  set stateMachine(value: MapStateMachine | undefined) { this._stateMachine = value; }
-
   addChanges(changes: IChange[] | undefined) {
     if (this._stateMachine === undefined) {
       return;
@@ -228,8 +227,8 @@ export class MapUi {
 
     this._stateMachine.addChanges(changes, (id, title, message) => {
       this._toasts.next({ id: id, record: { title: title, message: message }});
-    }).then(() => console.log(`Added ${changes?.length} changes`))
-      .catch(e => this._logError(`Error adding ${changes?.length} changes`, e));
+    }).then(() => console.log(`Added ${changes?.length} changes to map ${this._stateMachine?.map.id}`))
+      .catch(e => this._logError(`Error adding ${changes?.length} changes to map ${this._stateMachine?.map.id}`, e));
   }
 
   contextMenu(e: MouseEvent, bounds: DOMRect) {

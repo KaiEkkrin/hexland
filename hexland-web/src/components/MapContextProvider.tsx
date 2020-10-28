@@ -147,7 +147,7 @@ function MapContextProvider(props: IContextProviderProps) {
     };
   }, [
     logError, map, profile, dataService, functionsService, storageService,
-    user, setMapState, setStateMachine, spriteManager
+    user, setStateMachine, spriteManager
   ]);
 
   useEffect(() => {
@@ -175,7 +175,7 @@ function MapContextProvider(props: IContextProviderProps) {
       sub.unsubscribe();
       stopWatching?.();
     };
-  }, [logError, logEvent, stateMachine, dataService, functionsService]);
+  }, [logError, logEvent, setMapState, stateMachine, dataService, functionsService]);
 
   const mapContext: IMapContext = useMemo(
     () => ({ map: map, mapState: mapState, stateMachine: stateMachine }),
