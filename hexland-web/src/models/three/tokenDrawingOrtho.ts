@@ -37,7 +37,7 @@ interface ITokenSpriteProperties extends ITokenProperties, ISpriteProperties {
 // and the sprite ones (if applicable) once we get a download URL.  So that we can cancel
 // resolving the sprite, we include a subscription in the base dictionary.
 class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenProperties & { basePosition: IGridCoord })>
-  extends InstancedFeatures<K, F & { sub: Subscription }>
+  extends InstancedFeatures<K, F & { sub?: Subscription | undefined }>
 {
   private readonly _spriteFeatures: InstancedFeatures<K, F & ITokenSpriteProperties>;
   private _textureCache: TextureCache;
@@ -72,6 +72,11 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
   }
 
   add(f: F) {
+    if (f.sprites.length === 0) {
+      // There's clearly no sprite to add for this one, just add the palette feature
+      return super.add(f);
+    }
+
     // Lookup the sprite, adding the sprite feature when we've got it:
     const sub = this._textureCache.resolve(f.sprites[0]).subscribe(e => {
       if (this._spriteFeatures.add({ ...f, sheetEntry: e, texture: e.texture }) === false) {
@@ -98,7 +103,7 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
 
   clear() {
     // Unsubscribe first so no more pending sprite features will go in
-    this.forEach(f => f.sub.unsubscribe());
+    this.forEach(f => f.sub?.unsubscribe());
     super.clear();
 
     // Remember to release all the sprite resources before emptying the dictionary!
@@ -114,7 +119,7 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
       return undefined;
     }
 
-    removed.sub.unsubscribe();
+    removed.sub?.unsubscribe();
     const removedSprite = this._spriteFeatures.remove(oldPosition);
     if (removedSprite !== undefined) {
       removedSprite.texture.release().then(() => { /* done */ });
