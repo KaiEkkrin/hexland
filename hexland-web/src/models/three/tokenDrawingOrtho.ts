@@ -1,6 +1,8 @@
 import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from "../../data/coord";
 import { FeatureDictionary, IFeature, IFeatureDictionary, IToken, ITokenProperties, ITokenText } from "../../data/feature";
-import { ITokenFace, ITokenFillEdge, ITokenFillVertex, SimpleTokenDrawing } from "../../data/tokens";
+import { BaseTokenDrawing, ITokenFace, ITokenFillEdge, ITokenFillVertex } from "../../data/tokens";
+import { ICacheLease } from "../../services/interfaces";
+
 import { IGridGeometry } from "../gridGeometry";
 import { RedrawFlag } from "../redrawFlag";
 
@@ -8,12 +10,14 @@ import { createPaletteColouredAreaObject, createSelectedAreas, createSpriteAreaO
 import { IInstancedFeatureObject } from "./instancedFeatureObject";
 import { InstancedFeatures } from "./instancedFeatures";
 import { IColourParameters } from "./paletteColouredFeatureObject";
-import { ITextureLease, TextureCache } from "./textureCache";
+import { ISpriteProperties } from "./spriteFeatureObject";
+import { TextureCache } from "./textureCache";
 import { TokenTexts } from "./tokenTexts";
 import { ITokenUvTransform } from "./uv";
 import { createPaletteColouredVertexObject, createSpriteVertexObject, createTokenFillVertexGeometry } from "./vertices";
 import { createPaletteColouredWallObject, createSpriteEdgeObject, createTokenFillEdgeGeometry } from "./walls";
 
+import { Subscription } from 'rxjs';
 import * as THREE from 'three';
 import fluent from "fluent-iterable";
 
@@ -25,12 +29,17 @@ export interface ITokenDrawingParameters {
   textZ: number;
 }
 
+interface ITokenSpriteProperties extends ITokenProperties, ISpriteProperties {
+  texture: ICacheLease<THREE.Texture>;
+}
+
 // This middle dictionary helps us create the palette-coloured token features immediately,
-// and the sprite ones (if applicable) once we get a download URL.
+// and the sprite ones (if applicable) once we get a download URL.  So that we can cancel
+// resolving the sprite, we include a subscription in the base dictionary.
 class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenProperties & { basePosition: IGridCoord })>
-  extends InstancedFeatures<K, F>
+  extends InstancedFeatures<K, F & { sub: Subscription }>
 {
-  private readonly _spriteFeatures: InstancedFeatures<K, F & { spriteTexture: ITextureLease }>;
+  private readonly _spriteFeatures: InstancedFeatures<K, F & ITokenSpriteProperties>;
   private _textureCache: TextureCache;
 
   constructor(
@@ -43,7 +52,7 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
   ) {
     super(gridGeometry, needsRedraw, toIndex, createPaletteColouredObject);
     this._textureCache = textureCache;
-    this._spriteFeatures = new InstancedFeatures<K, F & { spriteTexture: ITextureLease }>(
+    this._spriteFeatures = new InstancedFeatures<K, F & ITokenSpriteProperties>(
       gridGeometry, needsRedraw, toIndex, createSpriteObject
     );
   }
@@ -63,34 +72,38 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
   }
 
   add(f: F) {
-    const added = super.add(f);
+    // Lookup the sprite, adding the sprite feature when we've got it:
+    const sub = this._textureCache.resolve(f.sprites[0]).subscribe(e => {
+      if (this._spriteFeatures.add({ ...f, sheetEntry: e, texture: e.texture }) === false) {
+        console.warn(`failed to add sprite feature with texture ${e.url}`);
+      }
+    });
+
+    // Add the palette feature now:
+    const added = super.add({ ...f, sub: sub });
     if (added === false) {
+      // If we're not going to add the palette feature, we need to cancel the
+      // sprite feature too :)
+      sub.unsubscribe();
+      const removed = this._spriteFeatures.remove(f.position);
+      if (removed !== undefined) {
+        removed.texture.release().then(() => { /* done */ });
+      }
+
       return false;
-    }
-
-    // To be able to add the sprite feature we need to lookup the sprite URL.
-    // After finding it we should check again whether this was removed...
-    if (f.sprites.length > 0) {
-      this._textureCache.resolve(f.sprites[0])
-        .then(t => {
-          const f2 = super.get(f.position);
-          if (f2?.id !== f.id) {
-            return;
-          }
-
-          this._spriteFeatures.add({ ...f, spriteTexture: t });
-        });
     }
 
     return true;
   }
 
   clear() {
+    // Unsubscribe first so no more pending sprite features will go in
+    this.forEach(f => f.sub.unsubscribe());
     super.clear();
 
     // Remember to release all the sprite resources before emptying the dictionary!
     const toRelease = [...fluent(this._spriteFeatures)];
-    Promise.all(toRelease.map(f => f.spriteTexture.release()))
+    Promise.all(toRelease.map(f => f.texture.release()))
       .then(done => console.log(`${done.length} sprite features released`));
     this._spriteFeatures.clear();
   }
@@ -101,15 +114,19 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
       return undefined;
     }
 
+    removed.sub.unsubscribe();
     const removedSprite = this._spriteFeatures.remove(oldPosition);
     if (removedSprite !== undefined) {
-      removedSprite.spriteTexture.release().then(() => { /* done */ });
+      removedSprite.texture.release().then(() => { /* done */ });
     }
 
     return removed;
   }
 
   setTextureCache(textureCache: TextureCache) {
+    // Changing the texture cache invalidates what we currently have,
+    // so we do a clear first
+    this.clear();
     this._textureCache = textureCache;
   }
 
@@ -121,10 +138,10 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
 }
 
 // A handy wrapper for the various thingies that go into token drawing.
-export class TokenDrawing extends SimpleTokenDrawing<
-  TokenFeatures<IGridCoord, IFeature<IGridCoord> & ITokenProperties & { basePosition: IGridCoord }>,
-  TokenFeatures<IGridEdge, IFeature<IGridEdge> & ITokenProperties & { basePosition: IGridCoord }>,
-  TokenFeatures<IGridVertex, IFeature<IGridVertex> & ITokenProperties & { basePosition: IGridCoord }>,
+export class TokenDrawing extends BaseTokenDrawing<
+  TokenFeatures<IGridCoord, ITokenFace>,
+  TokenFeatures<IGridEdge, ITokenFillEdge>,
+  TokenFeatures<IGridVertex, ITokenFillVertex>,
   TokenTexts
 > {
   constructor(
@@ -141,7 +158,7 @@ export class TokenDrawing extends SimpleTokenDrawing<
       new TokenFeatures(
         gridGeometry, needsRedraw, coordString,
         createPaletteColouredAreaObject(gridGeometry, drawingParameters.alpha, drawingParameters.z, colourParameters),
-        createSpriteAreaObject(gridGeometry, textureCache, uvTransform, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
+        createSpriteAreaObject(gridGeometry, needsRedraw, textureCache, uvTransform, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
         textureCache
       ),
       new TokenFeatures(
@@ -149,7 +166,7 @@ export class TokenDrawing extends SimpleTokenDrawing<
         createPaletteColouredWallObject(
           createTokenFillEdgeGeometry(gridGeometry, drawingParameters.alpha, drawingParameters.z), gridGeometry, colourParameters
         ),
-        createSpriteEdgeObject(gridGeometry, textureCache, uvTransform, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
+        createSpriteEdgeObject(gridGeometry, needsRedraw, textureCache, uvTransform, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
         textureCache
       ),
       new TokenFeatures(
@@ -157,7 +174,7 @@ export class TokenDrawing extends SimpleTokenDrawing<
         createPaletteColouredVertexObject(
           createTokenFillVertexGeometry(gridGeometry, drawingParameters.alpha, drawingParameters.z), gridGeometry, colourParameters
         ),
-        createSpriteVertexObject(gridGeometry, textureCache, uvTransform, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
+        createSpriteVertexObject(gridGeometry, needsRedraw, textureCache, uvTransform, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
         textureCache
       ),
       new TokenTexts(gridGeometry, needsRedraw, textMaterial, scene, drawingParameters.textZ)
@@ -183,10 +200,10 @@ export class TokenDrawing extends SimpleTokenDrawing<
   }
 }
 
-export class SelectionDrawing extends SimpleTokenDrawing<
-  InstancedFeatures<IGridCoord, IFeature<IGridCoord> & ITokenProperties & { basePosition: IGridCoord }>,
-  InstancedFeatures<IGridEdge, IFeature<IGridEdge> & ITokenProperties & { basePosition: IGridCoord }>,
-  InstancedFeatures<IGridVertex, IFeature<IGridVertex> & ITokenProperties & { basePosition: IGridCoord }>,
+export class SelectionDrawing extends BaseTokenDrawing<
+  InstancedFeatures<IGridCoord, ITokenFace>,
+  InstancedFeatures<IGridEdge, ITokenFillEdge>,
+  InstancedFeatures<IGridVertex, ITokenFillVertex>,
   IFeatureDictionary<IGridCoord, ITokenText>
 > {
   constructor(

@@ -1,13 +1,12 @@
-import { IGridCoord, IGridVertex, vertexString } from '../../data/coord';
+import { IGridVertex, vertexString } from '../../data/coord';
 import { IFeature, ITokenProperties } from '../../data/feature';
-import { toSpriteCacheKey } from '../../data/sprite';
 import { IGridGeometry } from "../gridGeometry";
 import { IInstancedFeatureObject } from './instancedFeatureObject';
 import { InstancedFeatures } from './instancedFeatures';
 import { MultipleFeatureObject } from './multipleFeatureObject';
 import { PaletteColouredFeatureObject, IColourParameters, createSelectionColourParameters } from './paletteColouredFeatureObject';
 import { RedrawFlag } from '../redrawFlag';
-import { SpriteFeatureObject } from './spriteFeatureObject';
+import { ISpriteProperties, SpriteFeatureObject } from './spriteFeatureObject';
 import { TextureCache } from './textureCache';
 import { ITokenUvTransform } from './uv';
 
@@ -65,23 +64,25 @@ export function createSelectionColouredVertexObject(createGeometry: () => THREE.
 
 export function createSpriteVertexObject(
   gridGeometry: IGridGeometry,
+  redrawFlag: RedrawFlag,
   textureCache: TextureCache,
   uvTransform: ITokenUvTransform,
   alpha: number,
   z: number
 ) {
   const vertexGeometry = createTokenFillVertexGeometry(gridGeometry, alpha, z);
-  return (maxInstances: number) => new MultipleFeatureObject<IGridVertex, IFeature<IGridVertex> & ITokenProperties & { basePosition: IGridCoord }>(
-    (i: string, maxInstances: number) => new SpriteFeatureObject(
+  return (maxInstances: number) => new MultipleFeatureObject<IGridVertex, IFeature<IGridVertex> & ITokenProperties & ISpriteProperties>(
+    (url: string, maxInstances: number) => new SpriteFeatureObject(
+      redrawFlag,
       textureCache,
       vertexString,
       (o, p) => gridGeometry.transformToVertex(o, p),
       maxInstances,
       vertexGeometry,
       f => uvTransform.getFillVertexTransform(f),
-      i
+      url
     ),
-    f => toSpriteCacheKey(f.sprites[0]),
+    f => f.sheetEntry.url,
     maxInstances
   );
 }

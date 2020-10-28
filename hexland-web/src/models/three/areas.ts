@@ -1,13 +1,12 @@
 import { coordString, IGridCoord } from '../../data/coord';
 import { IFeature, IIdFeature, IToken } from '../../data/feature';
-import { toSpriteCacheKey } from '../../data/sprite';
 import { IGridGeometry } from "../gridGeometry";
 import { IInstancedFeatureObject } from './instancedFeatureObject';
 import { InstancedFeatures } from './instancedFeatures';
 import { MultipleFeatureObject } from './multipleFeatureObject';
 import { PaletteColouredFeatureObject, IColourParameters, createSelectionColourParameters } from './paletteColouredFeatureObject';
 import { RedrawFlag } from '../redrawFlag';
-import { SpriteFeatureObject } from './spriteFeatureObject';
+import { ISpriteProperties, SpriteFeatureObject } from './spriteFeatureObject';
 import { TextureCache } from './textureCache';
 import { ITokenUvTransform } from './uv';
 
@@ -57,23 +56,25 @@ export function createSelectionColouredAreaObject(
 
 export function createSpriteAreaObject(
   gridGeometry: IGridGeometry,
+  redrawFlag: RedrawFlag,
   textureCache: TextureCache,
   uvTransform: ITokenUvTransform,
   alpha: number,
   areaZ: number
 ) {
   const areaGeometry = createSingleAreaGeometry(gridGeometry, alpha, areaZ);
-  return (maxInstances: number) => new MultipleFeatureObject<IGridCoord, IToken & { basePosition: IGridCoord }>(
-    (i: string, maxInstances: number) => new SpriteFeatureObject(
+  return (maxInstances: number) => new MultipleFeatureObject<IGridCoord, IToken & ISpriteProperties>(
+    (url: string, maxInstances: number) => new SpriteFeatureObject(
+      redrawFlag,
       textureCache,
       coordString,
       (o, p) => gridGeometry.transformToCoord(o, p),
       maxInstances,
       areaGeometry,
       f => uvTransform.getFaceTransform(f),
-      i
+      url
     ),
-    f => toSpriteCacheKey(f.sprites[0]),
+    f => f.sheetEntry.url,
     maxInstances
   );
 }

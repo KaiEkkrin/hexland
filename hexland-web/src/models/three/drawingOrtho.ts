@@ -6,7 +6,7 @@ import { FeatureColour } from '../featureColour';
 import { IGridGeometry } from '../gridGeometry';
 import { IDrawing } from '../interfaces';
 import { RedrawFlag } from '../redrawFlag';
-import { ISpritesheetCache, IStorage } from '../../services/interfaces';
+import { ISpriteManager } from '../../services/interfaces';
 
 import { Areas, createPaletteColouredAreaObject, createAreas, createSelectionColouredAreaObject } from './areas';
 import { Grid, IGridLoSPreRenderParameters } from './grid';
@@ -53,7 +53,6 @@ const vertexHighlightAlpha = 0.35;
 export class DrawingOrtho implements IDrawing {
   private readonly _gridGeometry: IGridGeometry;
   private readonly _logError: (message: string, e: any) => void;
-  private readonly _storage: IStorage;
 
   private readonly _camera: THREE.OrthographicCamera;
   private readonly _fixedCamera: THREE.OrthographicCamera;
@@ -91,7 +90,7 @@ export class DrawingOrtho implements IDrawing {
   private readonly _scratchMatrix1 = new THREE.Matrix4();
   private readonly _scratchQuaternion = new THREE.Quaternion();
 
-  private _spritesheetCache: ISpritesheetCache;
+  private _spriteManager: ISpriteManager;
   private _textureCache: TextureCache;
 
   private _mount: HTMLDivElement | undefined = undefined;
@@ -106,14 +105,11 @@ export class DrawingOrtho implements IDrawing {
     colours: FeatureColour[],
     seeEverything: boolean,
     logError: (message: string, e: any) => void,
-    spritesheetCache: ISpritesheetCache,
-    storage: IStorage
+    spriteManager: ISpriteManager
   ) {
     this._renderer = renderer;
     this._gridGeometry = gridGeometry;
     this._logError = logError;
-    this._spritesheetCache = spritesheetCache;
-    this._storage = storage;
 
     // We need these to initialise things, but they'll be updated dynamically
     const renderWidth = Math.max(1, Math.floor(window.innerWidth));
@@ -238,7 +234,8 @@ export class DrawingOrtho implements IDrawing {
     );
 
     // The tokens
-    this._textureCache = new TextureCache(spritesheetCache, storage, logError);
+    this._spriteManager = spriteManager;
+    this._textureCache = new TextureCache(spriteManager, logError);
     const uvTransform = createLargeTokenUvTransform(gridGeometry, tokenGeometry, tokenSpriteAlpha);
     this._tokens = new TokenDrawing(
       gridGeometry, this._textureCache, uvTransform, this._needsRedraw, this._textMaterial, {
@@ -461,15 +458,15 @@ export class DrawingOrtho implements IDrawing {
     }
   }
 
-  setSpritesheetCache(spritesheetCache: ISpritesheetCache) {
-    if (spritesheetCache === this._spritesheetCache) {
+  setSpriteManager(spriteManager: ISpriteManager) {
+    if (spriteManager === this._spriteManager) {
       // Nothing to do
       return;
     }
 
     const oldTextureCache = this._textureCache;
-    this._spritesheetCache = spritesheetCache;
-    this._textureCache = new TextureCache(spritesheetCache, this._storage, this._logError);
+    this._spriteManager = spriteManager;
+    this._textureCache = new TextureCache(spriteManager, this._logError);
     this._tokens.setTextureCache(this._textureCache);
     oldTextureCache.dispose();
   }

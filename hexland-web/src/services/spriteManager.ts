@@ -5,6 +5,7 @@ import { from, Observable } from 'rxjs';
 import { concatMap, shareReplay, switchMap } from 'rxjs/operators';
 
 export class SpriteManager implements ISpriteManager {
+  private readonly _adventureId: string;
   private _unsub: (() => void) | undefined;
 
   private _published: Observable<{ sheet: ISpritesheet, url: string }[]>;
@@ -16,6 +17,7 @@ export class SpriteManager implements ISpriteManager {
     adventureId: string,
   ) {
     console.log(`subscribing to spritesheets of ${adventureId}`);
+    this._adventureId = adventureId;
     const ssFeed = new Observable<IDataAndReference<ISpritesheet>[]>(sub => {
       this._unsub = dataService.watchSpritesheets(
         adventureId, ss => {
@@ -35,6 +37,8 @@ export class SpriteManager implements ISpriteManager {
       ss => from(Promise.all(ss.map(createEntry)))
     ), shareReplay(1));
   }
+
+  get adventureId() { return this._adventureId; }
 
   lookup(sprite: ISprite): Observable<ISpritesheetEntry> {
     return this._published.pipe(concatMap(

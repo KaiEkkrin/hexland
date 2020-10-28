@@ -1,53 +1,27 @@
-import { getSpritePathFromId, ISprite, ISpritesheet } from '../../data/sprite';
-import { ICacheLease, IDataAndReference, ISpritesheetCache, IStorage } from '../../services/interfaces';
+import { ISprite } from '../../data/sprite';
+import { ICacheLease, ISpriteManager, ISpritesheetEntry } from '../../services/interfaces';
 import { ICacheItem, ObjectCache } from '../../services/objectCache';
 
+import { from, Observable } from 'rxjs';
+import { first, map, switchMap } from 'rxjs/operators';
 import * as THREE from 'three';
 
 const textureLoader = new THREE.TextureLoader();
 
-export interface ITextureLease {
-  ss: IDataAndReference<ISpritesheet> | undefined;
-  tex: THREE.Texture | undefined;
-  release: () => Promise<void>;
-}
-
-function combineLeases(
-  ssLease: ICacheLease<IDataAndReference<ISpritesheet> | undefined>,
-  texLease: ICacheLease<THREE.Texture>
-): ITextureLease {
-  return {
-    ss: ssLease.value,
-    tex: texLease.value,
-    release: async () => {
-      await texLease.release();
-      await ssLease.release();
-    }
-  };
-}
-
 export class TextureCache {
-  private readonly _spritesheetCache: ISpritesheetCache;
+  private readonly _spriteManager: ISpriteManager;
   private readonly _textureCache: ObjectCache<THREE.Texture>;
 
-  private readonly _storage: IStorage;
-
   constructor(
-    spritesheetCache: ISpritesheetCache,
-    storage: IStorage,
+    spriteManager: ISpriteManager,
     logError: (message: string, e: any) => void
   ) {
-    this._spritesheetCache = spritesheetCache;
-    this._storage = storage;
-
+    this._spriteManager = spriteManager;
     this._textureCache = new ObjectCache(logError);
     this.resolveTexture = this.resolveTexture.bind(this);
   }
 
-  private async resolveTexture(path: string): Promise<ICacheItem<THREE.Texture>> {
-    // Get the path's URL
-    const url = await this._storage.ref(path).getDownloadURL();
-
+  private async resolveTexture(url: string): Promise<ICacheItem<THREE.Texture>> {
     // Load the texture, waiting for it to be fully available before returning
     // (I get visual glitches if I don't)
     return await new Promise((resolve, reject) => {
@@ -64,46 +38,23 @@ export class TextureCache {
     });
   }
 
-  get(spriteKey: string): ITextureLease | undefined {
-    try {
-      const ss = this._spritesheetCache.get(spriteKey);
-      if (ss === undefined) {
-        return undefined;
-      }
-
-      if (ss.value === undefined) {
-        return { ss: undefined, tex: undefined, release: ss.release };
-      }
-
-      const tex = this._textureCache.get(getSpritePathFromId(ss.value.id));
-      if (tex === undefined) {
-        return { ss: undefined, tex: undefined, release: ss.release };
-      }
-
-      return combineLeases(ss, tex);
-    } catch (e) {
-      console.warn("Failed to get sprite. It may have been replaced", e);
-      return undefined;
-    }
+  get(url: string): ICacheLease<THREE.Texture> | undefined {
+    return this._textureCache.get(url);
   }
 
-  async resolve(sprite: ISprite): Promise<ITextureLease> {
-    try {
-      const ss = await this._spritesheetCache.resolve(sprite);
-      if (ss.value === undefined) {
-        return { ss: undefined, tex: undefined, release: ss.release };
-      }
+  resolve(sprite: ISprite): Observable<ISpritesheetEntry & { texture: ICacheLease<THREE.Texture> }> {
+    return this._spriteManager.lookup(sprite).pipe(switchMap(
+      e => from(this._textureCache.resolve(e.url, this.resolveTexture)).pipe(
+        map(t => ({ ...e, texture: t }))
+      )
+    ), first());
+  }
 
-      const tex = await this._textureCache.resolve(getSpritePathFromId(ss.value.id), this.resolveTexture);
-      return combineLeases(ss, tex);
-    } catch (e) {
-      console.warn("Failed to resolve sprite. It may have been replaced", e);
-      throw e;
-    }
+  resolveUrl(url: string): Observable<ICacheLease<THREE.Texture>> {
+    return from(this._textureCache.resolve(url, this.resolveTexture));
   }
 
   dispose() {
     this._textureCache.dispose();
-    this._spritesheetCache.dispose();
   }
 }

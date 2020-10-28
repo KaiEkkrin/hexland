@@ -1,10 +1,14 @@
 import { IGridCoord } from '../../data/coord';
 import { IFeature, ITokenProperties } from '../../data/feature';
 import { fromSpriteGeometryString } from '../../data/sprite';
+import { ICacheLease, ISpritesheetEntry } from '../../services/interfaces';
+
 import { InstancedFeatureObject } from './instancedFeatureObject';
 import { fromMatrix4Columns, InstanceMatrix3Column } from './instanceMatrix';
-import { ITextureLease, TextureCache } from './textureCache';
+import { RedrawFlag } from '../redrawFlag';
+import { TextureCache } from './textureCache';
 
+import { Subscription } from 'rxjs';
 import * as THREE from 'three';
 
 const spriteShader = {
@@ -32,30 +36,38 @@ const spriteShader = {
   ].join("\n")
 };
 
+export interface ISpriteProperties {
+  basePosition: IGridCoord;
+  sheetEntry: ISpritesheetEntry;
+}
+
 export class SpriteFeatureObject<
   K extends IGridCoord,
-  F extends (IFeature<K> & ITokenProperties & { basePosition: IGridCoord })
+  F extends (IFeature<K> & ITokenProperties & ISpriteProperties)
 > extends InstancedFeatureObject<K, F> {
   private readonly _geometry: THREE.InstancedBufferGeometry;
   private readonly _getUvTransform: (feature: F) => THREE.Matrix4 | undefined;
 
   private readonly _instanceUvColumns: InstanceMatrix3Column[] = [];
 
-  private readonly _texture: ITextureLease | undefined;
+  private readonly _sub: Subscription;
   private readonly _material: THREE.ShaderMaterial;
   private readonly _uniforms: any;
 
   private readonly _scratchMatrix1 = new THREE.Matrix4();
   private readonly _scratchMatrix2 = new THREE.Matrix4();
 
+  private _texture: ICacheLease<THREE.Texture> | undefined;
+
   constructor(
+    redrawFlag: RedrawFlag,
     textureCache: TextureCache,
     toIndex: (k: K) => string,
     transformTo: (m: THREE.Matrix4, position: K) => THREE.Matrix4,
     maxInstances: number,
     createGeometry: () => THREE.InstancedBufferGeometry,
     getUvTransform: (feature: F) => THREE.Matrix4 | undefined,
-    spriteKey: string
+    url: string
   ) {
     super(toIndex, transformTo, maxInstances);
     this._geometry = createGeometry();
@@ -76,8 +88,13 @@ export class SpriteFeatureObject<
       fragmentShader: spriteShader.fragmentShader
     });
 
-    this._texture = textureCache.get(spriteKey);
-    this._uniforms['spriteTex'].value = this._texture?.tex;
+    // The texture is loaded lazily.  Flag ourselves for a redraw when it arrives.
+    this._sub = textureCache.resolveUrl(url).subscribe(t => {
+      this._texture = t;
+      console.log(`received texture ${this._texture?.value} for url ${url}`);
+      this._uniforms['spriteTex'].value = t.value;
+      redrawFlag.setNeedsRedraw();
+    });
   }
 
   protected createMesh(maxInstances: number): THREE.InstancedMesh {
@@ -87,31 +104,25 @@ export class SpriteFeatureObject<
   protected addFeature(f: F, instanceIndex: number) {
     super.addFeature(f, instanceIndex);
 
-    if (f.sprites[0] !== undefined && this._texture?.ss !== undefined) {
-      const position = this._texture.ss.data.sprites.indexOf(f.sprites[0].source);
-      if (position < 0) {
-        return;
-      }
+    const { columns, rows } = fromSpriteGeometryString(f.sheetEntry.sheet.geometry);
+    const scaleX = 1.0 / columns;
+    const scaleY = 1.0 / rows;
 
-      const { columns, rows } = fromSpriteGeometryString(this._texture.ss.data.geometry);
-      const scaleX = 1.0 / columns;
-      const scaleY = 1.0 / rows;
+    const x = (f.sheetEntry.position % columns);
+    const y = Math.floor(f.sheetEntry.position / columns);
 
-      const x = (position % columns);
-      const y = Math.floor(position / columns);
+    // console.log(`adding sprite feature ${this.toIndex(f.position)} from ${coordString(f.basePosition)}`);
+    const baseTransform = this._getUvTransform(f);
+    if (baseTransform === undefined) {
+      return;
+    }
 
-      // console.log(`adding sprite feature ${this.toIndex(f.position)} from ${coordString(f.basePosition)}`);
-      const baseTransform = this._getUvTransform(f);
-      if (baseTransform === undefined) {
-        return;
-      }
-
-      const translation = this._scratchMatrix1.makeTranslation(
-        x * scaleX, 1 - (y * scaleY), 0
-      );
-      const scaling = this._scratchMatrix2.makeScale(scaleX, -scaleY, 1);
-      const transform = translation.multiply(scaling).multiply(baseTransform);
-      fromMatrix4Columns(this._instanceUvColumns, transform, instanceIndex);
+    const translation = this._scratchMatrix1.makeTranslation(
+      x * scaleX, 1 - (y * scaleY), 0
+    );
+    const scaling = this._scratchMatrix2.makeScale(scaleX, -scaleY, 1);
+    const transform = translation.multiply(scaling).multiply(baseTransform);
+    fromMatrix4Columns(this._instanceUvColumns, transform, instanceIndex);
 
       // const uvScaleX = scaleX * baseTransform.scale;
       // const uvScaleY = -scaleY * baseTransform.scale;
@@ -126,7 +137,7 @@ export class SpriteFeatureObject<
       //   const xy = v.clone().applyMatrix4(baseTransform.testTransform);
       //   const uv = v.clone().applyMatrix4(transform);
       //   console.log(`sprite mat: ${xy.toArray()} -> ${uv.toArray()}`);
-        
+
       //   const sc = new THREE.Vector2(baseTransform.testBuvs[2 * i], baseTransform.testBuvs[2 * i + 1])
       //     .multiply(new THREE.Vector2(
       //       uvScaleX,
@@ -137,13 +148,13 @@ export class SpriteFeatureObject<
       //     ));
       //   console.log(`sprite sc : ${xy.toArray()} -> ${sc.toArray()}`);
       // });
-    }
   }
 
   dispose() {
     super.dispose();
     this._geometry.dispose();
     this._material.dispose();
+    this._sub.unsubscribe();
     if (this._texture) {
       this._texture.release().then(() => { /* done :) */ });
     }

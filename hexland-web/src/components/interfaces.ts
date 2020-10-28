@@ -2,7 +2,7 @@ import { IAdventure, IPlayer } from '../data/adventure';
 import { IAdventureIdentified, IIdentified } from '../data/identified';
 import { IMap } from '../data/map';
 import { IMapState, MapStateMachine } from '../models/mapStateMachine';
-import { IDataService, IUser, IAuth, IAuthProvider, IAnalytics, IFunctionsService, IStorage, ISpritesheetCache, ISpriteManager } from '../services/interfaces';
+import { IDataService, IUser, IAuth, IAuthProvider, IAnalytics, IFunctionsService, IStorage, ISpriteManager } from '../services/interfaces';
 
 import { Subject } from 'rxjs';
 
@@ -55,7 +55,6 @@ export interface IStatusContext {
 export interface IAdventureContext {
   adventure?: IIdentified<IAdventure> | undefined;
   players: IPlayer[];
-  spritesheetCache?: ISpritesheetCache | undefined;
   spriteManager?: ISpriteManager | undefined;
 }
 

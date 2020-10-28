@@ -211,26 +211,6 @@ export interface ICacheLease<T> {
   release: () => Promise<void>;
 }
 
-// Helps avoid repeated lookups of spritesheets.
-// TODO #149 NOPE!  Remove this.  Make something different.
-export interface ISpritesheetCache {
-  // This cache is associated with an adventure and its entries wouldn't be valid for
-  // a different one.
-  adventureId: string;
-
-  // Gets a previously cached value, or undefined if none.
-  // The sprite key is the output from `toSpriteCacheKey`.
-  // (Getting a cache lease for "undefined" means that there definitely isn't a sprite
-  // with that key, which is different from "we haven't fetched it yet.")
-  get(spriteKey: string): ICacheLease<IDataAndReference<ISpritesheet> | undefined> | undefined;
-
-  // Resolves a sprite into the spritesheet containing it.
-  resolve(sprite: ISprite): Promise<ICacheLease<IDataAndReference<ISpritesheet> | undefined>>;
-
-  // Cleans up this cache.
-  dispose(): void;
-}
-
 export interface ISpritesheetEntry {
   sheet: ISpritesheet,
   position: number,
@@ -239,6 +219,9 @@ export interface ISpritesheetEntry {
 
 // Looks up sprites for us with caching.
 export interface ISpriteManager {
+  // The adventure this manager is for.
+  adventureId: string;
+
   // Looks up a sprite, returning a feed of its latest entries and download URLs.
   lookup(sprite: ISprite): Observable<ISpritesheetEntry>;
 

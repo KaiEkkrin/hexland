@@ -3,7 +3,7 @@ import { IGridGeometry } from "../gridGeometry";
 import { IDrawing } from "../interfaces";
 import { FeatureColour } from "../featureColour";
 import { ITokenGeometry } from "../../data/tokenGeometry";
-import { ISpritesheetCache, IStorage } from "../../services/interfaces";
+import { ISpriteManager } from "../../services/interfaces";
 
 import * as THREE from 'three';
 
@@ -20,8 +20,7 @@ export function createDrawing(
   colours: FeatureColour[],
   seeEverything: boolean,
   logError: (message: string, e: any) => void,
-  spritesheetCache: ISpritesheetCache,
-  storage: IStorage
+  spriteManager: ISpriteManager
 ): IDrawing {
   // create the singleton renderer lazily
   if (renderer === undefined) {
@@ -29,6 +28,6 @@ export function createDrawing(
   }
 
   return new DrawingOrtho(
-    renderer, gridGeometry, tokenGeometry, colours, seeEverything, logError, spritesheetCache, storage
+    renderer, gridGeometry, tokenGeometry, colours, seeEverything, logError, spriteManager
   );
 }

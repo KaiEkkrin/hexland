@@ -19,7 +19,7 @@ import { IUserPolicy } from '../data/policy';
 import { ITokenGeometry } from '../data/tokenGeometry';
 import { createTokenDictionary } from '../data/tokens';
 
-import { IDataService, ISpritesheetCache, IStorage } from '../services/interfaces';
+import { IDataService, ISpriteManager } from '../services/interfaces';
 import { createDrawing } from './three/drawing';
 
 import fluent from 'fluent-iterable';
@@ -138,7 +138,6 @@ export class MapStateMachine {
 
   constructor(
     dataService: IDataService,
-    storage: IStorage,
     map: IAdventureIdentified<IMap>,
     uid: string,
     gridGeometry: IGridGeometry,
@@ -146,7 +145,7 @@ export class MapStateMachine {
     colours: FeatureColour[],
     userPolicy: IUserPolicy | undefined,
     logError: (message: string, e: any) => void,
-    spritesheetCache: ISpritesheetCache
+    spriteManager: ISpriteManager
   ) {
     this._dataService = dataService;
     this._map = map;
@@ -166,7 +165,7 @@ export class MapStateMachine {
     this._gridGeometry = gridGeometry;
     this._tokenGeometry = tokenGeometry;
     this._drawing = createDrawing(
-      this._gridGeometry, this._tokenGeometry, colours, this.seeEverything, logError, spritesheetCache, storage
+      this._gridGeometry, this._tokenGeometry, colours, this.seeEverything, logError, spriteManager
     );
 
     this._mapColouring = new MapColouring(this._gridGeometry);
@@ -749,7 +748,7 @@ export class MapStateMachine {
 
   configure(
     map: IAdventureIdentified<IMap>,
-    spritesheetCache: ISpritesheetCache,
+    spriteManager: ISpriteManager,
     userPolicy: IUserPolicy | undefined
   ) {
     if (map.record.ty !== this._map.record.ty) {
@@ -777,7 +776,7 @@ export class MapStateMachine {
     this._map = map;
     this._userPolicy = userPolicy;
     this._changeTracker = this.createChangeTracker();
-    this._drawing.setSpritesheetCache(spritesheetCache);
+    this._drawing.setSpriteManager(spriteManager);
     this.resetView();
   }
 

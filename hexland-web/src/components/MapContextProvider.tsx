@@ -32,7 +32,7 @@ function MapContextProvider(props: IContextProviderProps) {
   const { dataService, functionsService, storageService, user } = useContext(UserContext);
   const profile = useContext(ProfileContext);
   const { toasts } = useContext(StatusContext);
-  const { spritesheetCache } = useContext(AdventureContext);
+  const { spriteManager } = useContext(AdventureContext);
 
   const history = useHistory();
   const location = useLocation();
@@ -114,7 +114,7 @@ function MapContextProvider(props: IContextProviderProps) {
         map === undefined ||
         uid === undefined ||
         profile === undefined ||
-        spritesheetCache?.adventureId !== map.adventureId
+        spriteManager?.adventureId !== map.adventureId
       ) {
         return undefined;
       }
@@ -137,7 +137,7 @@ function MapContextProvider(props: IContextProviderProps) {
         logError("Error consolidating map " + adventureId + "/" + id + " changes", e);
       }
 
-      return lcm.getStateMachine(dataService, logError, storageService, uid, map, profile);
+      return lcm.getStateMachine(dataService, logError, storageService, uid, map, profile, spriteManager);
     }
 
     const sub = from(openMap()).subscribe(setStateMachine);
@@ -147,7 +147,7 @@ function MapContextProvider(props: IContextProviderProps) {
     };
   }, [
     logError, map, profile, dataService, functionsService, storageService,
-    user, setMapState, setStateMachine, spritesheetCache
+    user, setMapState, setStateMachine, spriteManager
   ]);
 
   useEffect(() => {

@@ -7,7 +7,7 @@ import { OutlinedRectangle } from "./overlayRectangle";
 
 import { ITokenGeometry } from "../../../data/tokenGeometry";
 import { SimpleTokenDrawing } from "../../../data/tokens";
-import { ISpritesheetCache, IStorage } from "../../../services/interfaces";
+import { ISpriteManager } from "../../../services/interfaces";
 
 import { Subject } from 'rxjs';
 
@@ -26,8 +26,7 @@ export function createDrawing(
   colours: FeatureColour[],
   seeEverything: boolean,
   logError: (message: string, e: any) => void,
-  spritesheetCache: ISpritesheetCache,
-  storage: IStorage
+  spriteManager: ISpriteManager
 ): IDrawing {
   let mockDrawing = {
     gridGeometry: gridGeometry,
@@ -61,6 +60,7 @@ export function createDrawing(
     setLoSPositions: jest.fn(),
     setMount: jest.fn(),
     setShowMapColourVisualisation: jest.fn(),
+    setSpriteManager: jest.fn(),
     dispose: jest.fn()
   };
 

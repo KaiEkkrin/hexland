@@ -7,11 +7,11 @@ import { MockWebStorage } from './mockWebStorage';
 import { IAnnotation } from '../data/annotation';
 import { ChangeCategory, ChangeType, IChanges, ITokenAdd, ITokenMove, IWallAdd } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
-import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from '../data/coord';
-import { FeatureDictionary, IFeature, IFeatureDictionary, ITokenText } from '../data/feature';
+import { coordString, edgeString, IGridCoord, IGridEdge } from '../data/coord';
+import { FeatureDictionary, IFeature } from '../data/feature';
 import { IMap, MapType } from '../data/map';
 import * as Policy from '../data/policy';
-import { createTokenDictionary, ITokenFace, ITokenFillEdge, ITokenFillVertex, SimpleTokenDrawing } from '../data/tokens';
+import { createTokenDictionary, SimpleTokenDrawing } from '../data/tokens';
 
 import * as firebase from 'firebase/app';
 import 'firebase/firestore';
@@ -728,17 +728,7 @@ describe('test functions', () => {
     expect(mapRecord).not.toBeUndefined();
 
     // Watch changes, mocking up the handlers:
-    const tokens = createTokenDictionary(MapType.Square, new SimpleTokenDrawing<
-        IFeatureDictionary<IGridCoord, ITokenFace>,
-        IFeatureDictionary<IGridEdge, ITokenFillEdge>,
-        IFeatureDictionary<IGridVertex, ITokenFillVertex>,
-        IFeatureDictionary<IGridCoord, ITokenText>
-      >(
-      new FeatureDictionary<IGridCoord, ITokenFace>(coordString),
-      new FeatureDictionary<IGridEdge, ITokenFillEdge>(edgeString),
-      new FeatureDictionary<IGridVertex, ITokenFillVertex>(vertexString),
-      new FeatureDictionary<IGridCoord, ITokenText>(coordString)
-    ));
+    const tokens = createTokenDictionary(MapType.Square, new SimpleTokenDrawing());
     const changeTracker = new SimpleChangeTracker(
       new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
       tokens,

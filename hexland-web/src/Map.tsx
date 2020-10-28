@@ -31,17 +31,17 @@ import { zoomMax, zoomMin } from './models/mapStateMachine';
 import { createDefaultUiState, isAnEditorOpen, MapUi } from './models/mapUi';
 import { networkStatusTracker } from './models/networkStatusTracker';
 
-import { Link, RouteComponentProps } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
 import { v4 as uuidv4 } from 'uuid';
 
 // The map component is rather large because of all the state that got pulled into it...
-function Map({ adventureId, mapId }: IMapPageProps) {
+function Map() {
   const { dataService, functionsService, user } = useContext(UserContext);
   const { logError } = useContext(AnalyticsContext);
-  const { players } = useContext(AdventureContext);
+  const { adventure, players } = useContext(AdventureContext);
   const { map, mapState, stateMachine } = useContext(MapContext);
   const profile = useContext(ProfileContext);
   const statusContext = useContext(StatusContext);
@@ -354,86 +354,75 @@ function Map({ adventureId, mapId }: IMapPageProps) {
   }, [setCustomAnnotationFlags, setShowAnnotationFlags]);
 
   return (
-    <div className={mapContainerClassName}>
-      <div className="Map-nav">
-        <Navigation>{title}</Navigation>
-      </div>
-      <div className="Map-overlay">
-        <MapControls
-          editMode={uiState.editMode}
-          setEditMode={m => ui?.setEditMode(m)}
-          selectedColour={uiState.selectedColour}
-          setSelectedColour={c => ui?.setSelectedColour(c)}
-          resetView={resetView}
-          zoomIn={zoomIn} zoomOut={zoomOut}
-          zoomInDisabled={zoomInDisabled} zoomOutDisabled={zoomOutDisabled}
-          mapColourVisualisationMode={mapColourMode}
-          setMapColourVisualisationMode={setMapColourMode}
-          canDoAnything={mapState.seeEverything}
-          isOwner={mapState.isOwner}
-          openMapEditor={() => ui?.showMapEditor()}
-          setShowAnnotationFlags={cycleShowAnnotationFlags} />
-        <MapInfo map={map?.record} players={players} tokens={mapState.tokens}
-          canDoAnything={mapState.seeEverything} resetView={resetView}
-          resyncCount={resyncCount} />
-      </div>
-      <div className="Map-content">
-        <div id="drawingDiv" ref={drawingRef}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onTouchCancel={handleTouchEnd}
-          onTouchEnd={handleTouchEnd}
-          onTouchMove={handleTouchMove}
-          onTouchStart={handleTouchStart} />
-      </div>
-      {loadingSpinner}
-      <MapEditorModal show={uiState.showMapEditor} map={map}
-        handleClose={() => ui?.modalClose()} handleSave={handleMapEditorSave} />
-      <TokenEditorModal selectedColour={uiState.selectedColour} show={uiState.showTokenEditor}
-        adventureId={adventureId}
-        sizes={tokenSizes} token={uiState.tokenToEdit}
-        players={players} handleClose={handleModalClose}
-        handleDelete={handleTokenEditorDelete}
-        handleImageDelete={handleTokenImageDelete}
-        handleSave={handleTokenEditorSave} />
-      <ImageDeletionModal show={uiState.showTokenImageDeletion} image={uiState.imageToDelete}
-        handleClose={() => ui?.imageDeletionClose()} handleDelete={handleImageDeletionSave} />
-      <TokenDeletionModal show={uiState.showTokenDeletion} tokens={uiState.tokensToDelete}
-        handleClose={handleModalClose} handleDelete={handleTokenDeletion} />
-      <NoteEditorModal show={uiState.showNoteEditor} note={uiState.noteToEdit} handleClose={handleModalClose}
-        handleDelete={handleNoteEditorDelete} handleSave={handleNoteEditorSave} />
-      <MapAnnotations annotations={mapState.annotations} showFlags={showAnnotationFlags} customFlags={customAnnotationFlags}
-        setCustomFlags={setCustomAnnotationFlags} suppressAnnotations={uiState.isDraggingView} />
-      <MapContextMenu
-        show={uiState.showContextMenu}
-        hide={() => ui?.hideContextMenu()}
-        x={uiState.contextMenuX}
-        y={uiState.contextMenuY}
-        pageRight={uiState.contextMenuPageRight}
-        pageBottom={uiState.contextMenuPageBottom}
-        token={uiState.contextMenuToken}
-        note={uiState.contextMenuNote}
-        editToken={editTokenFromMenu}
-        flipToken={flipTokenFromMenu}
-        editNote={editNoteFromMenu}
-        editMode={uiState.editMode}
-        setEditMode={m => ui?.setEditMode(m)} />
-    </div>
-  );
-}
-
-interface IMapPageProps {
-  adventureId: string;
-  mapId: string;
-}
-
-function MapPage(props: RouteComponentProps<IMapPageProps>) {
-  return (
     <RequireLoggedIn>
-      <Map adventureId={props.match.params.adventureId} mapId={props.match.params.mapId} />
+      <div className={mapContainerClassName}>
+        <div className="Map-nav">
+          <Navigation>{title}</Navigation>
+        </div>
+        <div className="Map-overlay">
+          <MapControls
+            editMode={uiState.editMode}
+            setEditMode={m => ui?.setEditMode(m)}
+            selectedColour={uiState.selectedColour}
+            setSelectedColour={c => ui?.setSelectedColour(c)}
+            resetView={resetView}
+            zoomIn={zoomIn} zoomOut={zoomOut}
+            zoomInDisabled={zoomInDisabled} zoomOutDisabled={zoomOutDisabled}
+            mapColourVisualisationMode={mapColourMode}
+            setMapColourVisualisationMode={setMapColourMode}
+            canDoAnything={mapState.seeEverything}
+            isOwner={mapState.isOwner}
+            openMapEditor={() => ui?.showMapEditor()}
+            setShowAnnotationFlags={cycleShowAnnotationFlags} />
+          <MapInfo map={map?.record} players={players} tokens={mapState.tokens}
+            canDoAnything={mapState.seeEverything} resetView={resetView}
+            resyncCount={resyncCount} />
+        </div>
+        <div className="Map-content">
+          <div id="drawingDiv" ref={drawingRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onTouchCancel={handleTouchEnd}
+            onTouchEnd={handleTouchEnd}
+            onTouchMove={handleTouchMove}
+            onTouchStart={handleTouchStart} />
+        </div>
+        {loadingSpinner}
+        <MapEditorModal show={uiState.showMapEditor} map={map}
+          handleClose={() => ui?.modalClose()} handleSave={handleMapEditorSave} />
+        <TokenEditorModal selectedColour={uiState.selectedColour} show={uiState.showTokenEditor}
+          adventureId={adventure?.id ?? ""}
+          sizes={tokenSizes} token={uiState.tokenToEdit}
+          players={players} handleClose={handleModalClose}
+          handleDelete={handleTokenEditorDelete}
+          handleImageDelete={handleTokenImageDelete}
+          handleSave={handleTokenEditorSave} />
+        <ImageDeletionModal show={uiState.showTokenImageDeletion} image={uiState.imageToDelete}
+          handleClose={() => ui?.imageDeletionClose()} handleDelete={handleImageDeletionSave} />
+        <TokenDeletionModal show={uiState.showTokenDeletion} tokens={uiState.tokensToDelete}
+          handleClose={handleModalClose} handleDelete={handleTokenDeletion} />
+        <NoteEditorModal show={uiState.showNoteEditor} note={uiState.noteToEdit} handleClose={handleModalClose}
+          handleDelete={handleNoteEditorDelete} handleSave={handleNoteEditorSave} />
+        <MapAnnotations annotations={mapState.annotations} showFlags={showAnnotationFlags} customFlags={customAnnotationFlags}
+          setCustomFlags={setCustomAnnotationFlags} suppressAnnotations={uiState.isDraggingView} />
+        <MapContextMenu
+          show={uiState.showContextMenu}
+          hide={() => ui?.hideContextMenu()}
+          x={uiState.contextMenuX}
+          y={uiState.contextMenuY}
+          pageRight={uiState.contextMenuPageRight}
+          pageBottom={uiState.contextMenuPageBottom}
+          token={uiState.contextMenuToken}
+          note={uiState.contextMenuNote}
+          editToken={editTokenFromMenu}
+          flipToken={flipTokenFromMenu}
+          editNote={editNoteFromMenu}
+          editMode={uiState.editMode}
+          setEditMode={m => ui?.setEditMode(m)} />
+      </div>
     </RequireLoggedIn>
   );
 }
 
-export default MapPage;
+export default Map;

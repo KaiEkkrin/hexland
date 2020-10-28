@@ -7,7 +7,6 @@ import { StatusContext } from './StatusContextProvider';
 
 import { IAdventure, IPlayer } from '../data/adventure';
 import { IIdentified } from '../data/identified';
-import lcm from '../models/mapLifecycleManager';
 import { registerAdventureAsRecent, removeAdventureFromRecent } from '../services/extensions';
 import { ISpriteManager } from '../services/interfaces';
 
@@ -107,15 +106,6 @@ function AdventureContextProvider(props: IContextProviderProps) {
     );
   }, [adventure, dataService, logError, setPlayers, user]);
 
-  // The lifecycle manager releases a spritesheet cache for us to publish
-  // TODO #149 No -- take the spritesheet cache away entirely in favour of a
-  // spritesheets watch
-  const spritesheetCache = useMemo(
-    () => adventureId === undefined ? undefined :
-      lcm.getSpritesheetCache(dataService, logError, user?.uid, adventureId),
-    [dataService, logError, user, adventureId]
-  );
-
   // Old sprite managers need to be disposed, so we create them on a rolling basis
   // thus:
   const [spriteManager, setSpriteManager] = useReducer(
@@ -139,10 +129,9 @@ function AdventureContextProvider(props: IContextProviderProps) {
     () => ({
       adventure: adventure,
       players: players,
-      spritesheetCache: spritesheetCache,
       spriteManager: spriteManager
     }),
-    [adventure, players, spritesheetCache, spriteManager]
+    [adventure, players, spriteManager]
   );
 
   return (

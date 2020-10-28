@@ -1,4 +1,4 @@
-import { coordString, IGridCoord, IGridEdge, IGridVertex } from "./coord";
+import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from "./coord";
 import { FeatureDictionary, IFeature, IFeatureDictionary, IToken, ITokenDictionary, ITokenProperties, ITokenText } from "./feature";
 import { MapType } from "./map";
 import { getTokenGeometry, ITokenGeometry } from "./tokenGeometry";
@@ -40,7 +40,7 @@ export interface ITokenDrawing {
 }
 
 // A super basic one for non-displayed use
-export class SimpleTokenDrawing<
+export class BaseTokenDrawing<
   TFacesDict extends IFeatureDictionary<IGridCoord, ITokenFace>,
   TFillEdgesDict extends IFeatureDictionary<IGridEdge, ITokenFillEdge>,
   TFillVerticesDict extends IFeatureDictionary<IGridVertex, ITokenFillVertex>,
@@ -76,7 +76,7 @@ export class SimpleTokenDrawing<
   }
 
   clone() {
-    return new SimpleTokenDrawing(
+    return new BaseTokenDrawing(
       this.faces.clone(), this.fillEdges.clone(), this.fillVertices.clone(), this.texts.clone()
     );
   }
@@ -99,6 +99,27 @@ export class SimpleTokenDrawing<
 
   dispose() {
     // nothing to do by default
+  }
+}
+
+export class SimpleTokenDrawing extends BaseTokenDrawing<
+  IFeatureDictionary<IGridCoord, ITokenFace>,
+  IFeatureDictionary<IGridEdge, ITokenFillEdge>,
+  IFeatureDictionary<IGridVertex, ITokenFillVertex>,
+  IFeatureDictionary<IGridCoord, ITokenText>
+> {
+  constructor(
+    faces?: IFeatureDictionary<IGridCoord, ITokenFace> | undefined,
+    fillEdges?: IFeatureDictionary<IGridEdge, ITokenFillEdge> | undefined,
+    fillVertices?: IFeatureDictionary<IGridVertex, ITokenFillVertex> | undefined,
+    texts?: IFeatureDictionary<IGridCoord, ITokenText> | undefined
+  ) {
+    super(
+      faces ?? new FeatureDictionary<IGridCoord, ITokenFace>(coordString),
+      fillEdges ?? new FeatureDictionary<IGridEdge, ITokenFillEdge>(edgeString),
+      fillVertices ?? new FeatureDictionary<IGridVertex, ITokenFillVertex>(vertexString),
+      texts ?? new FeatureDictionary<IGridCoord, ITokenText>(coordString)
+    );
   }
 }
 
