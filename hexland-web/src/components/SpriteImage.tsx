@@ -11,14 +11,17 @@ import { ISpritesheetEntry } from '../services/interfaces';
 interface ISpriteImageProps {
   sprite: ISprite;
   altName: string;
+  className?: string | undefined;
   size?: number | undefined;
+  border?: string | undefined;
   borderColour?: string | undefined;
+  onClick?: (() => void) | undefined;
 }
 
 // TODO #149 Fix the hardwiring of spritesheet dimensions here (when I need different ones...)
 const sheetSize = 1024;
 
-function SpriteImage({ sprite, altName, size, borderColour }: ISpriteImageProps) {
+function SpriteImage({ sprite, altName, className, size, border, borderColour, onClick }: ISpriteImageProps) {
   const { spriteManager } = useContext(AdventureContext);
   const { logError } = useContext(AnalyticsContext);
 
@@ -53,14 +56,14 @@ function SpriteImage({ sprite, altName, size, borderColour }: ISpriteImageProps)
       backgroundImage: `url(${entry.url})`,
       backgroundPosition: `${-x * (size ?? spriteSize)}px ${-y * (size ?? spriteSize)}px`,
       backgroundSize: `${backgroundSize}px ${backgroundSize}px`,
-      border: '4px solid',
+      border: `${border ?? "4px solid"}`,
       borderColor: borderColour,
       borderRadius: '50%'
     };
   }, [entry, size, borderColour]);
 
   return (
-    <img style={style} src="/tiny.png" alt={altName} />
+    <img className={className} style={style} src="/tiny.png" alt={altName} onClick={onClick} />
   );
 }
 

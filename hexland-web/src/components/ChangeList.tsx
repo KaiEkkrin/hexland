@@ -13,6 +13,12 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "0.12.1",
+    changes: [
+      "Show token image in player list"
+    ]
+  },
+  {
     version: "0.12.0",
     changes: [
       "Support images in tokens"

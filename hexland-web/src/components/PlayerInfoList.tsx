@@ -4,6 +4,8 @@ import { IPlayer } from '../data/adventure';
 import { ITokenProperties } from '../data/feature';
 import { hexColours } from '../models/featureColour';
 
+import SpriteImage from './SpriteImage';
+
 import Badge from 'react-bootstrap/Badge';
 import Dropdown from 'react-bootstrap/Dropdown';
 import ListGroup from 'react-bootstrap/ListGroup';
@@ -56,13 +58,24 @@ function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
         >Owner</Badge>
       )];
     } else if (myTokens.length > 0) {
-      return myTokens.map(t => (
-        <Badge key={"badge_" + t.id} className="ml-2 mt-1"
-          title={"Player " + props.player.playerName + " has token " + t.text}
-          style={{ backgroundColor: hexColours[t.colour], color: "black", userSelect: "none" }}
-          onClick={() => props.resetView?.(t.id)}
-        >{t.text}</Badge>
-      ));
+      return myTokens.map(t => {
+        const key = `badge_${t.id}`;
+        const title = `Player ${props.player.playerName} has token ${t.text}`;
+        if (t.sprites.length > 0) {
+          return (
+            <SpriteImage key={key} className="ml-2 mt-1" altName={title}
+              size={32} border="2px solid" borderColour={hexColours[t.colour]} sprite={t.sprites[0]}
+              onClick={() => props.resetView?.(t.id)} />
+          );
+        } else {
+          return (
+            <Badge key={key} className="ml-2 mt-1" title={title}
+              style={{ backgroundColor: hexColours[t.colour], color: "black", userSelect: "none" }}
+              onClick={() => props.resetView?.(t.id)}
+            >{t.text}</Badge>
+          );
+        }
+      });
     } else if (props.showNoTokenWarning === true) {
       return [(
         <Badge key="noTokenBadge" className="ml-2 mt-1" hidden={isNoTokenHidden} variant="warning"
