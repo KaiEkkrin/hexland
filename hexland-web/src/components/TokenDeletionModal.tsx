@@ -12,18 +12,18 @@ interface ITokenDeletionModalProps {
   handleDelete: () => void;
 }
 
-function TokenDeletionModal(props: ITokenDeletionModalProps) {
+function TokenDeletionModal({ show, tokens, handleClose, handleDelete }: ITokenDeletionModalProps) {
   return (
-    <Modal show={props.show} onHide={props.handleClose}>
+    <Modal show={show} onHide={handleClose}>
       <Modal.Header closeButton>
         <Modal.Title>Delete tokens</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        <p>You are about to delete {props.tokens.length} tokens.  Are you sure?</p>
+        <p>You are about to delete {tokens.length} tokens.  Are you sure?</p>
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="secondary" onClick={props.handleClose}>Close</Button>
-        <Button variant="danger" onClick={props.handleDelete}>Yes, delete token!</Button>
+        <Button variant="secondary" onClick={handleClose}>Close</Button>
+        <Button variant="danger" onClick={handleDelete}>Yes, delete token!</Button>
       </Modal.Footer>
     </Modal>
   );

@@ -1,3 +1,4 @@
+import { ICharacter } from './character';
 import { MapType } from './map';
 import { IAdventureSummary } from "./profile";
 
@@ -27,6 +28,7 @@ export interface IPlayer extends IAdventureSummary {
   playerId: string; // the uid -- also the record id
   playerName: string;
   allowed: boolean; // default true; if false, this player has been blocked from the adventure
+  characters: ICharacter[];
 }
 
 export function summariseAdventure(id: string, a: IAdventure): IAdventureSummary {

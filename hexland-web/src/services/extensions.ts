@@ -1,5 +1,6 @@
 import { IAdventure, IPlayer } from '../data/adventure';
 import { IChanges } from '../data/change';
+import { ICharacter } from '../data/character';
 import { IMap, summariseMap } from '../data/map';
 import { UserLevel } from '../data/policy';
 import { IAdventureSummary, IProfile } from '../data/profile';
@@ -552,6 +553,69 @@ export async function getAllMapChanges(
   }
 
   return changes;
+}
+
+async function editCharacterTransaction(
+  view: IDataView,
+  playerRef: IDataReference<IPlayer>,
+  character: ICharacter
+) {
+  const player = await view.get(playerRef);
+  if (player === undefined) {
+    throw Error("No such character");
+  }
+
+  const found = player.characters.find(c => c.id === character.id);
+  if (found !== undefined) {
+    Object.assign(found, character);
+  } else {
+    player.characters.push(character);
+  }
+
+  await view.update(playerRef, { characters: player.characters });
+}
+
+// Adds or edits a character.
+export async function editCharacter(
+  dataService: IDataService | undefined,
+  adventureId: string,
+  uid: string | undefined,
+  character: ICharacter
+) {
+  if (dataService === undefined || uid === undefined) {
+    return;
+  }
+
+  const playerRef = dataService.getPlayerRef(adventureId, uid);
+  await dataService.runTransaction(tr => editCharacterTransaction(tr, playerRef, character));
+}
+
+async function deleteCharacterTransaction(
+  view: IDataView,
+  playerRef: IDataReference<IPlayer>,
+  characterId: string
+) {
+  const player = await view.get(playerRef);
+  if (player === undefined) {
+    throw Error("No such character");
+  }
+
+  await view.update(playerRef, { characters: player.characters.filter(c => c.id !== characterId) });
+}
+
+// Deletes a character.
+export async function deleteCharacter(
+  dataService: IDataService | undefined,
+  adventureId: string,
+  uid: string | undefined,
+  characterId: string
+) {
+  if (dataService === undefined || uid === undefined) {
+    return;
+  }
+
+  const playerRef = dataService.getPlayerRef(adventureId, uid);
+  await dataService.runTransaction(tr => deleteCharacterTransaction(tr, playerRef, characterId));
 }
 
 // Watches map changes and automatically consolidates at a suitable interval.

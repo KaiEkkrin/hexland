@@ -1,6 +1,6 @@
 import { createChangesConverter } from './converter';
 import { DataService } from './dataService';
-import { deleteAdventure, deleteMap, editAdventure, editMap, ensureProfile, getAllMapChanges, leaveAdventure, registerAdventureAsRecent, registerMapAsRecent, removeAdventureFromRecent, removeMapFromRecent, updateProfile, watchChangesAndConsolidate } from './extensions';
+import { deleteAdventure, deleteCharacter, deleteMap, editAdventure, editCharacter, editMap, ensureProfile, getAllMapChanges, leaveAdventure, registerAdventureAsRecent, registerMapAsRecent, removeAdventureFromRecent, removeMapFromRecent, updateProfile, watchChangesAndConsolidate } from './extensions';
 import { FunctionsService } from './functions';
 import { IDataService, IUser } from './interfaces';
 import { MockWebStorage } from './mockWebStorage';
@@ -972,6 +972,139 @@ describe('test functions', () => {
     if (m2IncrementalChanges !== undefined) {
       expect(m2IncrementalChanges).toHaveLength(0);
     }
+  });
+
+  async function createAndDeleteCharacters(dataService: IDataService, adventureId: string, uid: string) {
+    const [c1Id, c2Id] = [uuidv4(), uuidv4()];
+    await editCharacter(dataService, adventureId, uid, {
+      id: c1Id,
+      name: "One",
+      text: "ONE",
+      sprites: []
+    });
+
+    await editCharacter(dataService, adventureId, uid, {
+      id: c2Id,
+      name: "Two",
+      text: "TWO",
+      sprites: []
+    });
+
+    // They should appear in the player record
+    let player = await dataService.get(dataService.getPlayerRef(adventureId, uid));
+    if (player?.characters === undefined) {
+      fail('No character list');
+    }
+
+    expect(player.characters.length).toBe(2);
+
+    let c1 = player.characters.find(c => c.id === c1Id);
+    expect(c1).not.toBeUndefined();
+    if (c1 !== undefined) {
+      expect(c1.name).toBe("One");
+      expect(c1.text).toBe("ONE");
+    }
+
+    let c2 = player.characters.find(c => c.id === c2Id);
+    expect(c2).not.toBeUndefined();
+    if (c2 !== undefined) {
+      expect(c2.name).toBe("Two");
+      expect(c2.text).toBe("TWO");
+    }
+
+    // Edit one
+    await editCharacter(dataService, adventureId, uid, {
+      id: c2Id,
+      name: "Two (edited)",
+      text: "TW2",
+      sprites: []
+    });
+
+    // Fetch and observe changes
+    player = await dataService.get(dataService.getPlayerRef(adventureId, uid));
+    if (player?.characters === undefined) {
+      fail('No character list');
+    }
+
+    expect(player.characters.length).toBe(2);
+
+    c1 = player.characters.find(c => c.id === c1Id);
+    expect(c1).not.toBeUndefined();
+    if (c1 !== undefined) {
+      expect(c1.name).toBe("One");
+      expect(c1.text).toBe("ONE");
+    }
+
+    c2 = player.characters.find(c => c.id === c2Id);
+    expect(c2).not.toBeUndefined();
+    if (c2 !== undefined) {
+      expect(c2.name).toBe("Two (edited)");
+      expect(c2.text).toBe("TW2");
+    }
+
+    // Delete one
+    await deleteCharacter(dataService, adventureId, uid, c1Id);
+
+    // Fetch and observe changes
+    player = await dataService.get(dataService.getPlayerRef(adventureId, uid));
+    if (player?.characters === undefined) {
+      fail('No character list');
+    }
+
+    expect(player.characters.length).toBe(1);
+
+    c2 = player.characters.find(c => c.id === c2Id);
+    expect(c2).not.toBeUndefined();
+    if (c2 !== undefined) {
+      expect(c2.name).toBe("Two (edited)");
+      expect(c2.text).toBe("TW2");
+    }
+  }
+
+  test('create and delete characters as the map owner', async () => {
+    // make sure my user is set up
+    const user = createTestUser('Owner', 'owner@example.com', 'google.com');
+    const emul = initializeEmul(user);
+    const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
+    const functionsService = new FunctionsService(emul.functions);
+    const profile = await ensureProfile(dataService, user, undefined);
+    expect(profile?.name).toBe('Owner');
+
+    // create an adventure
+    const a1Id = await functionsService.createAdventure('Adventure One', 'First adventure');
+
+    // Exercise character functions
+    await createAndDeleteCharacters(dataService, a1Id, user.uid);
+  });
+
+  test('create and delete characters as a joining player', async () => {
+    // make sure my user is set up
+    const owner = createTestUser('Owner', 'owner@example.com', 'google.com');
+    const emul = initializeEmul(owner);
+    const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
+    const functionsService = new FunctionsService(emul.functions);
+    const profile = await ensureProfile(dataService, owner, undefined);
+    expect(profile?.name).toBe('Owner');
+
+    // create an adventure
+    const a1Id = await functionsService.createAdventure('Adventure One', 'First adventure');
+
+    // Get myself a profile as a different user
+    const user = createTestUser('User 1', 'user1@example.com', 'google.com');
+    const userEmul = initializeEmul(user);
+    const userDataService = new DataService(userEmul.db, firebase.firestore.FieldValue.serverTimestamp);
+    const userFunctionsService = new FunctionsService(userEmul.functions);
+    await ensureProfile(userDataService, user, undefined);
+
+    // Issue an invite to that adventure
+    const invite = await functionsService.inviteToAdventure(a1Id, Policy.defaultInviteExpiryPolicy);
+    expect(invite).not.toBeUndefined();
+
+    // Join the adventure.
+    await userFunctionsService.joinAdventure(a1Id, invite ?? "");
+
+    // Exercise character functions
+    await createAndDeleteCharacters(userDataService, a1Id, user.uid);
   });
 
   // I expect this will be a bit heavy too

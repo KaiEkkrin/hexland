@@ -1,6 +1,7 @@
 import { IAdventure, IMapSummary, IPlayer } from '../data/adventure';
 import { IAnnotation, defaultAnnotation } from '../data/annotation';
 import { IChange, IChanges, ChangeType, ChangeCategory, ITokenAdd, ITokenMove, ITokenRemove, IAreaAdd, IAreaRemove, INoteAdd, INoteRemove, IWallAdd, IWallRemove } from '../data/change';
+import { ICharacter, maxCharacters } from '../data/character';
 import { IGridCoord, defaultGridCoord, IGridEdge, defaultGridEdge, coordString } from '../data/coord';
 import { IToken, defaultToken, IFeature, defaultArea, defaultWall, IFeatureDictionary, IIdFeature, FeatureDictionary, parseTokenSize } from '../data/feature';
 import { IImage, IImages } from '../data/image';
@@ -361,6 +362,18 @@ export const adventureConverter = new RecursingConverter<IAdventure>({
   }
 });
 
+export const characterConverter = new RecursingConverter<ICharacter>({
+  id: "",
+  name: "",
+  text: "",
+  sprites: []
+}, {
+  "sprites": (conv, raw) => {
+    conv.sprites = Array.isArray(raw) ? raw.map(r => spriteConverter.convert(r)) : [];
+    return conv;
+  }
+});
+
 export const inviteConverter = new ShallowConverter<IInvite>({
   adventureName: "",
   owner: "",
@@ -393,7 +406,7 @@ export const mapConverter = new ShallowConverter<IMap>({
   imagePath: ""
 });
 
-export const playerConverter = new ShallowConverter<IPlayer>({
+export const playerConverter = new RecursingConverter<IPlayer>({
   id: "",
   name: "",
   description: "",
@@ -402,7 +415,16 @@ export const playerConverter = new ShallowConverter<IPlayer>({
   playerId: "",
   playerName: "",
   allowed: true,
-  imagePath: ""
+  imagePath: "",
+  characters: []
+}, {
+  "characters": (conv, raw) => {
+    const cs = Array.isArray(raw) ? raw.map(r => characterConverter.convert(r)) : [];
+
+    // We enforce the maximum character count here
+    conv.characters = cs.slice(0, Math.min(maxCharacters, cs.length));
+    return conv;
+  }
 });
 
 export const profileConverter = new RecursingConverter<IProfile>({

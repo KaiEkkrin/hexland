@@ -5,6 +5,9 @@ import { AdventureContext } from './components/AdventureContextProvider';
 import AdventureModal from './components/AdventureModal';
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
 import BusyElement from './components/BusyElement';
+import CharacterDeletionModal from './components/CharacterDeletionModal';
+import CharacterEditorModal from './components/CharacterEditorModal';
+import CharacterList from './components/CharacterList';
 import ImageCardContent from './components/ImageCardContent';
 import ImageDeletionModal from './components/ImageDeletionModal';
 import ImagePickerModal from './components/ImagePickerModal';
@@ -16,10 +19,11 @@ import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { UserContext } from './components/UserContextProvider';
 
 import { IAdventure, summariseAdventure, IPlayer, IMapSummary } from './data/adventure';
+import { ICharacter, maxCharacters } from './data/character';
 import { IImage } from './data/image';
 import { IMap } from './data/map';
 import { getUserPolicy } from './data/policy';
-import { deleteMap, editAdventure, deleteAdventure, leaveAdventure, editMap } from './services/extensions';
+import { deleteMap, editAdventure, deleteAdventure, leaveAdventure, editMap, editCharacter, deleteCharacter } from './services/extensions';
 
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
@@ -152,6 +156,10 @@ function Adventure({ adventureId }: IAdventureProps) {
 
   const showBlockedText = useMemo(() => showBlocked === true ? "Hide blocked" : "Show blocked", [showBlocked]);
 
+  // Support for the characters list
+  const [showEditCharacter, setShowEditCharacter] = useState(false);
+  const [showDeleteCharacter, setShowDeleteCharacter] = useState(false);
+
   const handleModalClose = useCallback(() => {
     setShowBlockPlayer(false);
     setShowUnblockPlayer(false);
@@ -160,7 +168,13 @@ function Adventure({ adventureId }: IAdventureProps) {
     setShowImagePicker(false);
     setShowDeleteAdventure(false);
     setShowLeaveAdventure(false);
-  }, [setShowBlockPlayer, setShowUnblockPlayer, setShowEditAdventure, setShowImageDeletion, setShowImagePicker, setShowDeleteAdventure, setShowLeaveAdventure]);
+    setShowEditCharacter(false);
+    setShowDeleteCharacter(false);
+  }, [
+    setShowBlockPlayer, setShowUnblockPlayer, setShowEditAdventure, setShowImageDeletion,
+    setShowImagePicker, setShowDeleteAdventure, setShowLeaveAdventure, setShowEditCharacter,
+    setShowDeleteCharacter
+  ]);
 
   const handleShowBlockPlayer = useCallback((player: IPlayer) => {
     setShowBlockPlayer(true);
@@ -302,12 +316,71 @@ function Adventure({ adventureId }: IAdventureProps) {
       .catch(e => logError("Error leaving adventure " + adventureId, e));
   }, [dataService, user, logError, adventureId, handleModalClose, history]);
 
+  // Support for the character list
+  const myPlayer = useMemo(() => players.filter(p => p.playerId === user?.uid), [players, user]);
+  const otherPlayers = useMemo(() => players.filter(p => p.playerId !== user?.uid), [players, user]);
+  const showOtherCharacters = useMemo(() => otherPlayers.length > 0, [otherPlayers]);
+  const [characterToEdit, setCharacterToEdit] = useState<ICharacter | undefined>(undefined);
+
+  const createCharacterDisabled = useMemo(
+    () => myPlayer.length === 0 || myPlayer[0].characters.length >= maxCharacters,
+    [myPlayer]
+  );
+
+  const myCharactersTitle = useMemo(() => {
+    const characterCount = myPlayer.length > 0 ? myPlayer[0].characters.length : 0;
+    return `My Characters (${characterCount}/${maxCharacters})`;
+  }, [myPlayer]);
+
+  const handleCreateCharacter = useCallback(() => {
+    setCharacterToEdit(undefined);
+    setShowEditCharacter(true);
+  }, [setCharacterToEdit, setShowEditCharacter]);
+
+  const handleEditCharacter = useCallback((character: ICharacter) => {
+    setCharacterToEdit(character);
+    setShowEditCharacter(true);
+  }, [setCharacterToEdit, setShowEditCharacter]);
+
+  const handleDeleteCharacter = useCallback((character: ICharacter) => {
+    setCharacterToEdit(character);
+    setShowDeleteCharacter(true);
+  }, [setCharacterToEdit, setShowDeleteCharacter]);
+
+  const handleCharacterSave = useCallback((character: ICharacter) => {
+    handleModalClose();
+    editCharacter(dataService, adventureId, user?.uid, character)
+      .then(() => {
+        console.log("Successfully edited character " + character.id);
+      })
+      .catch(e => logError("Error editing character " + character.id, e));
+  }, [dataService, user, logError, adventureId, handleModalClose]);
+
+  const handleCharacterDeletion = useCallback(() => {
+    handleModalClose();
+    if (characterToEdit === undefined) {
+      return;
+    }
+
+    deleteCharacter(dataService, adventureId, user?.uid, characterToEdit.id)
+      .then(() => {
+        console.log("Successfully deleted character " + characterToEdit.id);
+      })
+      .catch(e => logError("Error deleting character " + characterToEdit.id, e));
+  }, [dataService, user, logError, adventureId, characterToEdit, handleModalClose]);
+
+  // Maps
   const maps = useMemo(() => adventure?.record.maps ?? [], [adventure]);
   const mapDelete = useCallback((id: string) => {
     deleteMap(dataService, user?.uid, adventureId, id)
       .then(() => console.log("Map " + id + " successfully deleted"))
       .catch(e => logError("Error deleting map " + id, e));
   }, [dataService, user, adventureId, logError]);
+
+  const mapsTitle = useMemo(
+    () => `Maps (${maps.length}/${userPolicy?.maps})`,
+    [maps, userPolicy]
+  );
 
   return (
     <div>
@@ -371,10 +444,36 @@ function Adventure({ adventureId }: IAdventureProps) {
               </CardDeck>
             </Col>
           </Row>
-          : <div></div>
+          : null
         }
         <Row className="mt-4">
+          {myPlayer !== undefined ? (
+            <Col>
+              <div className="App-divider" />
+              <h5>{myCharactersTitle}</h5>
+              <Card className="mt-4" bg="dark" text="white">
+                <Card.Header>
+                  <Button variant="primary" onClick={handleCreateCharacter} disabled={createCharacterDisabled}>
+                    New character
+                  </Button>
+                </Card.Header>
+                <CharacterList canEdit={true} players={myPlayer} handleEdit={handleEditCharacter}
+                  handleDelete={handleDeleteCharacter} />
+              </Card>
+            </Col>
+          ) : null}
+          {showOtherCharacters ? (<Col>
+            <div className="App-divider" />
+            <h5>Other Characters</h5>
+            <Card className="mt-4" bg="dark" text="white">
+              <CharacterList players={otherPlayers} showPlayerNames={true} />
+            </Card>
+          </Col>) : null}
+        </Row>
+        <Row className="mt-4">
           <Col>
+            <div className="App-divider" />
+            <h5>{mapsTitle}</h5>
             <MapCollection
               adventures={adventures}
               maps={maps}
@@ -392,6 +491,18 @@ function Adventure({ adventureId }: IAdventureProps) {
         handleSave={handleEditAdventureSave}
         setDescription={setEditAdventureDescription}
         setName={setEditAdventureName} />
+      <CharacterEditorModal
+        show={showEditCharacter}
+        adventureId={adventureId}
+        character={characterToEdit}
+        handleClose={handleModalClose}
+        handleImageDelete={handleShowImageDeletion}
+        handleSave={handleCharacterSave} />
+      <CharacterDeletionModal
+        show={showDeleteCharacter}
+        character={characterToEdit}
+        handleClose={handleModalClose}
+        handleDelete={handleCharacterDeletion} />
       <ImagePickerModal
         show={showImagePicker}
         handleClose={handleModalClose}

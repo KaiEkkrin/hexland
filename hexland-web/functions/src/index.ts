@@ -216,8 +216,6 @@ export const joinAdventure = functions.region(region).https.onCall(async (data, 
 });
 
 // Deletes an image.
-// TODO #149 Have it also clean up the associated sprites, and test that
-// (requires an exciting query...)
 
 export const deleteImage = functions.region(region).https.onCall(async (data, context) => {
   const uid = context.auth?.uid;

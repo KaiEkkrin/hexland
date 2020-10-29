@@ -102,7 +102,7 @@ function createTokenUvTransform(
     //   debugMatrix(fScaling)
     // );
 
-    // TODO #149 correct for off-centre (very, very confusing)
+    // correct for off-centre (very, very confusing)
     // console.log(`face ${coordString(f.position)}: face translation\n` +
     //   debugMatrix(translationTransform)
     // );

@@ -55,7 +55,8 @@ async function createAdventureTransaction(
     id: newAdventureRef.id,
     playerId: profileRef.id,
     playerName: profile.name,
-    allowed: true
+    allowed: true,
+    characters: []
   });
 
   // Add it to the user's profile as a recent adventure
@@ -474,7 +475,8 @@ async function joinAdventureTransaction(
       imagePath: adventure.imagePath,
       playerId: playerRef.id,
       playerName: profile.name,
-      allowed: true
+      allowed: true,
+      characters: []
     });
   } else {
     // Update that record in case there are changes

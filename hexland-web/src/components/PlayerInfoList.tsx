@@ -64,7 +64,7 @@ function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
         if (t.sprites.length > 0) {
           return (
             <SpriteImage key={key} className="ml-2 mt-1" altName={title}
-              size={32} border="2px solid" borderColour={hexColours[t.colour]} sprite={t.sprites[0]}
+              size={32} border="1px solid" borderColour={hexColours[t.colour]} sprite={t.sprites[0]}
               onClick={() => props.resetView?.(t.id)} />
           );
         } else {

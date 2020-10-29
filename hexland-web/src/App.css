@@ -58,6 +58,14 @@
   width: calc(100vw - 20px);
 }
 
+.App-divider {
+  border-top: 1px solid grey;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  height: 1px;
+  width: 100%;
+}
+
 .App-header {
   background-color: #282c34;
   min-height: 100vh;

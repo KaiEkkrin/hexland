@@ -60,7 +60,7 @@ function SpriteImage({ sprite, altName, className, size, border, borderColour, o
       borderColor: borderColour,
       borderRadius: '50%'
     };
-  }, [entry, size, borderColour]);
+  }, [border, borderColour, entry, size]);
 
   return (
     <img className={className} style={style} src="/tiny.png" alt={altName} onClick={onClick} />

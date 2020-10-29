@@ -318,7 +318,11 @@ export async function addSprites(
   }
 
   if (adventure.owner !== uid) {
-    throw new functions.https.HttpsError('permission-denied', 'You are not the owner of this adventure.');
+    const players = await dataService.getPlayerRefs(adventureId);
+    const thisPlayer = players.find(p => p.data.playerId === uid);
+    if (thisPlayer === undefined || thisPlayer.data.allowed === false) {
+      throw new functions.https.HttpsError('permission-denied', 'You are not in this adventure.');
+    }
   }
 
   if (sources.length > 10) {
