@@ -17,6 +17,35 @@ import Tabs from 'react-bootstrap/Tabs';
 
 import { v4 as uuidv4 } from 'uuid';
 
+interface ITokenSizeSelectionProps {
+  size: TokenSize;
+  sizes: TokenSize[] | undefined;
+  setSize: (value: TokenSize) => void;
+}
+
+export function TokenSizeSelection({ size, sizes, setSize }: ITokenSizeSelectionProps) {
+  const sizeOptions = useMemo(
+    () => sizes?.map(sz => (<option key={sz} value={sz}>{sz}</option>)),
+    [sizes]
+  );
+  const sizeString = useMemo(() => String(size), [size]);
+  const handleSizeChange = useCallback((e: React.FormEvent<HTMLSelectElement>) => {
+    const option = e.currentTarget.selectedOptions[0];
+    setSize(option.value as TokenSize);
+  }, [setSize]);
+
+  return (
+    <Form.Group>
+      <Form.Label htmlFor="tokenSizeSelect">Size</Form.Label>
+      <Form.Control id="tokenSizeSelect" as="select" value={sizeString}
+        onChange={e => handleSizeChange(e as any)}
+      >
+        {sizeOptions}
+      </Form.Control>
+    </Form.Group>
+  );
+}
+
 interface ITokenEditorModalProps {
   adventureId: string;
   selectedColour: number;
@@ -30,6 +59,8 @@ interface ITokenEditorModalProps {
   handleSave: (properties: ITokenProperties) => void;
 }
 
+// This modal is only for editing tokens that aren't attached to a character.
+// For that (and never the twain shall meet), see CharacterTokenEditorModal.
 function TokenEditorModal(
   { adventureId, selectedColour, sizes, show, token, players,
     handleClose, handleDelete, handleImageDelete, handleSave }: ITokenEditorModalProps
@@ -56,17 +87,10 @@ function TokenEditorModal(
       setNoteVisibleToPlayers(token?.noteVisibleToPlayers ?? false);
       setSprites(token?.sprites ?? []);
     }
-  }, [selectedColour, show, token]);
-
-  const sizeOptions = useMemo(
-    () => sizes?.map(sz => (<option key={sz} value={sz}>{sz}</option>)),
-    [sizes]
-  );
-  const sizeString = useMemo(() => String(size), [size]);
-  const handleSizeChange = useCallback((e: React.FormEvent<HTMLSelectElement>) => {
-    const option = e.currentTarget.selectedOptions[0];
-    setSize(option.value as TokenSize);
-  }, [setSize]);
+  }, [
+    selectedColour, show, token,
+    setText, setColour, setSize, setPlayerIds, setNote, setNoteVisibleToPlayers, setSprites
+  ]);
 
   const handleVtoPChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setNoteVisibleToPlayers(e.currentTarget.checked);
@@ -88,6 +112,7 @@ function TokenEditorModal(
       size: size,
       note: note,
       noteVisibleToPlayers: noteVisibleToPlayers,
+      characterId: "",
       sprites: sprites
     });
   }, [colour, note, noteVisibleToPlayers, playerIds, handleSave, token, size, text, sprites]);
@@ -112,6 +137,10 @@ function TokenEditorModal(
                   onChange={e => setNote(e.target.value)} />
               </Form.Group>
               <Form.Group>
+                <Form.Check type="checkbox" label="Note visible to players" checked={noteVisibleToPlayers}
+                  onChange={handleVtoPChange} />
+              </Form.Group>
+              <Form.Group>
                 <Form.Label htmlFor="tokenColour">Colour</Form.Label>
                 <Form.Row>
                   <ColourSelection id="tokenColour"
@@ -122,20 +151,11 @@ function TokenEditorModal(
                     setSelectedColour={setColour} />
                 </Form.Row>
               </Form.Group>
-              <Form.Group>
-                <Form.Label htmlFor="tokenSizeSelect">Size</Form.Label>
-                <Form.Control id="tokenSizeSelect" as="select" value={sizeString} onChange={e => handleSizeChange(e as any)}>
-                  {sizeOptions}
-                </Form.Control>
-              </Form.Group>
+              <TokenSizeSelection size={size} sizes={sizes} setSize={setSize} />
               <Form.Group>
                 <Form.Label htmlFor="tokenPlayerSelect">Assigned to players</Form.Label>
                 <TokenPlayerSelection id="tokenPlayerSelect" players={players}
                   tokenPlayerIds={playerIds} setTokenPlayerIds={setPlayerIds} />
-              </Form.Group>
-              <Form.Group>
-                <Form.Check type="checkbox" label="Note visible to players" checked={noteVisibleToPlayers}
-                  onChange={handleVtoPChange} />
               </Form.Group>
             </Form>
           </Tab>

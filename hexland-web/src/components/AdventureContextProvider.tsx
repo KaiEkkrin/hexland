@@ -9,10 +9,12 @@ import { IAdventure, IPlayer } from '../data/adventure';
 import { IIdentified } from '../data/identified';
 import { registerAdventureAsRecent, removeAdventureFromRecent } from '../services/extensions';
 import { ISpriteManager } from '../services/interfaces';
+import { SpriteManager } from '../services/spriteManager';
 
 import { useHistory, useLocation } from 'react-router-dom';
+import { Observable } from 'rxjs';
+import { shareReplay } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
-import { SpriteManager } from '../services/spriteManager';
 
 // Providing an adventure context like this lets us maintain the same watchers
 // while the user navigates between maps in the adventure, etc.
@@ -87,24 +89,8 @@ function AdventureContextProvider(props: IContextProviderProps) {
       a => setAdventure(a === undefined ? undefined : { id: adventureId, record: a }),
       e => logError("Error watching adventure " + adventureId + ": ", e));
   }, [adventureId, analytics, dataService, history, logError, toasts, user]);
-
-  // Handle a successful adventure load by watching its players, etc.
+  
   const [players, setPlayers] = useState<IPlayer[]>([]);
-  useEffect(() => {
-    const uid = user?.uid;
-    if (dataService === undefined || uid === undefined || adventure === undefined) {
-      return undefined;
-    }
-
-    registerAdventureAsRecent(dataService, uid, adventure.id, adventure.record)
-      .then(() => console.log("registered adventure " + adventure.id + " as recent"))
-      .catch(e => logError("Failed to register adventure " + adventure.id + " as recent", e));
-
-    return dataService.watchPlayers(
-      adventure.id, setPlayers,
-      e => logError("Failed to watch players of adventure " + adventure.id, e)
-    );
-  }, [adventure, dataService, logError, setPlayers, user]);
 
   // Old sprite managers need to be disposed, so we create them on a rolling basis
   // thus:
@@ -115,15 +101,47 @@ function AdventureContextProvider(props: IContextProviderProps) {
     }, undefined
   );
 
+  // Once we've got an adventure, watch its players, create the sprite manager, etc.
   useEffect(() => {
-    if (dataService === undefined || storageService === undefined || adventureId === undefined) {
+    const uid = user?.uid;
+    if (
+      dataService === undefined ||
+      storageService === undefined ||
+      adventure === undefined ||
+      uid === undefined
+    ) {
       setSpriteManager(undefined);
-      return;
+      return undefined;
     }
 
+    registerAdventureAsRecent(dataService, uid, adventure.id, adventure.record)
+      .then(() => console.log("registered adventure " + adventure.id + " as recent"))
+      .catch(e => logError("Failed to register adventure " + adventure.id + " as recent", e));
+
+    // We need the feed of players both so that we can expose it in the adventure context
+    // and so that the sprite manager can use it, so we publish it thus:
+    let unsub: (() => void) | undefined = undefined;
+    const playerObs = new Observable<IPlayer[]>(sub => {
+      unsub = dataService.watchPlayers(
+        adventure.id,
+        ps => sub.next(ps),
+        e => {
+          logError("Failed to watch players of adventure " + adventure.id, e);
+          sub.error(e);
+        }
+      );
+      return unsub;
+    }).pipe(shareReplay(1));
+
+    const playerSub = playerObs.subscribe(setPlayers);
+
     console.log('creating sprite manager');
-    setSpriteManager(new SpriteManager(dataService, storageService, adventureId));
-  }, [adventureId, dataService, setSpriteManager, storageService]);
+    setSpriteManager(new SpriteManager(dataService, storageService, adventure.id, playerObs));
+    return () => {
+      playerSub.unsubscribe();
+      unsub?.();
+    }
+  }, [adventure, dataService, logError, setPlayers, setSpriteManager, storageService, user]);
 
   const adventureContext: IAdventureContext = useMemo(
     () => ({

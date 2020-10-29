@@ -1,7 +1,5 @@
 import React, { useMemo } from 'react';
 
-import '../Map.css'; // bit of a misnomer right there
-
 import { ICharacter } from '../data/character';
 import { IPlayer } from '../data/adventure';
 
@@ -15,8 +13,10 @@ import SpriteImage from './SpriteImage';
 
 interface ICharacterBaseProps {
   canEdit?: boolean | undefined;
+  itemClassName?: string | undefined;
   handleEdit?: ((c: ICharacter) => void) | undefined;
   handleDelete?: ((c: ICharacter) => void) | undefined;
+  setActiveId?: ((id: string) => void) | undefined;
   showPlayerNames?: boolean | undefined;
 }
 
@@ -26,8 +26,13 @@ interface ICharacterItemProps extends ICharacterBaseProps {
 }
 
 function CharacterItem({
-  canEdit, character, handleEdit, handleDelete, playerName, showPlayerNames
+  canEdit, character, handleEdit, handleDelete, itemClassName, playerName, setActiveId, showPlayerNames
 }: ICharacterItemProps) {
+  const eventKey = useMemo(
+    () => setActiveId !== undefined ? character.id : undefined,
+    [character, setActiveId]
+  );
+
   const desc = useMemo(() => (
     <React.Fragment>
       {character.name}
@@ -44,8 +49,10 @@ function CharacterItem({
   );
 
   return (
-    <ListGroup.Item className="Map-info-list-item">
-      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+    <ListGroup.Item className={itemClassName} eventKey={eventKey}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between' }}
+        onClick={() => setActiveId?.(character.id)}
+      >
         <div>{desc}</div>
         {pn}
         {canEdit === true ? (
@@ -64,12 +71,14 @@ function CharacterItem({
 }
 
 interface ICharacterListProps extends ICharacterBaseProps {
+  activeId?: string | undefined;
   players: IPlayer[];
+  style?: React.CSSProperties | undefined;
 }
 
-function CharacterList({ players, ...otherProps }: ICharacterListProps) {
+function CharacterList({ activeId, players, style, ...otherProps }: ICharacterListProps) {
   return (
-    <ListGroup variant="flush">
+    <ListGroup variant="flush" activeKey={activeId} style={style}>
       {players.flatMap(p => p.characters.map(c =>
         (<CharacterItem key={c.id} character={c} playerName={p.playerName} {...otherProps} />)
       ))}

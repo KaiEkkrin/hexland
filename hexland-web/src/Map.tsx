@@ -36,6 +36,7 @@ import { Link } from 'react-router-dom';
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
 import { v4 as uuidv4 } from 'uuid';
+import CharacterTokenEditorModal from './components/CharacterTokenEditorModal';
 
 // The map component is rather large because of all the state that got pulled into it...
 function Map() {
@@ -244,6 +245,7 @@ function Map() {
 
   const editNoteFromMenu = useCallback(() => ui?.editNote(), [ui]);
   const editTokenFromMenu = useCallback(() => ui?.editToken(), [ui]);
+  const editCharacterTokenFromMenu = useCallback(() => ui?.editToken(true), [ui]);
 
   const flipTokenFromMenu = useCallback(() => {
     console.log("called flipToken with x " + uiState.contextMenuX + ", y " + uiState.contextMenuY);
@@ -390,6 +392,12 @@ function Map() {
           handleDelete={handleTokenEditorDelete}
           handleImageDelete={handleTokenImageDelete}
           handleSave={handleTokenEditorSave} />
+        <CharacterTokenEditorModal selectedColour={uiState.selectedColour}
+          show={uiState.showCharacterTokenEditor}
+          sizes={tokenSizes} token={uiState.tokenToEdit}
+          players={players} handleClose={handleModalClose}
+          handleDelete={handleTokenEditorDelete}
+          handleSave={handleTokenEditorSave} />
         <ImageDeletionModal show={uiState.showTokenImageDeletion} image={uiState.imageToDelete}
           handleClose={() => ui?.imageDeletionClose()} handleDelete={handleImageDeletionSave} />
         <TokenDeletionModal show={uiState.showTokenDeletion} tokens={uiState.tokensToDelete}
@@ -408,6 +416,7 @@ function Map() {
           token={uiState.contextMenuToken}
           note={uiState.contextMenuNote}
           editToken={editTokenFromMenu}
+          editCharacterToken={editCharacterTokenFromMenu}
           flipToken={flipTokenFromMenu}
           editNote={editNoteFromMenu}
           editMode={uiState.editMode}

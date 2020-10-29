@@ -25,6 +25,7 @@ export interface ITokenProperties {
   text: string; // maximum of three characters
   note: string; // shown in the annotations UI
   noteVisibleToPlayers: boolean; // as you'd expect
+  characterId: string; // empty if this isn't a character token
   sprites: ISprite[]; // should be only 0 or 1, but this format makes it easy for Firestore
 }
 
@@ -36,6 +37,7 @@ export const defaultTokenProperties: ITokenProperties = {
   text: "",
   note: "",
   noteVisibleToPlayers: false,
+  characterId: "",
   sprites: []
 };
 

@@ -41,6 +41,7 @@ export interface IMapUiState {
 
   showMapEditor: boolean;
   showTokenEditor: boolean;
+  showCharacterTokenEditor: boolean;
   showNoteEditor: boolean;
   showTokenDeletion: boolean;
   showTokenImageDeletion: boolean;
@@ -68,6 +69,7 @@ export function createDefaultUiState(): IMapUiState {
     mouseDown: false,
     showMapEditor: false,
     showTokenEditor: false,
+    showCharacterTokenEditor: false,
     showNoteEditor: false,
     showTokenDeletion: false,
     showTokenImageDeletion: false,
@@ -126,6 +128,23 @@ export class MapUi {
     this._setState(newState);
   }
 
+  private decideHowToEditToken(token: ITokenProperties | undefined, defaultToCharacter?: boolean | undefined) {
+    switch (token?.characterId) {
+      case undefined:
+        if (this._state.editMode === EditMode.CharacterToken || defaultToCharacter === true) {
+          return { showCharacterTokenEditor: true, showTokenEditor: false };
+        } else {
+          return { showCharacterTokenEditor: false, showTokenEditor: true };
+        }
+
+      case "":
+        return { showCharacterTokenEditor: false, showTokenEditor: true };
+
+      default:
+        return { showCharacterTokenEditor: true, showTokenEditor: false };
+    }
+  }
+
   private interactionEnd(cp: THREE.Vector3, shiftKey: boolean, startingState: IMapUiState) {
     const newState = { ...startingState };
     let changes: IChange[] | undefined;
@@ -139,9 +158,14 @@ export class MapUi {
           break;
 
         case EditMode.Token:
-          newState.showTokenEditor = true;
+        case EditMode.CharacterToken:
           newState.tokenToEdit = this._stateMachine?.getToken(cp);
           newState.tokenToEditPosition = cp;
+
+          // Try to be clever about contextually editing the token in the right way
+          const { showCharacterTokenEditor, showTokenEditor } = this.decideHowToEditToken(newState.tokenToEdit);
+          newState.showCharacterTokenEditor = showCharacterTokenEditor;
+          newState.showTokenEditor = showTokenEditor;
           break;
 
         case EditMode.Notes:
@@ -265,8 +289,8 @@ export class MapUi {
     });
   }
 
-  editToken() {
-    if (this._state.showTokenEditor) {
+  editToken(defaultToCharacter?: boolean | undefined) {
+    if (this._state.showTokenEditor || this._state.showCharacterTokenEditor) {
       return;
     }
 
@@ -279,7 +303,7 @@ export class MapUi {
     const token = this._stateMachine?.getToken(cp);
     this.changeState({
       ...this._state,
-      showTokenEditor: true,
+      ...this.decideHowToEditToken(token, defaultToCharacter),
       tokenToEdit: token,
       tokenToEditPosition: cp
     });
@@ -421,6 +445,7 @@ export class MapUi {
       this._state.showMapEditor === false &&
       this._state.showTokenDeletion === false &&
       this._state.showTokenEditor === false &&
+      this._state.showCharacterTokenEditor === false &&
       this._state.showNoteEditor === false &&
       this._state.editMode === EditMode.Select
     ) {
@@ -432,6 +457,7 @@ export class MapUi {
       showMapEditor: false,
       showTokenDeletion: false,
       showTokenEditor: false,
+      showCharacterTokenEditor: false,
       showNoteEditor: false,
       editMode: EditMode.Select
     });

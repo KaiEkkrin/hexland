@@ -1,5 +1,7 @@
 import { IAdventure, IPlayer } from '../data/adventure';
 import { IChange, IChanges } from '../data/change';
+import { ICharacter } from '../data/character';
+import { ITokenProperties } from '../data/feature';
 import { IIdentified } from '../data/identified';
 import { IImages } from '../data/image';
 import { IInvite } from '../data/invite';
@@ -223,7 +225,11 @@ export interface ISpriteManager {
   adventureId: string;
 
   // Looks up a sprite, returning a feed of its latest entries and download URLs.
-  lookup(sprite: ISprite): Observable<ISpritesheetEntry>;
+  lookupSprite(sprite: ISprite): Observable<ISpritesheetEntry>;
+
+  // Looks up a token's character and sprite, which could either be the token's character, or
+  // (if none) embedded in the token itself.
+  lookupToken(token: ITokenProperties): Observable<ISpritesheetEntry & { character: ICharacter | undefined }>;
 
   // Cleans up this manager, stopping subscriptions.
   dispose(): void;

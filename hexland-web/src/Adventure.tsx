@@ -458,7 +458,7 @@ function Adventure({ adventureId }: IAdventureProps) {
                   </Button>
                 </Card.Header>
                 <CharacterList canEdit={true} players={myPlayer} handleEdit={handleEditCharacter}
-                  handleDelete={handleDeleteCharacter} />
+                  handleDelete={handleDeleteCharacter} itemClassName="Map-info-list-item" />
               </Card>
             </Col>
           ) : null}
@@ -466,7 +466,7 @@ function Adventure({ adventureId }: IAdventureProps) {
             <div className="App-divider" />
             <h5>Other Characters</h5>
             <Card className="mt-4" bg="dark" text="white">
-              <CharacterList players={otherPlayers} showPlayerNames={true} />
+              <CharacterList players={otherPlayers} showPlayerNames={true} itemClassName="Map-info-list-item" />
             </Card>
           </Col>) : null}
         </Row>

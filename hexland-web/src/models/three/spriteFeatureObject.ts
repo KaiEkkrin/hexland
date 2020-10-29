@@ -90,6 +90,10 @@ export class SpriteFeatureObject<
 
     // The texture is loaded lazily.  Flag ourselves for a redraw when it arrives.
     this._sub = textureCache.resolveUrl(url).subscribe(t => {
+      if (this._texture !== undefined) {
+        this._texture.release().then(() => { /* nothing to do here */ });
+      }
+
       this._texture = t;
       console.log(`received texture ${this._texture?.value} for url ${url}`);
       this._uniforms['spriteTex'].value = t.value;

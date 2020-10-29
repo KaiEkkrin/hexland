@@ -228,6 +228,7 @@ describe('test functions', () => {
         text: 'ONE',
         note: 'token one',
         noteVisibleToPlayers: true,
+        characterId: "",
         sprites: []
       }
     };
@@ -771,6 +772,7 @@ describe('test functions', () => {
           text: 'ONE',
           note: '',
           noteVisibleToPlayers: false,
+          characterId: "",
           sprites: []
         }
       };

@@ -61,10 +61,10 @@ function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
       return myTokens.map(t => {
         const key = `badge_${t.id}`;
         const title = `Player ${props.player.playerName} has token ${t.text}`;
-        if (t.sprites.length > 0) {
+        if (t.characterId.length > 0 || t.sprites.length > 0) { // TODO #46 deal with no-image characters...
           return (
             <SpriteImage key={key} className="ml-2 mt-1" altName={title}
-              size={32} border="1px solid" borderColour={hexColours[t.colour]} sprite={t.sprites[0]}
+              size={32} border="1px solid" borderColour={hexColours[t.colour]} token={t}
               onClick={() => props.resetView?.(t.id)} />
           );
         } else {

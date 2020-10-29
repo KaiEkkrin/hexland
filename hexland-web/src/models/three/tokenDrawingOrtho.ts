@@ -72,13 +72,18 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
   }
 
   add(f: F) {
-    if (f.sprites.length === 0) {
+    if (f.characterId.length === 0 && f.sprites.length === 0) {
       // There's clearly no sprite to add for this one, just add the palette feature
       return super.add(f);
     }
 
     // Lookup the sprite, adding the sprite feature when we've got it:
-    const sub = this._textureCache.resolve(f.sprites[0]).subscribe(e => {
+    const sub = this._textureCache.resolve(f).subscribe(e => {
+      const removed = this._spriteFeatures.remove(f.position); // just in case
+      if (removed !== undefined) {
+        removed.texture.release().then(() => { /* nothing to do here */ });
+      }
+
       if (this._spriteFeatures.add({ ...f, sheetEntry: e, texture: e.texture }) === false) {
         console.warn(`failed to add sprite feature with texture ${e.url}`);
       }

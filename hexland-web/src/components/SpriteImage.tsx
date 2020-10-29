@@ -3,13 +3,15 @@ import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { AdventureContext } from './AdventureContextProvider';
 import { AnalyticsContext } from './AnalyticsContextProvider';
 
+import { ITokenProperties } from '../data/feature';
 import { fromSpriteGeometryString, ISprite } from '../data/sprite';
 import { ISpritesheetEntry } from '../services/interfaces';
 
 // A pretty display of the image in a sprite for use in choosers etc.
 
 interface ISpriteImageProps {
-  sprite: ISprite;
+  sprite?: ISprite | undefined;
+  token?: ITokenProperties | undefined;
   altName: string;
   className?: string | undefined;
   size?: number | undefined;
@@ -21,7 +23,9 @@ interface ISpriteImageProps {
 // TODO #149 Fix the hardwiring of spritesheet dimensions here (when I need different ones...)
 const sheetSize = 1024;
 
-function SpriteImage({ sprite, altName, className, size, border, borderColour, onClick }: ISpriteImageProps) {
+function SpriteImage(
+  { sprite, token, altName, className, size, border, borderColour, onClick }: ISpriteImageProps
+) {
   const { spriteManager } = useContext(AdventureContext);
   const { logError } = useContext(AnalyticsContext);
 
@@ -33,12 +37,24 @@ function SpriteImage({ sprite, altName, className, size, border, borderColour, o
       return undefined;
     }
 
-    const sub = spriteManager.lookup(sprite).subscribe(
-      setEntry,
-      e => logError(`Failed to lookup sprite ${sprite.source}`, e)
-    );
-    return () => sub.unsubscribe();
-  }, [logError, setEntry, sprite, spriteManager]);
+    if (token !== undefined) {
+      const sub = spriteManager.lookupToken(token).subscribe(
+        setEntry,
+        e => logError(`Failed to lookup token sprite for ${token.id}`, e)
+      );
+      return () => sub.unsubscribe();
+    }
+
+    if (sprite !== undefined) {
+      const sub = spriteManager.lookupSprite(sprite).subscribe(
+        setEntry,
+        e => logError(`Failed to lookup sprite ${sprite.source}`, e)
+      );
+      return () => sub.unsubscribe();
+    }
+
+    return undefined;
+  }, [logError, setEntry, sprite, spriteManager, token]);
 
   const style: React.CSSProperties | undefined = useMemo(() => {
     if (entry === undefined) {

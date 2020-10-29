@@ -1,9 +1,9 @@
-import { ISprite } from '../../data/sprite';
+import { ITokenProperties } from '../../data/feature';
 import { ICacheLease, ISpriteManager, ISpritesheetEntry } from '../../services/interfaces';
 import { ICacheItem, ObjectCache } from '../../services/objectCache';
 
 import { from, Observable } from 'rxjs';
-import { first, map, switchMap } from 'rxjs/operators';
+import { map, switchMap } from 'rxjs/operators';
 import * as THREE from 'three';
 
 const textureLoader = new THREE.TextureLoader();
@@ -42,12 +42,12 @@ export class TextureCache {
     return this._textureCache.get(url);
   }
 
-  resolve(sprite: ISprite): Observable<ISpritesheetEntry & { texture: ICacheLease<THREE.Texture> }> {
-    return this._spriteManager.lookup(sprite).pipe(switchMap(
+  resolve(token: ITokenProperties): Observable<ISpritesheetEntry & { texture: ICacheLease<THREE.Texture> }> {
+    return this._spriteManager.lookupToken(token).pipe(switchMap(
       e => from(this._textureCache.resolve(e.url, this.resolveTexture)).pipe(
         map(t => ({ ...e, texture: t }))
       )
-    ), first());
+    ));
   }
 
   resolveUrl(url: string): Observable<ICacheLease<THREE.Texture>> {
