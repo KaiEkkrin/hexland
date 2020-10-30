@@ -17,7 +17,8 @@ import { IAdventureIdentified } from '../data/identified';
 import { IMap } from '../data/map';
 import { IUserPolicy } from '../data/policy';
 import { ITokenGeometry } from '../data/tokenGeometry';
-import { createTokenDictionary } from '../data/tokens';
+import { Tokens } from '../data/tokens';
+import { TokensWithObservableText } from '../data/tokenTexts';
 
 import { IDataService, ISpriteManager } from '../services/interfaces';
 import { createDrawing } from './three/drawing';
@@ -89,7 +90,7 @@ export class MapStateMachine {
   private readonly _selection: ITokenDictionary;
   private readonly _selectionDrag: ITokenDictionary;
   private readonly _selectionDragRed: ITokenDictionary;
-  private readonly _tokens: ITokenDictionary;
+  private readonly _tokens: TokensWithObservableText;
 
   private readonly _dragRectangle: IDragRectangle;
   private readonly _faceHighlighter: FaceHighlighter;
@@ -180,11 +181,12 @@ export class MapStateMachine {
     this._notes = new FeatureDictionary<IGridCoord, IAnnotation>(coordString);
 
     // Here is our higher-level token tracking:
-    this._selection = createTokenDictionary(map.record.ty, this._drawing.selection);
-    this._selectionDrag = createTokenDictionary(map.record.ty, this._drawing.selectionDrag);
-    this._selectionDragRed = createTokenDictionary(map.record.ty, this._drawing.selectionDragRed);
-    this._tokens = createTokenDictionary(
-      map.record.ty, this._drawing.tokens,
+    this._selection = new Tokens(tokenGeometry, this._drawing.selection);
+    this._selectionDrag = new Tokens(tokenGeometry, this._drawing.selectionDrag);
+    this._selectionDragRed = new Tokens(tokenGeometry, this._drawing.selectionDragRed);
+    this._tokens = new TokensWithObservableText(
+      tokenGeometry, this._drawing.tokens, this._drawing.tokenTexts,
+      t => spriteManager.lookupCharacter(t)
       // TODO #119 Provide a way to separately mark which face gets the text written on...?
     );
 
@@ -776,6 +778,7 @@ export class MapStateMachine {
     this._map = map;
     this._userPolicy = userPolicy;
     this._changeTracker = this.createChangeTracker();
+    this._tokens.setObserveCharacter(t => spriteManager.lookupCharacter(t));
     this._drawing.setSpriteManager(spriteManager);
     this.resetView(); // provides a state update
   }

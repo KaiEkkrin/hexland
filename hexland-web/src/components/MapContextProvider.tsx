@@ -62,9 +62,12 @@ function MapContextProvider(props: IContextProviderProps) {
       history.replace('/');
     }
 
-    // We're going to do several things with this
+    // We're going to do several things with this.
+    // To properly stop a published observable we need to smuggle out the
+    // underlying stop function
+    let stopWatchingMap: (() => void) | undefined = undefined;
     const watchMap = new Observable<IAdventureIdentified<IMap>>(sub => {
-      return dataService.watch(
+      const stopWatchingMap = dataService.watch(
         mapRef,
         m => {
           if (m === undefined) {
@@ -77,8 +80,10 @@ function MapContextProvider(props: IContextProviderProps) {
             sub.next({ adventureId: adventureId, id: mapId, record: m });
           }
         },
-        e => sub.error(e)
+        e => sub.error(e),
+        () => sub.complete()
       );
+      return stopWatchingMap;
     }).pipe(share());
 
     // On first load, register the map as recent, and fire a consolidate.
@@ -147,6 +152,7 @@ function MapContextProvider(props: IContextProviderProps) {
       watchSub.unsubscribe();
       consolidateSub.unsubscribe();
       registerAsRecentSub.unsubscribe();
+      stopWatchingMap?.();
     };
   }, [
     analytics, dataService, functionsService, history, location, logError, logEvent,

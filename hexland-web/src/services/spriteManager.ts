@@ -5,14 +5,17 @@ import { getSpritePathFromId, ISprite, ISpritesheet } from "../data/sprite";
 import { IDataAndReference, IDataService, ISpriteManager, ISpritesheetEntry, IStorage } from "./interfaces";
 
 import { combineLatest, from, Observable } from 'rxjs';
-import { concatMap, shareReplay, switchMap } from 'rxjs/operators';
+import { concatMap, map, shareReplay, switchMap } from 'rxjs/operators';
 
 function findCharacterAndSprites(token: ITokenProperties, players: IPlayer[]) {
   if (token.characterId.length > 0) {
     for (const p of players) {
       for (const c of p.characters) {
-        if (c.id === token.characterId && c.sprites.length > 0) {
-          return { character: c, sprites: c.sprites };
+        if (c.id === token.characterId) {
+          return {
+            character: c,
+            sprites: c.sprites.length > 0 ? c.sprites : token.sprites
+          };
         }
       }
     }
@@ -21,6 +24,8 @@ function findCharacterAndSprites(token: ITokenProperties, players: IPlayer[]) {
   return { character: undefined, sprites: token.sprites };
 }
 
+// TODO This is increasingly misnamed, since it's responsible for providing characters
+// as well as sprites :)
 export class SpriteManager implements ISpriteManager {
   private readonly _adventureId: string;
   private readonly _players: Observable<IPlayer[]>;
@@ -42,7 +47,7 @@ export class SpriteManager implements ISpriteManager {
       this._unsub = dataService.watchSpritesheets(
         adventureId, ss => {
           sub.next(ss.filter(s => s.data.supersededBy === ""));
-        }, e => sub.error(e)
+        }, e => sub.error(e), () => sub.complete()
       );
     });
 
@@ -59,6 +64,17 @@ export class SpriteManager implements ISpriteManager {
   }
 
   get adventureId() { return this._adventureId; }
+
+  lookupCharacter(token: ITokenProperties): Observable<ICharacter | undefined> {
+    if (!token.characterId) {
+      return from([undefined]);
+    }
+
+    return this._players.pipe(map(players => {
+      const { character } = findCharacterAndSprites(token, players);
+      return character;
+    }));
+  }
 
   lookupSprite(sprite: ISprite): Observable<ISpritesheetEntry> {
     return this._published.pipe(concatMap(

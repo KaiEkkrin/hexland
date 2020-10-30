@@ -2,6 +2,7 @@ import { MapColouring } from "./colouring";
 import { IGridCoord, IGridEdge, IGridVertex } from "../data/coord";
 import { IFeature, IFeatureDictionary } from "../data/feature";
 import { ITokenDrawing } from "../data/tokens";
+import { ITokenTextDrawing } from "../data/tokenTexts";
 import { ISpriteManager } from "../services/interfaces";
 
 // Describes the interface to our drawing subsystem,
@@ -11,6 +12,7 @@ import { ISpriteManager } from "../services/interfaces";
 export interface IDrawing {
   areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
   tokens: ITokenDrawing;
+  tokenTexts: ITokenTextDrawing;
   walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
 
   highlightedAreas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;

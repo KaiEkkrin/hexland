@@ -11,7 +11,8 @@ import { coordString, edgeString, IGridCoord, IGridEdge } from '../data/coord';
 import { FeatureDictionary, IFeature } from '../data/feature';
 import { IMap, MapType } from '../data/map';
 import * as Policy from '../data/policy';
-import { createTokenDictionary, SimpleTokenDrawing } from '../data/tokens';
+import { getTokenGeometry } from '../data/tokenGeometry';
+import { SimpleTokenDrawing, Tokens } from '../data/tokens';
 
 import * as firebase from 'firebase/app';
 import 'firebase/firestore';
@@ -729,7 +730,7 @@ describe('test functions', () => {
     expect(mapRecord).not.toBeUndefined();
 
     // Watch changes, mocking up the handlers:
-    const tokens = createTokenDictionary(MapType.Square, new SimpleTokenDrawing());
+    const tokens = new Tokens(getTokenGeometry(MapType.Square), new SimpleTokenDrawing());
     const changeTracker = new SimpleChangeTracker(
       new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
       tokens,

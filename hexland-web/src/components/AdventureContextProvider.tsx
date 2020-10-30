@@ -128,7 +128,8 @@ function AdventureContextProvider(props: IContextProviderProps) {
         e => {
           logError("Failed to watch players of adventure " + adventure.id, e);
           sub.error(e);
-        }
+        },
+        () => sub.complete()
       );
       return unsub;
     }).pipe(shareReplay(1));

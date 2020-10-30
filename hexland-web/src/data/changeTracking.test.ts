@@ -5,12 +5,13 @@ import { FeatureDictionary, IFeature } from './feature';
 import { IMap, MapType } from './map';
 import { IAnnotation } from './annotation';
 import { IUserPolicy, standardUser } from './policy';
-import { createTokenDictionary, SimpleTokenDrawing } from './tokens';
+import { getTokenGeometry } from './tokenGeometry';
+import { SimpleTokenDrawing, Tokens } from './tokens';
 
 function createChangeTracker(ty: MapType, userPolicy?: IUserPolicy | undefined) {
   return new SimpleChangeTracker(
     new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
-    createTokenDictionary(ty, new SimpleTokenDrawing()),
+    new Tokens(getTokenGeometry(ty), new SimpleTokenDrawing()),
     new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
     new FeatureDictionary<IGridCoord, IAnnotation>(coordString),
     userPolicy
@@ -748,6 +749,7 @@ test('Walls cannot be created inside tokens', () => {
       players: [],
       size: '2 (left)',
       text: 'A',
+      characterId: "",
       sprites: []
     })
   ];
@@ -816,6 +818,7 @@ test('Tokens cannot be created inside walls', () => {
       players: [],
       size: '2 (left)',
       text: 'A',
+      characterId: "",
       sprites: []
     })
   ];
@@ -855,6 +858,7 @@ test('Tokens cannot be moved into walls', () => {
       players: [],
       size: '2 (left)',
       text: 'A',
+      characterId: "",
       sprites: []
     })
   ];

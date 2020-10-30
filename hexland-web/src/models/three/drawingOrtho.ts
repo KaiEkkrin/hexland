@@ -274,6 +274,7 @@ export class DrawingOrtho implements IDrawing {
 
   get areas() { return this._areas; }
   get tokens() { return this._tokens; }
+  get tokenTexts() { return this._tokens; }
   get walls() { return this._walls; }
 
   get highlightedAreas() { return this._highlightedAreas; }

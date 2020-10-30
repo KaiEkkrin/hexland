@@ -224,6 +224,10 @@ export interface ISpriteManager {
   // The adventure this manager is for.
   adventureId: string;
 
+  // Looks up the character record associated with a token.  (For when you don't need to
+  // draw the sprite.)
+  lookupCharacter(token: ITokenProperties): Observable<ICharacter | undefined>;
+
   // Looks up a sprite, returning a feed of its latest entries and download URLs.
   lookupSprite(sprite: ISprite): Observable<ISpritesheetEntry>;
 

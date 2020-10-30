@@ -7,6 +7,7 @@ import { OutlinedRectangle } from "./overlayRectangle";
 
 import { ITokenGeometry } from "../../../data/tokenGeometry";
 import { SimpleTokenDrawing } from "../../../data/tokens";
+import { SimpleTokenTextDrawing } from "../../../data/tokenTexts";
 import { ISpriteManager } from "../../../services/interfaces";
 
 import { Subject } from 'rxjs';
@@ -28,6 +29,7 @@ export function createDrawing(
   logError: (message: string, e: any) => void,
   spriteManager: ISpriteManager
 ): IDrawing {
+  const tokens = new SimpleTokenTextDrawing();
   let mockDrawing = {
     gridGeometry: gridGeometry,
     colours: colours,
@@ -35,7 +37,8 @@ export function createDrawing(
     seeEverything: seeEverything,
 
     areas: new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
-    tokens: new SimpleTokenDrawing(),
+    tokens: tokens,
+    tokenTexts: tokens,
     walls: new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
 
     highlightedAreas: new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),

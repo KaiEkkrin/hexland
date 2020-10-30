@@ -1,6 +1,7 @@
 import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from "../../data/coord";
-import { FeatureDictionary, IFeature, IFeatureDictionary, IToken, ITokenProperties, ITokenText } from "../../data/feature";
+import { IFeature, IToken, ITokenProperties } from "../../data/feature";
 import { BaseTokenDrawing, ITokenFace, ITokenFillEdge, ITokenFillVertex } from "../../data/tokens";
+import { BaseTokenDrawingWithText } from "../../data/tokenTexts";
 import { ICacheLease } from "../../services/interfaces";
 
 import { IGridGeometry } from "../gridGeometry";
@@ -148,7 +149,7 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
 }
 
 // A handy wrapper for the various thingies that go into token drawing.
-export class TokenDrawing extends BaseTokenDrawing<
+export class TokenDrawing extends BaseTokenDrawingWithText<
   TokenFeatures<IGridCoord, ITokenFace>,
   TokenFeatures<IGridEdge, ITokenFillEdge>,
   TokenFeatures<IGridVertex, ITokenFillVertex>,
@@ -213,8 +214,7 @@ export class TokenDrawing extends BaseTokenDrawing<
 export class SelectionDrawing extends BaseTokenDrawing<
   InstancedFeatures<IGridCoord, ITokenFace>,
   InstancedFeatures<IGridEdge, ITokenFillEdge>,
-  InstancedFeatures<IGridVertex, ITokenFillVertex>,
-  IFeatureDictionary<IGridCoord, ITokenText>
+  InstancedFeatures<IGridVertex, ITokenFillVertex>
 > {
   constructor(
     gridGeometry: IGridGeometry,
@@ -231,8 +231,7 @@ export class SelectionDrawing extends BaseTokenDrawing<
       ),
       new InstancedFeatures<IGridVertex, ITokenFillVertex>(
         gridGeometry, needsRedraw, vertexString, createVertexObject, 100
-      ),
-      new FeatureDictionary<IGridCoord, ITokenText>(coordString) // not rendered
+      )
     );
 
     this.faces.addToScene(scene);
