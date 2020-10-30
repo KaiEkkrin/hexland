@@ -273,8 +273,9 @@ export class DrawingOrtho implements IDrawing {
   private createLoSSize(width: number, height: number) {
     // We want the size of LoS faces to remain the same at different magnifications.
     // So that it correctly covers the drawn area at all angles, the LoS must be square,
-    // and a bit bigger than the map drawing
-    const [w, h] = [Math.ceil(width * 1.1), Math.ceil(height * 1.1)];
+    // and a bit bigger than the map drawing -- but TODO #56 when I multiply width and
+    // height by 1.1 here I get mystery spots where I can see through walls in square grids (??!)
+    const [w, h] = [Math.ceil(width), Math.ceil(height)];
     return [Math.max(w, h), Math.max(w, h)];
   }
 

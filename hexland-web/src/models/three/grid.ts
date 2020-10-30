@@ -205,7 +205,7 @@ function createLoSShader(gridGeometry: IGridGeometry) {
       "  sampleLoS(uv + 2.0 * vec2(-losStep.x, losStep.y), visibleCount);",
       "  sampleLoS(uv + 2.0 * vec2(losStep.x, -losStep.y), visibleCount);",
       "  sampleLoS(uv + 2.0 * losStep, visibleCount);",
-      "  float result = visibleCount == 0 ? fullyHidden :",
+      "  float result = visibleCount < 2 ? fullyHidden :", // not showing visible with 1 point should avoid rasterising quirks
       "    visibleCount == 5 ? fullyVisible : mix(fullyHidden, fullyVisible, 0.5);",
       "  vertexColour = vec3(result, result, result);",
       "  gl_Position = projectionMatrix * viewMatrix * instanceMatrix * vec4(position, 1.0);",
