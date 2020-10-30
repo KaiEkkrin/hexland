@@ -255,10 +255,6 @@ export class Tokens extends FeatureDictionary<IGridCoord, IToken> implements ITo
     return this._tokenGeometry.enumerateFillEdgePositions(token);
   }
 
-  forEach(fn: (f: IToken) => void) {
-    return super.forEach(fn);
-  }
-
   hasFillEdge(edge: IGridEdge) {
     return this._drawing.fillEdges.get(edge) !== undefined;
   }

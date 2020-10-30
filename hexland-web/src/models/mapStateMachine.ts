@@ -780,7 +780,14 @@ export class MapStateMachine {
     this._changeTracker = this.createChangeTracker();
     this._tokens.setObserveCharacter(t => spriteManager.lookupCharacter(t));
     this._drawing.setSpriteManager(spriteManager);
-    this.resetView(); // provides a state update
+    this.resetView(undefined, {
+      isOwner: this.isOwner,
+      seeEverything: this.seeEverything,
+      annotations: [],
+      tokens: [],
+      objectCount: undefined,
+      zoom: zoomDefault
+    }); // provides a state update
   }
 
   // For editing
@@ -959,7 +966,7 @@ export class MapStateMachine {
   }
 
   // Resets the view, centreing on a token with the given id.
-  resetView(tokenId?: string | undefined) {
+  resetView(tokenId?: string | undefined, newMapState?: IMapState | undefined) {
     this._cameraTranslation.set(0, 0, 0);
     this._cameraRotation.copy(this._defaultRotation);
     this._cameraScaling.set(zoomDefault, zoomDefault, 1);
@@ -997,7 +1004,7 @@ export class MapStateMachine {
 
     // The zoom is echoed to the map state so remember to update that
     this.withStateChange(getState => {
-      const state = getState();
+      const state = newMapState ?? getState();
       state.zoom = zoomDefault;
       return true;
     });
