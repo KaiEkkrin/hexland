@@ -19,5 +19,5 @@ export function RequireLoggedIn(props: IRequireLoggedInProps) {
     }
   }, [user, history]);
 
-  return <div>{props.children}</div>;
+  return <React.Fragment>{props.children}</React.Fragment>;
 }

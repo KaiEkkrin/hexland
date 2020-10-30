@@ -33,7 +33,7 @@ export interface IDrawing {
   // respectively.
   animate(onPreAnimate?: (() => void) | undefined, onPostAnimate?: (() => void) | undefined): void;
 
-  // Checks whether the given viewport position (-1..1) is within the current LoS.
+  // Checks whether the given LoS viewport position (-1..1) is within the current LoS.
   checkLoS(cp: THREE.Vector3): boolean;
 
   // These functions turn viewport co-ordinates (0..windowWidth, 0..windowHeight)
@@ -44,6 +44,10 @@ export interface IDrawing {
   // Gets a viewport-to-world transfomation matrix, where the viewport visible
   // range is (-1..1).
   getViewportToWorld(target: THREE.Matrix4): THREE.Matrix4;
+
+  // Gets a world-to-LoS-viewport transformation matrix, where the viewport visible
+  // range is (-1..1).  Use this to create the vectors required for the `checkLoS` method.
+  getWorldToLoSViewport(target: THREE.Matrix4): THREE.Matrix4;
 
   // Gets a world-to-viewport transformation matrix, where the viewport visible
   // range is (-1..1).

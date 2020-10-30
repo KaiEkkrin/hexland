@@ -57,6 +57,7 @@ export function createDrawing(
     getGridCoordAt: jest.fn(),
     getGridVertexAt: jest.fn(),
     getViewportToWorld: jest.fn(),
+    getWorldToLoSViewport: jest.fn(),
     getWorldToViewport: jest.fn(),
     handleChangesApplied: jest.fn(),
     resize: jest.fn(),

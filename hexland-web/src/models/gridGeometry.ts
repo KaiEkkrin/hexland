@@ -11,6 +11,10 @@ export interface IGridGeometry {
   // A measure of the face size in this geometry.
   faceSize: number;
 
+  // ...and the distances between faces, along the two axes.
+  xStep: number;
+  yStep: number;
+
   // Some more parameters:
   maxEdge: number;
   epsilon: number;

@@ -26,9 +26,9 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     this._yOffTop = this._hexSize * 0.5;
   }
 
-  get faceSize(): number {
-    return this._hexSize;
-  }
+  get faceSize() { return this._hexSize; }
+  get xStep() { return this._xStep; }
+  get yStep() { return this._hexSize; }
 
   protected get faceVertexCount() { return 7; }
 

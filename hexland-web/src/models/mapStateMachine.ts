@@ -107,6 +107,7 @@ export class MapStateMachine {
   private readonly _scratchTranslation = new THREE.Vector3();
 
   private readonly _scratchMatrix1 = new THREE.Matrix4();
+  private readonly _scratchMatrix2 = new THREE.Matrix4();
 
   private readonly _scratchVector1 = new THREE.Vector3();
   private readonly _scratchVector2 = new THREE.Vector3();
@@ -251,13 +252,13 @@ export class MapStateMachine {
 
     // #27: As a non-enforced improvement (just like LoS as a whole), we stop non-owners from
     // dropping tokens outside of the current LoS.
-    const worldToViewport = this._drawing.getWorldToViewport(this._scratchMatrix1);
+    const worldToLoSViewport = this._drawing.getWorldToLoSViewport(this._scratchMatrix1);
     if (this.seeEverything === false) {
       // We draw the LoS from the point of view of all selected faces, so that a large token
       // gets to see around small things
       const withinLoS = fluent(this._drawing.selection.faces).map(f => {
         this._gridGeometry.createCoordCentre(this._scratchVector1, coordAdd(f.position, delta), 0);
-        this._scratchVector1.applyMatrix4(worldToViewport);
+        this._scratchVector1.applyMatrix4(worldToLoSViewport);
         return this._drawing.checkLoS(this._scratchVector1);
       }).reduce((a, b) => a && b, true);
 
@@ -608,9 +609,10 @@ export class MapStateMachine {
   }
 
   private updateAnnotations(state: IMapState) {
-    let positioned: IPositionedAnnotation[] = [];
-    let [target, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
-    let worldToViewport = this._drawing.getWorldToViewport(this._scratchMatrix1);
+    const positioned: IPositionedAnnotation[] = [];
+    const [target, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+    const worldToLoSViewport = this._drawing.getWorldToLoSViewport(this._scratchMatrix2);
+    const worldToViewport = this._drawing.getWorldToViewport(this._scratchMatrix1);
     for (let n of this.enumerateAnnotations()) {
       // Skip notes not marked as player-visible
       if (!this.seeEverything && n.visibleToPlayers === false) {
@@ -619,7 +621,7 @@ export class MapStateMachine {
 
       // Skip notes outside of the current LoS
       this._gridGeometry.createCoordCentre(target, n.position, 0);
-      target.applyMatrix4(worldToViewport);
+      target.applyMatrix4(worldToLoSViewport);
       if (!this.seeEverything && !this._drawing.checkLoS(target)) {
         continue;
       }

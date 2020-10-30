@@ -13,6 +13,12 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "0.12.3",
+    changes: [
+      "Make the LoS calculation more stable"
+    ]
+  },
+  {
     version: "0.12.2",
     changes: [
       "Support player-defined characters"

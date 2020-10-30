@@ -167,6 +167,8 @@ function createLoSShader(gridGeometry: IGridGeometry) {
     uniforms: {
       "fullyHidden": { type: 'f', value: null },
       "fullyVisible": { type: 'f', value: null },
+      "losProjectionMatrix": { type: 'mat4', value: null },
+      "losViewMatrix": { type: 'mat4', value: null },
       "losStep": { type: 'v2', value: null },
       "losTex": { value: null },
       ...gridGeometry.createShaderUniforms()
@@ -175,6 +177,8 @@ function createLoSShader(gridGeometry: IGridGeometry) {
       ...gridGeometry.createShaderDeclarations(),
       "uniform float fullyHidden;",
       "uniform float fullyVisible;",
+      "uniform mat4 losProjectionMatrix;",
+      "uniform mat4 losViewMatrix;",
       "uniform vec2 losStep;",
       "uniform sampler2D losTex;",
       "attribute vec3 face;", // per-vertex; z is the edge or vertex number
@@ -193,7 +197,7 @@ function createLoSShader(gridGeometry: IGridGeometry) {
 
       "void main() {",
       "  vec2 worldCentre = createCoordCentre(face.xy);",
-      "  vec4 centre = projectionMatrix * viewMatrix * instanceMatrix * vec4(worldCentre, 0.0, 1.0);",
+      "  vec4 centre = losProjectionMatrix * losViewMatrix * instanceMatrix * vec4(worldCentre, 0.0, 1.0);",
       "  vec2 uv = centre.xy * 0.5 + 0.5 + 0.25 * losStep;",
       "  int visibleCount = 0;",
       "  sampleLoS(uv, visibleCount);",
@@ -258,10 +262,13 @@ class GridLoSFeatureObject extends GridColouredFeatureObject<IGridCoord, IFeatur
     this.uniforms['losTex'].value = null;
   }
 
-  preRender(params: IGridLoSPreRenderParameters) {
+  preRender(params: IGridLoSPreRenderParameters, losCamera: THREE.Camera) {
     this.gridGeometry.populateShaderUniforms(this.uniforms);
     this.uniforms['fullyHidden'].value = params.fullyHidden;
     this.uniforms['fullyVisible'].value = params.fullyVisible;
+
+    this.uniforms['losProjectionMatrix'].value = losCamera.projectionMatrix;
+    this.uniforms['losViewMatrix'].value = losCamera.matrixWorld;
 
     this._losStep.set(1.0 / params.losTarget.width, 1.0 / params.losTarget.height);
     this.uniforms['losStep'].value = this._losStep;
@@ -278,10 +285,10 @@ class GridLoS extends InstancedFeatures<IGridCoord, IFeature<IGridCoord>> {
     }
   }
 
-  preRender(params: IGridLoSPreRenderParameters) {
+  preRender(params: IGridLoSPreRenderParameters, losCamera: THREE.Camera) {
     for (let o of this.featureObjects) {
       if (o instanceof GridLoSFeatureObject) {
-        o.preRender(params);
+        o.preRender(params, losCamera);
       }
     }
   }
@@ -608,8 +615,8 @@ export class Grid extends Drawn {
   }
 
   // Call this before rendering the scene containing the LoS.
-  preLoSRender(params: IGridLoSPreRenderParameters) {
-    this._losFaces.preRender(params);
+  preLoSRender(params: IGridLoSPreRenderParameters, losCamera: THREE.Camera) {
+    this._losFaces.preRender(params, losCamera);
   }
 
   removeLoSFromScene() {

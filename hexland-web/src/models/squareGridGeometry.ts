@@ -16,6 +16,8 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   get faceSize() { return this._squareSize; }
+  get xStep() { return this._squareSize; }
+  get yStep() { return this._squareSize; }
 
   protected get faceVertexCount() { return 4; }
 

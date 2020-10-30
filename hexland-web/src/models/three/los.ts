@@ -246,6 +246,7 @@ export class LoS extends Drawn {
 
   // Checks the LoS for the given client position and returns true if the position
   // is visible, else false.
+  // TODO #56 This is now really messed up and needs sorting out :)
   checkLoS(cp: THREE.Vector3) {
     const x = Math.floor((cp.x + 1) * 0.5 * this._composeRenderTarget.width);
     const y = Math.floor((cp.y + 1) * 0.5 * this._composeRenderTarget.height);
