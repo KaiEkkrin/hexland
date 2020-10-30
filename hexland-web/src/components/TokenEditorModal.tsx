@@ -98,9 +98,12 @@ function TokenEditorModal(
   
   // Save
 
-  // We can't save if there's no text, or if we're busy handling an image:
+  // We can't save if there's no text/image, or if we're busy handling an image:
   const [busySettingImage, setBusySettingImage] = useState(false);
-  const saveDisabled = useMemo(() => text.length === 0 || busySettingImage, [busySettingImage, text]);
+  const saveDisabled = useMemo(
+    () => (text.length === 0 && sprites.length === 0) || busySettingImage,
+    [busySettingImage, sprites, text]
+  );
 
   const doHandleSave = useCallback(() => {
     handleSave({
@@ -130,6 +133,9 @@ function TokenEditorModal(
                 <Form.Label htmlFor="tokenLabel">Label (maximum 3 characters)</Form.Label>
                 <Form.Control id="tokenLabel" type="text" maxLength={3} value={text}
                   onChange={e => setText(e.target.value)} />
+                <Form.Text className="text-muted">
+                  This is the text drawn on the token in maps. A token must have either this label, an image or both.
+                </Form.Text>
               </Form.Group>
               <Form.Group>
                 <Form.Label htmlFor="tokenNoteText">Note text</Form.Label>

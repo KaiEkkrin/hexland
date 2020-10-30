@@ -41,11 +41,11 @@ function CharacterEditorModal(
 
   const [imageTabTitle, setImageTabTitle] = useState("Image");
 
-  // We can't save if there's no text or name or we're busy handling an image:
+  // We can't save if there's no name, no text/image or name or we're busy handling an image:
   const [busySettingImage, setBusySettingImage] = useState(false);
   const saveDisabled = useMemo(
-    () => name.length === 0 || text.length === 0 || busySettingImage,
-    [busySettingImage, name, text]
+    () => name.length === 0 || (text.length === 0 && sprites.length === 0) || busySettingImage,
+    [busySettingImage, name, sprites, text]
   );
 
   const doHandleSave = useCallback(() => {
@@ -76,7 +76,7 @@ function CharacterEditorModal(
                 <Form.Control id="characterLabel" type="text" maxLength={3} value={text}
                   onChange={e => setText(e.target.value)} />
                 <Form.Text className="text-muted">
-                  This is the text drawn on the token in maps.
+                  This is the text drawn on the token in maps. A character must have either this label, an image or both.
                 </Form.Text>
               </Form.Group>
             </Form>
