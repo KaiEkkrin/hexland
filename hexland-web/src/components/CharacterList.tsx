@@ -37,7 +37,7 @@ function CharacterItem({
     <React.Fragment>
       {character.name}
       {character.sprites.length > 0 ? (
-        <SpriteImage className="ml-2" sprite={character.sprites[0]} altName={`Image of ${character.name}`}
+        <SpriteImage className="ml-2" sprite={character.sprites[0]} altName=""
           size={32} border="1px solid" borderColour="grey" />
       ) : null}
     </React.Fragment>

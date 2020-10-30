@@ -46,12 +46,11 @@ function TokenImageEditor({
       return (<p>No image is displayed for this token.</p>);
     }
 
-    const altName = "Image for " + altText;
     const hexColour = typeof(colour) === 'number' ? hexColours[colour as number] : String(colour);
     return (
       <React.Fragment>
         Current image&nbsp;
-        <SpriteImage sprite={sprites[0]} altName={altName} size={128} borderColour={hexColour} />
+        <SpriteImage sprite={sprites[0]} altName={altText} size={128} borderColour={hexColour} />
       </React.Fragment>
     );
   }, [colour, sprites, altText]);

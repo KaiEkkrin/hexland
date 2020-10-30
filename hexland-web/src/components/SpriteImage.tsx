@@ -31,6 +31,7 @@ function SpriteImage(
 
   // Resolve the sprite to display
   const [entry, setEntry] = useState<ISpritesheetEntry | undefined>(undefined);
+  const [entryAltText, setEntryAltText] = useState("");
   useEffect(() => {
     setEntry(undefined);
     if (spriteManager === undefined) {
@@ -39,13 +40,17 @@ function SpriteImage(
 
     if (token !== undefined) {
       const sub = spriteManager.lookupToken(token).subscribe(
-        setEntry,
+        e => {
+          setEntry(e);
+          setEntryAltText(e.character?.name ?? token.text);
+        },
         e => logError(`Failed to lookup token sprite for ${token.id}`, e)
       );
       return () => sub.unsubscribe();
     }
 
     if (sprite !== undefined) {
+      setEntryAltText("");
       const sub = spriteManager.lookupSprite(sprite).subscribe(
         setEntry,
         e => logError(`Failed to lookup sprite ${sprite.source}`, e)
@@ -55,6 +60,11 @@ function SpriteImage(
 
     return undefined;
   }, [logError, setEntry, sprite, spriteManager, token]);
+
+  const alt = useMemo(
+    () => entryAltText ? `${entryAltText} (${altName})` : altName,
+    [altName, entryAltText]
+  );
 
   const style: React.CSSProperties | undefined = useMemo(() => {
     if (entry === undefined) {
@@ -79,7 +89,7 @@ function SpriteImage(
   }, [border, borderColour, entry, size]);
 
   return (
-    <img className={className} style={style} src="/tiny.png" alt={altName} onClick={onClick} />
+    <img className={className} style={style} src="/tiny.png" alt={alt} title={alt} onClick={onClick} />
   );
 }
 

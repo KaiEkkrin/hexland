@@ -63,7 +63,7 @@ function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
         const title = `Player ${props.player.playerName} has token ${t.text}`;
         if (t.characterId.length > 0 || t.sprites.length > 0) { // TODO #46 deal with no-image characters...
           return (
-            <SpriteImage key={key} className="ml-2 mt-1" altName={title}
+            <SpriteImage key={key} className="ml-2 mt-1" altName={props.player.playerName}
               size={32} border="1px solid" borderColour={hexColours[t.colour]} token={t}
               onClick={() => props.resetView?.(t.id)} />
           );
@@ -117,9 +117,7 @@ function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
 
   return (
     <ListGroup.Item className="Map-info-list-item">
-      <div title={"Player " + props.player.playerName}
-        style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between" }}
-      >
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between" }}>
         {contentItems}
       </div>
     </ListGroup.Item>
