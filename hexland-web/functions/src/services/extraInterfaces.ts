@@ -1,4 +1,5 @@
 import { IAdventure } from '../data/adventure';
+import { IInvite } from '../data/invite';
 import { IMap } from '../data/map';
 import { ISpritesheet } from '../data/sprite';
 import { IDataAndReference, IDataReference, IDataService } from './interfaces';
@@ -16,6 +17,9 @@ export interface IAdminDataService extends IDataService {
 
   // Gets all spritesheets (across all maps) containing the supplied image.  (For deletion.)
   getAllSpritesheetsBySource(source: string): Promise<IDataAndReference<ISpritesheet>[]>;
+
+  // Gets the latest invite ref for an adventure.
+  getLatestInviteRef(adventureId: string): Promise<IDataAndReference<IInvite> | undefined>;
 
   // Gets all the maps with a particular image path.
   getMapRefsByImagePath(path: string): Promise<ICollectionGroupQueryResult<IMap, IAdventure>[]>;

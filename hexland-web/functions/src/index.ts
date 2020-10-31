@@ -195,6 +195,7 @@ export const inviteToAdventure = functions.region(region).https.onCall(async (da
 });
 
 // Joins an adventure (with invite validation.)
+// Returns the id of the adventure you joined.
 
 export const joinAdventure = functions.region(region).https.onCall(async (data, context) => {
   // Do the authorization thing, by bearer token:
@@ -206,13 +207,12 @@ export const joinAdventure = functions.region(region).https.onCall(async (data, 
 
   // In this case, we need no further authorization for the decoded token itself;
   // we just need to check they specified a valid invite
-  const adventureId = data['adventureId'];
   const inviteId = data['inviteId'];
-  if (!adventureId || !inviteId) {
+  if (!inviteId) {
     throw new functions.https.HttpsError('invalid-argument', 'No adventure or map id supplied');
   }
 
-  await Extensions.joinAdventure(dataService, uid, adventureId, inviteId, getInviteExpiryPolicy(data));
+  return await Extensions.joinAdventure(dataService, uid, inviteId, getInviteExpiryPolicy(data));
 });
 
 // Deletes an image.

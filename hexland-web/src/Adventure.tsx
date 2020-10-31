@@ -87,7 +87,7 @@ function Adventure({ adventureId }: IAdventureProps) {
     setCreateInviteButtonDisabled(true);
     analytics?.logEvent("share", { "content_type": "adventure", "item_id": adventureId });
     functionsService.inviteToAdventure(adventure.id)
-      .then(l => setInviteLink(adventureId + "/invite/" + l))
+      .then(l => setInviteLink("/invite/" + l))
       .catch(e => {
         setCreateInviteButtonDisabled(false);
         logError("Failed to create invite link for " + adventureId, e);

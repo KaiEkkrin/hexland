@@ -81,9 +81,8 @@ export interface IDataService extends IDataView {
   // Gets a reference to a user's images record.
   getImagesRef(uid: string): IDataReference<IImages>;
 
-  // Gets the current invite refs for an adventure.
-  getInviteRef(adventureId: string, id: string): IDataReference<IInvite>;
-  getLatestInviteRef(adventureId: string): Promise<IDataAndReference<IInvite> | undefined>;
+  // Gets an invite reference.
+  getInviteRef(id: string): IDataReference<IInvite>;
 
   // Gets a map.
   getMapRef(adventureId: string, id: string): IChildDataReference<IMap, IAdventure>;
@@ -196,8 +195,8 @@ export interface IFunctionsService {
   // Creates and returns an adventure invite.
   inviteToAdventure(adventureId: string, policy?: IInviteExpiryPolicy | undefined): Promise<string>;
 
-  // Joins an adventure.
-  joinAdventure(adventureId: string, inviteId: string, policy?: IInviteExpiryPolicy | undefined): Promise<void>;
+  // Joins an adventure, returning the adventure id.
+  joinAdventure(inviteId: string, policy?: IInviteExpiryPolicy | undefined): Promise<string>;
 }
 
 // Provides logging for the extensions.

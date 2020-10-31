@@ -8,8 +8,11 @@ import { IInvite } from '../data/invite';
 import { IMap, MapType, summariseMap } from '../data/map';
 import { getUserPolicy, IInviteExpiryPolicy } from '../data/policy';
 import { IAdventureSummary, IProfile } from '../data/profile';
+import { getTokenGeometry } from '../data/tokenGeometry';
 import { Tokens, SimpleTokenDrawing } from '../data/tokens';
+
 import * as Convert from './converter';
+import { IAdminDataService } from './extraInterfaces';
 import { updateProfileAdventures, updateProfileMaps, updateAdventureMaps } from './helpers';
 import { IDataService, IDataView, IDataReference, IDataAndReference, ILogger } from './interfaces';
 
@@ -18,7 +21,6 @@ import { v4 as uuidv4 } from 'uuid';
 
 // For HttpsError.  It's a bit abstraction-breaking, but very convenient...
 import * as functions from 'firebase-functions';
-import { getTokenGeometry } from '../data/tokenGeometry';
 
 async function createAdventureTransaction(
   view: IDataView,
@@ -387,7 +389,7 @@ async function isValidInvite(
 // Either creates an invite record for an adventure and returns it, or returns
 // the existing one if it's still valid.  Returns the invite ID.
 export async function inviteToAdventure(
-  dataService: IDataService,
+  dataService: IAdminDataService,
   timestampProvider: () => FirebaseFirestore.FieldValue,
   adventure: IAdventureSummary,
   policy: IInviteExpiryPolicy
@@ -400,8 +402,9 @@ export async function inviteToAdventure(
 
   // If we couldn't, make a new one and return that
   const id = uuidv4();
-  const inviteRef = dataService.getInviteRef(adventure.id, id);
+  const inviteRef = dataService.getInviteRef(id);
   await dataService.set(inviteRef, {
+    adventureId: adventure.id,
     adventureName: adventure.name,
     owner: adventure.owner,
     ownerName: adventure.ownerName,
@@ -414,26 +417,11 @@ export async function inviteToAdventure(
 async function joinAdventureTransaction(
   view: IDataView,
   adventureRef: IDataReference<IAdventure>,
-  inviteRef: IDataReference<IInvite>,
   playerRef: IDataReference<IPlayer>,
   otherPlayers: IDataAndReference<IPlayer>[],
   profileRef: IDataReference<IProfile>,
-  ownerProfileRef: IDataReference<IProfile>,
-  policy: IInviteExpiryPolicy
-): Promise<void> {
-  const invite = await view.get(inviteRef);
-  if (invite === undefined) {
-    throw new functions.https.HttpsError('not-found', 'No such invite');
-  }
-
-  if (typeof(invite.timestamp) !== 'number') {
-    const inviteDate = dayjs((invite.timestamp as FirebaseFirestore.Timestamp).toDate());
-    const age = dayjs().diff(inviteDate, policy.timeUnit);
-    if (age >= policy.expiry) {
-      throw new functions.https.HttpsError('deadline-exceeded', 'Invite has expired');
-    }
-  }
-
+  ownerProfileRef: IDataReference<IProfile>
+): Promise<string> {
   const ownerProfile = await view.get(ownerProfileRef);
   if (ownerProfile === undefined) {
     throw new functions.https.HttpsError('not-found', 'No profile for the adventure owner');
@@ -455,20 +443,18 @@ async function joinAdventureTransaction(
     throw new functions.https.HttpsError('not-found', 'No profile for this user');
   }
 
+  // Create or update the player record, and return that
   const player = await view.get(playerRef);
   if (player === undefined) {
-    await view.set<IPlayer>(playerRef, { // remember this is an adventure summary plus player details
-      id: adventureRef.id,
-      name: adventure.name,
-      description: adventure.description,
-      owner: adventure.owner,
-      ownerName: adventure.ownerName,
-      imagePath: adventure.imagePath,
+    // remember this is an adventure summary plus player details
+    const newPlayer: IPlayer = {
+      ...summariseAdventure(adventureRef.id, adventure),
       playerId: playerRef.id,
       playerName: profile.name,
       allowed: true,
       characters: []
-    });
+    };
+    await view.set<IPlayer>(playerRef, newPlayer);
   } else {
     // Update that record in case there are changes
     if (
@@ -478,6 +464,11 @@ async function joinAdventureTransaction(
       player.imagePath !== adventure.imagePath ||
       player.playerName !== profile.name
     ) {
+      player.name = adventure.name;
+      player.description = adventure.description;
+      player.ownerName = adventure.ownerName;
+      player.imagePath = adventure.imagePath;
+      player.playerName = profile.name;
       await view.update(playerRef, {
         name: adventure.name,
         description: adventure.description,
@@ -493,19 +484,35 @@ async function joinAdventureTransaction(
   if (adventures !== undefined) {
     await view.update(profileRef, { adventures: adventures });
   }
+
+  return adventureRef.id;
 }
 
 export async function joinAdventure(
   dataService: IDataService,
   uid: string,
-  adventureId: string,
   inviteId: string,
   policy: IInviteExpiryPolicy
-): Promise<void> {
-  const adventureRef = dataService.getAdventureRef(adventureId);
-  const inviteRef = dataService.getInviteRef(adventureId, inviteId);
-  const playerRef = dataService.getPlayerRef(adventureId, uid);
+): Promise<string> {
+  const inviteRef = dataService.getInviteRef(inviteId);
   const profileRef = dataService.getProfileRef(uid);
+
+  // We need to fetch and verify the invite so that we can get the adventure id
+  const invite = await dataService.get(inviteRef);
+  if (invite === undefined) {
+    throw new functions.https.HttpsError('not-found', 'No such invite');
+  }
+
+  if (typeof(invite.timestamp) !== 'number') {
+    const inviteDate = dayjs((invite.timestamp as FirebaseFirestore.Timestamp).toDate());
+    const age = dayjs().diff(inviteDate, policy.timeUnit);
+    if (age >= policy.expiry) {
+      throw new functions.https.HttpsError('deadline-exceeded', 'Invite has expired');
+    }
+  }
+
+  const adventureRef = dataService.getAdventureRef(invite.adventureId);
+  const playerRef = dataService.getPlayerRef(invite.adventureId, uid);
 
   // Before going any further we need to fish up what players are currently
   // joined to that adventure, so that we can make the policy decision of
@@ -514,7 +521,7 @@ export async function joinAdventure(
   // to have a small window for a race condition here for now.  In future I
   // can sync this with the adventures record or even merge the player list
   // into the adventures record entirely, instead.
-  const otherPlayers = await dataService.getPlayerRefs(adventureId);
+  const otherPlayers = await dataService.getPlayerRefs(invite.adventureId);
 
   const adventure = await dataService.get(adventureRef);
   if (adventure === undefined) {
@@ -522,7 +529,7 @@ export async function joinAdventure(
   }
 
   const ownerProfileRef = dataService.getProfileRef(adventure?.owner)
-  await dataService.runTransaction(tr => joinAdventureTransaction(
-    tr, adventureRef, inviteRef, playerRef, otherPlayers, profileRef, ownerProfileRef, policy
+  return await dataService.runTransaction(tr => joinAdventureTransaction(
+    tr, adventureRef, playerRef, otherPlayers, profileRef, ownerProfileRef
   ));
 }

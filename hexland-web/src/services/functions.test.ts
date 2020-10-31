@@ -402,7 +402,8 @@ describe('test functions', () => {
     } catch {}
 
     // Join the adventure.
-    await userFunctionsService.joinAdventure(a1Id, invite ?? "");
+    let joinedId = await userFunctionsService.joinAdventure(invite ?? "");
+    expect(joinedId).toBe(a1Id);
 
     // Having done that, I can open the adventure and map, and register them as recent:
     const a1Record = await userDataService.get(userDataService.getAdventureRef(a1Id));
@@ -436,7 +437,8 @@ describe('test functions', () => {
     // If I join the adventure a second time, it shouldn't barf:
     // (it should update some fields, but verifying that is fiddly, and not the
     // most important thing)
-    await userFunctionsService.joinAdventure(a1Id, invite ?? "");
+    joinedId = await userFunctionsService.joinAdventure(invite ?? "");
+    expect(joinedId).toBe(a1Id);
 
     await registerAdventureAsRecent(userDataService, user.uid, a1Id, a1Record);
     await registerMapAsRecent(userDataService, user.uid, a1Id, m1Id, m1Record);
@@ -491,7 +493,8 @@ describe('test functions', () => {
 
     // As user 1, join user 2's adventure (which will make it recent)
     const user1Functions = new FunctionsService(user1Emul.functions);
-    await user1Functions.joinAdventure(a2Id, invite ?? "");
+    let joinedId = await user1Functions.joinAdventure(invite ?? "");
+    expect(joinedId).toBe(a2Id);
     const a2 = await user1DataService.get(user1DataService.getAdventureRef(a2Id));
 
     // Now, change our display name
@@ -587,7 +590,8 @@ describe('test functions', () => {
     } catch {}
 
     // Join the adventure.
-    await userFunctionsService.joinAdventure(a1Id, invite ?? "");
+    let joinedId = await userFunctionsService.joinAdventure(invite ?? "");
+    expect(joinedId).toBe(a1Id);
 
     // Check I can fetch that map now
     let m1Record = await userDataService.get(userDataService.getMapRef(a1Id, m1Id));
@@ -661,7 +665,8 @@ describe('test functions', () => {
     await ensureProfile(userDataService, user, undefined);
 
     // Join the adventure.
-    await userFunctionsService.joinAdventure(a1Id, invite ?? "", testPolicy);
+    let joinedId = await userFunctionsService.joinAdventure(invite ?? "", testPolicy);
+    expect(joinedId).toBe(a1Id);
 
     // Having done that, I can open it and see my player record in it:
     let a1Record = await userDataService.get(userDataService.getAdventureRef(a1Id));
@@ -684,7 +689,7 @@ describe('test functions', () => {
     // Wait long enough for that invite to have expired
     await new Promise(r => setTimeout(r, 4000));
     try {
-      await user2FunctionsService.joinAdventure(a1Id, invite ?? "", testPolicy);
+      await user2FunctionsService.joinAdventure(invite ?? "", testPolicy);
       fail('Invite should have expired');
     } catch (e) {
       expect(e.message).toMatch(/expired/i);
@@ -699,7 +704,8 @@ describe('test functions', () => {
     const invite3 = await functionsService.inviteToAdventure(a1Id, testPolicy);
     expect(invite3).not.toBe(invite);
 
-    await user2FunctionsService.joinAdventure(a1Id, invite3 ?? "", testPolicy);
+    joinedId = await user2FunctionsService.joinAdventure(invite3 ?? "", testPolicy);
+    expect(joinedId).toBe(a1Id);
     p2Record = await user2DataService.get(user2DataService.getPlayerRef(a1Id, user2.uid));
     expect(p2Record).not.toBeUndefined();
     expect(p2Record?.playerId).toBe(user2.uid);
@@ -1104,7 +1110,7 @@ describe('test functions', () => {
     expect(invite).not.toBeUndefined();
 
     // Join the adventure.
-    await userFunctionsService.joinAdventure(a1Id, invite ?? "");
+    await userFunctionsService.joinAdventure(invite ?? "");
 
     // Exercise character functions
     await createAndDeleteCharacters(userDataService, a1Id, user.uid);

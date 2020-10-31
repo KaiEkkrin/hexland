@@ -29,6 +29,20 @@
       ]
     },
     {
+      "collectionGroup": "invites",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "adventureId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "spritesheets",
       "queryScope": "COLLECTION",
       "fields": [

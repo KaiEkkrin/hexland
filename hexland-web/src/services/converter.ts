@@ -376,6 +376,7 @@ export const characterConverter = new RecursingConverter<ICharacter>({
 
 export const inviteConverter = new ShallowConverter<IInvite>({
   adventureName: "",
+  adventureId: "",
   owner: "",
   ownerName: "",
   timestamp: 0

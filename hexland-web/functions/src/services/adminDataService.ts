@@ -203,13 +203,14 @@ export class AdminDataService implements IAdminDataService {
     return new DataReference<IImages>(d, Convert.imagesConverter);
   }
 
-  getInviteRef(adventureId: string, id: string): IDataReference<IInvite> {
-    const d = this._db.collection(adventures).doc(adventureId).collection(invites).doc(id);
+  getInviteRef(id: string): IDataReference<IInvite> {
+    const d = this._db.collection(invites).doc(id);
     return new DataReference<IInvite>(d, Convert.inviteConverter);
   }
 
   async getLatestInviteRef(adventureId: string): Promise<IDataAndReference<IInvite> | undefined> {
-    const s = await this._db.collection(adventures).doc(adventureId).collection(invites)
+    const s = await this._db.collection(invites)
+      .where("adventureId", "==", adventureId)
       .orderBy("timestamp", "desc")
       .limit(1)
       .get();

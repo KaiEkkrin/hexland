@@ -16,7 +16,11 @@ import Button from 'react-bootstrap/Button';
 import { RouteComponentProps, useHistory } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 
-function Invite(props: IInvitePageProps) {
+interface IInvitePageProps {
+  inviteId: string;
+}
+
+function Invite({ inviteId }: IInvitePageProps) {
   const userContext = useContext(UserContext);
   const profile = useContext(ProfileContext);
   const analyticsContext = useContext(AnalyticsContext);
@@ -27,20 +31,20 @@ function Invite(props: IInvitePageProps) {
   // little while to run, we change the button to "Joining..." while it's happening:
   const [buttonDisabled, setButtonDisabled] = useState(false);
   useEffect(() => {
-    if (props.inviteId) {
+    if (inviteId) {
       setButtonDisabled(false);
     }
-  }, [props.inviteId]);
+  }, [inviteId]);
 
   const [invite, setInvite] = useState(undefined as IInvite | undefined);
   useEffect(() => {
     if (userContext.dataService !== undefined) {
-      let inviteRef = userContext.dataService.getInviteRef(props.adventureId, props.inviteId);
+      let inviteRef = userContext.dataService.getInviteRef(inviteId);
       userContext.dataService.get(inviteRef)
         .then(i => setInvite(i))
-        .catch(e => analyticsContext.logError("Failed to fetch invite " + props.inviteId, e));
+        .catch(e => analyticsContext.logError("Failed to fetch invite " + inviteId, e));
     }
-  }, [userContext.dataService, analyticsContext, props.adventureId, props.inviteId]);
+  }, [userContext.dataService, analyticsContext, inviteId]);
 
   const inviteDescription = useMemo(() =>
     invite === undefined ? "(no such invite)" : invite.adventureName + " by " + invite.ownerName,
@@ -48,14 +52,14 @@ function Invite(props: IInvitePageProps) {
 
   const handleJoin = useCallback(() => {
     setButtonDisabled(true);
-    userContext.functionsService?.joinAdventure(props.adventureId, props.inviteId)
-      .then(() => {
-        analyticsContext.analytics?.logEvent("join_group", { "group_id": props.adventureId });
-        history.replace("/adventure/" + props.adventureId);
+    userContext.functionsService?.joinAdventure(inviteId)
+      .then(adventureId => {
+        analyticsContext.analytics?.logEvent("join_group", { "group_id": adventureId });
+        history.replace("/adventure/" + adventureId);
       })
       .catch(e => {
         setButtonDisabled(false);
-        analyticsContext.logError("Failed to join adventure " + props.adventureId, e);
+        analyticsContext.logError("Failed to join using invite " + inviteId, e);
         const message = String(e.message);
         if (message) {
           statusContext.toasts.next({ id: uuidv4(), record: {
@@ -63,7 +67,7 @@ function Invite(props: IInvitePageProps) {
           }});
         }
       });
-  }, [analyticsContext, userContext, props.adventureId, props.inviteId, history, setButtonDisabled, statusContext]);
+  }, [analyticsContext, userContext, inviteId, history, setButtonDisabled, statusContext]);
 
   return (
     <div>
@@ -78,15 +82,10 @@ function Invite(props: IInvitePageProps) {
   );
 }
 
-interface IInvitePageProps {
-  adventureId: string;
-  inviteId: string;
-}
-
 function InvitePage(props: RouteComponentProps<IInvitePageProps>) {
   return (
     <RequireLoggedIn>
-      <Invite adventureId={props.match.params.adventureId} inviteId={props.match.params.inviteId} />
+      <Invite inviteId={props.match.params.inviteId} />
     </RequireLoggedIn>
   );
 }

@@ -38,8 +38,8 @@ function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
                         <Route exact path="/" component={Home} />
                         <Route exact path="/all" component={All} />
                         <Route exact path="/adventure/:adventureId" component={AdventurePage} />
-                        <Route exact path="/adventure/:adventureId/invite/:inviteId" component={InvitePage} />
                         <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
+                        <Route exact path="/invite/:inviteId" component={InvitePage} />
                         <Route exact path="/login" component={Login} />
                         <Route exact page="/shared" component={Shared} />
                       </Switch>

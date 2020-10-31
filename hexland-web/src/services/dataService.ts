@@ -171,18 +171,9 @@ export class DataService implements IDataService {
     return new DataReference<IImages>(d, Convert.imagesConverter);
   }
 
-  getInviteRef(adventureId: string, id: string): IDataReference<IInvite> {
-    const d = this._db.collection(adventures).doc(adventureId).collection(invites).doc(id);
+  getInviteRef(id: string): IDataReference<IInvite> {
+    const d = this._db.collection(invites).doc(id);
     return new DataReference<IInvite>(d, Convert.inviteConverter);
-  }
-
-  async getLatestInviteRef(adventureId: string): Promise<IDataAndReference<IInvite> | undefined> {
-    const s = await this._db.collection(adventures).doc(adventureId).collection(invites)
-      .orderBy("timestamp", "desc")
-      .limit(1)
-      .get();
-    return (s.empty || s.docs.length === 0) ? undefined :
-      new DataAndReference(s.docs[0].ref, s.docs[0].data(), Convert.inviteConverter);
   }
 
   getMapRef(adventureId: string, id: string): IChildDataReference<IMap, IAdventure> {

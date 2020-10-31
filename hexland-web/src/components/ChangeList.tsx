@@ -13,6 +13,12 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "0.12.4",
+    changes: [
+      "Shorten the invite URL"
+    ]
+  },
+  {
     version: "0.12.3",
     changes: [
       "Make the LoS calculation more stable"

@@ -96,14 +96,12 @@ export class FunctionsService implements IFunctionsService {
   }
 
   async joinAdventure(
-    adventureId: string,
-    inviteId: string,
-    policy?: IInviteExpiryPolicy | undefined // for testing purposes only
+    inviteId: string, policy?: IInviteExpiryPolicy | undefined // for testing purposes only
   ) {
-    await this._joinAdventure({
-      adventureId: adventureId,
+    const result = await this._joinAdventure({
       inviteId: inviteId,
       ...policy
     });
+    return String(result.data);
   }
 }
