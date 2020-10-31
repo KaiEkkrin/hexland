@@ -236,7 +236,7 @@ export class MapStateMachine {
     return [createTokenAdd({ ...properties, position: newPosition })];
   }
 
-  private buildLoS(state: IMapState) {
+  private buildLoS() {
     this._drawing.setLoSPositions(this.getLoSPositions(), this.seeEverything);
 
     // Building the LoS implies that we will need to update annotations
@@ -340,19 +340,17 @@ export class MapStateMachine {
       this._userPolicy,
       this._mapColouring,
       (haveTokensChanged: boolean, objectCount: number) => {
-        this.withStateChange(getState => {
-          const state = getState();
+        this.withStateChange(state => {
           if (haveTokensChanged) {
             this.cleanUpSelection();
           }
 
-          this.buildLoS(state);
+          this.buildLoS();
           this._drawing.handleChangesApplied(this._mapColouring);
-          if (haveTokensChanged) {
-            this.updateTokens(state);
-          }
-          state.objectCount = this._userPolicy === undefined ? undefined : objectCount;
-          return true;
+          return {
+            ...(haveTokensChanged ? this.updateTokens(state) : state),
+            objectCount: this._userPolicy === undefined ? undefined : objectCount 
+          };
         });
       }
     );
@@ -410,10 +408,7 @@ export class MapStateMachine {
   private onPostAnimate() {
     // We update annotations after the render because they are dependent on the LoS
     if (this._notesNeedUpdate.needsRedraw()) {
-      this.withStateChange(getState => {
-        this.updateAnnotations(getState());
-        return true;
-      });
+      this.withStateChange(state => this.updateAnnotations(state));
     }
   }
 
@@ -608,7 +603,7 @@ export class MapStateMachine {
     this._tokenMoveDragSelectionPosition = position;
   }
 
-  private updateAnnotations(state: IMapState) {
+  private updateAnnotations(state: IMapState): IMapState {
     const positioned: IPositionedAnnotation[] = [];
     const [target, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
     const worldToLoSViewport = this._drawing.getWorldToLoSViewport(this._scratchMatrix2);
@@ -635,13 +630,16 @@ export class MapStateMachine {
       positioned.push({ clientX: target.x, clientY: target.y, ...n });
     }
 
-    state.annotations = positioned;
+    return { ...state, annotations: positioned };
   }
 
-  private updateTokens(state: IMapState) {
-    state.tokens = [...fluent(this._tokens).map(t => ({
-      ...t, selectable: this.canSelectToken(t)
-    }))];
+  private updateTokens(state: IMapState): IMapState {
+    return {
+      ...state,
+      tokens: [...fluent(this._tokens).map(t => ({
+        ...t, selectable: this.canSelectToken(t)
+      }))]
+    };
   }
 
   private validateWallChanges(changes: IChange[]): boolean {
@@ -653,32 +651,17 @@ export class MapStateMachine {
   }
 
   // Helps create a new map state that might be a combination of more than
-  // one change, and publish it once when we're done.
-  // The supplied function should call `getState` to fetch a state object only when
-  // it means to change it, and then mutate that object.  This ensures there will be
-  // only one copy and not many.
-  // Careful: the output of `getState` is a shallow copy of the state, the caller
-  // is responsible for copying anything within as required.
+  // one change, and publish it once when we're done.  The callback function should
+  // return the new state if applicable (copied, not mutated!), or undefined to
+  // keep the existing state.
   private withStateChange(
-    fn: (getState: () => IMapState) => boolean
+    fn: (state: IMapState) => IMapState | undefined
   ) {
-    let initial = this._state;
-    let updated: IMapState[] = [];
-    function getState() {
-      if (updated.length === 0) {
-        updated.push({ ...initial });
-      }
-
-      return updated[0];
+    const newState = fn(this._state);
+    if (newState !== undefined) {
+      this._state = newState;
+      this._stateSubj.next(newState);
     }
-
-    if (fn(getState) && updated.length > 0) {
-      this._state = updated[0];
-      this._stateSubj.next(updated[0]);
-      return true;
-    }
-
-    return false;
   }
 
   get changeTracker() { return this._changeTracker; }
@@ -743,10 +726,7 @@ export class MapStateMachine {
     // The LoS may change as a result of no longer having a specific
     // token selected
     if (wasAnythingSelected) {
-      this.withStateChange(getState => {
-        this.buildLoS(getState());
-        return true;
-      });
+      this.buildLoS();
     }
   }
 
@@ -1005,12 +985,7 @@ export class MapStateMachine {
     }
 
     // The zoom is echoed to the map state so remember to update that
-    this.withStateChange(getState => {
-      const state = newMapState ?? getState();
-      state.zoom = zoomDefault;
-      return true;
-    });
-
+    this.withStateChange(state => ({ ...(newMapState ?? state), zoom: zoomDefault }));
     this.resize();
   }
 
@@ -1053,10 +1028,7 @@ export class MapStateMachine {
     if (selected === undefined) {
       this.clearSelection();
       this._selection.add(token);
-      this.withStateChange(getState => {
-        this.buildLoS(getState());
-        return true;
-      });
+      this.buildLoS();
     }
 
     this.tokenMoveDragStart(position);
@@ -1083,10 +1055,7 @@ export class MapStateMachine {
       // when they come back via the watcher, and so we should do so now.
       // (Not always, because that can cause LoS flicker)
       if (chs.length === 0) {
-        this.withStateChange(getState => {
-          this.buildLoS(getState());
-          return true;
-        });
+        this.buildLoS();
       }
     }
 
@@ -1193,11 +1162,10 @@ export class MapStateMachine {
   }
 
   zoomBy(amount: number, step?: number | undefined) {
-    this.withStateChange(getState => {
-      const state = getState();
-      state.zoom = Math.min(zoomMax, Math.max(zoomMin, state.zoom * Math.pow(step ?? zoomStep, -amount)));
-      this._cameraScaling.set(state.zoom, state.zoom, 1);
-      return true;
+    this.withStateChange(state => {
+      const newZoom = Math.min(zoomMax, Math.max(zoomMin, state.zoom * Math.pow(step ?? zoomStep, -amount)));
+      this._cameraScaling.set(newZoom, newZoom, 1);
+      return { ...state, zoom: newZoom };
     });
     this.resize();
   }

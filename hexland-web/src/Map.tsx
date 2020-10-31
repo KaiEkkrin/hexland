@@ -4,6 +4,7 @@ import './Map.css';
 
 import { AdventureContext } from './components/AdventureContextProvider';
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
+import CharacterTokenEditorModal from './components/CharacterTokenEditorModal';
 import { addToast } from './components/extensions';
 import ImageDeletionModal from './components/ImageDeletionModal';
 import { MapContext } from './components/MapContextProvider';
@@ -36,7 +37,6 @@ import { Link } from 'react-router-dom';
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
 import { v4 as uuidv4 } from 'uuid';
-import CharacterTokenEditorModal from './components/CharacterTokenEditorModal';
 
 // The map component is rather large because of all the state that got pulled into it...
 function Map() {

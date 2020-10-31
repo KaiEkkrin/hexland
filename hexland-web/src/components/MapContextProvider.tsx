@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useReducer } from 'react';
 
 import { trackChanges } from '../data/changeTracking';
 import { IAdventureIdentified } from '../data/identified';
 import { IMap } from '../data/map';
-import lcm from '../models/mapLifecycleManager';
+import { MapLifecycleManager } from '../models/mapLifecycleManager';
 import { createDefaultState, MapStateMachine } from '../models/mapStateMachine';
 import { networkStatusTracker } from '../models/networkStatusTracker';
 import { registerMapAsRecent, removeMapFromRecent, watchChangesAndConsolidate } from '../services/extensions';
@@ -34,23 +34,41 @@ function MapContextProvider(props: IContextProviderProps) {
   const history = useHistory();
   const location = useLocation();
 
-  // Watch the map when it changes
-  const [mapContext, setMapContext] = useState<IMapContext>({ mapState: createDefaultState() });
+  // We need to re-create the map lifecycle manager only when the user login changes
+  // (I expect this will still leak resources but it'll be rare)
+  const [lcm, setLcm] = useReducer(
+    (state: MapLifecycleManager | undefined, action: MapLifecycleManager | undefined) => {
+      state?.dispose();
+      return action;
+    }, undefined
+  );
+
   useEffect(() => {
-    const matches = /^\/adventure\/([^/]+)\/map\/([^/]+)$/.exec(location?.pathname);
     const uid = user?.uid;
-    if (!dataService || !matches || !profile || !spriteManager || !uid) {
+    if (!dataService || !functionsService || !uid) {
+      setLcm(undefined);
       return;
     }
 
+    setLcm(new MapLifecycleManager(dataService, functionsService, logError, uid));
+  }, [dataService, functionsService, logError, user]);
+
+  // Watch the map when it changes.
+  // We'll try not to depend on `dataService` in here to avoid repeated calls
+  const [mapContext, setMapContext] = useState<IMapContext>({ mapState: createDefaultState() });
+  useEffect(() => {
+    const matches = /^\/adventure\/([^/]+)\/map\/([^/]+)$/.exec(location?.pathname);
+    if (!lcm || !matches || !profile || !spriteManager) {
+      return undefined;
+    }
+
     const [adventureId, mapId] = [matches[1], matches[2]];
-    const mapRef = dataService.getMapRef(adventureId, mapId);
+    const mapRef = lcm.dataService.getMapRef(adventureId, mapId);
 
     // How to handle a map load failure.
     function couldNotLoad(message: string) {
-      const uid = user?.uid;
-      if (uid && mapRef) {
-        removeMapFromRecent(dataService, uid, mapRef.id)
+      if (lcm && mapRef) {
+        removeMapFromRecent(lcm.dataService, lcm.uid, mapRef.id)
           .catch(e => logError("Error removing map from recent", e));
       }
 
@@ -67,7 +85,7 @@ function MapContextProvider(props: IContextProviderProps) {
     // underlying stop function
     let stopWatchingMap: (() => void) | undefined = undefined;
     const watchMap = new Observable<IAdventureIdentified<IMap>>(sub => {
-      const stopWatchingMap = dataService.watch(
+      const stopWatchingMap = lcm.dataService.watch(
         mapRef,
         m => {
           if (m === undefined) {
@@ -89,7 +107,7 @@ function MapContextProvider(props: IContextProviderProps) {
     // On first load, register the map as recent, and fire a consolidate.
     // Neither of these is fatal if it goes wrong
     const registerAsRecentSub = watchMap.pipe(first(), switchMap(m =>
-      from(registerMapAsRecent(dataService, uid, m.adventureId, m.id, m.record))
+      from(registerMapAsRecent(lcm.dataService, lcm.uid, m.adventureId, m.id, m.record))
     )).subscribe(
       () => {},
       e => logError(`Error registering map ${adventureId}/${mapId} as recent`, e)
@@ -98,7 +116,7 @@ function MapContextProvider(props: IContextProviderProps) {
     const consolidateSub = watchMap.pipe(first(), switchMap(m =>
       from((async () => {
         console.log(`consolidating map changes for ${m.adventureId}/${m.id}`);
-        await functionsService?.consolidateMapChanges(m.adventureId, m.id, false);
+        await lcm.functionsService?.consolidateMapChanges(m.adventureId, m.id, false);
       })())
     )).subscribe(
       () => {},
@@ -110,14 +128,12 @@ function MapContextProvider(props: IContextProviderProps) {
     // (map field pointing to a different one to the state machine for example) which
     // might cause subscribers to double-execute operations.
     const watchSub = watchMap.pipe(switchMap(m => new Observable<MapStateMachine>(sub => {
-      const sm = lcm.getStateMachine(
-        dataService, logError, uid, m, profile, spriteManager
-      );
+      const sm = lcm.getStateMachine(m, profile, spriteManager);
 
       networkStatusTracker.clear();
       const stop = watchChangesAndConsolidate(
-        dataService,
-        functionsService,
+        lcm.dataService,
+        lcm.functionsService,
         m.adventureId,
         m.id,
         chs => {
@@ -155,8 +171,8 @@ function MapContextProvider(props: IContextProviderProps) {
       stopWatchingMap?.();
     };
   }, [
-    analytics, dataService, functionsService, history, location, logError, logEvent,
-    profile, setMapContext, spriteManager, toasts, user
+    analytics, history, lcm, location, logError, logEvent,
+    profile, setMapContext, spriteManager, toasts
   ]);
 
   return (

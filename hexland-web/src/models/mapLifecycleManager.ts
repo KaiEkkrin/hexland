@@ -3,7 +3,7 @@ import { IMap, MapType } from "../data/map";
 import { getUserPolicy } from "../data/policy";
 import { IProfile } from "../data/profile";
 import { getTokenGeometry } from "../data/tokenGeometry";
-import { IDataService, ISpriteManager } from "../services/interfaces";
+import { IDataService, IFunctionsService, ISpriteManager } from "../services/interfaces";
 
 import { standardColours } from "./featureColour";
 import { HexGridGeometry } from "./hexGridGeometry";
@@ -21,20 +21,38 @@ const squareTokenGeometry = getTokenGeometry(MapType.Square);
 
 // Helps us avoid re-creating expensive resources (WebGL etc) as we navigate
 // around maps, switch users etc.
-class MapLifecycleManager {
+export class MapLifecycleManager {
+  private readonly _dataService: IDataService;
+  private readonly _functionsService: IFunctionsService;
+  private readonly _logError: (message: string, e: any) => void;
+  private readonly _uid: string;
+
   // We maintain a map state machine for each geometry:
   private readonly _stateMachines = new Map<MapType, MapStateMachine>();
 
+  constructor(
+    dataService: IDataService,
+    functionsService: IFunctionsService,
+    logError: (message: string, e: any) => void,
+    uid: string
+  ) {
+    this._dataService = dataService;
+    this._functionsService = functionsService;
+    this._logError = logError;
+    this._uid = uid;
+  }
+
+  get dataService() { return this._dataService; }
+  get functionsService() { return this._functionsService; }
+  get uid() { return this._uid; }
+
   // Gets a map state machine
   getStateMachine(
-    dataService: IDataService,
-    logError: (message: string, e: any) => void,
-    uid: string,
     map: IAdventureIdentified<IMap>,
     profile: IProfile,
     spriteManager: ISpriteManager
   ): MapStateMachine {
-    const userPolicy = map.record.owner === uid ? getUserPolicy(profile.level) : undefined;
+    const userPolicy = map.record.owner === this._uid ? getUserPolicy(profile.level) : undefined;
     const already = this._stateMachines.get(map.record.ty);
     if (already !== undefined) {
       already.configure(map, spriteManager, userPolicy);
@@ -42,20 +60,23 @@ class MapLifecycleManager {
     }
 
     const newStateMachine = new MapStateMachine(
-      dataService,
+      this._dataService,
       map,
-      uid,
+      this._uid,
       map.record.ty === MapType.Hex ? hexGridGeometry : squareGridGeometry,
       map.record.ty === MapType.Hex ? hexTokenGeometry : squareTokenGeometry,
       standardColours,
       userPolicy,
-      logError,
+      this._logError,
       spriteManager
     );
     this._stateMachines.set(map.record.ty, newStateMachine);
     return newStateMachine;
   }
-}
 
-const mapLifecycleManager = new MapLifecycleManager();
-export default mapLifecycleManager;
+  // Cleans up (call when re-creating)
+  dispose() {
+    this._stateMachines.forEach(sm => sm.dispose());
+    this._stateMachines.clear();
+  }
+}
