@@ -13,33 +13,13 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
-    version: "0.12.4",
+    version: "1.0.0",
     changes: [
-      "Shorten the invite URL"
-    ]
-  },
-  {
-    version: "0.12.3",
-    changes: [
-      "Make the LoS calculation more stable"
-    ]
-  },
-  {
-    version: "0.12.2",
-    changes: [
-      "Support player-defined characters"
-    ]
-  },
-  {
-    version: "0.12.1",
-    changes: [
-      "Show token image in player list"
-    ]
-  },
-  {
-    version: "0.12.0",
-    changes: [
-      "Support images in tokens"
+      "Support images in tokens",
+      "Show token image in player list",
+      "Support player-defined characters",
+      "Make the LoS calculation more stable",
+      "Shorten the invite URL (old invites will no longer be valid)"
     ]
   },
   {
