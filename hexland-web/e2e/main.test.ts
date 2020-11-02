@@ -4,6 +4,8 @@ import { chromium, devices, firefox, webkit, Browser, BrowserContext, Page } fro
 
 import { SCREENSHOTS_PATH, VIDEOS_PATH } from './globals';
 
+import { v4 as uuidv4 } from 'uuid';
+
 type BrowserName = 
   'chromium' |
   'firefox' |
@@ -54,6 +56,8 @@ async function takeScreenshot(state: TestState, message: string) {
   });
 }
 
+let signupNumber = 0;
+
 describe.each([
   <ConfigTuple>['chromium', 'iPhone 7'],
   //<ConfigTuple>['webkit', 'iPhone 7'], -- "invalid frame size" reported
@@ -69,6 +73,14 @@ describe.each([
   let context: BrowserContext;
   let page: Page;
   let state: TestState;
+
+  async function ensureNavbarExpanded() {
+    // On phones we'll get the collapsed hamburger thingy
+    if (/(iPhone)|(Pixel)/.test(deviceName)) {
+      await expect(page).toHaveSelector('.navbar-toggler');
+      await page.click('.navbar-toggler');
+    }
+  }
 
   beforeAll(async () => {
     browser = await browsers[browserName].launch();
@@ -98,5 +110,56 @@ describe.each([
   it(`view front page (${browserName} ${deviceName})`, async () => {
     await page.waitForTimeout(500);
     await takeScreenshot(state, 'view-front-page');
+  });
+
+  it(`create account and login (${browserName} ${deviceName})`, async () => {
+    await ensureNavbarExpanded();
+
+    // Go through the login page
+    await page.click('text="Sign up/Login"');
+    await expect(page).toHaveSelector('.App-login-text');
+    await page.click('.App-header .btn-primary');
+    await expect(page).toHaveSelector('.modal .tab-pane');
+
+    // Fill in the form.  Take care to create unique email addresses because
+    // we may be re-using the authentication emulator instance from another run
+    const n = ++signupNumber;
+    const email = `test${n}-${uuidv4()}@example.com`;
+    await page.fill('[id=nameInput]', `Test ${n}`);
+    await page.fill('[id=newEmailInput]', email);
+    await page.fill('[id=newPasswordInput]', `test_password${n}`);
+    await page.fill('[id=confirmPasswordInput]', `test_password${n}`);
+    await takeScreenshot(state, 'create-account-new-user');
+
+    // Sign up
+    await page.click('text="Sign up"', { force: true }); // TODO for some reason we can't find this on iPhone/Pixel
+
+    // Wait for the front page to come back
+    await expect(page).toHaveSelector('.App-introduction-image');
+    await ensureNavbarExpanded();
+
+    // A verification email should have been sent (click the toast off)
+    await expect(page).toHaveSelector(`text="A verification email has been sent to ${email}"`);
+    await page.click('.toast-header .close');
+
+    // I should now see my new user name appear in the nav bar.
+    await expect(page).toHaveSelector(`css=.dropdown >> text=Test ${n}`);
+
+    // Click the navbar dropdown 
+    await page.click(`*css=.dropdown-toggle >> text=Test ${n}`);
+    await page.click('text="Edit profile"');
+
+    // Change the display name
+    expect(await page.getAttribute('[id=nameInput]', 'value')).toBe(`Test ${n}`);
+    await page.fill('[id=nameInput]', `Re-test ${n}`);
+    await takeScreenshot(state, 'create-account-edit-profile');
+    await page.click('text="Save profile"');
+
+    // This should have edited the name in the nav bar
+    await expect(page).toHaveSelector(`css=.dropdown >> text=Re-test ${n}`);
+
+    // If we log out, we should get `Sign up/Login` back:
+    await page.click('text="Log out"');
+    await expect(page).toHaveSelector('text="Sign up/Login"');
   });
 });

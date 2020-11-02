@@ -8,8 +8,6 @@ import * as Policy from './data/policy';
 import { ProfileContext } from './components/ProfileContextProvider';
 import { StatusContext } from './components/StatusContextProvider';
 
-import { DataService } from './services/dataService';
-import { ensureProfile } from './services/extensions';
 import { IUser } from './services/interfaces';
 
 import Button from 'react-bootstrap/Button';
@@ -177,9 +175,9 @@ function EmailPasswordModal({ shown, handleClose, handleSignIn, handleSignUp }: 
 }
 
 function Login() {
-  const { auth, db, googleAuthProvider, timestampProvider } = useContext(FirebaseContext);
+  const { auth, googleAuthProvider } = useContext(FirebaseContext);
   const profileContext = useContext(ProfileContext);
-  const { analytics, logError } = useContext(AnalyticsContext);
+  const { logError } = useContext(AnalyticsContext);
   const { toasts } = useContext(StatusContext);
   const history = useHistory();
 
@@ -194,7 +192,7 @@ function Login() {
     }
   }, [profileContext, setLoginFailedVisible]);
 
-  const handleLoginResult = useCallback(async (user: IUser | null | undefined, newDisplayName?: string | undefined) => {
+  const handleLoginResult = useCallback(async (user: IUser | null | undefined, sendEmailVerification?: boolean | undefined) => {
     if (user === undefined) {
       throw Error("Undefined auth context or user");
     }
@@ -203,16 +201,8 @@ function Login() {
       setLoginFailedVisible(true);
       return false;
     }
-    
-    if (db === undefined || timestampProvider === undefined) {
-      throw Error("No database available");
-    }
 
-    const dataService = new DataService(db, timestampProvider);
-
-    if (newDisplayName !== undefined) {
-      // This implies it's a new user:
-      await ensureProfile(dataService, user, analytics, newDisplayName);
+    if (sendEmailVerification === true) {
       if (!user.emailVerified) {
         await user.sendEmailVerification();
         toasts.next({
@@ -223,7 +213,7 @@ function Login() {
     }
 
     return true;
-  }, [analytics, db, timestampProvider, setLoginFailedVisible, toasts]);
+  }, [setLoginFailedVisible, toasts]);
 
   const finishLogin = useCallback((success: boolean) => {
     if (success) {
@@ -248,8 +238,8 @@ function Login() {
   const handleEmailFormSignUp = useCallback((displayName: string, email: string, password: string) => {
     setShowEmailForm(false);
     setLoginFailedVisible(false);
-    auth?.createUserWithEmailAndPassword(email, password)
-      .then(u => handleLoginResult(u, displayName))
+    auth?.createUserWithEmailAndPassword(email, password, displayName)
+      .then(u => handleLoginResult(u, true))
       .then(finishLogin)
       .catch(handleLoginError);
   }, [auth, finishLogin, handleLoginError, handleLoginResult, setLoginFailedVisible, setShowEmailForm]);

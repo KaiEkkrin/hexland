@@ -31,18 +31,21 @@ export async function ensureProfile(
 
       // Keep the user's email in sync if required, and replace any default display name
       let profileNeedsUpdate = false;
+      const profileUpdates: any = {};
       if ((profile.name === "" || profile.name === defaultDisplayName) && displayName !== undefined) {
         profile.name = displayName;
+        profileUpdates.name = displayName;
         profileNeedsUpdate = true;
       }
 
       if (profile.email !== user.email && user.email !== null) {
         profile.email = user.email;
+        profileUpdates.email = user.email;
         profileNeedsUpdate = true;
       }
 
       if (profileNeedsUpdate === true) {
-        await view.update(profileRef, profile);
+        await view.update(profileRef, profileUpdates);
       }
 
       return profile;

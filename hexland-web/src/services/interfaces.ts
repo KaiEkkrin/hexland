@@ -16,7 +16,7 @@ import { Observable } from 'rxjs';
 // Abstracts the Firebase authentication stuff, which isn't supported by the
 // simulator.
 export interface IAuth {
-  createUserWithEmailAndPassword(email: string, password: string): Promise<IUser | null>;
+  createUserWithEmailAndPassword(email: string, password: string, displayName: string): Promise<IUser | null>;
   fetchSignInMethodsForEmail(email: string): Promise<Array<string>>;
   sendPasswordResetEmail(email: string): Promise<void>;
   signInWithEmailAndPassword(email: string, password: string): Promise<IUser | null>;

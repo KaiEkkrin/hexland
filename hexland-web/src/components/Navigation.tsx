@@ -230,10 +230,21 @@ function NavLogin() {
       return;
     }
 
-    updateProfile(dataService, user?.uid, editDisplayName)
-      .then(() => console.log("successfully updated profile"))
-      .catch(e => logError("error updating profile:", e));
-  }, [setEnabled, logError, editAnalyticsEnabled, editDisplayName, handleModalClose, dataService, user]);
+    async function doUpdateProfile() {
+      if (!user) {
+        return;
+      }
+
+      await updateProfile(dataService, user.uid, editDisplayName);
+      if (editDisplayName !== displayName) {
+        await user.updateProfile({ displayName: displayName });
+      }
+
+      console.log(`successfully updated profile of ${editDisplayName}`);
+    }
+
+    doUpdateProfile().catch(e => logError("error updating profile", e));
+  }, [setEnabled, logError, displayName, editAnalyticsEnabled, editDisplayName, handleModalClose, dataService, user]);
 
   const saveProfileDisabled = useMemo(() => editDisplayName.length === 0, [editDisplayName]);
 
