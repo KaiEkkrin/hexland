@@ -171,7 +171,7 @@ function Avatar(props: { children?: React.ReactNode }) {
   );
 }
 
-function NavLogin() {
+function NavLogin({ expanded }: { expanded: boolean }) {
   const { auth } = useContext(FirebaseContext);
   const { dataService, user } = useContext(UserContext);
   const { signInMethods } = useContext(SignInMethodsContext);
@@ -300,13 +300,13 @@ function NavLogin() {
   const profileButton = useMemo(() => {
     if (isPasswordUser) {
       return (
-        <Dropdown alignRight>
+        <Dropdown>
           <Dropdown.Toggle variant="primary">
             <Avatar>
               {displayName}{verifiedIcon}
             </Avatar>
           </Dropdown.Toggle>
-          <Dropdown.Menu>
+          <Dropdown.Menu alignRight={!expanded}>
             <Dropdown.Item onClick={handleEditProfile}>Edit profile</Dropdown.Item>
             <Dropdown.Item onClick={handleChangePassword}>Change password</Dropdown.Item>
             {resendVerificationItem}
@@ -323,7 +323,7 @@ function NavLogin() {
       );
     }
   }, [
-    displayName, handleChangePassword, handleEditProfile, isPasswordUser,
+    displayName, expanded, handleChangePassword, handleEditProfile, isPasswordUser,
     resendVerificationItem, verifiedIcon
   ]);
 
@@ -411,6 +411,17 @@ function Navigation(props: INavigationProps) {
     [expanded, width]
   );
 
+  // Delete the firebase emulator warning, which is all well and good but
+  // screws up e2e testing.
+  // This code needs to go into a ubiquitous component inside the router -- the Navigation
+  // seems as good a place as any
+  useEffect(() => {
+    const emulatorWarnings = document.getElementsByClassName('firebase-emulator-warning');
+    for (const w of emulatorWarnings) {
+      w.remove();
+    }
+  }, []);
+
   return (
     <Measure bounds onResize={r => setWidth(r.bounds?.width)}>
       {({ measureRef }) => (
@@ -434,7 +445,7 @@ function Navigation(props: INavigationProps) {
             </Navbar.Collapse>
             <Navbar.Text className="justify-content-centre" hidden={childrenHidden}>{props.children}</Navbar.Text>
             <Navbar.Collapse id="basic-navbar-nav" className="justify-content-end">
-              <NavLogin />
+              <NavLogin expanded={expanded} />
             </Navbar.Collapse>
             <Navbar.Toggle aria-controls="basic-navbar-nav" />
           </Navbar>

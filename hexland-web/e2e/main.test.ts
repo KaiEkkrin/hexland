@@ -132,21 +132,22 @@ describe.each([
     await takeScreenshot(state, 'create-account-new-user');
 
     // Sign up
-    await page.click('text="Sign up"', { force: true }); // TODO for some reason we can't find this on iPhone/Pixel
+    await page.click('text="Sign up"', { force: true });
 
     // Wait for the front page to come back
     await expect(page).toHaveSelector('.App-introduction-image');
-    await ensureNavbarExpanded();
 
     // A verification email should have been sent (click the toast off)
     await expect(page).toHaveSelector(`text="A verification email has been sent to ${email}"`);
     await page.click('.toast-header .close');
 
     // I should now see my new user name appear in the nav bar.
+    await ensureNavbarExpanded();
     await expect(page).toHaveSelector(`css=.dropdown >> text=Test ${n}`);
 
     // Click the navbar dropdown 
-    await page.click(`*css=.dropdown-toggle >> text=Test ${n}`);
+    await page.click(`css=.dropdown >> text=Test ${n}`);
+    await takeScreenshot(state, 'create-account-navbar-dropdown');
     await page.click('text="Edit profile"');
 
     // Change the display name
