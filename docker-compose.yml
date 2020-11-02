@@ -16,6 +16,7 @@ services:
             - 5001:5001
             - 8080:8080
             - 9005:9005
+            - 9099:9099
         security_opt:
             - seccomp:./hexland-web/docker/seccomp_profile.json
         stdin_open: true

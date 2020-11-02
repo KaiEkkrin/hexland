@@ -1,6 +1,6 @@
 import { IAuth, IAuthProvider, IUser } from "./interfaces";
 
-import * as firebase from 'firebase/app';
+import firebase from 'firebase/app';
 
 import md5 from 'crypto-js/md5';
 

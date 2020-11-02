@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-import * as firebase from 'firebase/app';
+import firebase from 'firebase/app';
 import 'firebase/auth';
 import 'firebase/firestore';
 
@@ -50,6 +50,7 @@ function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) 
       functions: functions,
       googleAuthProvider: {},
       timestampProvider: jest.fn(),
+      usingLocalEmulators: true,
       createAnalytics: undefined
     });
 

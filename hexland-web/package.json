@@ -1,6 +1,6 @@
 {
   "name": "hexland-web",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.30",
@@ -21,7 +21,7 @@
     "chroma-js": "^2.1.0",
     "crypto-js": "^4.0.0",
     "dayjs": "^1.8.36",
-    "firebase": "^7.20.0",
+    "firebase": "^8.0.0",
     "firebase-functions": "^3.11.0",
     "fluent-iterable": "^0.1.6",
     "react": "^16.13.1",

@@ -4,6 +4,7 @@ import { IMap } from '../data/map';
 import { IMapState, MapStateMachine } from '../models/mapStateMachine';
 import { IDataService, IUser, IAuth, IAuthProvider, IAnalytics, IFunctionsService, IStorage, ISpriteManager } from '../services/interfaces';
 
+import firebase from 'firebase/app';
 import { Subject } from 'rxjs';
 
 export interface IContextProviderProps {
@@ -17,6 +18,7 @@ export interface IFirebaseContext {
   googleAuthProvider?: IAuthProvider | undefined;
   storage?: firebase.storage.Storage | undefined;
   timestampProvider?: (() => firebase.firestore.FieldValue) | undefined;
+  usingLocalEmulators?: boolean | undefined;
   // Creates an Analytics provider
   createAnalytics?: (() => IAnalytics) | undefined;
 }

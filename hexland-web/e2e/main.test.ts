@@ -89,6 +89,7 @@ describe.each([
     await expect(page).toHaveSelector('.App-introduction-image');
     await page.click('.App-consent-card .btn-success');
   });
+
   afterAll(async () => {
     await page.close();
     await browser.close();

@@ -14,7 +14,7 @@ import * as Policy from '../data/policy';
 import { getTokenGeometry } from '../data/tokenGeometry';
 import { SimpleTokenDrawing, Tokens } from '../data/tokens';
 
-import * as firebase from 'firebase/app';
+import firebase from 'firebase/app';
 import 'firebase/firestore';
 import 'firebase/functions';
 

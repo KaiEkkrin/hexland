@@ -1,6 +1,6 @@
 import { IStorage, IStorageReference } from './interfaces';
 
-import * as firebase from 'firebase/app';
+import firebase from 'firebase/app';
 import 'firebase/storage';
 
 // The real Firebase storage implementation.

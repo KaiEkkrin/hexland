@@ -20,6 +20,12 @@ I develop using WSL 2 and Visual Studio Code, I can't vouch for the effectivenes
 
 ## Running tests
 
+First time setup: ensure you have the Firebase emulators ready
+
+```bash
+firebase init emulators
+```
+
 The following command is set up to load a Firebase emulator with Firestore and Functions support:
 
 ```bash

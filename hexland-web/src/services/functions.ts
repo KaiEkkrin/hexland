@@ -4,7 +4,7 @@ import { ISprite } from "../data/sprite";
 import { spriteConverter } from "./converter";
 import { IFunctionsService } from "./interfaces";
 
-import * as firebase from 'firebase/app';
+import firebase from 'firebase/app';
 
 export class FunctionsService implements IFunctionsService {
   private readonly _addSprites: firebase.functions.HttpsCallable;

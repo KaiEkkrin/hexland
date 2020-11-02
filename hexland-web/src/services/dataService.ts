@@ -1,4 +1,4 @@
-import * as firebase from 'firebase/app';
+import firebase from 'firebase/app';
 
 import * as Convert from './converter';
 import { IDataService, IDataReference, IDataView, IDataAndReference, IChildDataReference } from './interfaces';
