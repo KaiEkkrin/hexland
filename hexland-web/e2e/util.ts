@@ -30,6 +30,22 @@ export async function whileNavbarExpanded(deviceName: string, page: Page, fn: ()
 export type User = { displayName: string, email: string, number: number, password: string };
 let signupNumber = 0;
 
+export async function signIn(page: Page, user: User) {
+  // Go through the login page
+  await page.click('text="Sign up/Login"');
+  await expect(page).toHaveSelector('.App-login-text');
+  await page.click('.App-header .btn-primary');
+  await page.click('[id=signIn-tab-existing]');
+
+  // Fill in the form
+  await page.fill('[id=emailInput]', user.email);
+  await page.fill('[id=passwordInput]', user.password);
+  await page.click('text="Sign in"', { force: true });
+
+  // Wait for the front page to come back
+  await expect(page).toHaveSelector('.App-introduction-image');
+}
+
 export async function signUp(deviceName: string, page: Page, prefix?: string | undefined): Promise<User> {
   await ensureNavbarExpanded(deviceName, page);
 

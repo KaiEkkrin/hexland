@@ -71,7 +71,7 @@ describe.each([
   // shorter timeout for individual page operations because each one shouldn't
   // take very long
   const longTestTimeout = 120000;
-  const pageTimeout = 4000;
+  const pageTimeout = 6000;
   const pageNavigationTimeout = 8000;
 
   let browser: Browser;
@@ -140,6 +140,12 @@ describe.each([
     // If we log out, we should get `Sign up/Login` back:
     await page.click('text="Log out"');
     await expect(page).toHaveSelector('text="Sign up/Login"');
+
+    // Check we can log back in again too :)
+    await Util.signIn(page, user);
+    await Util.ensureNavbarExpanded(deviceName, page);
+    await expect(page).toHaveSelector(`css=.dropdown >> text=${user.displayName}`);
+    await takeScreenshot(state, 'create-account-end');
   });
 
   describe('Two-context tests', () => {
@@ -279,9 +285,13 @@ describe.each([
         await adventureAccordion.click();
       }
 
+      const openAdventure = await page2.waitForSelector('text="Open adventure"'); // I want it in the screenshot :)
+      await takeScreenshot(state2, 'share-shared-with-me');
+
       // Clicking "Open adventure" should get us back to the adventure page
-      await page2.click('text="Open adventure"');
+      await openAdventure.click();
       await expect(page2).toHaveSelector('css=.card-text >> text="Here be dragons"');
+      await takeScreenshot(state2, 'share-end');
     }, longTestTimeout);
   });
 });
