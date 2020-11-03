@@ -90,7 +90,10 @@ function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
   const contentItems = useMemo(() => {
     // Always show the player name
     const items = [(
-      <div key="nameItem" style={{ wordBreak: "break-all", wordWrap: "break-word" }}>{props.player.playerName}{blockedBadge}</div>
+      <div key="nameItem"
+        style={{ wordBreak: "break-all", wordWrap: "break-word" }}
+        aria-label={`Player ${props.player.playerName}`}
+      >{props.player.playerName}{blockedBadge}</div>
     )];
 
     // If we have a block item, show that in a little menu to make it less threatening

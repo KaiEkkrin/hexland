@@ -55,11 +55,21 @@ function Adventure({ adventureId }: IAdventureProps) {
   );
 
   const title = useMemo(() => {
+    if (adventure === undefined) {
+      return undefined;
+    }
+
     if (adventure?.record.owner !== user?.uid) {
       return adventure?.record.name ?? "";
     }
 
-    return (adventure?.record.name ?? "") + " (" + (adventure?.record.maps.length ?? 0) + "/" + (userPolicy?.maps ?? 0) + ")";
+    const adventureLink = "/adventure/" + adventure.id;
+    const objectsString = "(" + (adventure.record.maps.length) + "/" + (userPolicy?.maps ?? 0) + ")";
+    return (
+      <div style={{ overflowWrap: 'normal' }}>
+        <Link aria-label="Link to this adventure" to={adventureLink}>{adventure.record.name}</Link> {objectsString}
+      </div>
+    );
   }, [adventure, user, userPolicy]);
 
   // Derive the adventures list for the map collection

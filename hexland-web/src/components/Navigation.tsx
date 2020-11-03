@@ -1,5 +1,6 @@
 import React, { useContext, useMemo, useCallback, useState, useEffect } from 'react';
-import { useAsyncTask, useAsyncRun } from 'react-hooks-async';
+
+import './Navigation.css';
 
 import { AnalyticsContext } from './AnalyticsContextProvider';
 import { FirebaseContext } from './FirebaseContextProvider';
@@ -19,6 +20,7 @@ import Modal from 'react-bootstrap/Modal';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 
+import { useAsyncTask, useAsyncRun } from 'react-hooks-async';
 import Measure from 'react-measure';
 import { LinkContainer } from 'react-router-bootstrap';
 
@@ -428,13 +430,13 @@ function Navigation(props: INavigationProps) {
         <div ref={measureRef}>
           <Navbar bg="dark" expand="lg" variant="dark" sticky="top" onToggle={setExpanded}>
             <LinkContainer to="/">
-              <Navbar.Brand className="App-brand">
+              <Navbar.Brand className="Navigation-brand">
                 <img src="/logo32.svg" alt="logo" height={32} />
-                <div className="App-brand-text">
-                  <div className="App-brand-main">
+                <div className="Navigation-brand-text">
+                  <div className="Navigation-brand-main">
                     wall &amp; shadow
                   </div>
-                  <div className="App-brand-shadow">
+                  <div className="Navigation-brand-shadow">
                     wall &amp; shadow
                   </div>
                 </div>
@@ -443,7 +445,7 @@ function Navigation(props: INavigationProps) {
             <Navbar.Collapse id="basic-navbar-nav">
               <NavPageLinks />
             </Navbar.Collapse>
-            <Navbar.Text className="justify-content-centre" hidden={childrenHidden}>{props.children}</Navbar.Text>
+            <Navbar.Text className="justify-content-center" hidden={childrenHidden}>{props.children}</Navbar.Text>
             <Navbar.Collapse id="basic-navbar-nav" className="justify-content-end">
               <NavLogin expanded={expanded} />
             </Navbar.Collapse>

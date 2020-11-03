@@ -72,7 +72,7 @@ function Map() {
       undefined : "(" + mapState.objectCount + "/" + userPolicy.objects + ")";
     return (
       <div style={{ overflowWrap: 'normal' }}>
-        <Link to={adventureLink}>{map.record.adventureName}</Link> | <Link to={mapLink}>{map.record.name}</Link> {objectsString}
+        <Link aria-label="Link to this adventure" to={adventureLink}>{map.record.adventureName}</Link> | <Link aria-label="Link to this map" to={mapLink}>{map.record.name}</Link> {objectsString}
       </div>
     );
   }, [profile, map, mapState, userPolicy]);

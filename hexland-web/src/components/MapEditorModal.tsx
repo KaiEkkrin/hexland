@@ -137,7 +137,7 @@ function MapEditorModal({ show, adventures, map, handleClose, handleSave }: IMap
             </Form.Control>
           </Form.Group>
           <Form.Group>
-            <Form.Check type="checkbox" label="Free-for-all mode" checked={ffa}
+            <Form.Check type="checkbox" id="mapFfa" label="Free-for-all mode" checked={ffa}
               onChange={handleFfaChange} />
           </Form.Group>
         </Form>

@@ -4,35 +4,6 @@
   height: 100vh;
 }
 
-.App-brand {
-  align-items: center;
-  display: flex !important;
-  font-family: 'Princess Sofia';
-  font-size: 1rem !important;
-  font-weight: bold;
-  height: 40px;
-  padding: 0px !important;
-}
-
-.App-brand-main {
-  color: #ed8a17 !important;
-  left: 0px;
-  position: relative;
-  top: 0.1rem;
-}
-
-.App-brand-shadow {
-  color: black !important;
-  left: 0px;
-  position: relative;
-  top: -0.5rem;
-  transform: skew(45deg, 0deg) scaleY(-1) translateX(0.3rem);
-}
-
-.App-brand-text {
-  display: inline-block;
-}
-
 .App-consent-card {
   background-color: darkslateblue !important;
   color: white !important;
