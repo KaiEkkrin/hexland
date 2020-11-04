@@ -328,7 +328,6 @@ export class DrawingOrtho implements IDrawing {
     if (gridNeedsRedraw || needsRedraw) {
       if (this._showLoS === true) {
         this._los.render(this._losCamera, this._fixedCamera, this._renderer);
-        // this._grid.preLoSRender(this._losParameters, this._losCamera);
         this._losFilter.preRender(this._losParameters, this._losCamera);
       }
 
@@ -342,7 +341,6 @@ export class DrawingOrtho implements IDrawing {
       this._renderer.render(this._overlayScene, this._overlayCamera);
 
       if (this._showLoS === true) {
-        // this._grid.postLoSRender();
         this._losFilter.postRender();
       }
     }

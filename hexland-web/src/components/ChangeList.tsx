@@ -15,7 +15,7 @@ const changes: IVersion[] = [
   {
     version: "1.0.2",
     changes: [
-      "EXPERIMENTAL: per-pixel LoS"
+      "Improved LoS algorithm (should reduce glitches)"
     ]
   },
   {

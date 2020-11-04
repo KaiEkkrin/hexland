@@ -3,11 +3,14 @@ import { IShader, ShaderFilter } from "./shaderFilter";
 
 import * as THREE from 'three';
 
-// This approach to the LoS rendering should avoid the gaps that are necessarily
+// #160: This approach to the LoS rendering should avoid the gaps that are necessarily
 // created when using the grid geometry.  We use the filter geometry to always render
 // over the whole of the viewport, and a pixel shader to determine, for each pixel,
-
 // which face it's in and thence where in the LoS texture we should sample.
+// In theory this should be a lot slower than the old vertex shader implementation drawn
+// with the grid geometry -- in practice it doesn't seem to be, presumably because
+// the reduction in JavaScript work that needs to be done in geometry preparation overwhelms
+// the extra work done by the (very fast) shaders...
 function createLoSFilterShader(gridGeometry: IGridGeometry) {
   return {
     uniforms: {
