@@ -9,9 +9,10 @@ import { RedrawFlag } from '../redrawFlag';
 import { ISpriteManager } from '../../services/interfaces';
 
 import { Areas, createPaletteColouredAreaObject, createAreas, createSelectionColouredAreaObject } from './areas';
-import { Grid, IGridLoSPreRenderParameters } from './grid';
+import { Grid } from './grid';
 import { GridFilter } from './gridFilter';
 import { LoS } from './los';
+import { createLoSFilter, ILoSPreRenderParameters, LoSFilter } from './losFilter';
 import { MapColourVisualisation } from './mapColourVisualisation';
 import { OutlinedRectangle } from './overlayRectangle';
 import { TextureCache } from './textureCache';
@@ -66,14 +67,15 @@ export class DrawingOrtho implements IDrawing {
   private readonly _filterScene: THREE.Scene;
   private readonly _overlayScene: THREE.Scene;
 
-  private readonly _grid: Grid;
+  private readonly _grid: Grid; // TODO #160 remove the LoS part of this, replaced with LoSFilter.
   private readonly _gridFilter: GridFilter;
+  private readonly _losFilter: LoSFilter;
   private readonly _areas: Areas;
   private readonly _highlightedAreas: Areas;
   private readonly _highlightedVertices: Vertices;
   private readonly _highlightedWalls: Walls;
   private readonly _los: LoS;
-  private readonly _losParameters: IGridLoSPreRenderParameters;
+  private readonly _losParameters: ILoSPreRenderParameters;
   private readonly _selection: ITokenDrawing;
   private readonly _selectionDrag: ITokenDrawing; // a copy of the selection shown only while dragging it
   private readonly _selectionDragRed: ITokenDrawing; // likewise, but shown if the selection couldn't be dropped there
@@ -157,6 +159,9 @@ export class DrawingOrtho implements IDrawing {
     this._gridFilter = new GridFilter(this._grid.faceCoordRenderTarget.texture, gridZ);
     this._gridFilter.addToScene(this._fixedFilterScene);
 
+    this._losFilter = createLoSFilter(gridGeometry, losZ);
+    this._losFilter.addToScene(this._fixedFilterScene);
+
     this._textMaterial = new THREE.MeshBasicMaterial({ color: 0, side: THREE.DoubleSide });
 
     const darkColourParameters = { palette: colours.map(c => c.dark) };
@@ -172,10 +177,12 @@ export class DrawingOrtho implements IDrawing {
     );
 
     this._losParameters = {
+      faceCoordTarget: this._grid.faceCoordRenderTarget,
       fullyHidden: 0.0, // increased if `seeEverything`
       fullyVisible: 1.0,
-      losTarget: this._los.target
-    }
+      losTarget: this._los.target,
+      tileOrigin: this._grid.tileOrigin
+    };
 
     // The filled areas
     this._areas = createAreas(
@@ -321,19 +328,22 @@ export class DrawingOrtho implements IDrawing {
     if (gridNeedsRedraw || needsRedraw) {
       if (this._showLoS === true) {
         this._los.render(this._losCamera, this._fixedCamera, this._renderer);
-        this._grid.preLoSRender(this._losParameters, this._losCamera);
+        // this._grid.preLoSRender(this._losParameters, this._losCamera);
+        this._losFilter.preRender(this._losParameters, this._losCamera);
       }
 
       this._renderer.setRenderTarget(null);
       this._renderer.setClearColor(this._canvasClearColour);
       this._renderer.clear();
       this._renderer.render(this._mapScene, this._camera);
+
       this._renderer.render(this._fixedFilterScene, this._fixedCamera);
       this._renderer.render(this._filterScene, this._camera);
       this._renderer.render(this._overlayScene, this._overlayCamera);
 
       if (this._showLoS === true) {
-        this._grid.postLoSRender();
+        // this._grid.postLoSRender();
+        this._losFilter.postRender();
       }
     }
 
@@ -435,9 +445,11 @@ export class DrawingOrtho implements IDrawing {
   setLoSPositions(positions: IGridCoord[] | undefined, seeEverything: boolean) {
     const nowShowLoS = positions !== undefined;
     if (nowShowLoS) {
-      this._grid.addLoSToScene(this._filterScene);
+      // this._grid.addLoSToScene(this._filterScene);
+      this._losFilter.addToScene(this._fixedFilterScene);
     } else {
-      this._grid.removeLoSFromScene();
+      // this._grid.removeLoSFromScene();
+      this._losFilter.removeFromScene(this._fixedFilterScene);
     }
 
     if (positions !== undefined) {
@@ -513,6 +525,7 @@ export class DrawingOrtho implements IDrawing {
 
     this._grid.dispose();
     this._gridFilter.dispose();
+    this._losFilter.dispose();
     this._areas.dispose();
     this._walls.dispose();
     this._highlightedAreas.dispose();

@@ -431,8 +431,9 @@ export class Grid extends Drawn {
     this.extendAcrossRange({ minS: -1, minT: -1, maxS: 1, maxT: 1 });
   }
 
-  // We need to access this to feed it to the grid filter
+  // We need to access this to feed it to the grid and LoS filters
   get faceCoordRenderTarget() { return this._faceCoordRenderTarget; }
+  get tileOrigin() { return this._tileOrigin; }
 
   // Extends the grid across the given range of tiles.
   // Returns the number of new tiles added.

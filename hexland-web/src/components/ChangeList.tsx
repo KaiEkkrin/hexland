@@ -13,6 +13,12 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "1.0.2",
+    changes: [
+      "EXPERIMENTAL: per-pixel LoS"
+    ]
+  },
+  {
     version: "1.0.1",
     changes: [
       "Various package updates, testability and maintainability improvements"

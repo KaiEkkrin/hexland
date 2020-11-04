@@ -331,6 +331,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
 
   createShaderDeclarations() {
     return [
+      ...super.createShaderDeclarations(),
       "uniform vec2 hexStep;",
       "uniform float hexSize;"
     ];
@@ -338,6 +339,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
 
   createShaderSnippet() {
     return [
+      ...super.createShaderSnippet(),
       "vec2 createCoordCentre(const in vec2 coord) {",
       "  return vec2(coord.x * hexStep.x, coord.x * hexStep.y + coord.y * hexSize);",
       "}"
@@ -346,12 +348,16 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
 
   createShaderUniforms() {
     return {
+      ...super.createShaderUniforms(),
       hexStep: { type: 'v2', value: null },
       hexSize: { type: 'f', value: null }
     };
   }
 
-  populateShaderUniforms(uniforms: any) {
+  populateShaderUniforms(
+    uniforms: any, faceTex?: THREE.Texture | undefined, tileOrigin?: THREE.Vector2 | undefined
+  ) {
+    super.populateShaderUniforms(uniforms, faceTex, tileOrigin);
     uniforms['hexStep'].value = new THREE.Vector2(this._xStep, this._yStep);
     uniforms['hexSize'].value = this._hexSize;
   }

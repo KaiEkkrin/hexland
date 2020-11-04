@@ -263,12 +263,14 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
 
   createShaderDeclarations() {
     return [
+      ...super.createShaderDeclarations(),
       "uniform float squareSize;"
     ];
   }
 
   createShaderSnippet() {
     return [
+      ...super.createShaderSnippet(),
       "vec2 createCoordCentre(const in vec2 coord) {",
       "  return vec2(coord.x * squareSize, coord.y * squareSize);",
       "}"
@@ -277,11 +279,15 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
 
   createShaderUniforms() {
     return {
+      ...super.createShaderUniforms(),
       squareSize: { type: 'f', value: null }
     };
   }
 
-  populateShaderUniforms(uniforms: any) {
+  populateShaderUniforms(
+    uniforms: any, faceTex?: THREE.Texture | undefined, tileOrigin?: THREE.Vector2 | undefined
+  ) {
+    super.populateShaderUniforms(uniforms, faceTex, tileOrigin);
     uniforms['squareSize'].value = this._squareSize;
   }
 }

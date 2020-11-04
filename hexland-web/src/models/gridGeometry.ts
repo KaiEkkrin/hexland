@@ -126,15 +126,20 @@ export interface IGridGeometry {
   // Emits the shader declarations required by `createShaderSnippet()` below.
   createShaderDeclarations(): string[];
 
-  // Emits a shader function `vec2 createCoordCentre(const in vec2 coord)` that will
-  // calculate the coord centre in this geometry.
+  // Emits relevant shader functions for working with the grid in this geometry.
   createShaderSnippet(): string[];
 
   // Emits the uniform declarations required by the shader snippet.
   createShaderUniforms(): any;
 
   // Populates the shader uniforms.
-  populateShaderUniforms(uniforms: any): void;
+  populateShaderUniforms(
+    uniforms: any, faceTex?: THREE.Texture | undefined, tileOrigin?: THREE.Vector2 | undefined
+  ): void;
+
+  // Clears any values from the shader uniforms that might be dangerous to keep around,
+  // e.g. acquired textures.
+  clearShaderUniforms(uniforms: any): void;
 }
 
 export class EdgeGeometry { // to help me share the edge code
@@ -351,6 +356,62 @@ export abstract class BaseGeometry {
     }
   }
 
+  createShaderDeclarations() {
+    return [
+      "uniform sampler2D faceTex;",
+      "uniform float maxEdge;",
+      "uniform float tileDim;",
+      "uniform vec2 tileOrigin;"
+    ];
+  }
+
+  createShaderSnippet() {
+    return [
+      "vec2 fromPackedXYAbs(const in float s) {",
+      "  float absValue = floor(s * tileDim * tileDim);",
+      "  return vec2(mod(absValue, tileDim), floor(absValue / tileDim));",
+      "}",
+
+      // ignores the edge value packed along with the sign
+      "bool fromPackedXYSign(const in vec2 s, out vec2 unpacked) {",
+      "  unpacked = fromPackedXYAbs(s.x);",
+      "  float signAndEdgeValue = floor(s.y * 8.0 * maxEdge);",
+      "  if (signAndEdgeValue <= 0.0) {",
+      "    return false;",
+      "  }",
+      "  if (mod(signAndEdgeValue, 2.0) == 1.0) {",
+      "    unpacked.x = -unpacked.x;",
+      "  }",
+      "  if (mod(floor(signAndEdgeValue * 0.5), 2.0) == 1.0) {",
+      "    unpacked.y = -unpacked.y;",
+      "  }",
+      "  return true;",
+      "}",
+
+      // Should do the same as the TypeScript function, `decodeCoordSample`,
+      // but from a UV (0..1).
+      "bool decodeCoordSample(const in vec2 uv, out vec2 coord) {",
+      "  vec4 coordSample = texture2D(faceTex, uv);",
+      "  vec2 tile;",
+      "  if (fromPackedXYSign(coordSample.xy, tile) == false) {",
+      "    return false;",
+      "  }",
+      "  vec2 face = fromPackedXYAbs(coordSample.z);",
+      "  coord = (tile + tileOrigin) * tileDim + face;",
+      "  return true;",
+      "}"
+    ];
+  }
+
+  createShaderUniforms() {
+    return {
+      faceTex: { value: null },
+      maxEdge: { type: 'f', value: null },
+      tileDim: { type: 'f', value: null },
+      tileOrigin: { type: 'v2', value: null }
+    };
+  }
+
   createVertexAttributes(maxVertex?: number | undefined) {
     maxVertex = Math.min(maxVertex ?? this.maxVertex, this.maxVertex);
     let attrs = new Float32Array(this.tileDim * this.tileDim * maxVertex * (vertexRimCount + 1) * 3);
@@ -387,6 +448,22 @@ export abstract class BaseGeometry {
     let face = this.fromPackedXYAbs(sample, offset + 2);
     return tile instanceof THREE.Vector2 ? createGridVertex(tile.add(tileOrigin), face, this.tileDim, vertex as number)
       : undefined;
+  }
+
+  populateShaderUniforms(uniforms: any, faceTex?: THREE.Texture | undefined, tileOrigin?: THREE.Vector2 | undefined) {
+    if (faceTex !== undefined) {
+      uniforms['faceTex'].value = faceTex;
+    }
+
+    uniforms['maxEdge'].value = this.maxEdge;
+    uniforms['tileDim'].value = this.tileDim;
+    if (tileOrigin !== undefined) {
+      uniforms['tileOrigin'].value = tileOrigin;
+    }
+  }
+
+  clearShaderUniforms(uniforms: any) {
+    uniforms['faceTex'].value = undefined;
   }
 
   transformToCoord(m: THREE.Matrix4, coord: IGridCoord): THREE.Matrix4 {
