@@ -15,12 +15,7 @@ const changes: IVersion[] = [
   {
     version: "1.0.2",
     changes: [
-      "Improved LoS algorithm (should reduce glitches)"
-    ]
-  },
-  {
-    version: "1.0.1",
-    changes: [
+      "Improved LoS algorithm (should reduce glitches)",
       "Various package updates, testability and maintainability improvements"
     ]
   },
