@@ -102,7 +102,7 @@ export class LoSFilter extends ShaderFilter {
   preRender(params: ILoSPreRenderParameters, losCamera: THREE.Camera) {
     this._tileOrigin.copy(params.tileOrigin);
     this._gridGeometry.populateShaderUniforms(
-      this.uniforms, params.faceCoordTarget.texture, this._tileOrigin
+      this.uniforms, params.faceCoordTarget, this._tileOrigin
     );
 
     this.uniforms['fullyHidden'].value = params.fullyHidden;

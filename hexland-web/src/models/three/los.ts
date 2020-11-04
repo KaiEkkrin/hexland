@@ -226,8 +226,11 @@ export class LoS extends Drawn {
   private createRenderTarget(renderWidth: number, renderHeight: number) {
     return new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
       depthBuffer: false,
-      minFilter: THREE.NearestFilter,
-      magFilter: THREE.NearestFilter,
+      // Using linear filtering here, though counter-intuitive, will reduce our vulnerability
+      // to hairline 'cracks' forming in between shadows that ought to line up but don't quite
+      // because of float inaccuracies/quirks of the rasterizer
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter,
       wrapS: THREE.ClampToEdgeWrapping,
       wrapT: THREE.ClampToEdgeWrapping,
     });

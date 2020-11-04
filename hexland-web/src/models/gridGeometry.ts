@@ -134,7 +134,7 @@ export interface IGridGeometry {
 
   // Populates the shader uniforms.
   populateShaderUniforms(
-    uniforms: any, faceTex?: THREE.Texture | undefined, tileOrigin?: THREE.Vector2 | undefined
+    uniforms: any, faceTex?: THREE.WebGLRenderTarget | undefined, tileOrigin?: THREE.Vector2 | undefined
   ): void;
 
   // Clears any values from the shader uniforms that might be dangerous to keep around,
@@ -168,6 +168,8 @@ export abstract class BaseGeometry {
   private readonly _maxEdge: number;
   private readonly _maxVertex: number;
   private readonly _epsilon: number;
+
+  private readonly _faceStep = new THREE.Vector2();
 
   constructor(tileDim: number, maxEdge: number, maxVertex: number) {
     if (maxVertex > maxEdge) {
@@ -358,6 +360,7 @@ export abstract class BaseGeometry {
 
   createShaderDeclarations() {
     return [
+      "uniform vec2 faceStep;",
       "uniform sampler2D faceTex;",
       "uniform float maxEdge;",
       "uniform float tileDim;",
@@ -391,7 +394,7 @@ export abstract class BaseGeometry {
       // Should do the same as the TypeScript function, `decodeCoordSample`,
       // but from a UV (0..1).
       "bool decodeCoordSample(const in vec2 uv, out vec2 coord) {",
-      "  vec4 coordSample = texture2D(faceTex, uv);",
+      "  vec4 coordSample = texture2D(faceTex, uv + faceStep);",
       "  vec2 tile;",
       "  if (fromPackedXYSign(coordSample.xy, tile) == false) {",
       "    return false;",
@@ -405,6 +408,7 @@ export abstract class BaseGeometry {
 
   createShaderUniforms() {
     return {
+      faceStep: { type: 'v2', value: null },
       faceTex: { value: null },
       maxEdge: { type: 'f', value: null },
       tileDim: { type: 'f', value: null },
@@ -450,11 +454,17 @@ export abstract class BaseGeometry {
       : undefined;
   }
 
-  populateShaderUniforms(uniforms: any, faceTex?: THREE.Texture | undefined, tileOrigin?: THREE.Vector2 | undefined) {
+  populateShaderUniforms(
+    uniforms: any, faceTex?: THREE.WebGLRenderTarget | undefined, tileOrigin?: THREE.Vector2 | undefined
+  ) {
     if (faceTex !== undefined) {
-      uniforms['faceTex'].value = faceTex;
+      this._faceStep.set(0.25 / faceTex.width, 0.25 / faceTex.height);
+      uniforms['faceTex'].value = faceTex.texture;
+    } else {
+      this._faceStep.set(0, 0);
     }
 
+    uniforms['faceStep'].value = this._faceStep;
     uniforms['maxEdge'].value = this.maxEdge;
     uniforms['tileDim'].value = this.tileDim;
     if (tileOrigin !== undefined) {

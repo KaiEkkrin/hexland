@@ -380,6 +380,7 @@ export class Grid extends Drawn {
 
     this._faceCoordScene = new THREE.Scene();
     this._faceCoordRenderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
+      depthBuffer: false,
       minFilter: THREE.NearestFilter,
       magFilter: THREE.NearestFilter,
       wrapS: THREE.ClampToEdgeWrapping,
@@ -389,6 +390,7 @@ export class Grid extends Drawn {
     // Texture of vertex co-ordinates within the tile.
     this._vertexCoordScene = new THREE.Scene();
     this._vertexCoordRenderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
+      depthBuffer: false,
       minFilter: THREE.NearestFilter,
       magFilter: THREE.NearestFilter,
       wrapS: THREE.ClampToEdgeWrapping,

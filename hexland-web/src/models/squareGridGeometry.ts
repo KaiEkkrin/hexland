@@ -285,7 +285,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   populateShaderUniforms(
-    uniforms: any, faceTex?: THREE.Texture | undefined, tileOrigin?: THREE.Vector2 | undefined
+    uniforms: any, faceTex?: THREE.WebGLRenderTarget | undefined, tileOrigin?: THREE.Vector2 | undefined
   ) {
     super.populateShaderUniforms(uniforms, faceTex, tileOrigin);
     uniforms['squareSize'].value = this._squareSize;
