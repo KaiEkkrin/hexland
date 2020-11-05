@@ -1,11 +1,13 @@
 import React from 'react';
+import './Introduction.css';
+
 import { Link } from 'react-router-dom';
 
 // This component shows the introductory blurb on the home page.
 function Introduction() {
   return (
     <div>
-      <img className="App-introduction-image" alt="Orc with chest on hex grid" src="/orc_with_chest.png" />
+      <img className="Introduction-image" alt="Orc with chest on hex grid" src="/orc_with_chest.png" />
       <h5 className="mt-4">Welcome to Wall &amp; Shadow.</h5>
       <p>
         Wall &amp; Shadow helps you create, share and play on encounter maps for your favourite tabletop roleplaying games, quickly and easily.
@@ -23,7 +25,7 @@ function Introduction() {
         the adventures you've joined in the <b>Shared with me</b> page, and the adventures and maps you've opened most recently
         appear on this home page.
       </p>
-      <img className="App-introduction-image" alt="Bar with patrons on square grid" src="/bar.png" />
+      <iframe className="Introduction-video" title="Demo video" width="560" height="315" src="https://www.youtube.com/embed/B6KjzGrOab8" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe>
       <h5>The map screen</h5>
       <p>
         The map is where all the action is, but it's blank by default, which means your players won't be able to see anything.

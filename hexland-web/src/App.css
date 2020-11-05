@@ -60,14 +60,6 @@
   color: red;
 }
 
-.App-introduction-image {
-  border-radius: 1rem;
-  float: left;
-  margin-right: 1rem;
-  margin-bottom: 1rem;
-  width: 24rem;
-}
-
 .App-login-text {
   margin-top: 2rem;
   margin-bottom: 2rem;

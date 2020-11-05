@@ -160,7 +160,12 @@ export class DrawingOrtho implements IDrawing {
     this._gridFilter.addToScene(this._fixedFilterScene);
 
     this._losFilter = createLoSFilter(gridGeometry, losZ);
-    this._losFilter.addToScene(this._fixedFilterScene);
+
+    // Don't start with LoS if we should see everything.
+    // The state machine will call showLoSPositions() to update this after changes come in.
+    if (!seeEverything) {
+      this._losFilter.addToScene(this._fixedFilterScene);
+    }
 
     this._textMaterial = new THREE.MeshBasicMaterial({ color: 0, side: THREE.DoubleSide });
 
@@ -443,10 +448,8 @@ export class DrawingOrtho implements IDrawing {
   setLoSPositions(positions: IGridCoord[] | undefined, seeEverything: boolean) {
     const nowShowLoS = positions !== undefined;
     if (nowShowLoS) {
-      // this._grid.addLoSToScene(this._filterScene);
       this._losFilter.addToScene(this._fixedFilterScene);
     } else {
-      // this._grid.removeLoSFromScene();
       this._losFilter.removeFromScene(this._fixedFilterScene);
     }
 

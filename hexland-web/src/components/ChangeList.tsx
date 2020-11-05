@@ -13,6 +13,13 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "1.0.3",
+    changes: [
+      "Fix newly created maps appearing blacked-out",
+      "Embed animated encounter video"
+    ]
+  },
+  {
     version: "1.0.2",
     changes: [
       "Improved LoS algorithm (should reduce glitches)",
