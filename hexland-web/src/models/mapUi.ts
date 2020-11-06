@@ -595,6 +595,7 @@ export class MapUi {
   }
 
   touchEnd(e: React.TouchEvent) {
+    e.preventDefault();
     const t = this.touchMove(e);
     if (t === undefined || isAnEditorOpen(this._state) || isAMovementKeyDown(this._state.keysDown)) {
       return;
@@ -604,6 +605,8 @@ export class MapUi {
   }
 
   touchMove(e: React.TouchEvent) {
+    e.preventDefault();
+
     // This only takes effect if the touch we're tracking has changed
     const t = this.isTrackingTouch(e);
     if (t === undefined) {
@@ -619,6 +622,7 @@ export class MapUi {
   }
 
   touchStart(e: React.TouchEvent) {
+    e.preventDefault();
     if (this._state.touch !== undefined || e.changedTouches.length === 0) {
       return;
     }

@@ -133,15 +133,10 @@ function Map() {
   // == UI STUFF ==
 
   const getClientPosition = useCallback((clientX: number, clientY: number) => {
-    let bounds = drawingRef.current?.getBoundingClientRect();
-    if (bounds === undefined) {
-      return undefined;
-    }
-
-    let x = clientX - bounds.left;
-    let y = clientY - bounds.top;
-    return new THREE.Vector3(x, bounds.height - y - 1, 0);
-  }, [drawingRef]);
+    // With the change to absolute positioning, we no longer need to subtract
+    // the top left of the drawing box
+    return new THREE.Vector3(clientX, window.innerHeight - clientY - 1, 0);
+  }, []);
 
   // We have a separate state tracking object to manage the interdependencies between
   // different parts of the UI
