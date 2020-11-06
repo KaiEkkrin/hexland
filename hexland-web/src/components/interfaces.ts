@@ -6,6 +6,7 @@ import { IDataService, IUser, IAuth, IAuthProvider, IAnalytics, IFunctionsServic
 
 import firebase from 'firebase/app';
 import { Subject } from 'rxjs';
+import { IProfile } from '../data/profile';
 
 export interface IContextProviderProps {
   children?: React.ReactNode;
@@ -30,6 +31,15 @@ export interface IUserContext {
   dataService?: IDataService | undefined;
   functionsService?: IFunctionsService | undefined;
   storageService?: IStorage | undefined;
+}
+
+export interface IProfileContext {
+  profile?: IProfile | undefined;
+
+  // The login component must call this *before* registering any new user with a
+  // specified display name.  The profile context, which is responsible for ensuring
+  // the user's profile, will pop the new email and set the display name accordingly.
+  expectNewUser?: (email: string, displayName: string) => void;
 }
 
 export interface ISignInMethodsContext {

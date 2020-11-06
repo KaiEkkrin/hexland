@@ -33,7 +33,7 @@ function TokenImageEditor({
 }: ITokenImageEditorProperties) {
   const { logError } = useContext(AnalyticsContext);
   const { functionsService } = useContext(UserContext);
-  const profile = useContext(ProfileContext);
+  const { profile } = useContext(ProfileContext);
   const maxImages = useMemo(
     () => profile === undefined ? undefined : getUserPolicy(profile.level).images,
     [profile]

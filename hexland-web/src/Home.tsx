@@ -15,7 +15,7 @@ import Row from 'react-bootstrap/Row';
 
 function LatestColumn() {
   const { user } = useContext(UserContext);
-  const profile = useContext(ProfileContext);
+  const { profile } = useContext(ProfileContext);
 
   const myAdventures = useMemo(
     () => profile?.adventures?.filter(a => a.owner === user?.uid) ?? [],

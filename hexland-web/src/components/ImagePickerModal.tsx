@@ -175,7 +175,7 @@ interface IImagePickerModalProps {
 }
 
 function ImagePickerModal({ show, handleClose, handleDelete, handleSave }: IImagePickerModalProps) {
-  const profile = useContext(ProfileContext);
+  const { profile } = useContext(ProfileContext);
   const maxImages = useMemo(
     () => profile === undefined ? undefined : getUserPolicy(profile.level).images,
     [profile]

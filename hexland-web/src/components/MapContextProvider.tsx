@@ -27,7 +27,7 @@ export const MapContext = React.createContext<IMapContext>({
 function MapContextProvider(props: IContextProviderProps) {
   const { analytics, logError, logEvent } = useContext(AnalyticsContext);
   const { dataService, functionsService, user } = useContext(UserContext);
-  const profile = useContext(ProfileContext);
+  const { profile } = useContext(ProfileContext);
   const { toasts } = useContext(StatusContext);
   const { spriteManager } = useContext(AdventureContext);
 

@@ -176,7 +176,7 @@ function EmailPasswordModal({ shown, handleClose, handleSignIn, handleSignUp }: 
 
 function Login() {
   const { auth, googleAuthProvider } = useContext(FirebaseContext);
-  const profileContext = useContext(ProfileContext);
+  const { profile, expectNewUser } = useContext(ProfileContext);
   const { logError } = useContext(AnalyticsContext);
   const { toasts } = useContext(StatusContext);
   const history = useHistory();
@@ -187,10 +187,10 @@ function Login() {
 
   // Reset those message statuses as appropriate
   useEffect(() => {
-    if (profileContext !== undefined) {
+    if (profile !== undefined) {
       setLoginFailedVisible(false);
     }
-  }, [profileContext, setLoginFailedVisible]);
+  }, [profile, setLoginFailedVisible]);
 
   const handleLoginResult = useCallback(async (user: IUser | null | undefined, sendEmailVerification?: boolean | undefined) => {
     if (user === undefined) {
@@ -238,11 +238,12 @@ function Login() {
   const handleEmailFormSignUp = useCallback((displayName: string, email: string, password: string) => {
     setShowEmailForm(false);
     setLoginFailedVisible(false);
+    expectNewUser?.(email, displayName);
     auth?.createUserWithEmailAndPassword(email, password, displayName)
       .then(u => handleLoginResult(u, true))
       .then(finishLogin)
       .catch(handleLoginError);
-  }, [auth, finishLogin, handleLoginError, handleLoginResult, setLoginFailedVisible, setShowEmailForm]);
+  }, [auth, expectNewUser, finishLogin, handleLoginError, handleLoginResult, setLoginFailedVisible, setShowEmailForm]);
 
   const handleEmailFormSignIn = useCallback((email: string, password: string) => {
     setShowEmailForm(false);

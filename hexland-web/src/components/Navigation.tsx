@@ -177,7 +177,7 @@ function NavLogin({ expanded }: { expanded: boolean }) {
   const { auth } = useContext(FirebaseContext);
   const { dataService, user } = useContext(UserContext);
   const { signInMethods } = useContext(SignInMethodsContext);
-  const profile = useContext(ProfileContext);
+  const { profile } = useContext(ProfileContext);
   const statusContext = useContext(StatusContext);
   const { enabled, setEnabled, logError } = useContext(AnalyticsContext);
 

@@ -45,7 +45,7 @@ interface IAdventureProps {
 function Adventure({ adventureId }: IAdventureProps) {
   const { dataService, functionsService, user } = useContext(UserContext);
   const { analytics, logError } = useContext(AnalyticsContext);
-  const profile = useContext(ProfileContext);
+  const { profile } = useContext(ProfileContext);
   const { adventure, players } = useContext(AdventureContext);
   const history = useHistory();
 

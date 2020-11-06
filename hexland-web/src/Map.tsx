@@ -44,7 +44,7 @@ function Map() {
   const { logError } = useContext(AnalyticsContext);
   const { adventure, players } = useContext(AdventureContext);
   const { map, mapState, stateMachine } = useContext(MapContext);
-  const profile = useContext(ProfileContext);
+  const { profile } = useContext(ProfileContext);
   const statusContext = useContext(StatusContext);
 
   const drawingRef = useRef<HTMLDivElement>(null);

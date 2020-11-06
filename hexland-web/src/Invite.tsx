@@ -22,7 +22,7 @@ interface IInvitePageProps {
 
 function Invite({ inviteId }: IInvitePageProps) {
   const userContext = useContext(UserContext);
-  const profile = useContext(ProfileContext);
+  const { profile } = useContext(ProfileContext);
   const analyticsContext = useContext(AnalyticsContext);
   const statusContext = useContext(StatusContext);
   const history = useHistory();

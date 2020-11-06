@@ -18,7 +18,7 @@ import Row from 'react-bootstrap/Row';
 
 function All() {
   const { dataService, user } = useContext(UserContext);
-  const profile = useContext(ProfileContext);
+  const { profile } = useContext(ProfileContext);
   const analyticsContext = useContext(AnalyticsContext);
 
   const [adventures, setAdventures] = useState<IIdentified<IAdventure>[]>([]);
