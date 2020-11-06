@@ -131,16 +131,16 @@ const fetchAvatar = async (abortController: AbortController, profile: IUser | nu
 };
 
 function Avatar(props: { children?: React.ReactNode }) {
-  const userContext = useContext(UserContext);
+  const { user } = useContext(UserContext);
 
   // We show an avatar (based on the hash of the user's email address) if one is available
   const fetchAvatarTask = useAsyncTask(fetchAvatar);
-  useAsyncRun(fetchAvatarTask, userContext.user);
+  useAsyncRun(fetchAvatarTask, user);
 
   const profileImgUrl = useMemo(() => {
     const dataUrl = fetchAvatarTask.result;
     const cachedDataUrl = localStorage.getItem("profile.image");
-    const emailMd5 = userContext.user?.emailMd5;
+    const emailMd5 = user?.emailMd5;
     const cachedEmailMd5 = localStorage.getItem("profile.emailMd5");
 
     const dataUrlValid = dataUrl !== undefined && dataUrl !== null;
@@ -156,10 +156,16 @@ function Avatar(props: { children?: React.ReactNode }) {
     } else {
       return "";
     }
-  }, [fetchAvatarTask.result, userContext.user]);
+  }, [fetchAvatarTask.result, user]);
+
+  const title = useMemo(
+    () => user?.emailVerified === true ? `${user.displayName} (Verified)` :
+    `${user?.displayName} (Not verified)`,
+    [user]
+  );
 
   return (
-    <div style={{display: "inline-flex", position: "relative", alignItems: "center"}}>
+    <div style={{display: "inline-flex", position: "relative", alignItems: "center"}} title={title}>
       <div style={{position: "absolute", backgroundColor: "rgba(0,0,0,1)",
                    borderRadius: "15px", width: "30px", height: "30px"}}></div>
       <div style={{position: "absolute", backgroundImage: `url("${profileImgUrl}")`,

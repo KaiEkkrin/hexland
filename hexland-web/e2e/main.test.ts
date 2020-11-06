@@ -8,6 +8,7 @@ import { concatMap, last, map } from 'rxjs/operators';
 
 import { LOG_PATH, VIDEOS_PATH } from './globals';
 import { BrowserName, DeviceName, TestState } from './types';
+import * as Oob from './oob';
 import * as Util from './util';
 
 import { toMatchImageSnapshot } from 'jest-image-snapshot';
@@ -168,7 +169,19 @@ describe.each([
     await Util.signIn(page, user);
     await Util.ensureNavbarExpanded(deviceName, page);
     await expect(page).toHaveSelector(`css=.dropdown >> text=${user.displayName}`);
-    await Util.takeScreenshot(state, 'create-account-end');
+
+    // This user should not be marked as verified (yet)
+    await expect(page).toHaveSelector(`[title="${user.displayName} (Not verified)"]`);
+
+    // Verify this user
+    await Oob.verifyEmail(user.email);
+    await page.reload();
+    await Util.ensureNavbarExpanded(deviceName, page);
+
+    // This user should now be marked as verified
+    await expect(page).toHaveSelector(`css=.dropdown >> text=${user.displayName}`);
+    await expect(page).toHaveSelector(`[title="${user.displayName} (Verified)"]`);
+    await Util.takeScreenshot(state, 'create-account-verified');
   });
 
   describe('Two-context tests', () => {
@@ -218,6 +231,12 @@ describe.each([
         browserName, deviceName, page, state,
         "Test adventure", "Here be dragons", "Test square map", "share-create-square-map"
       );
+
+      // TODO #190 Check that without being verified, we can't create the invite link
+
+      // Verify this user
+      await Oob.verifyEmail(user.email);
+      await page.reload();
 
       // Create and copy the share link
       await page.click('text="Create invite link"');
