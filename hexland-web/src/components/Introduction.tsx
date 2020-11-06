@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import './Introduction.css';
+
+import { FirebaseContext } from './FirebaseContextProvider';
 
 import { Link } from 'react-router-dom';
 
 // This component shows the introductory blurb on the home page.
 function Introduction() {
+  const { usingLocalEmulators } = useContext(FirebaseContext);
+
   return (
     <div>
       <img className="Introduction-image" alt="Orc with chest on hex grid" src="/orc_with_chest.png" />
@@ -25,7 +29,9 @@ function Introduction() {
         the adventures you've joined in the <b>Shared with me</b> page, and the adventures and maps you've opened most recently
         appear on this home page.
       </p>
-      <iframe className="Introduction-video" title="Demo video" width="560" height="315" src="https://www.youtube.com/embed/B6KjzGrOab8" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe>
+      {usingLocalEmulators ? null : // don't show the video in e2e testing
+        <iframe className="Introduction-video" title="Demo video" width="560" height="315" src="https://www.youtube.com/embed/B6KjzGrOab8" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe>
+      }
       <h5>The map screen</h5>
       <p>
         The map is where all the action is, but it's blank by default, which means your players won't be able to see anything.

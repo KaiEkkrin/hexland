@@ -10,6 +10,7 @@ services:
         environment: 
             - GOOGLE_APPLICATION_CREDENTIALS=/usr/src/app/hexland-web/firebase-admin-credentials.json
             - RUN_TESTS=${RUN_TESTS}
+            - RUN_TEST_ARGS=${RUN_TEST_ARGS}
         ports:
             - 4000:4000
             - 5000:5000

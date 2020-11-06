@@ -54,7 +54,7 @@ elif [ "$RUN_TESTS" == "test:unit" ]; then
   # Set TERM=dumb here to stop jest from clearing the console and wiping interesting log messages
   # (Makes jest look ugly and harder to read)
   #TERM=dumb yarn test
-  yarn test:unit
+  yarn test:unit ${RUN_TEST_ARGS}
 
 # Auto-rebuilding development environment with emulators
 else
@@ -91,7 +91,7 @@ else
         sleep 1
     done
 
-    yarn test:e2e
+    yarn test:e2e ${RUN_TEST_ARGS}
   
   # For general development usage, keep running until ctrl+c is pressed
   else

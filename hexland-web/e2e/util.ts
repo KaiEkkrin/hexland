@@ -1,7 +1,34 @@
+import * as path from 'path';
+
 import { Page } from 'playwright';
 import { v4 as uuidv4 } from 'uuid';
 
+import { SCREENSHOTS_PATH } from './globals';
+import { TestState } from './types';
+
 // Various utility functions for testing.
+
+export function takeScreenshot(state: TestState, message: string) {
+  return state.page.screenshot({
+    path: path.join(
+      SCREENSHOTS_PATH, `${state.browserName}_${state.deviceName}_${message}.png`
+    )
+  });
+}
+
+export async function takeAndVerifyScreenshot(state: TestState, message: string) {
+  // Wait a bit to give animations some time to complete
+  // (I don't see a nice way to do this better)
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  const ss = await takeScreenshot(state, message);
+  expect(ss).toMatchImageSnapshot({
+    comparisonMethod: 'ssim',
+    failureThreshold: 0.05,
+    failureThresholdType: "percent",
+    customSnapshotIdentifier: ({ defaultIdentifier }) => `${defaultIdentifier}-${message}`
+  });
+}
 
 export function isPhone(deviceName: string) {
   return /(iPhone)|(Pixel)/.test(deviceName);
@@ -43,7 +70,7 @@ export async function signIn(page: Page, user: User) {
   await page.click('text="Sign in"', { force: true });
 
   // Wait for the front page to come back
-  await expect(page).toHaveSelector('.App-introduction-image');
+  await expect(page).toHaveSelector('.Introduction-image');
 }
 
 export async function signUp(deviceName: string, page: Page, prefix?: string | undefined): Promise<User> {
@@ -73,7 +100,7 @@ export async function signUp(deviceName: string, page: Page, prefix?: string | u
   await page.click('text="Sign up"', { force: true });
 
   // Wait for the front page to come back
-  await expect(page).toHaveSelector('.App-introduction-image');
+  await expect(page).toHaveSelector('.Introduction-image');
 
   // A verification email should have been sent (click the toast off)
   await expect(page).toHaveSelector(`text="A verification email has been sent to ${user.email}"`);
@@ -110,4 +137,33 @@ export async function createNewMap(
   }
 
   await page.click('text="Save map"');
+}
+
+export async function verifyMap(
+  browserName: string, deviceName: string, page: Page, state: TestState,
+  adventureName: string, adventureDescription: string, mapName: string, message: string
+) {
+  // TODO On Firefox, I get "error creating WebGL context"; on Webkit, I get
+  // "no ANGLE_instanced_arrays"
+  if (browserName !== 'firefox' && browserName !== 'webkit') {
+    // TODO On Safari, no error but no grid shows (investigate?)
+    await expect(page).toHaveSelector('css=.Map-content');
+    await whileNavbarExpanded(deviceName, page, async () => {
+      await expect(page).toHaveSelector(`css=[aria-label="Link to this adventure"] >> text="${adventureName}"`);
+      await expect(page).toHaveSelector(`css=[aria-label="Link to this map"] >> text="${mapName}"`);
+    });
+
+    // Make sure the map looks right
+    await takeAndVerifyScreenshot(state, message);
+
+    // Return to the adventure page, waiting for the description to pop up again
+    await whileNavbarExpanded(deviceName, page, async () => {
+      await page.click(`css=[aria-label="Link to this adventure"] >> text="${adventureName}"`);
+    });
+    await expect(page).toHaveSelector(`css=.card-text >> text="${adventureDescription}"`);
+  } else {
+    // Click off the error.  I can continue, but need to navigate back to the adventure
+    await page.click('.toast-header .close');
+    await page.click('text="Open adventure"');
+  }
 }

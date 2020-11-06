@@ -13,6 +13,39 @@ import * as THREE from 'three';
 // leaking resources.
 
 let renderer: THREE.WebGLRenderer | undefined = undefined;
+const v1RequiredExtensions = [
+  'ANGLE_instanced_arrays'
+];
+
+function getRenderer() {
+  // create the singleton renderer lazily
+  if (renderer === undefined) {
+    renderer = new THREE.WebGLRenderer();
+
+    // Check for functionality
+    if (renderer.domElement.getContext('webgl2')) {
+      // This should be enough for us, instancing support is implicit rather than
+      // an extension
+      console.log('This platform has WebGL 2');
+      return renderer;
+    }
+
+    const supportedExtensions = renderer.getContext().getSupportedExtensions();
+    console.log(
+      `This platform's WebGL renderer supports:\n    ` +
+      supportedExtensions?.join('\n    ')
+    );
+
+    for (const e of v1RequiredExtensions) {
+      if (!supportedExtensions?.find(e2 => e2 === e)) {
+        renderer = undefined;
+        throw Error(`No ${e} support found.`);
+      }
+    }
+  }
+
+  return renderer;
+}
 
 export function createDrawing(
   gridGeometry: IGridGeometry,
@@ -22,12 +55,7 @@ export function createDrawing(
   logError: (message: string, e: any) => void,
   spriteManager: ISpriteManager
 ): IDrawing {
-  // create the singleton renderer lazily
-  if (renderer === undefined) {
-    renderer = new THREE.WebGLRenderer();
-  }
-
   return new DrawingOrtho(
-    renderer, gridGeometry, tokenGeometry, colours, seeEverything, logError, spriteManager
+    getRenderer(), gridGeometry, tokenGeometry, colours, seeEverything, logError, spriteManager
   );
 }

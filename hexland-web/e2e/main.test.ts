@@ -1,27 +1,19 @@
+import * as fs from 'fs';
 import * as path from 'path';
+import { promisify } from 'util';
 
 import { chromium, devices, firefox, webkit, Browser, BrowserContext, Page } from 'playwright';
+import { from, Observable } from 'rxjs';
+import { concatMap, last, map } from 'rxjs/operators';
 
-import { SCREENSHOTS_PATH, VIDEOS_PATH } from './globals';
+import { LOG_PATH, VIDEOS_PATH } from './globals';
+import { BrowserName, DeviceName, TestState } from './types';
 import * as Util from './util';
 
-type BrowserName = 
-  'chromium' |
-  'firefox' |
-  'webkit';
-type DeviceName =
-  'iPhone 7' |
-  'Desktop' |
-  'Laptop' |
-  'Pixel 2';
+import { toMatchImageSnapshot } from 'jest-image-snapshot';
+expect.extend({ toMatchImageSnapshot });
 
 type ConfigTuple = [BrowserName, DeviceName];
-
-type TestState = {
-  page: Page,
-  browserName: BrowserName,
-  deviceName: DeviceName,
-};
 
 const browsers = {
   chromium: chromium,
@@ -48,14 +40,6 @@ const allDevices = {
   },
 };
 
-async function takeScreenshot(state: TestState, message: string) {
-  await state.page.screenshot({
-    path: path.join(
-      SCREENSHOTS_PATH, `${state.browserName}_${state.deviceName}_${message}.png`
-    )
-  });
-}
-
 describe.each([
   <ConfigTuple>['chromium', 'iPhone 7'],
   //<ConfigTuple>['webkit', 'iPhone 7'], -- "invalid frame size" reported
@@ -71,18 +55,23 @@ describe.each([
   // shorter timeout for individual page operations because each one shouldn't
   // take very long
   const longTestTimeout = 120000;
-  const pageTimeout = 6000;
-  const pageNavigationTimeout = 8000;
+  const pageTimeout = 8000;
+  const pageNavigationTimeout = 12000;
 
   let browser: Browser;
   let context: BrowserContext;
   let page: Page;
   let state: TestState;
 
+  let loggingDone: Promise<void>;
+
   // *** SETUP AND TEARDOWN ***
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     browser = await browsers[browserName].launch();
+  });
+
+  beforeEach(async () => {
     expect(allDevices).toHaveProperty(deviceName);
     context = await browser.newContext({
       ...allDevices[deviceName],
@@ -96,15 +85,49 @@ describe.each([
       browserName: browserName,
       deviceName: deviceName,
     };
+
+    // Stream the console log to file
+    try {
+      await promisify(fs.access)(LOG_PATH);
+    } catch {
+      await promisify(fs.mkdir)(LOG_PATH);
+    }
+    const fh = await promisify(fs.open)(
+      path.join(LOG_PATH, `${browserName}-${deviceName}.log`),
+      'w'
+    );
+
+    const messages = new Observable<string | null>(obs => {
+      page.on('console', msg => {
+        const ty = msg.type().padStart(10, ' ');
+        const text = msg.text();
+        obs.next(`${ty} : ${text}\n`);
+      });
+
+      page.on('close', () => {
+        obs.next(null);
+        obs.complete();
+      });
+    });
+
+    const write = promisify(fs.write);
+    const close = promisify(fs.close);
+    loggingDone = messages.pipe(concatMap(
+      m => m !== null ? from(write(fh, m)).pipe(map(_ => {})) : from(close(fh))
+    ), last()).toPromise();
     
     // Wait for front page to load and accept cookies before running any other tests
     await page.goto('http://localhost:5000/');
-    await expect(page).toHaveSelector('.App-introduction-image');
+    await expect(page).toHaveSelector('.Introduction-image');
     await page.click('.App-consent-card .btn-success');
   });
 
   afterEach(async () => {
     await page.close();
+    await loggingDone;
+  });
+
+  afterAll(async () => {
     await browser.close();
   });
 
@@ -112,7 +135,7 @@ describe.each([
 
   it(`view front page (${browserName} ${deviceName})`, async () => {
     await page.waitForTimeout(500);
-    await takeScreenshot(state, 'view-front-page');
+    await Util.takeScreenshot(state, 'view-front-page');
   });
 
   it(`create account and login (${browserName} ${deviceName})`, async () => {
@@ -125,13 +148,13 @@ describe.each([
 
     // Click the navbar dropdown 
     await page.click(`css=.dropdown >> text=${user.displayName}`);
-    await takeScreenshot(state, 'create-account-navbar-dropdown');
+    await Util.takeScreenshot(state, 'create-account-navbar-dropdown');
     await page.click('text="Edit profile"');
 
     // Change the display name
     expect(await page.getAttribute('[id=nameInput]', 'value')).toBe(user.displayName);
     await page.fill('[id=nameInput]', `Re-test ${user.number}`);
-    await takeScreenshot(state, 'create-account-edit-profile');
+    await Util.takeScreenshot(state, 'create-account-edit-profile');
     await page.click('text="Save profile"');
 
     // This should have edited the name in the nav bar
@@ -145,7 +168,7 @@ describe.each([
     await Util.signIn(page, user);
     await Util.ensureNavbarExpanded(deviceName, page);
     await expect(page).toHaveSelector(`css=.dropdown >> text=${user.displayName}`);
-    await takeScreenshot(state, 'create-account-end');
+    await Util.takeScreenshot(state, 'create-account-end');
   });
 
   describe('Two-context tests', () => {
@@ -164,7 +187,7 @@ describe.each([
       state2 = { page: page2, deviceName: deviceName, browserName: browserName };
 
       await page2.goto('http://localhost:5000/');
-      await expect(page2).toHaveSelector('.App-introduction-image');
+      await expect(page2).toHaveSelector('.Introduction-image');
       await page2.click('.App-consent-card .btn-success');
     });
 
@@ -183,28 +206,18 @@ describe.each([
         await expect(page).toHaveSelector('css=[aria-label="Link to this adventure"] >> text="Test adventure"');
       });
 
+      // Create new maps of each type making sure they look right
       await Util.createNewMap(page, 'Test map', 'Dragons lair', 'hex');
+      await Util.verifyMap(
+        browserName, deviceName, page, state,
+        "Test adventure", "Here be dragons", "Test map", "share-create-map"
+      );
 
-      // TODO On Firefox, I get "error creating WebGL context" instead
-      if (browserName !== 'firefox') {
-        // TODO On Safari, no error but no grid shows (investigate?)
-        await expect(page).toHaveSelector('css=.Map-content');
-        await Util.whileNavbarExpanded(deviceName, page, async () => {
-          await expect(page).toHaveSelector('css=[aria-label="Link to this adventure"] >> text="Test adventure"');
-          await expect(page).toHaveSelector('css=[aria-label="Link to this map"] >> text="Test map"');
-        });
-        await takeScreenshot(state, 'share-create-map');
-
-        // Return to the adventure page, waiting for the description to pop up again
-        await Util.whileNavbarExpanded(deviceName, page, async () => {
-          await page.click('css=[aria-label="Link to this adventure"] >> text="Test adventure"');
-        });
-        await expect(page).toHaveSelector('css=.card-text >> text="Here be dragons"');
-      } else {
-        // Click off the error.  I can continue, but need to navigate back to the adventure
-        await page.click('.toast-header .close');
-        await page.click('text="Open adventure"');
-      }
+      await Util.createNewMap(page, 'Test square map', 'Seedy tavern', 'square');
+      await Util.verifyMap(
+        browserName, deviceName, page, state,
+        "Test adventure", "Here be dragons", "Test square map", "share-create-square-map"
+      );
 
       // Create and copy the share link
       await page.click('text="Create invite link"');
@@ -221,13 +234,13 @@ describe.each([
       // Go to the invite link and click.  There should be a suitable greeting
       await page2.goto("http://localhost:5000" + inviteLink);
       await expect(page2).toHaveSelector('text=Test adventure');
-      await takeScreenshot(state2, 'share-join-adventure');
+      await Util.takeScreenshot(state2, 'share-join-adventure');
       await page2.click('text="Join"');
 
       // This should take us back to the adventure page, which should now include
       // both usernames in the players list
       await expect(page2).toHaveSelector('css=.card-text >> text="Here be dragons"');
-      await takeScreenshot(state2, 'share-joined-adventure');
+      await Util.takeScreenshot(state2, 'share-joined-adventure');
       await expect(page2).toHaveSelector(`css=[aria-label="Player ${user.displayName}"] >> text="${user.displayName}"`);
       await expect(page2).toHaveSelector(`css=[aria-label="Player ${user2.displayName}"] >> text="${user2.displayName}"`);
 
@@ -239,11 +252,11 @@ describe.each([
       await expect(page).toHaveSelector(`css=[aria-label="Player ${user.displayName}"] >> text="${user.displayName}"`);
       await expect(page).toHaveSelector(`css=[aria-label="Player ${user2.displayName}"] >> text="${user2.displayName}"`);
 
-      await takeScreenshot(state2, 'share-joined-adventure-owner');
+      await Util.takeScreenshot(state2, 'share-joined-adventure-owner');
 
       // Check that user 2 can open the map, but gets the "no tokens" warning toast
-      // TODO Firefox WebGL error as above
-      if (browserName !== 'firefox') {
+      // TODO Firefox and Webkit WebGL error as in Util.verifyMap
+      if (browserName !== 'firefox' && browserName !== 'webkit') {
         // Expand accordion on phones
         if (Util.isPhone(deviceName)) {
           const mapAccordion = await page2.waitForSelector('text="Test map"');
@@ -255,14 +268,15 @@ describe.each([
         await mapLink.scrollIntoViewIfNeeded();
         await mapLink.click();
 
+        // Make sure this map looks right too
         await expect(page2).toHaveSelector('text=The map owner has not assigned you any tokens');
-        await takeScreenshot(state2, 'share-joined-map');
+        await Util.takeAndVerifyScreenshot(state2, 'share-joined-map');
         await page2.click('.toast-header .close');
 
         // Check the player list
         await page2.click('[title="Players"]');
         await expect(page2).toHaveSelector(`[aria-label="Player ${user.displayName}"]`);
-        await takeScreenshot(state2, 'share-joined-map-players');
+        await Util.takeScreenshot(state2, 'share-joined-map-players');
         await expect(page2).toHaveSelector(`[aria-label="Player ${user2.displayName}"]`);
         await expect(page2).toHaveSelector(`[title="Player ${user.displayName} is the owner"]`);
         await expect(page2).toHaveSelector(`[title="Player ${user2.displayName} has no token"]`);
@@ -286,12 +300,12 @@ describe.each([
       }
 
       const openAdventure = await page2.waitForSelector('text="Open adventure"'); // I want it in the screenshot :)
-      await takeScreenshot(state2, 'share-shared-with-me');
+      await Util.takeScreenshot(state2, 'share-shared-with-me');
 
       // Clicking "Open adventure" should get us back to the adventure page
       await openAdventure.click();
       await expect(page2).toHaveSelector('css=.card-text >> text="Here be dragons"');
-      await takeScreenshot(state2, 'share-end');
+      await Util.takeScreenshot(state2, 'share-end');
     }, longTestTimeout);
   });
 });

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Runs a local development environment of hexland-web.
 # To run tests instead, pass "test" as the first command-line argument.
 
@@ -7,6 +7,7 @@ echo "GROUP_ID=`id -u ${USER}`" >> .env
 
 if [ "${1}" = "test:e2e" ] || [ "${1}" = "shell" ] || [ "${1}" = "test:unit" ]; then
   echo "RUN_TESTS=${1}" >> .env
+  echo "RUN_TEST_ARGS=${@:2}" >> .env
 
   # `docker-compose up` won't let us interact with the `hexland` container even
   # though it has stdin enabled, we need to specifically attach to that one

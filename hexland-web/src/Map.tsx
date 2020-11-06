@@ -372,16 +372,15 @@ function Map() {
             canDoAnything={mapState.seeEverything} resetView={resetView}
             resyncCount={resyncCount} />
         </div>
-        <div className="Map-content">
-          <div id="drawingDiv" ref={drawingRef}
+        <div className="Map-content" id="drawingDiv" ref={drawingRef}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onTouchCancel={handleTouchEnd}
             onTouchEnd={handleTouchEnd}
             onTouchMove={handleTouchMove}
-            onTouchStart={handleTouchStart} />
-        </div>
+            onTouchStart={handleTouchStart}
+        />
         {loadingSpinner}
         <MapEditorModal show={uiState.showMapEditor} map={map}
           handleClose={() => ui?.modalClose()} handleSave={handleMapEditorSave} />
