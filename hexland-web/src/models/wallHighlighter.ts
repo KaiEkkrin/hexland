@@ -1,5 +1,5 @@
 import { Change } from "../data/change";
-import { IGridVertex, IGridEdge, verticesEqual, IGridCoord, coordsEqual, vertexString } from "../data/coord";
+import { GridVertex, GridEdge, verticesEqual, GridCoord, coordsEqual, vertexString } from "../data/coord";
 import { FeatureDictionary, IFeature, IFeatureDictionary } from "../data/feature";
 import { MapColouring } from "./colouring";
 import { EdgeHighlighter, FaceHighlighter, VertexHighlighter } from "./dragHighlighter";
@@ -10,7 +10,7 @@ import * as THREE from 'three';
 
 // Given two vertices, plots a straight-line (more or less) wall between them including the
 // intermediate vertices.
-export function *drawWallBetween(geometry: IGridGeometry, a: IGridVertex, b: IGridVertex) {
+export function *drawWallBetween(geometry: IGridGeometry, a: GridVertex, b: GridVertex) {
   const bCentre = geometry.createVertexCentre(new THREE.Vector3(), b, 0);
   const [eCentre, vCentre, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
   while (verticesEqual(a, b) === false) {
@@ -41,8 +41,8 @@ export function *drawWallBetween(geometry: IGridGeometry, a: IGridVertex, b: IGr
 // has subtleties (consider a 3-square thick L-shape in the square geometry)
 export function drawWallAround(
   geometry: IGridGeometry,
-  faceDictionary: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
-  addWall: (position: IGridEdge) => void
+  faceDictionary: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
+  addWall: (position: GridEdge) => void
 ) {
   for (const f of faceDictionary) {
     geometry.forEachAdjacentFace(f.position, (adj, edge) => {
@@ -61,9 +61,9 @@ export function drawWallUnion(
   geometry: IGridGeometry,
   colouring: MapColouring,
   outerColour: number,
-  faceDictionary: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
-  addWall: (position: IGridEdge) => void,
-  removeWall: (position: IGridEdge) => void
+  faceDictionary: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
+  addWall: (position: GridEdge) => void,
+  removeWall: (position: GridEdge) => void
 ) {
   for (const f of faceDictionary) {
     geometry.forEachAdjacentFace(f.position, (adj, edge) => {
@@ -85,12 +85,12 @@ export function drawWallDifference(
   geometry: IGridGeometry,
   colouring: MapColouring,
   innerColour: number,
-  faceDictionary: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
-  addWall: (position: IGridEdge) => void,
-  removeWall: (position: IGridEdge) => void
+  faceDictionary: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
+  addWall: (position: GridEdge) => void,
+  removeWall: (position: GridEdge) => void
 ) {
   let changeCount = 0;
-  function handleAdjacentFace(adj: IGridCoord, edge: IGridEdge) {
+  function handleAdjacentFace(adj: GridCoord, edge: GridEdge) {
     if (faceDictionary.get(adj) === undefined && colouring.colourOf(adj) !== innerColour) {
       // This is an exterior face -- add the wall
       addWall(edge);
@@ -123,19 +123,19 @@ export class WallHighlighter {
   // How to check whether the wall changes we made are valid
   private readonly _validate: (changes: Change[]) => boolean;
 
-  private _lastHoverPosition: IGridVertex | undefined = undefined;
+  private _lastHoverPosition: GridVertex | undefined = undefined;
 
   constructor(
     geometry: IGridGeometry,
-    walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
-    wallHighlights: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
-    vertexHighlights: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>>,
+    walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
+    wallHighlights: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
+    vertexHighlights: IFeatureDictionary<GridVertex, IFeature<GridVertex>>,
     validate: (changes: Change[]) => boolean
   ) {
     this._geometry = geometry;
     this._edgeHighlighter = new EdgeHighlighter(walls, wallHighlights);
     this._vertexHighlighter = new VertexHighlighter(
-      new FeatureDictionary<IGridVertex, IFeature<IGridVertex>>(vertexString),
+      new FeatureDictionary<GridVertex, IFeature<GridVertex>>(vertexString),
       vertexHighlights
     );
     this._validate = validate;
@@ -148,17 +148,17 @@ export class WallHighlighter {
     this._vertexHighlighter.clear();
   }
   
-  dragCancel(position: IGridVertex | undefined, colour: number) {
+  dragCancel(position: GridVertex | undefined, colour: number) {
     this._edgeHighlighter.dragCancel(undefined, colour);
     this.moveHighlight(position, colour);
   }
 
-  dragStart(position: IGridVertex | undefined, colour: number) {
+  dragStart(position: GridVertex | undefined, colour: number) {
     this.moveHighlight(position, colour);
     this._edgeHighlighter.dragStart(undefined, colour);
   }
 
-  dragEnd(position: IGridVertex | undefined, colour: number): Change[] {
+  dragEnd(position: GridVertex | undefined, colour: number): Change[] {
     this.moveHighlight(position, colour);
     if (this._edgeHighlighter.inDrag === false) {
       return [];
@@ -167,7 +167,7 @@ export class WallHighlighter {
     return this._edgeHighlighter.dragEnd(undefined, colour);
   }
 
-  moveHighlight(position: IGridVertex | undefined, colour: number) {
+  moveHighlight(position: GridVertex | undefined, colour: number) {
     this._vertexHighlighter.moveHighlight(position, colour);
     if (position !== undefined) {
       if (
@@ -192,7 +192,7 @@ export class WallHighlighter {
 // the edges around them, and commits changes to the edges on drag end.
 export class WallRectangleHighlighter {
   private readonly _geometry: IGridGeometry;
-  private readonly _faceHighlights: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
+  private readonly _faceHighlights: IFeatureDictionary<GridCoord, IFeature<GridCoord>>;
 
   // We drive this edge highlighter to do that part of the work:
   private readonly _edgeHighlighter: EdgeHighlighter;
@@ -203,14 +203,14 @@ export class WallRectangleHighlighter {
   // How to check whether the wall changes we made are valid
   private readonly _validate: (changes: Change[]) => boolean;
 
-  private _lastHoverPosition: IGridCoord | undefined;
+  private _lastHoverPosition: GridCoord | undefined;
 
   constructor(
     geometry: IGridGeometry,
-    faces: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
-    walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
-    wallHighlights: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
-    faceHighlights: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
+    faces: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
+    walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
+    wallHighlights: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
+    faceHighlights: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
     validate: (changes: Change[]) => boolean,
     dragRectangle: IDragRectangle
   ) {
@@ -237,22 +237,22 @@ export class WallRectangleHighlighter {
     this._faceHighlighter.clear();
   }
 
-  dragCancel(position: IGridCoord | undefined, colour: number) {
+  dragCancel(position: GridCoord | undefined, colour: number) {
     this._edgeHighlighter.dragCancel(undefined, colour);
     this._faceHighlighter.dragCancel(position, colour);
   }
 
-  dragEnd(position: IGridCoord | undefined, colour: number) {
+  dragEnd(position: GridCoord | undefined, colour: number) {
     this.moveHighlight(position, colour);
     this._faceHighlighter.dragCancel(position, colour);
     return this._edgeHighlighter.dragEnd(undefined, colour);
   }
 
-  dragStart(position: IGridCoord | undefined, colour: number) {
+  dragStart(position: GridCoord | undefined, colour: number) {
     this._faceHighlighter.dragStart(position, colour);
   }
 
-  moveHighlight(position: IGridCoord | undefined, colour: number) {
+  moveHighlight(position: GridCoord | undefined, colour: number) {
     this._faceHighlighter.moveHighlight(position, colour);
     if (
       this.inDrag && position !== undefined &&
@@ -278,16 +278,16 @@ export class WallRectangleHighlighter {
 export class RoomHighlighter extends WallRectangleHighlighter {
   private readonly _colouring: MapColouring;
 
-  private _firstDragPosition: IGridCoord | undefined;
+  private _firstDragPosition: GridCoord | undefined;
   private _difference = false;
 
   constructor(
     geometry: IGridGeometry,
     colouring: MapColouring,
-    faces: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
-    walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
-    wallHighlights: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
-    faceHighlights: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
+    faces: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
+    walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
+    wallHighlights: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
+    faceHighlights: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
     validate: (changes: Change[]) => boolean,
     dragRectangle: IDragRectangle
   ) {
@@ -321,7 +321,7 @@ export class RoomHighlighter extends WallRectangleHighlighter {
     }
   }
 
-  private updateFirstDragPosition(position: IGridCoord | undefined) {
+  private updateFirstDragPosition(position: GridCoord | undefined) {
     if (this._firstDragPosition === undefined) {
       this._firstDragPosition = position;
     }
@@ -331,12 +331,12 @@ export class RoomHighlighter extends WallRectangleHighlighter {
   get difference() { return this._difference; }
   set difference(d: boolean) { this._difference = d; }
 
-  dragCancel(position: IGridCoord | undefined, colour: number) {
+  dragCancel(position: GridCoord | undefined, colour: number) {
     super.dragCancel(position, colour);
     this._firstDragPosition = undefined;
   }
 
-  dragEnd(position: IGridCoord | undefined, colour: number) {
+  dragEnd(position: GridCoord | undefined, colour: number) {
     // In the room highlighter, we want to paint the room areas too
     this.moveHighlight(position, colour);
     this._firstDragPosition = undefined;
@@ -344,12 +344,12 @@ export class RoomHighlighter extends WallRectangleHighlighter {
     return this.edgeHighlighter.dragEnd(undefined, colour);
   }
 
-  dragStart(position: IGridCoord | undefined, colour: number) {
+  dragStart(position: GridCoord | undefined, colour: number) {
     super.dragStart(position, colour);
     this.updateFirstDragPosition(position);
   }
 
-  moveHighlight(position: IGridCoord | undefined, colour: number) {
+  moveHighlight(position: GridCoord | undefined, colour: number) {
     if (this.inDrag) {
       this.updateFirstDragPosition(position);
     }

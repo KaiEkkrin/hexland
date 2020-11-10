@@ -1,7 +1,7 @@
 import { MapColouring } from "./colouring";
 import { IAnnotation } from "../data/annotation";
 import { SimpleChangeTracker } from "../data/changeTracking";
-import { IGridCoord, IGridEdge } from "../data/coord";
+import { GridCoord, GridEdge } from "../data/coord";
 import { IFeatureDictionary, IFeature, IToken, ITokenDictionary } from "../data/feature";
 import { IMap } from "../data/map";
 import { IUserPolicy } from "../data/policy";
@@ -17,10 +17,10 @@ export class MapChangeTracker extends SimpleChangeTracker {
   private _haveTokensChanged = false;
 
   constructor(
-    areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
+    areas: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
     tokens: ITokenDictionary,
-    walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
-    notes: IFeatureDictionary<IGridCoord, IAnnotation>,
+    walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
+    notes: IFeatureDictionary<GridCoord, IAnnotation>,
     userPolicy: IUserPolicy | undefined,
     colouring?: MapColouring | undefined,
     handleChangesApplied?: ((haveTokensChanged: boolean, objectCount: number) => void) | undefined,
@@ -37,7 +37,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
     this._colouring?.clear();
   }
 
-  tokenAdd(map: IMap, user: string, feature: IToken, oldPosition: IGridCoord | undefined) {
+  tokenAdd(map: IMap, user: string, feature: IToken, oldPosition: GridCoord | undefined) {
     // If this is a move, `oldPosition` will be set.
     // In non-FFA mode, non-owners can only move a token within its bounded
     // map area (the map colour of the old position must be the same as the
@@ -57,7 +57,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
     return true;
   }
 
-  tokenRemove(map: IMap, user: string, position: IGridCoord, tokenId: string | undefined) {
+  tokenRemove(map: IMap, user: string, position: GridCoord, tokenId: string | undefined) {
     let removed = super.tokenRemove(map, user, position, tokenId);
     if (removed !== undefined) {
       this._haveTokensChanged = true;
@@ -66,7 +66,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
     return removed;
   }
 
-  wallAdd(feature: IFeature<IGridEdge>) {
+  wallAdd(feature: IFeature<GridEdge>) {
     let added = super.wallAdd(feature);
     if (added) {
       this._colouring?.setWall(feature.position, true);
@@ -75,7 +75,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
     return added;
   }
 
-  wallRemove(position: IGridEdge) {
+  wallRemove(position: GridEdge) {
     let removed = super.wallRemove(position);
     if (removed !== undefined) {
       this._colouring?.setWall(position, false);

@@ -1,4 +1,4 @@
-import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from "../../data/coord";
+import { coordString, edgeString, GridCoord, GridEdge, GridVertex, vertexString } from "../../data/coord";
 import { IFeature, IToken, ITokenProperties } from "../../data/feature";
 import { BaseTokenDrawing, ITokenFace, ITokenFillEdge, ITokenFillVertex } from "../../data/tokens";
 import { BaseTokenDrawingWithText } from "../../data/tokenTexts";
@@ -37,7 +37,7 @@ interface ITokenSpriteProperties extends ITokenProperties, ISpriteProperties {
 // This middle dictionary helps us create the palette-coloured token features immediately,
 // and the sprite ones (if applicable) once we get a download URL.  So that we can cancel
 // resolving the sprite, we include a subscription in the base dictionary.
-class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenProperties & { basePosition: IGridCoord })>
+class TokenFeatures<K extends GridCoord, F extends (IFeature<K> & ITokenProperties & { basePosition: GridCoord })>
   extends InstancedFeatures<K, F & { sub?: Subscription | undefined }>
 {
   private readonly _spriteFeatures: InstancedFeatures<K, F & ITokenSpriteProperties>;
@@ -150,9 +150,9 @@ class TokenFeatures<K extends IGridCoord, F extends (IFeature<K> & ITokenPropert
 
 // A handy wrapper for the various thingies that go into token drawing.
 export class TokenDrawing extends BaseTokenDrawingWithText<
-  TokenFeatures<IGridCoord, ITokenFace>,
-  TokenFeatures<IGridEdge, ITokenFillEdge>,
-  TokenFeatures<IGridVertex, ITokenFillVertex>,
+  TokenFeatures<GridCoord, ITokenFace>,
+  TokenFeatures<GridEdge, ITokenFillEdge>,
+  TokenFeatures<GridVertex, ITokenFillVertex>,
   TokenTexts
 > {
   constructor(
@@ -212,24 +212,24 @@ export class TokenDrawing extends BaseTokenDrawingWithText<
 }
 
 export class SelectionDrawing extends BaseTokenDrawing<
-  InstancedFeatures<IGridCoord, ITokenFace>,
-  InstancedFeatures<IGridEdge, ITokenFillEdge>,
-  InstancedFeatures<IGridVertex, ITokenFillVertex>
+  InstancedFeatures<GridCoord, ITokenFace>,
+  InstancedFeatures<GridEdge, ITokenFillEdge>,
+  InstancedFeatures<GridVertex, ITokenFillVertex>
 > {
   constructor(
     gridGeometry: IGridGeometry,
     needsRedraw: RedrawFlag,
-    createAreaObject: (maxInstances: number) => IInstancedFeatureObject<IGridCoord, IFeature<IGridCoord>>,
-    createWallObject: (maxInstances: number) => IInstancedFeatureObject<IGridEdge, IFeature<IGridEdge>>,
-    createVertexObject: (maxInstances: number) => IInstancedFeatureObject<IGridVertex, IFeature<IGridVertex>>,
+    createAreaObject: (maxInstances: number) => IInstancedFeatureObject<GridCoord, IFeature<GridCoord>>,
+    createWallObject: (maxInstances: number) => IInstancedFeatureObject<GridEdge, IFeature<GridEdge>>,
+    createVertexObject: (maxInstances: number) => IInstancedFeatureObject<GridVertex, IFeature<GridVertex>>,
     scene: THREE.Scene
   ) {
     super(
       createSelectedAreas<ITokenFace>(gridGeometry, needsRedraw, createAreaObject, 100),
-      new InstancedFeatures<IGridEdge, ITokenFillEdge>(
+      new InstancedFeatures<GridEdge, ITokenFillEdge>(
         gridGeometry, needsRedraw, edgeString, createWallObject, 100
       ),
-      new InstancedFeatures<IGridVertex, ITokenFillVertex>(
+      new InstancedFeatures<GridVertex, ITokenFillVertex>(
         gridGeometry, needsRedraw, vertexString, createVertexObject, 100
       )
     );
@@ -240,15 +240,15 @@ export class SelectionDrawing extends BaseTokenDrawing<
   }
 
   // We need to squash the colour for this one; selections have their own meaning of colour
-  createFace(token: IToken, position: IGridCoord) {
+  createFace(token: IToken, position: GridCoord) {
     return { ...token, basePosition: token.position, position: position, colour: 0 };
   }
 
-  createFillEdge(token: IToken, position: IGridEdge) {
+  createFillEdge(token: IToken, position: GridEdge) {
     return { ...token, basePosition: token.position, position: position, colour: 0 };
   }
 
-  createFillVertex(token: IToken, position: IGridVertex) {
+  createFillVertex(token: IToken, position: GridVertex) {
     return { ...token, basePosition: token.position, position: position, colour: 0 };
   }
 

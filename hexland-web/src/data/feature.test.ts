@@ -1,10 +1,10 @@
-import { IGridCoord, IGridEdge, coordString, coordsEqual, edgeString, edgesEqual } from './coord';
+import { GridCoord, GridEdge, coordString, coordsEqual, edgeString, edgesEqual } from './coord';
 import { FeatureDictionary, IFeature } from './feature';
 
 // Equivalent feature dictionary tests to the coord dictionary tests:
 
 test('grid coord dictionary entries', () => {
-  let dict = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
+  let dict = new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString);
   let a = { x: 0, y: 0 };
   let b = { x: 0, y: 1 };
   let c = { x: -8, y: 1 };
@@ -16,7 +16,7 @@ test('grid coord dictionary entries', () => {
   // At the start everything should be empty
   expect(dict.get(a)).toBeUndefined();
 
-  let allKeys: IGridCoord[] = [];
+  let allKeys: GridCoord[] = [];
   let allValues: number[] = [];
   dict.forEach(f => {
     allKeys.push(f.position);
@@ -65,7 +65,7 @@ test('grid coord dictionary entries', () => {
 });
 
 test('grid edge dictionary entries', () => {
-  let dict = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
+  let dict = new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString);
   let a = { x: 0, y: 0, edge: 0 };
   let b = { x: 0, y: 1, edge: 0 };
   let c = { x: 0, y: 0, edge: 1 };
@@ -82,7 +82,7 @@ test('grid edge dictionary entries', () => {
   expect(dict.get(c2)?.colour).toBe(63);
   expect(dict.get(d)?.colour).toBeUndefined();
 
-  let allKeys: IGridEdge[] = [];
+  let allKeys: GridEdge[] = [];
   let allValues: number[] = [];
   dict.forEach(f => {
     allKeys.push(f.position);

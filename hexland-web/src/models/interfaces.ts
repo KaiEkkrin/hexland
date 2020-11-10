@@ -1,5 +1,5 @@
 import { MapColouring } from "./colouring";
-import { IGridCoord, IGridEdge, IGridVertex } from "../data/coord";
+import { GridCoord, GridEdge, GridVertex } from "../data/coord";
 import { IFeature, IFeatureDictionary } from "../data/feature";
 import { ITokenDrawing } from "../data/tokens";
 import { ITokenTextDrawing } from "../data/tokenTexts";
@@ -10,14 +10,14 @@ import { ISpriteManager } from "../services/interfaces";
 // The drawing interface exposes instanced features dictionaries directly --
 // editing these should update the drawing upon the next animation frame.
 export interface IDrawing {
-  areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
+  areas: IFeatureDictionary<GridCoord, IFeature<GridCoord>>;
   tokens: ITokenDrawing;
   tokenTexts: ITokenTextDrawing;
-  walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
+  walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>;
 
-  highlightedAreas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
-  highlightedVertices: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>>;
-  highlightedWalls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
+  highlightedAreas: IFeatureDictionary<GridCoord, IFeature<GridCoord>>;
+  highlightedVertices: IFeatureDictionary<GridVertex, IFeature<GridVertex>>;
+  highlightedWalls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>;
 
   selection: ITokenDrawing;
   selectionDrag: ITokenDrawing;
@@ -38,8 +38,8 @@ export interface IDrawing {
 
   // These functions turn viewport co-ordinates (0..windowWidth, 0..windowHeight)
   // into face, edge or vertex coords
-  getGridCoordAt(cp: THREE.Vector3): IGridCoord | undefined;
-  getGridVertexAt(cp: THREE.Vector3): IGridVertex | undefined;
+  getGridCoordAt(cp: THREE.Vector3): GridCoord | undefined;
+  getGridVertexAt(cp: THREE.Vector3): GridVertex | undefined;
 
   // Gets a viewport-to-world transfomation matrix, where the viewport visible
   // range is (-1..1).
@@ -60,7 +60,7 @@ export interface IDrawing {
   resize(translation: THREE.Vector3, rotation: THREE.Quaternion, scaling: THREE.Vector3): void;
 
   // Sets the token positions whose LoS we should draw, or undefined to show everything.
-  setLoSPositions(positions: IGridCoord[] | undefined, seeEverything: boolean): void;
+  setLoSPositions(positions: GridCoord[] | undefined, seeEverything: boolean): void;
 
   // Sets the mount point of the rendered drawing.
   setMount(mount: HTMLDivElement | undefined): void;
@@ -79,10 +79,10 @@ export interface IDrawing {
 // implemented by an IOutlinedRectangle, below.)
 export interface IDragRectangle {
   // Creates a filter function admitting features within the current drag rectangle.
-  createFilter(): (c: IGridCoord) => boolean;
+  createFilter(): (c: GridCoord) => boolean;
 
   // Enumerates all the grid coords within the current drag rectangle.
-  enumerateCoords(): Iterable<IGridCoord>;
+  enumerateCoords(): Iterable<GridCoord>;
 
   // True if the drag rectangle is enabled and visible, else false.
   isEnabled(): boolean;

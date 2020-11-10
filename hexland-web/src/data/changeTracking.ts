@@ -1,6 +1,6 @@
 import { IAnnotation } from "./annotation";
 import { Change, ChangeCategory, ChangeType, AreaAdd, AreaRemove, TokenAdd, WallAdd, WallRemove, TokenRemove, TokenMove, NoteAdd, NoteRemove, createAreaAdd, createWallAdd, createNoteAdd, createTokenAdd } from "./change";
-import { IGridCoord, IGridEdge } from "./coord";
+import { GridCoord, GridEdge } from "./coord";
 import { IFeature, IToken, IFeatureDictionary, ITokenDictionary } from "./feature";
 import { IMap } from "./map";
 import { IUserPolicy } from "./policy";
@@ -11,14 +11,14 @@ import fluent from "fluent-iterable";
 export interface IChangeTracker {
   objectCount: number;
 
-  areaAdd: (feature: IFeature<IGridCoord>) => boolean;
-  areaRemove: (position: IGridCoord) => IFeature<IGridCoord> | undefined;
-  tokenAdd: (map: IMap, user: string, feature: IToken, oldPosition: IGridCoord | undefined) => boolean;
-  tokenRemove: (map: IMap, user: string, position: IGridCoord, tokenId: string | undefined) => IToken | undefined;
-  wallAdd: (feature: IFeature<IGridEdge>) => boolean;
-  wallRemove: (position: IGridEdge) => IFeature<IGridEdge> | undefined;
+  areaAdd: (feature: IFeature<GridCoord>) => boolean;
+  areaRemove: (position: GridCoord) => IFeature<GridCoord> | undefined;
+  tokenAdd: (map: IMap, user: string, feature: IToken, oldPosition: GridCoord | undefined) => boolean;
+  tokenRemove: (map: IMap, user: string, position: GridCoord, tokenId: string | undefined) => IToken | undefined;
+  wallAdd: (feature: IFeature<GridEdge>) => boolean;
+  wallRemove: (position: GridEdge) => IFeature<GridEdge> | undefined;
   noteAdd: (feature: IAnnotation) => boolean;
-  noteRemove: (position: IGridCoord) => IAnnotation | undefined;
+  noteRemove: (position: GridCoord) => IAnnotation | undefined;
 
   // Called after a batch of changes has been completed, before any redraw.
   changesApplied(): void;
@@ -32,19 +32,19 @@ export interface IChangeTracker {
 
 // A simple implementation for testing, etc.
 export class SimpleChangeTracker implements IChangeTracker {
-  private readonly _areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
+  private readonly _areas: IFeatureDictionary<GridCoord, IFeature<GridCoord>>;
   private readonly _tokens: ITokenDictionary;
-  private readonly _walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
-  private readonly _notes: IFeatureDictionary<IGridCoord, IAnnotation>;
+  private readonly _walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>;
+  private readonly _notes: IFeatureDictionary<GridCoord, IAnnotation>;
   private readonly _userPolicy: IUserPolicy | undefined;
 
   private _objectCount = 0;
 
   constructor(
-    areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
+    areas: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
     tokens: ITokenDictionary,
-    walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
-    notes: IFeatureDictionary<IGridCoord, IAnnotation>,
+    walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
+    notes: IFeatureDictionary<GridCoord, IAnnotation>,
     userPolicy: IUserPolicy | undefined
   ) {
     this._areas = areas;
@@ -54,7 +54,7 @@ export class SimpleChangeTracker implements IChangeTracker {
     this._userPolicy = userPolicy;
   }
 
-  private policyAdd<K extends IGridCoord, F extends IFeature<K>>(
+  private policyAdd<K extends GridCoord, F extends IFeature<K>>(
     dict: IFeatureDictionary<K, F>,
     feature: F
   ): boolean {
@@ -71,7 +71,7 @@ export class SimpleChangeTracker implements IChangeTracker {
     return added;
   }
 
-  private policyRemove<K extends IGridCoord, F extends IFeature<K>>(
+  private policyRemove<K extends GridCoord, F extends IFeature<K>>(
     dict: IFeatureDictionary<K, F>,
     position: K
   ): F | undefined {
@@ -85,11 +85,11 @@ export class SimpleChangeTracker implements IChangeTracker {
 
   get objectCount() { return this._objectCount; }
 
-  areaAdd(feature: IFeature<IGridCoord>) {
+  areaAdd(feature: IFeature<GridCoord>) {
     return this.policyAdd(this._areas, feature);
   }
 
-  areaRemove(position: IGridCoord) {
+  areaRemove(position: GridCoord) {
     return this.policyRemove(this._areas, position);
   }
 
@@ -101,7 +101,7 @@ export class SimpleChangeTracker implements IChangeTracker {
     this._objectCount = 0;
   }
 
-  tokenAdd(map: IMap, user: string, feature: IToken, oldPosition: IGridCoord | undefined) {
+  tokenAdd(map: IMap, user: string, feature: IToken, oldPosition: GridCoord | undefined) {
     // Check for conflicts with walls
     for (const edge of this._tokens.enumerateFillEdgePositions(feature)) {
       if (this._walls.get(edge) !== undefined) {
@@ -112,7 +112,7 @@ export class SimpleChangeTracker implements IChangeTracker {
     return this.policyAdd(this._tokens, feature);
   }
 
-  tokenRemove(map: IMap, user: string, position: IGridCoord, tokenId: string | undefined) {
+  tokenRemove(map: IMap, user: string, position: GridCoord, tokenId: string | undefined) {
     const removed = this.policyRemove(this._tokens, position);
     if (removed !== undefined && removed.id !== tokenId) {
       // Oops, ID mismatch, put it back!
@@ -123,7 +123,7 @@ export class SimpleChangeTracker implements IChangeTracker {
     return removed;
   }
 
-  wallAdd(feature: IFeature<IGridEdge>) {
+  wallAdd(feature: IFeature<GridEdge>) {
     // Stop us from overwriting a token with a wall
     if (this._tokens.hasFillEdge(feature.position)) {
       return false;
@@ -132,7 +132,7 @@ export class SimpleChangeTracker implements IChangeTracker {
     return this.policyAdd(this._walls, feature);
   }
 
-  wallRemove(position: IGridEdge) {
+  wallRemove(position: GridEdge) {
     return this.policyRemove(this._walls, position);
   }
 
@@ -140,7 +140,7 @@ export class SimpleChangeTracker implements IChangeTracker {
     return this.policyAdd(this._notes, feature);
   }
 
-  noteRemove(position: IGridCoord) {
+  noteRemove(position: GridCoord) {
     return this.policyRemove(this._notes, position);
   }
 

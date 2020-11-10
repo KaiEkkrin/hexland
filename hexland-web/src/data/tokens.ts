@@ -1,25 +1,25 @@
-import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from "./coord";
+import { coordString, edgeString, GridCoord, GridEdge, GridVertex, vertexString } from "./coord";
 import { FeatureDictionary, IFeature, IFeatureDictionary, IToken, ITokenDictionary, ITokenProperties } from "./feature";
 import { ITokenGeometry } from "./tokenGeometry";
 
 export interface ITokenFace extends IToken {
-  basePosition: IGridCoord;
+  basePosition: GridCoord;
 }
 
-export interface ITokenFillEdge extends IFeature<IGridEdge>, ITokenProperties {
-  basePosition: IGridCoord;
+export interface ITokenFillEdge extends IFeature<GridEdge>, ITokenProperties {
+  basePosition: GridCoord;
 }
 
-export interface ITokenFillVertex extends IFeature<IGridVertex>, ITokenProperties {
-  basePosition: IGridCoord;
+export interface ITokenFillVertex extends IFeature<GridVertex>, ITokenProperties {
+  basePosition: GridCoord;
 }
 
 // Describes how to draw a collection of tokens, complete with fill-in edges and vertices
 // for larger ones, and text positioning.
 export interface ITokenDrawing {
-  faces: IFeatureDictionary<IGridCoord, ITokenFace>;
-  fillEdges: IFeatureDictionary<IGridEdge, ITokenFillEdge>;
-  fillVertices: IFeatureDictionary<IGridVertex, ITokenFillVertex>;
+  faces: IFeatureDictionary<GridCoord, ITokenFace>;
+  fillEdges: IFeatureDictionary<GridEdge, ITokenFillEdge>;
+  fillVertices: IFeatureDictionary<GridVertex, ITokenFillVertex>;
 
   // Clears all of this object.
   clear(): void;
@@ -29,9 +29,9 @@ export interface ITokenDrawing {
 
   // How to create suitable features.
   // TODO #46 Is it worth becoming sprite-aware at this level?
-  createFace(token: IToken, position: IGridCoord): ITokenFace;
-  createFillEdge(token: IToken, position: IGridEdge): ITokenFillEdge;
-  createFillVertex(token: IToken, position: IGridVertex): ITokenFillVertex;
+  createFace(token: IToken, position: GridCoord): ITokenFace;
+  createFillEdge(token: IToken, position: GridEdge): ITokenFillEdge;
+  createFillVertex(token: IToken, position: GridVertex): ITokenFillVertex;
 
   // Cleans up (may be unnecessary.)
   dispose(): void;
@@ -39,9 +39,9 @@ export interface ITokenDrawing {
 
 // A super basic one for non-displayed use
 export class BaseTokenDrawing<
-  TFacesDict extends IFeatureDictionary<IGridCoord, ITokenFace>,
-  TFillEdgesDict extends IFeatureDictionary<IGridEdge, ITokenFillEdge>,
-  TFillVerticesDict extends IFeatureDictionary<IGridVertex, ITokenFillVertex>
+  TFacesDict extends IFeatureDictionary<GridCoord, ITokenFace>,
+  TFillEdgesDict extends IFeatureDictionary<GridEdge, ITokenFillEdge>,
+  TFillVerticesDict extends IFeatureDictionary<GridVertex, ITokenFillVertex>
 > implements ITokenDrawing {
   private readonly _faces: TFacesDict;
   private readonly _fillEdges: TFillEdgesDict;
@@ -73,15 +73,15 @@ export class BaseTokenDrawing<
     );
   }
 
-  createFace(token: IToken, position: IGridCoord) {
+  createFace(token: IToken, position: GridCoord) {
     return { ...token, basePosition: token.position, position: position };
   }
 
-  createFillEdge(token: IToken, position: IGridEdge) {
+  createFillEdge(token: IToken, position: GridEdge) {
     return { ...token, basePosition: token.position, position: position };
   }
 
-  createFillVertex(token: IToken, position: IGridVertex) {
+  createFillVertex(token: IToken, position: GridVertex) {
     return { ...token, basePosition: token.position, position: position };
   }
 
@@ -91,25 +91,25 @@ export class BaseTokenDrawing<
 }
 
 export class SimpleTokenDrawing extends BaseTokenDrawing<
-  IFeatureDictionary<IGridCoord, ITokenFace>,
-  IFeatureDictionary<IGridEdge, ITokenFillEdge>,
-  IFeatureDictionary<IGridVertex, ITokenFillVertex>
+  IFeatureDictionary<GridCoord, ITokenFace>,
+  IFeatureDictionary<GridEdge, ITokenFillEdge>,
+  IFeatureDictionary<GridVertex, ITokenFillVertex>
 > {
   constructor(
-    faces?: IFeatureDictionary<IGridCoord, ITokenFace> | undefined,
-    fillEdges?: IFeatureDictionary<IGridEdge, ITokenFillEdge> | undefined,
-    fillVertices?: IFeatureDictionary<IGridVertex, ITokenFillVertex> | undefined
+    faces?: IFeatureDictionary<GridCoord, ITokenFace> | undefined,
+    fillEdges?: IFeatureDictionary<GridEdge, ITokenFillEdge> | undefined,
+    fillVertices?: IFeatureDictionary<GridVertex, ITokenFillVertex> | undefined
   ) {
     super(
-      faces ?? new FeatureDictionary<IGridCoord, ITokenFace>(coordString),
-      fillEdges ?? new FeatureDictionary<IGridEdge, ITokenFillEdge>(edgeString),
-      fillVertices ?? new FeatureDictionary<IGridVertex, ITokenFillVertex>(vertexString),
+      faces ?? new FeatureDictionary<GridCoord, ITokenFace>(coordString),
+      fillEdges ?? new FeatureDictionary<GridEdge, ITokenFillEdge>(edgeString),
+      fillVertices ?? new FeatureDictionary<GridVertex, ITokenFillVertex>(vertexString),
     );
   }
 }
 
 // A utility for the below
-function removeAll<K extends IGridCoord, F extends IFeature<K>>(
+function removeAll<K extends GridCoord, F extends IFeature<K>>(
   dict: IFeatureDictionary<K, F>,
   list: K[]
 ) {
@@ -127,7 +127,7 @@ function removeAll<K extends IGridCoord, F extends IFeature<K>>(
 // Note that cloning this creates an internal clone of the faces dictionary too,
 // which won't be attached to anything else.  (Concrete subclasses must override
 // the `clone` method.)
-export class Tokens extends FeatureDictionary<IGridCoord, IToken> implements ITokenDictionary {
+export class Tokens extends FeatureDictionary<GridCoord, IToken> implements ITokenDictionary {
   private readonly _tokenGeometry: ITokenGeometry;
   private readonly _drawing: ITokenDrawing;
   private readonly _byId: Map<string, IToken>;
@@ -150,9 +150,9 @@ export class Tokens extends FeatureDictionary<IGridCoord, IToken> implements ITo
 
   private revertAdd(
     token: IToken,
-    addedFaces: IGridCoord[],
-    addedEdges: IGridEdge[],
-    addedVertices: IGridVertex[]
+    addedFaces: GridCoord[],
+    addedEdges: GridEdge[],
+    addedVertices: GridVertex[]
   ) {
     removeAll(this._drawing.fillVertices, addedVertices);
     removeAll(this._drawing.fillEdges, addedEdges);
@@ -163,9 +163,9 @@ export class Tokens extends FeatureDictionary<IGridCoord, IToken> implements ITo
 
   add(token: IToken) {
     if (super.add(token) === true) {
-      const addedFaces: IGridCoord[] = [];
-      const addedEdges: IGridEdge[] = [];
-      const addedVertices: IGridVertex[] = [];
+      const addedFaces: GridCoord[] = [];
+      const addedEdges: GridEdge[] = [];
+      const addedVertices: GridVertex[] = [];
 
       try { // paranoia ;) I'm not going to use exception driven logic on purpose, hopefully this won't cost
         // Make sure the token's id isn't already in use
@@ -225,7 +225,7 @@ export class Tokens extends FeatureDictionary<IGridCoord, IToken> implements ITo
     }
   }
 
-  at(face: IGridCoord) {
+  at(face: GridCoord) {
     const faceToken = this._drawing.faces.get(face);
     return faceToken !== undefined ? this._byId.get(faceToken.id) : undefined;
   }
@@ -247,15 +247,15 @@ export class Tokens extends FeatureDictionary<IGridCoord, IToken> implements ITo
     return new Tokens(this._tokenGeometry, this._drawing.clone(), this.values, this.byId);
   }
 
-  enumerateFacePositions(token: IToken): Iterable<IGridCoord> {
+  enumerateFacePositions(token: IToken): Iterable<GridCoord> {
     return this._tokenGeometry.enumerateFacePositions(token);
   }
 
-  enumerateFillEdgePositions(token: IToken): Iterable<IGridEdge> {
+  enumerateFillEdgePositions(token: IToken): Iterable<GridEdge> {
     return this._tokenGeometry.enumerateFillEdgePositions(token);
   }
 
-  hasFillEdge(edge: IGridEdge) {
+  hasFillEdge(edge: GridEdge) {
     return this._drawing.fillEdges.get(edge) !== undefined;
   }
 
@@ -263,7 +263,7 @@ export class Tokens extends FeatureDictionary<IGridCoord, IToken> implements ITo
     return this._byId.get(id);
   }
 
-  remove(k: IGridCoord): (IToken) | undefined {
+  remove(k: GridCoord): (IToken) | undefined {
     const removed = super.remove(k);
     if (removed !== undefined) {
       for (const vertex of this._tokenGeometry.enumerateFillVertexPositions(removed)) {

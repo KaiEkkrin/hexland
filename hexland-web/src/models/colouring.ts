@@ -1,5 +1,5 @@
 import { IGridGeometry } from './gridGeometry';
-import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
+import { GridCoord, GridEdge, coordString, edgeString } from '../data/coord';
 import { FeatureDictionary, IFeature, IFeatureDictionary } from '../data/feature';
 
 import * as THREE from 'three';
@@ -16,7 +16,7 @@ import fluent from 'fluent-iterable';
 // Provides clamped out-of-bounds sampling.  We'll take advantage of that along with
 // the assumptions that everything around the boundary is the same colour and that
 // we've filled the entire bounds.
-class FaceDictionary extends FeatureDictionary<IGridCoord, IFeature<IGridCoord>> {
+class FaceDictionary extends FeatureDictionary<GridCoord, IFeature<GridCoord>> {
   // These are the bounds of the areas we've observed (both inclusive).
   private _lowerBounds: THREE.Vector2;
   private _upperBounds: THREE.Vector2;
@@ -34,7 +34,7 @@ class FaceDictionary extends FeatureDictionary<IGridCoord, IFeature<IGridCoord>>
     this._upperBounds.set(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER);
   }
 
-  private updateBounds(coord: IGridCoord) {
+  private updateBounds(coord: GridCoord) {
     this._lowerBounds.x = Math.min(this._lowerBounds.x, coord.x);
     this._lowerBounds.y = Math.min(this._lowerBounds.y, coord.y);
     this._upperBounds.x = Math.max(this._upperBounds.x, coord.x);
@@ -44,7 +44,7 @@ class FaceDictionary extends FeatureDictionary<IGridCoord, IFeature<IGridCoord>>
   get lowerBounds() { return this._lowerBounds; }
   get upperBounds() { return this._upperBounds; }
 
-  add(f: IFeature<IGridCoord>): boolean {
+  add(f: IFeature<GridCoord>): boolean {
     let wasAdded = super.add(f);
     if (wasAdded) {
       this.updateBounds(f.position);
@@ -58,7 +58,7 @@ class FaceDictionary extends FeatureDictionary<IGridCoord, IFeature<IGridCoord>>
     this.clearBounds();
   }
 
-  get(coord: IGridCoord): IFeature<IGridCoord> | undefined {
+  get(coord: GridCoord): IFeature<GridCoord> | undefined {
     this._clampedCoord.set(
       Math.max(this._lowerBounds.x, Math.min(this._upperBounds.x, coord.x)),
       Math.max(this._lowerBounds.y, Math.min(this._upperBounds.y, coord.y))
@@ -69,7 +69,7 @@ class FaceDictionary extends FeatureDictionary<IGridCoord, IFeature<IGridCoord>>
 
   // Assigns a new colour to the co-ordinate, returning the old colour or
   // undefined if there wasn't one (ignoring bounds.)
-  replace(f: IFeature<IGridCoord>): IFeature<IGridCoord> | undefined {
+  replace(f: IFeature<GridCoord>): IFeature<GridCoord> | undefined {
     let oldFeature = super.remove(f.position); // skip the bounds re-calculate
     if (oldFeature !== undefined) {
       super.add(f); // can skip this bounds re-calculate too
@@ -108,20 +108,20 @@ class FaceDictionary extends FeatureDictionary<IGridCoord, IFeature<IGridCoord>>
 }
 
 // We track pending wall changes (add or remove) like this; the colour is ignored
-interface IPendingWall extends IFeature<IGridEdge> {
+interface IPendingWall extends IFeature<GridEdge> {
   present: boolean; // true to add this, false to remove it
 }
 
 export class MapColouring {
   private readonly _geometry: IGridGeometry;
-  private readonly _walls: FeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
+  private readonly _walls: FeatureDictionary<GridEdge, IFeature<GridEdge>>;
 
   // The pending wall changes -- commit them all and recolour with `recalculate`.
-  private readonly _pending: FeatureDictionary<IGridEdge, IPendingWall>;
+  private readonly _pending: FeatureDictionary<GridEdge, IPendingWall>;
 
   // The faces that need to be filled during a recalculate, along with the
   // suggested fill colours.
-  private readonly _toFill: FeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
+  private readonly _toFill: FeatureDictionary<GridCoord, IFeature<GridCoord>>;
 
   // This maps each face within our bounds to its map colour.
   private readonly _faces: FaceDictionary;
@@ -137,9 +137,9 @@ export class MapColouring {
 
   constructor(geometry: IGridGeometry) {
     this._geometry = geometry;
-    this._walls = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
-    this._pending = new FeatureDictionary<IGridEdge, IPendingWall>(edgeString);
-    this._toFill = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
+    this._walls = new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString);
+    this._pending = new FeatureDictionary<GridEdge, IPendingWall>(edgeString);
+    this._toFill = new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString);
     this._faces = new FaceDictionary();
     this.addStartingColour();
   }
@@ -181,13 +181,13 @@ export class MapColouring {
     this.addStartingColour();
   }
 
-  colourOf(coord: IGridCoord): number {
+  colourOf(coord: GridCoord): number {
     let f = this._faces.get(coord);
     //assert(f?.colour !== -1);
     return f?.colour ?? 0;
   }
 
-  forEachFace(fn: (f: IFeature<IGridCoord>) => void) {
+  forEachFace(fn: (f: IFeature<GridCoord>) => void) {
     this._faces.forEach(fn);
   }
 
@@ -198,13 +198,13 @@ export class MapColouring {
     })?.colour ?? -1;
   }
 
-  getWall(edge: IGridEdge) {
+  getWall(edge: GridEdge) {
     return this._walls.get(edge);
   }
 
   // Gets a dictionary of all the walls adjacent to a particular map colour.
   getWallsOfColour(colour: number) {
-    let walls = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
+    let walls = new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString);
     this._walls.forEach(w => {
       this._geometry.getEdgeFaceAdjacency(w.position).forEach(f => {
         if (this.colourOf(f) === colour) {
@@ -218,7 +218,7 @@ export class MapColouring {
 
   // Fills the colour from a given coord across all faces within bounds that
   // are connected to it, stopping when it reaches other areas of that colour.
-  private fill(startCoord: IGridCoord, lowerBounds: THREE.Vector2, upperBounds: THREE.Vector2) {
+  private fill(startCoord: GridCoord, lowerBounds: THREE.Vector2, upperBounds: THREE.Vector2) {
     const maybeFeature = this._faces.get(startCoord);
     //assert(maybeColour !== undefined);
     if (maybeFeature === undefined) {
@@ -237,7 +237,7 @@ export class MapColouring {
 
       //console.log("Filled " + colour + " at " + coordString(coord));
 
-      this._geometry.forEachAdjacentFace(coord, (face: IGridCoord, edge: IGridEdge) => {
+      this._geometry.forEachAdjacentFace(coord, (face: GridCoord, edge: GridEdge) => {
         if (
           face.x < lowerBounds.x || face.y < lowerBounds.y ||
           face.x > upperBounds.x || face.y > upperBounds.y ||
@@ -254,7 +254,7 @@ export class MapColouring {
     }
   }
 
-  setWall(edge: IGridEdge, present: boolean) {
+  setWall(edge: GridEdge, present: boolean) {
     this._pending.set({ position: edge, colour: 0, present: present });
   }
 
@@ -341,9 +341,9 @@ export class MapColouring {
   }
 
   // Creates a visualisation of the current colouring into another feature dictionary (of areas):
-  visualise<F extends IFeature<IGridCoord>>(
-    target: IFeatureDictionary<IGridCoord, F>,
-    createFeature: (position: IGridCoord, mapColour: number, mapColourCount: number) => F
+  visualise<F extends IFeature<GridCoord>>(
+    target: IFeatureDictionary<GridCoord, F>,
+    createFeature: (position: GridCoord, mapColour: number, mapColourCount: number) => F
   ) {
     // Count the number of unique map colours
     // TODO would it be better to be maintaining this dictionary as we go?

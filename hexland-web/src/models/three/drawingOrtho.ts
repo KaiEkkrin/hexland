@@ -1,4 +1,4 @@
-import { IGridCoord, IGridVertex } from '../../data/coord';
+import { GridCoord, GridVertex } from '../../data/coord';
 import { ITokenGeometry } from '../../data/tokenGeometry';
 import { ITokenDrawing } from '../../data/tokens';
 import { MapColouring } from '../colouring';
@@ -357,11 +357,11 @@ export class DrawingOrtho implements IDrawing {
     return this._showLoS ? (this._los.checkLoS(cp) ?? false) : true;
   }
 
-  getGridCoordAt(cp: THREE.Vector3): IGridCoord | undefined {
+  getGridCoordAt(cp: THREE.Vector3): GridCoord | undefined {
     return this._grid.getGridCoordAt(cp);
   }
 
-  getGridVertexAt(cp: THREE.Vector3): IGridVertex | undefined {
+  getGridVertexAt(cp: THREE.Vector3): GridVertex | undefined {
     return this._grid.getGridVertexAt(this._renderer, cp);
   }
 
@@ -445,7 +445,7 @@ export class DrawingOrtho implements IDrawing {
     this._gridNeedsRedraw.setNeedsRedraw();
   }
 
-  setLoSPositions(positions: IGridCoord[] | undefined, seeEverything: boolean) {
+  setLoSPositions(positions: GridCoord[] | undefined, seeEverything: boolean) {
     const nowShowLoS = positions !== undefined;
     if (nowShowLoS) {
       this._losFilter.addToScene(this._fixedFilterScene);

@@ -2,7 +2,7 @@ import { IAdventure, IPlayer, summariseAdventure } from '../data/adventure';
 import { IAnnotation } from '../data/annotation';
 import { Change, Changes } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
-import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
+import { GridCoord, GridEdge, coordString, edgeString } from '../data/coord';
 import { FeatureDictionary, IFeature, ITokenDictionary } from '../data/feature';
 import { IInvite } from '../data/invite';
 import { IMap, MapType, summariseMap } from '../data/map';
@@ -304,10 +304,10 @@ async function tryConsolidateMapChanges(
   const ownerPolicy = getUserPolicy(ownerProfile.level);
   const tokenDict = new Tokens(getTokenGeometry(m.ty), new SimpleTokenDrawing());
   const tracker = new SimpleChangeTracker(
-    new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
+    new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString),
     tokenDict,
-    new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
-    new FeatureDictionary<IGridCoord, IAnnotation>(coordString),
+    new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString),
+    new FeatureDictionary<GridCoord, IAnnotation>(coordString),
     ownerPolicy
     // new MapColouring(m.ty === MapType.Hex ? new HexGridGeometry(1, 1) : new SquareGridGeometry(1, 1))
   );

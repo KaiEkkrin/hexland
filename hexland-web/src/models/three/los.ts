@@ -1,4 +1,4 @@
-import { IGridCoord, IGridEdge, edgeString, coordsEqual } from '../../data/coord';
+import { GridCoord, GridEdge, edgeString, coordsEqual } from '../../data/coord';
 import { IFeature } from '../../data/feature';
 import { Drawn } from '../drawn';
 import { IGridGeometry } from '../gridGeometry';
@@ -84,7 +84,7 @@ const featureShader = {
 // This feature object draws the shadows cast by the walls using the above shader.
 // (It doesn't own the material.)
 // Edit the material before rendering this to draw LoS for different tokens
-class LoSFeatureObject extends InstancedFeatureObject<IGridEdge, IFeature<IGridEdge>> {
+class LoSFeatureObject extends InstancedFeatureObject<GridEdge, IFeature<GridEdge>> {
   private readonly _geometry: THREE.InstancedBufferGeometry;
   private readonly _material: THREE.ShaderMaterial;
 
@@ -110,7 +110,7 @@ class LoSFeatureObject extends InstancedFeatureObject<IGridEdge, IFeature<IGridE
   }
 }
 
-class LoSFeatures extends InstancedFeatures<IGridEdge, IFeature<IGridEdge>> {
+class LoSFeatures extends InstancedFeatures<GridEdge, IFeature<GridEdge>> {
   constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, z: number, q: number, material: THREE.ShaderMaterial, maxInstances?: number | undefined) {
     super(geometry, redrawFlag, edgeString, maxInstances => {
       return new LoSFeatureObject(geometry, z, q, material, maxInstances);
@@ -137,7 +137,7 @@ export class LoS extends Drawn {
 
   private readonly _composedTargetReader: RenderTargetReader;
 
-  private _tokenPositions: IGridCoord[] = [];
+  private _tokenPositions: GridCoord[] = [];
 
   private _isDisposed = false;
 
@@ -315,7 +315,7 @@ export class LoS extends Drawn {
   }
 
   // Assigns the positions of the tokens to draw LoS for.
-  setTokenPositions(positions: IGridCoord[]) {
+  setTokenPositions(positions: GridCoord[]) {
     // If these are the same, we don't need to do anything:
     if (
       positions.length === this._tokenPositions.length &&

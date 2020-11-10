@@ -11,7 +11,7 @@ import { WallHighlighter, WallRectangleHighlighter, RoomHighlighter } from './wa
 import { IAnnotation, IPositionedAnnotation } from '../data/annotation';
 import { Change, createTokenRemove, createTokenAdd, createNoteRemove, createNoteAdd, createTokenMove } from '../data/change';
 import { netObjectCount, trackChanges } from '../data/changeTracking';
-import { IGridCoord, coordString, coordsEqual, coordSub, coordAdd } from '../data/coord';
+import { GridCoord, coordString, coordsEqual, coordSub, coordAdd } from '../data/coord';
 import { FeatureDictionary, flipToken, IToken, ITokenDictionary, ITokenProperties, TokenSize } from '../data/feature';
 import { IAdventureIdentified } from '../data/identified';
 import { IMap } from '../data/map';
@@ -83,7 +83,7 @@ export class MapStateMachine {
   private readonly _drawing: IDrawing;
   private readonly _gridGeometry: IGridGeometry;
   private readonly _mapColouring: MapColouring;
-  private readonly _notes: FeatureDictionary<IGridCoord, IAnnotation>;
+  private readonly _notes: FeatureDictionary<GridCoord, IAnnotation>;
   private readonly _notesNeedUpdate = new RedrawFlag();
   private readonly _tokenGeometry: ITokenGeometry;
 
@@ -132,9 +132,9 @@ export class MapStateMachine {
   private _isRotating = false;
   private _panLast: THREE.Vector3 | undefined;
 
-  private _tokenMoveDragStart: IGridCoord | undefined;
-  private _tokenMoveJog: IGridCoord | undefined;
-  private _tokenMoveDragSelectionPosition: IGridCoord | undefined;
+  private _tokenMoveDragStart: GridCoord | undefined;
+  private _tokenMoveJog: GridCoord | undefined;
+  private _tokenMoveDragSelectionPosition: GridCoord | undefined;
 
   private _isDisposed = false;
 
@@ -179,7 +179,7 @@ export class MapStateMachine {
     );
 
     // The notes are rendered with React, not with Three.js
-    this._notes = new FeatureDictionary<IGridCoord, IAnnotation>(coordString);
+    this._notes = new FeatureDictionary<GridCoord, IAnnotation>(coordString);
 
     // Here is our higher-level token tracking:
     this._selection = new Tokens(tokenGeometry, this._drawing.selection);
@@ -226,7 +226,7 @@ export class MapStateMachine {
   private get isOwner() { return this._uid === this._map.record.owner; }
   private get seeEverything() { return this._uid === this._map.record.owner || this._map.record.ffa === true; }
 
-  private addTokenWithProperties(target: IGridCoord, properties: ITokenProperties): Change[] {
+  private addTokenWithProperties(target: GridCoord, properties: ITokenProperties): Change[] {
     // Work out a place around this target where the token will fit
     const newPosition = this.canResizeToken({ ...properties, position: target }, properties.size);
     if (newPosition === undefined) {
@@ -244,7 +244,7 @@ export class MapStateMachine {
     this._notesNeedUpdate.setNeedsRedraw();
   }
 
-  private canDropSelectionAt(position: IGridCoord) {
+  private canDropSelectionAt(position: GridCoord) {
     const delta = this.getTokenMoveDelta(position);
     if (delta === undefined) {
       return false;
@@ -287,7 +287,7 @@ export class MapStateMachine {
     return trackChanges(this._map.record, changeTracker, changes, this._uid);
   }
 
-  private canResizeToken(token: IToken, newSize: TokenSize): IGridCoord | undefined {
+  private canResizeToken(token: IToken, newSize: TokenSize): GridCoord | undefined {
     // Checks whether we can resize this token to the given new size, returning the new position
     // that it would adopts, or, if the token doesn't exist already, whether we can place a new
     // token of the given size.
@@ -395,7 +395,7 @@ export class MapStateMachine {
     }
   }
 
-  private getTokenMoveDelta(position: IGridCoord) {
+  private getTokenMoveDelta(position: GridCoord) {
     if (this._tokenMoveDragStart === undefined || this._tokenMoveJog === undefined) {
       return undefined;
     }
@@ -533,7 +533,7 @@ export class MapStateMachine {
     ];
   }
 
-  private tokenMoveDragEnd(position: IGridCoord, chs: Change[]) {
+  private tokenMoveDragEnd(position: GridCoord, chs: Change[]) {
     this._selectionDrag.clear();
     this._selectionDragRed.clear();
     const delta = this.getTokenMoveDelta(position);
@@ -563,7 +563,7 @@ export class MapStateMachine {
     this._tokenMoveDragSelectionPosition = undefined;
   }
 
-  private tokenMoveDragStart(position: IGridCoord) {
+  private tokenMoveDragStart(position: GridCoord) {
     this._tokenMoveDragStart = position;
     this._tokenMoveJog = { x: 0, y: 0 };
     this._tokenMoveDragSelectionPosition = position;
@@ -572,7 +572,7 @@ export class MapStateMachine {
     this._selection.forEach(f => this._selectionDrag.add(f));
   }
 
-  private tokenMoveDragTo(position: IGridCoord | undefined) {
+  private tokenMoveDragTo(position: GridCoord | undefined) {
     if (position === undefined) {
       return;
     }
@@ -825,7 +825,7 @@ export class MapStateMachine {
   // we want to jog on a first press and pan on a repeat.
   // Thus, `jogSelection` starts a token move if we don't have one already, and returns
   // true if it started one, else false.
-  jogSelection(delta: IGridCoord) {
+  jogSelection(delta: GridCoord) {
     this.onPanningStarted();
     if (this._tokenMoveJog === undefined) {
       return false;

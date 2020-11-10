@@ -1,11 +1,11 @@
-import { IGridCoord } from '../../data/coord';
+import { GridCoord } from '../../data/coord';
 import { FeatureDictionary, IFeature } from '../../data/feature';
 
 import * as THREE from 'three';
 
 // The interface of the instanced feature object, which describes a collection
 // of features all drawn using the same instanced mesh added to a scene.
-export interface IInstancedFeatureObject<K extends IGridCoord, F extends IFeature<K>> {
+export interface IInstancedFeatureObject<K extends GridCoord, F extends IFeature<K>> {
   addToScene(scene: THREE.Scene): void;
   removeFromScene(scene: THREE.Scene): void;
 
@@ -18,7 +18,7 @@ export interface IInstancedFeatureObject<K extends IGridCoord, F extends IFeatur
 
 // A base class that manages a collection of features all drawn using the
 // same instanced mesh added to a scene.
-export abstract class InstancedFeatureObject<K extends IGridCoord, F extends IFeature<K>> implements IInstancedFeatureObject<K, F> {
+export abstract class InstancedFeatureObject<K extends GridCoord, F extends IFeature<K>> implements IInstancedFeatureObject<K, F> {
   private readonly _toIndex: (k: K) => string;
   private readonly _transformTo: (m: THREE.Matrix4, position: K) => THREE.Matrix4;
   private readonly _maxInstances: number;

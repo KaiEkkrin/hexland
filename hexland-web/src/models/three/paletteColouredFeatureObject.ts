@@ -1,4 +1,4 @@
-import { IGridCoord } from '../../data/coord';
+import { GridCoord } from '../../data/coord';
 import { IFeature } from '../../data/feature';
 import { InstancedFeatureObject } from './instancedFeatureObject';
 
@@ -31,7 +31,7 @@ export interface IColourParameters {
 const defaultColour = new THREE.Color(0, 0, 0);
 
 // This instanced feature object chooses a numbered colour from a palette.
-export class PaletteColouredFeatureObject<K extends IGridCoord, F extends IFeature<K>> extends InstancedFeatureObject<K, F> {
+export class PaletteColouredFeatureObject<K extends GridCoord, F extends IFeature<K>> extends InstancedFeatureObject<K, F> {
   private readonly _colourAttr: THREE.InstancedBufferAttribute;
   private readonly _geometry: THREE.InstancedBufferGeometry;
   private readonly _colours: number[]; // not instanced, but lets us change the palette

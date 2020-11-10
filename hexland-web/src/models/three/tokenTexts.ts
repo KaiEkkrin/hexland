@@ -1,4 +1,4 @@
-import { IGridVertex, vertexString } from '../../data/coord';
+import { GridVertex, vertexString } from '../../data/coord';
 import { FeatureDictionary, IFeatureDictionary, ITokenText } from '../../data/feature';
 
 import { Drawn } from '../drawn';
@@ -14,8 +14,8 @@ interface ITokenTextWithMesh extends ITokenText {
 
 const offsetMultiplicand = new THREE.Vector3(-0.5, 0.5, 0.0);
 
-export class TokenTexts extends Drawn implements IFeatureDictionary<IGridVertex, ITokenText> {
-  private readonly _dict = new FeatureDictionary<IGridVertex, ITokenTextWithMesh>(vertexString);
+export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, ITokenText> {
+  private readonly _dict = new FeatureDictionary<GridVertex, ITokenTextWithMesh>(vertexString);
 
   // We cache text geometries here to avoid repeated re-creation
   private readonly _geometries = new Map<string, THREE.ShapeBufferGeometry>();
@@ -111,7 +111,7 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<IGridVertex,
     this._dict.forEach(fn);
   }
 
-  get(position: IGridVertex): ITokenText | undefined {
+  get(position: GridVertex): ITokenText | undefined {
     return this._dict.get(position);
   }
 
@@ -119,7 +119,7 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<IGridVertex,
     return this._dict.iterate();
   }
 
-  remove(oldPosition: IGridVertex): ITokenText | undefined {
+  remove(oldPosition: GridVertex): ITokenText | undefined {
     const removed = this._dict.remove(oldPosition);
     if (removed === undefined) {
       return undefined;

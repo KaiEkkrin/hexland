@@ -1,5 +1,5 @@
 import { ICharacter } from "./character";
-import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from "./coord";
+import { coordString, edgeString, GridCoord, GridEdge, GridVertex, vertexString } from "./coord";
 import { FeatureDictionary, IFeature, IFeatureDictionary, IToken, ITokenProperties, ITokenText } from "./feature";
 import { ITokenGeometry } from "./tokenGeometry";
 import { BaseTokenDrawing, ITokenDrawing, ITokenFace, ITokenFillEdge, ITokenFillVertex, Tokens } from "./tokens";
@@ -8,12 +8,12 @@ import { Observable, Subscription } from 'rxjs';
 
 // Based on ITokenDrawing, describes how to draw tokens' text positioning.
 export interface ITokenTextDrawing {
-  texts: IFeatureDictionary<IGridVertex, ITokenText>;
+  texts: IFeatureDictionary<GridVertex, ITokenText>;
 
   createText(
     token: IToken,
     character: ICharacter | undefined,
-    position: IGridVertex,
+    position: GridVertex,
     atVertex: boolean
   ): ITokenText;
 
@@ -21,10 +21,10 @@ export interface ITokenTextDrawing {
 }
 
 export class BaseTokenDrawingWithText<
-  TFacesDict extends IFeatureDictionary<IGridCoord, ITokenFace>,
-  TFillEdgesDict extends IFeatureDictionary<IGridEdge, ITokenFillEdge>,
-  TFillVerticesDict extends IFeatureDictionary<IGridVertex, ITokenFillVertex>,
-  TTextsDict extends IFeatureDictionary<IGridVertex, ITokenText>
+  TFacesDict extends IFeatureDictionary<GridCoord, ITokenFace>,
+  TFillEdgesDict extends IFeatureDictionary<GridEdge, ITokenFillEdge>,
+  TFillVerticesDict extends IFeatureDictionary<GridVertex, ITokenFillVertex>,
+  TTextsDict extends IFeatureDictionary<GridVertex, ITokenText>
 > extends BaseTokenDrawing<TFacesDict, TFillEdgesDict, TFillVerticesDict> implements ITokenTextDrawing {
   private readonly _texts: TTextsDict;
 
@@ -54,7 +54,7 @@ export class BaseTokenDrawingWithText<
   createText(
     token: ITokenProperties,
     character: ICharacter | undefined,
-    position: IGridVertex,
+    position: GridVertex,
     atVertex: boolean
   ) {
     return {
@@ -69,22 +69,22 @@ export class BaseTokenDrawingWithText<
 
 // For testing.
 export class SimpleTokenTextDrawing extends BaseTokenDrawingWithText<
-  IFeatureDictionary<IGridCoord, ITokenFace>,
-  IFeatureDictionary<IGridEdge, ITokenFillEdge>,
-  IFeatureDictionary<IGridVertex, ITokenFillVertex>,
-  IFeatureDictionary<IGridCoord, ITokenText>
+  IFeatureDictionary<GridCoord, ITokenFace>,
+  IFeatureDictionary<GridEdge, ITokenFillEdge>,
+  IFeatureDictionary<GridVertex, ITokenFillVertex>,
+  IFeatureDictionary<GridCoord, ITokenText>
 > {
   constructor(
-    faces?: IFeatureDictionary<IGridCoord, ITokenFace> | undefined,
-    fillEdges?: IFeatureDictionary<IGridEdge, ITokenFillEdge> | undefined,
-    fillVertices?: IFeatureDictionary<IGridVertex, ITokenFillVertex> | undefined,
-    texts?: IFeatureDictionary<IGridVertex, ITokenText> | undefined
+    faces?: IFeatureDictionary<GridCoord, ITokenFace> | undefined,
+    fillEdges?: IFeatureDictionary<GridEdge, ITokenFillEdge> | undefined,
+    fillVertices?: IFeatureDictionary<GridVertex, ITokenFillVertex> | undefined,
+    texts?: IFeatureDictionary<GridVertex, ITokenText> | undefined
   ) {
     super(
-      faces ?? new FeatureDictionary<IGridCoord, ITokenFace>(coordString),
-      fillEdges ?? new FeatureDictionary<IGridEdge, ITokenFillEdge>(edgeString),
-      fillVertices ?? new FeatureDictionary<IGridVertex, ITokenFillVertex>(vertexString),
-      texts ?? new FeatureDictionary<IGridCoord, ITokenText>(coordString)
+      faces ?? new FeatureDictionary<GridCoord, ITokenFace>(coordString),
+      fillEdges ?? new FeatureDictionary<GridEdge, ITokenFillEdge>(edgeString),
+      fillVertices ?? new FeatureDictionary<GridVertex, ITokenFillVertex>(vertexString),
+      texts ?? new FeatureDictionary<GridCoord, ITokenText>(coordString)
     );
   }
 }
@@ -95,7 +95,7 @@ export class TokensWithObservableText extends Tokens {
   private _observeCharacter: (token: IToken) => Observable<ICharacter | undefined>;
 
   // We use this to track our character subscriptions and unsubscribe as required
-  private readonly _subs = new FeatureDictionary<IGridCoord, IFeature<IGridCoord> & { sub: Subscription }>(coordString);
+  private readonly _subs = new FeatureDictionary<GridCoord, IFeature<GridCoord> & { sub: Subscription }>(coordString);
 
   constructor(
     tokenGeometry: ITokenGeometry,
@@ -137,7 +137,7 @@ export class TokensWithObservableText extends Tokens {
     return true;
   }
 
-  remove(k: IGridCoord) {
+  remove(k: GridCoord) {
     const removed = super.remove(k);
     if (removed !== undefined) {
       // Unsubscribe ourselves from that character observer

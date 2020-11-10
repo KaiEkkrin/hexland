@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { IGridGeometry } from './gridGeometry';
-import { IGridCoord } from '../data/coord';
+import { GridCoord } from '../data/coord';
 
 // Describes how to test for occlusion behind an edge as seen from a coord.
 export class EdgeOcclusion {
@@ -132,7 +132,7 @@ export class TestVertexCollection {
 
   // Enumerates all the vertices at the given coord.
   // The memory yielded will be valid until another enumeration is done.
-  *enumerate(coord: IGridCoord) {
+  *enumerate(coord: GridCoord) {
     this._geometry.createCoordCentre(this._scratch, coord, this._z * 2).sub(this._atOrigin);
     for (let i = 0; i < this._vertices.length; ++i) {
       this._vertices[i].copy(this._atZero[i]).add(this._scratch);

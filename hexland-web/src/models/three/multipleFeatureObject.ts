@@ -1,11 +1,11 @@
-import { IGridCoord } from '../../data/coord';
+import { GridCoord } from '../../data/coord';
 import { IFeature } from '../../data/feature';
 import { IInstancedFeatureObject } from './instancedFeatureObject';
 
 import * as THREE from 'three';
 
 // An instanced feature object that wraps several, complete with a selector.
-export class MultipleFeatureObject<K extends IGridCoord, F extends IFeature<K>> implements IInstancedFeatureObject<K, F> {
+export class MultipleFeatureObject<K extends GridCoord, F extends IFeature<K>> implements IInstancedFeatureObject<K, F> {
   private readonly _createFeatureObj: (index: string, maxInstances: number) => IInstancedFeatureObject<K, F>;
   private readonly _getIndex: (f: F) => string | undefined;
   private readonly _featureObjs = new Map<string, IInstancedFeatureObject<K, F>>();

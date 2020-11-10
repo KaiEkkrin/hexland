@@ -3,7 +3,7 @@ import { HexGridGeometry } from './hexGridGeometry';
 import { MapChangeTracker } from './mapChangeTracker';
 import { ChangeType, ChangeCategory } from '../data/change';
 import { trackChanges, IChangeTracker } from '../data/changeTracking';
-import { IGridEdge, IGridCoord, coordString, edgeString } from '../data/coord';
+import { GridEdge, GridCoord, coordString, edgeString } from '../data/coord';
 import { FeatureDictionary, IFeature } from '../data/feature';
 import { MapType } from '../data/map';
 import { IAnnotation } from '../data/annotation';
@@ -53,10 +53,10 @@ function buildWallsOfThreeHexes(changeTracker: IChangeTracker) {
 }
 
 test('Unprivileged users cannot move other users\' tokens', () => {
-  const areas = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
+  const areas = new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString);
   const tokens = new Tokens(getTokenGeometry(MapType.Hex), new SimpleTokenDrawing());
-  const walls = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
-  const notes = new FeatureDictionary<IGridCoord, IAnnotation>(coordString);
+  const walls = new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString);
+  const notes = new FeatureDictionary<GridCoord, IAnnotation>(coordString);
 
   const handleChangesApplied = jest.fn();
   const handleChangesAborted = jest.fn();
@@ -157,10 +157,10 @@ test('Unprivileged users cannot move other users\' tokens', () => {
 });
 
 test('Unprivileged tokens cannot escape from bounded areas', () => {
-  const areas = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
+  const areas = new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString);
   const tokens = new Tokens(getTokenGeometry(MapType.Hex), new SimpleTokenDrawing());
-  const walls = new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString);
-  const notes = new FeatureDictionary<IGridCoord, IAnnotation>(coordString);
+  const walls = new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString);
+  const notes = new FeatureDictionary<GridCoord, IAnnotation>(coordString);
   const colouring = new MapColouring(new HexGridGeometry(100, 8));
 
   const handleChangesApplied = jest.fn();

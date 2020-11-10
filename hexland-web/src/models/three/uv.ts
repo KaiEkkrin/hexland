@@ -1,4 +1,4 @@
-import { coordString, coordSub, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from '../../data/coord';
+import { coordString, coordSub, edgeString, GridCoord, GridEdge, GridVertex, vertexString } from '../../data/coord';
 import { defaultToken, FeatureDictionary, IFeature, IToken, TokenSize } from '../../data/feature';
 import { ITokenGeometry } from '../../data/tokenGeometry';
 import { IGridGeometry } from '../gridGeometry';
@@ -22,12 +22,12 @@ function createUvBounds(vertices: Iterable<THREE.Vector3>) {
 }
 
 export interface ITokenUvTransform {
-  getFaceTransform(token: IToken & { basePosition: IGridCoord }): THREE.Matrix4 | undefined;
-  getFillEdgeTransform(edge: IFeature<IGridEdge> & { basePosition: IGridCoord, size: TokenSize }): THREE.Matrix4 | undefined;
-  getFillVertexTransform(vertex: IFeature<IGridVertex> & { basePosition: IGridCoord, size: TokenSize }): THREE.Matrix4 | undefined;
+  getFaceTransform(token: IToken & { basePosition: GridCoord }): THREE.Matrix4 | undefined;
+  getFillEdgeTransform(edge: IFeature<GridEdge> & { basePosition: GridCoord, size: TokenSize }): THREE.Matrix4 | undefined;
+  getFillVertexTransform(vertex: IFeature<GridVertex> & { basePosition: GridCoord, size: TokenSize }): THREE.Matrix4 | undefined;
 }
 
-interface IUvTransformFeature<K extends IGridCoord> extends IFeature<K> {
+interface IUvTransformFeature<K extends GridCoord> extends IFeature<K> {
   transform: THREE.Matrix4;
 }
 
@@ -55,7 +55,7 @@ function createTokenUvTransform(
   const faceVertices = [...single.createSolidVertices(new THREE.Vector2(0, 0), alpha, 0)];
 
   const scratchVertices = [...faceVertices.map(v => v.clone())];
-  const uvFaces = new FeatureDictionary<IGridCoord, IUvTransformFeature<IGridCoord>>(coordString);
+  const uvFaces = new FeatureDictionary<GridCoord, IUvTransformFeature<GridCoord>>(coordString);
   const boundsMin = new THREE.Vector2(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
   const boundsMax = new THREE.Vector2(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER);
   for (const c of facePositions) {
@@ -115,7 +115,7 @@ function createTokenUvTransform(
 
   // Using the same boundary and transformations, I can now create the fill edge and
   // vertex records:
-  const uvFillEdges = new FeatureDictionary<IGridEdge, IUvTransformFeature<IGridEdge>>(edgeString);
+  const uvFillEdges = new FeatureDictionary<GridEdge, IUvTransformFeature<GridEdge>>(edgeString);
   for (const e of tokenGeometry.enumerateFillEdgePositions(baseToken)) {
     const relEdge = { ...coordSub(e, facePositions[0]), edge: e.edge };
     const transform = scalingTransform.clone().multiply(translationTransform)
@@ -123,7 +123,7 @@ function createTokenUvTransform(
     uvFillEdges.add({ position: e, colour: 0, transform: transform });
   }
 
-  const uvFillVertices = new FeatureDictionary<IGridVertex, IUvTransformFeature<IGridVertex>>(vertexString);
+  const uvFillVertices = new FeatureDictionary<GridVertex, IUvTransformFeature<GridVertex>>(vertexString);
   for (const v of tokenGeometry.enumerateFillVertexPositions(baseToken)) {
     const relVertex = { ...coordSub(v, facePositions[0]), vertex: v.vertex };
     const transform = scalingTransform.clone().multiply(translationTransform)

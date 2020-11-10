@@ -1,5 +1,5 @@
 import { IAnnotation } from "./annotation";
-import { IGridCoord, IGridEdge } from "./coord";
+import { GridCoord, GridEdge } from "./coord";
 import { IFeature, IToken } from "./feature";
 import { Timestamp } from './types';
 
@@ -36,13 +36,13 @@ export enum ChangeCategory {
 export type AreaAdd = {
   ty: ChangeType.Add;
   cat: ChangeCategory.Area;
-  feature: IFeature<IGridCoord>;
+  feature: IFeature<GridCoord>;
 };
 
 export type AreaRemove = {
   ty: ChangeType.Remove;
   cat: ChangeCategory.Area;
-  position: IGridCoord;
+  position: GridCoord;
 };
 
 export type TokenAdd = {
@@ -54,28 +54,28 @@ export type TokenAdd = {
 export type TokenMove = {
   ty: ChangeType.Move;
   cat: ChangeCategory.Token;
-  newPosition: IGridCoord;
-  oldPosition: IGridCoord;
+  newPosition: GridCoord;
+  oldPosition: GridCoord;
   tokenId: string; // must match what's currently there
 };
 
 export type TokenRemove = {
   ty: ChangeType.Remove;
   cat: ChangeCategory.Token;
-  position: IGridCoord;
+  position: GridCoord;
   tokenId: string; // must match what's currently there
 };
 
 export type WallAdd = {
   ty: ChangeType.Add;
   cat: ChangeCategory.Wall;
-  feature: IFeature<IGridEdge>;
+  feature: IFeature<GridEdge>;
 };
 
 export type WallRemove = {
   ty: ChangeType.Remove;
   cat: ChangeCategory.Wall;
-  position: IGridEdge;
+  position: GridEdge;
 };
 
 export type NoteAdd = {
@@ -87,7 +87,7 @@ export type NoteAdd = {
 export type NoteRemove = {
   ty: ChangeType.Remove;
   cat: ChangeCategory.Note;
-  position: IGridCoord;
+  position: GridCoord;
 };
 
 export type NoChange = {
@@ -95,7 +95,7 @@ export type NoChange = {
   cat: ChangeCategory.Undefined;
 };
 
-export function createAreaAdd(feature: IFeature<IGridCoord>): AreaAdd {
+export function createAreaAdd(feature: IFeature<GridCoord>): AreaAdd {
   return {
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
@@ -103,7 +103,7 @@ export function createAreaAdd(feature: IFeature<IGridCoord>): AreaAdd {
   };
 }
 
-export function createAreaRemove(position: IGridCoord): AreaRemove {
+export function createAreaRemove(position: GridCoord): AreaRemove {
   return {
     ty: ChangeType.Remove,
     cat: ChangeCategory.Area,
@@ -119,7 +119,7 @@ export function createTokenAdd(feature: IToken): TokenAdd {
   };
 }
 
-export function createTokenMove(oldPosition: IGridCoord, newPosition: IGridCoord, tokenId: string): TokenMove {
+export function createTokenMove(oldPosition: GridCoord, newPosition: GridCoord, tokenId: string): TokenMove {
   return {
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
@@ -129,7 +129,7 @@ export function createTokenMove(oldPosition: IGridCoord, newPosition: IGridCoord
   };
 }
 
-export function createTokenRemove(position: IGridCoord, tokenId: string): TokenRemove {
+export function createTokenRemove(position: GridCoord, tokenId: string): TokenRemove {
   return {
     ty: ChangeType.Remove,
     cat: ChangeCategory.Token,
@@ -138,7 +138,7 @@ export function createTokenRemove(position: IGridCoord, tokenId: string): TokenR
   };
 }
 
-export function createWallAdd(feature: IFeature<IGridEdge>): WallAdd {
+export function createWallAdd(feature: IFeature<GridEdge>): WallAdd {
   return {
     ty: ChangeType.Add,
     cat: ChangeCategory.Wall,
@@ -146,7 +146,7 @@ export function createWallAdd(feature: IFeature<IGridEdge>): WallAdd {
   };
 }
 
-export function createWallRemove(position: IGridEdge): WallRemove {
+export function createWallRemove(position: GridEdge): WallRemove {
   return {
     ty: ChangeType.Remove,
     cat: ChangeCategory.Wall,
@@ -162,7 +162,7 @@ export function createNoteAdd(feature: IAnnotation): NoteAdd {
   };
 }
 
-export function createNoteRemove(position: IGridCoord): NoteRemove {
+export function createNoteRemove(position: GridCoord): NoteRemove {
   return {
     ty: ChangeType.Remove,
     cat: ChangeCategory.Note,

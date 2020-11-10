@@ -1,14 +1,14 @@
-import { IGridCoord, IGridEdge, IGridVertex } from "./coord";
+import { GridCoord, GridEdge, GridVertex } from "./coord";
 import { IToken, TokenSize } from "./feature";
 import { MapType } from "./map";
 
 // Expresses what faces, fill edges and fill vertices make up large tokens in
 // the given geometry.
 export interface ITokenGeometry {
-  enumerateFacePositions(token: IToken): Iterable<IGridCoord>;
-  enumerateFillEdgePositions(token: IToken): Iterable<IGridEdge>;
-  enumerateFillVertexPositions(token: IToken): Iterable<IGridVertex>;
-  getTextPosition(token: IToken): IGridVertex;
+  enumerateFacePositions(token: IToken): Iterable<GridCoord>;
+  enumerateFillEdgePositions(token: IToken): Iterable<GridEdge>;
+  enumerateFillVertexPositions(token: IToken): Iterable<GridVertex>;
+  getTextPosition(token: IToken): GridVertex;
   getTextAtVertex(token: IToken): boolean;
   getTokenSizes(): TokenSize[];
 }
@@ -70,7 +70,7 @@ const hexTokenGeometry: ITokenGeometry = {
     }
   },
 
-  *enumerateFillEdgePositions(token: IToken): Iterable<IGridEdge> {
+  *enumerateFillEdgePositions(token: IToken): Iterable<GridEdge> {
     if (token.size === '1') {
       return;
     }
@@ -150,7 +150,7 @@ const hexTokenGeometry: ITokenGeometry = {
     }
   },
 
-  *enumerateFillVertexPositions(token: IToken): Iterable<IGridVertex> {
+  *enumerateFillVertexPositions(token: IToken): Iterable<GridVertex> {
     if (token.size === '1') {
       return;
     }
@@ -208,7 +208,7 @@ const hexTokenGeometry: ITokenGeometry = {
     }
   },
   
-  getTextPosition(token: IToken): IGridVertex {
+  getTextPosition(token: IToken): GridVertex {
     return { ...token.position, vertex: token.size.indexOf('l') >= 0 ? 0 : 1 };
   },
 
@@ -254,7 +254,7 @@ const squareTokenGeometry: ITokenGeometry = {
     yield { x: token.position.x - 2, y: token.position.y };
   },
 
-  *enumerateFillEdgePositions(token: IToken): Iterable<IGridEdge> {
+  *enumerateFillEdgePositions(token: IToken): Iterable<GridEdge> {
     if (token.size === '1') {
       return;
     }
@@ -290,7 +290,7 @@ const squareTokenGeometry: ITokenGeometry = {
     yield { x: token.position.x - 1, y: token.position.y - 1, edge: 0 };
   },
 
-  *enumerateFillVertexPositions(token: IToken): Iterable<IGridVertex> {
+  *enumerateFillVertexPositions(token: IToken): Iterable<GridVertex> {
     if (token.size === '1') {
       return;
     }
@@ -314,7 +314,7 @@ const squareTokenGeometry: ITokenGeometry = {
     yield { x: token.position.x, y: token.position.y - 1, vertex: 0 };
   },
   
-  getTextPosition(token: IToken): IGridVertex {
+  getTextPosition(token: IToken): GridVertex {
     return { ...token.position, vertex: 0 };
   },
 

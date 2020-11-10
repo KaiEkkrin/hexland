@@ -1,4 +1,4 @@
-import { IGridCoord } from '../../data/coord';
+import { GridCoord } from '../../data/coord';
 import { IFeature, ITokenProperties } from '../../data/feature';
 import { fromSpriteGeometryString } from '../../data/sprite';
 import { ICacheLease, ISpritesheetEntry } from '../../services/interfaces';
@@ -37,12 +37,12 @@ const spriteShader = {
 };
 
 export interface ISpriteProperties {
-  basePosition: IGridCoord;
+  basePosition: GridCoord;
   sheetEntry: ISpritesheetEntry;
 }
 
 export class SpriteFeatureObject<
-  K extends IGridCoord,
+  K extends GridCoord,
   F extends (IFeature<K> & ITokenProperties & ISpriteProperties)
 > extends InstancedFeatureObject<K, F> {
   private readonly _geometry: THREE.InstancedBufferGeometry;

@@ -1,4 +1,4 @@
-import { IGridVertex, vertexString } from '../../data/coord';
+import { GridVertex, vertexString } from '../../data/coord';
 import { IFeature, ITokenProperties } from '../../data/feature';
 import { IGridGeometry } from "../gridGeometry";
 import { IInstancedFeatureObject } from './instancedFeatureObject';
@@ -49,7 +49,7 @@ export function createPaletteColouredVertexObject(createGeometry: () => THREE.In
 }
 
 export function createSelectionColouredVertexObject(createGeometry: () => THREE.InstancedBufferGeometry, gridGeometry: IGridGeometry) {
-  return (maxInstances: number) => new MultipleFeatureObject<IGridVertex, IFeature<IGridVertex>>(
+  return (maxInstances: number) => new MultipleFeatureObject<GridVertex, IFeature<GridVertex>>(
     (i: string, maxInstances: number) => new PaletteColouredFeatureObject(
       vertexString,
       (o, p) => gridGeometry.transformToVertex(o, p),
@@ -71,7 +71,7 @@ export function createSpriteVertexObject(
   z: number
 ) {
   const vertexGeometry = createTokenFillVertexGeometry(gridGeometry, alpha, z);
-  return (maxInstances: number) => new MultipleFeatureObject<IGridVertex, IFeature<IGridVertex> & ITokenProperties & ISpriteProperties>(
+  return (maxInstances: number) => new MultipleFeatureObject<GridVertex, IFeature<GridVertex> & ITokenProperties & ISpriteProperties>(
     (url: string, maxInstances: number) => new SpriteFeatureObject(
       redrawFlag,
       textureCache,
@@ -90,12 +90,12 @@ export function createSpriteVertexObject(
 export function createVertices(
   gridGeometry: IGridGeometry,
   needsRedraw: RedrawFlag,
-  createFeatureObject: (maxInstances: number) => IInstancedFeatureObject<IGridVertex, IFeature<IGridVertex>>,
+  createFeatureObject: (maxInstances: number) => IInstancedFeatureObject<GridVertex, IFeature<GridVertex>>,
   maxInstances?: number | undefined
 ) {
-  return new InstancedFeatures<IGridVertex, IFeature<IGridVertex>>(
+  return new InstancedFeatures<GridVertex, IFeature<GridVertex>>(
     gridGeometry, needsRedraw, vertexString, createFeatureObject, maxInstances
   );
 }
 
-export type Vertices = InstancedFeatures<IGridVertex, IFeature<IGridVertex>>;
+export type Vertices = InstancedFeatures<GridVertex, IFeature<GridVertex>>;

@@ -2,7 +2,7 @@ import { IAdventure, IMapSummary, IPlayer } from '../data/adventure';
 import { IAnnotation, defaultAnnotation } from '../data/annotation';
 import { Change, Changes, ChangeType, ChangeCategory, TokenAdd, TokenMove, TokenRemove, AreaAdd, AreaRemove, NoteAdd, NoteRemove, WallAdd, WallRemove } from '../data/change';
 import { ICharacter, maxCharacters } from '../data/character';
-import { IGridCoord, defaultGridCoord, IGridEdge, defaultGridEdge, coordString } from '../data/coord';
+import { GridCoord, defaultGridCoord, GridEdge, defaultGridEdge, coordString } from '../data/coord';
 import { IToken, defaultToken, IFeature, defaultArea, defaultWall, IFeatureDictionary, IIdFeature, FeatureDictionary, parseTokenSize } from '../data/feature';
 import { IImage, IImages } from '../data/image';
 import { IInvite } from '../data/invite';
@@ -57,9 +57,9 @@ class RecursingConverter<T> extends ShallowConverter<T> {
 // We provide some special conversion for raw data that lacks token ids, which attempts
 // to assign unique ids to them based on position tracking:
 class AddTokenFeatureConverter extends RecursingConverter<IToken> {
-  private readonly _newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>;
+  private readonly _newTokenDict: IFeatureDictionary<GridCoord, IIdFeature<GridCoord>>;
 
-  constructor(newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>) {
+  constructor(newTokenDict: IFeatureDictionary<GridCoord, IIdFeature<GridCoord>>) {
     super(defaultToken, {
       "position": (conv, raw) => {
         conv.position = gridCoordConverter.convert(raw);
@@ -90,9 +90,9 @@ class AddTokenFeatureConverter extends RecursingConverter<IToken> {
 }
 
 class TokenMoveConverter extends RecursingConverter<TokenMove> {
-  private readonly _newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>;
+  private readonly _newTokenDict: IFeatureDictionary<GridCoord, IIdFeature<GridCoord>>;
 
-  constructor(newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>) {
+  constructor(newTokenDict: IFeatureDictionary<GridCoord, IIdFeature<GridCoord>>) {
     super({
       ty: ChangeType.Move,
       cat: ChangeCategory.Token,
@@ -129,9 +129,9 @@ class TokenMoveConverter extends RecursingConverter<TokenMove> {
 }
 
 class TokenRemoveConverter extends RecursingConverter<TokenRemove> {
-  private readonly _newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>;
+  private readonly _newTokenDict: IFeatureDictionary<GridCoord, IIdFeature<GridCoord>>;
 
-  constructor(newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>) {
+  constructor(newTokenDict: IFeatureDictionary<GridCoord, IIdFeature<GridCoord>>) {
     super({
       ty: ChangeType.Remove,
       cat: ChangeCategory.Token,
@@ -172,7 +172,7 @@ class ChangeConverter extends ShallowConverter<Change> {
   private readonly _tokenMoveConverter: IConverter<TokenMove>;
   private readonly _tokenRemoveConverter: IConverter<TokenRemove>;
 
-  constructor(newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>) {
+  constructor(newTokenDict: IFeatureDictionary<GridCoord, IIdFeature<GridCoord>>) {
     super({ ty: ChangeType.Add, cat: ChangeCategory.Undefined });
     this._tokenAddConverter = createTokenAddConverter(newTokenDict);
     this._tokenMoveConverter = new TokenMoveConverter(newTokenDict);
@@ -268,7 +268,7 @@ const noteRemoveConverter = new RecursingConverter<NoteRemove>({
   }
 });
 
-function createTokenAddConverter(newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>) {
+function createTokenAddConverter(newTokenDict: IFeatureDictionary<GridCoord, IIdFeature<GridCoord>>) {
   const featureConverter = new AddTokenFeatureConverter(newTokenDict);
   return new RecursingConverter<TokenAdd>({
     ty: ChangeType.Add,
@@ -311,22 +311,22 @@ const annotationConverter = new RecursingConverter<IAnnotation>(defaultAnnotatio
   },
 });
 
-const areaConverter = new RecursingConverter<IFeature<IGridCoord>>(defaultArea, {
+const areaConverter = new RecursingConverter<IFeature<GridCoord>>(defaultArea, {
   "position": (conv, raw) => {
     conv.position = gridCoordConverter.convert(raw);
     return conv;
   },
 });
 
-const wallConverter = new RecursingConverter<IFeature<IGridEdge>>(defaultWall, {
+const wallConverter = new RecursingConverter<IFeature<GridEdge>>(defaultWall, {
   "position": (conv, raw) => {
     conv.position = gridEdgeConverter.convert(raw);
     return conv;
   },
 });
 
-const gridCoordConverter = new ShallowConverter<IGridCoord>(defaultGridCoord);
-const gridEdgeConverter = new ShallowConverter<IGridEdge>(defaultGridEdge);
+const gridCoordConverter = new ShallowConverter<GridCoord>(defaultGridCoord);
+const gridEdgeConverter = new ShallowConverter<GridEdge>(defaultGridEdge);
 
 // *** EXPORTS ***
 
@@ -446,7 +446,7 @@ export const profileConverter = new RecursingConverter<IProfile>({
 });
 
 export function createChangesConverter() {
-  const newTokenDict = new FeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>(coordString);
+  const newTokenDict = new FeatureDictionary<GridCoord, IIdFeature<GridCoord>>(coordString);
   const changeConverter = new ChangeConverter(newTokenDict);
   return new RecursingConverter<Changes>({
     chs: [],

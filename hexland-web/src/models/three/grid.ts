@@ -1,4 +1,4 @@
-import { IGridCoord, coordString, IGridVertex, vertexString } from '../../data/coord';
+import { GridCoord, coordString, GridVertex, vertexString } from '../../data/coord';
 import { IFeature, FeatureDictionary } from '../../data/feature';
 import { createAreaGeometry, Areas, createAreas } from './areas';
 import { Drawn } from '../drawn';
@@ -70,7 +70,7 @@ const gridColouredShader = {
   ].join("\n")
 };
 
-class GridColouredFeatureObject<K extends IGridCoord, F extends IFeature<K>> extends InstancedFeatureObject<K, F> {
+class GridColouredFeatureObject<K extends GridCoord, F extends IFeature<K>> extends InstancedFeatureObject<K, F> {
   private readonly _gridGeometry: IGridGeometry;
   private readonly _geometry: THREE.InstancedBufferGeometry;
   private readonly _tileAttr: THREE.InstancedBufferAttribute;
@@ -178,7 +178,7 @@ function createGridVertexGeometry(gridGeometry: IGridGeometry, alpha: number, z:
 }
 
 function createGridColouredAreaObject(gridGeometry: IGridGeometry, z: number, tileOrigin: THREE.Vector2) {
-  return (maxInstances: number) => new GridColouredFeatureObject<IGridCoord, IFeature<IGridCoord>>(
+  return (maxInstances: number) => new GridColouredFeatureObject<GridCoord, IFeature<GridCoord>>(
     coordString,
     (o, p) => gridGeometry.transformToCoord(o, p),
     gridGeometry,
@@ -189,7 +189,7 @@ function createGridColouredAreaObject(gridGeometry: IGridGeometry, z: number, ti
 }
 
 function createGridColouredVertexObject(gridGeometry: IGridGeometry, alpha: number, z: number, tileOrigin: THREE.Vector2) {
-  return (maxInstances: number) => new GridColouredFeatureObject<IGridVertex, IFeature<IGridVertex>>(
+  return (maxInstances: number) => new GridColouredFeatureObject<GridVertex, IFeature<GridVertex>>(
     vertexString,
     (o, p) => gridGeometry.transformToVertex(o, p),
     gridGeometry,
@@ -216,7 +216,7 @@ export class Grid extends Drawn {
   private readonly _faceCoordTargetReader: RenderTargetReader;
   private readonly _texelReadBuf = new Uint8Array(4);
 
-  private readonly _temp: FeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
+  private readonly _temp: FeatureDictionary<GridCoord, IFeature<GridCoord>>;
 
   private _isDisposed = false;
 
@@ -266,7 +266,7 @@ export class Grid extends Drawn {
     );
     this._vertices.addToScene(this._vertexCoordScene);
 
-    this._temp = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
+    this._temp = new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString);
 
     // We'll be wanting to sample the coord render target a lot in order to detect what grid to draw,
     // so we'll set up a reader
@@ -354,7 +354,7 @@ export class Grid extends Drawn {
 
     // Remove everything outside the range.  Assume the faces and vertices are matching
     // (they should be!)
-    const toDelete: IGridCoord[] = [];
+    const toDelete: GridCoord[] = [];
     for (let face of this._faces) {
       if (this._temp.get(face.position) === undefined) {
         toDelete.push(face.position);
@@ -432,14 +432,14 @@ export class Grid extends Drawn {
     }
   }
 
-  getGridCoordAt(cp: THREE.Vector3): IGridCoord | undefined {
+  getGridCoordAt(cp: THREE.Vector3): GridCoord | undefined {
     return this._faceCoordTargetReader.sample(
       cp.x, cp.y,
       (buf, offset) => this.geometry.decodeCoordSample(buf, offset, this._tileOrigin)
     );
   }
 
-  getGridVertexAt(renderer: THREE.WebGLRenderer, cp: THREE.Vector3): IGridVertex | undefined {
+  getGridVertexAt(renderer: THREE.WebGLRenderer, cp: THREE.Vector3): GridVertex | undefined {
     // This is not done very often and only for one texel at a time, so we forego
     // pre-reading everything
     renderer.readRenderTargetPixels(this._vertexCoordRenderTarget, cp.x, cp.y, 1, 1, this._texelReadBuf);

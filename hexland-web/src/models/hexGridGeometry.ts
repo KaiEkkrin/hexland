@@ -1,4 +1,4 @@
-import { IGridCoord, IGridEdge, IGridVertex, coordAdd } from '../data/coord';
+import { GridCoord, GridEdge, GridVertex, coordAdd } from '../data/coord';
 import { EdgeOcclusion } from './occlusion';
 import { BaseGeometry, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
@@ -60,13 +60,13 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     return target.set(c.x + this._xOffTop, c.y + this._yOffTop, c.z);
   }
 
-  createAnnotationPosition(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, coord: IGridCoord, z: number, alpha: number): THREE.Vector3 {
+  createAnnotationPosition(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, coord: GridCoord, z: number, alpha: number): THREE.Vector3 {
     this.createCoordCentre(target, coord, z);
     this.createLeft(scratch1, target);
     return target.lerp(scratch1, alpha);
   }
 
-  createTokenAnnotationPosition(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, coord: IGridCoord, z: number, alpha: number): THREE.Vector3 {
+  createTokenAnnotationPosition(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, coord: GridCoord, z: number, alpha: number): THREE.Vector3 {
     this.createCoordCentre(target, coord, z);
     this.createBottomLeft(scratch1, target);
     return target.lerp(scratch1, alpha);
@@ -91,7 +91,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     }
   }
 
-  protected createEdgeGeometry(coord: IGridEdge, alpha: number, z: number): EdgeGeometry {
+  protected createEdgeGeometry(coord: GridEdge, alpha: number, z: number): EdgeGeometry {
     let centre = this.createCoordCentre(new THREE.Vector3(), coord, z);
     let otherCentre = this.createCoordCentre(
       new THREE.Vector3(),
@@ -106,7 +106,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     return new EdgeGeometry(tip1, tip2, centre, otherCentre, alpha);
   }
 
-  createVertexCentre(target: THREE.Vector3, vertex: IGridVertex, z: number): THREE.Vector3 {
+  createVertexCentre(target: THREE.Vector3, vertex: GridVertex, z: number): THREE.Vector3 {
     // Vertex 0 is the left, vertex 1 the top left
     this.createCoordCentre(target, vertex, z);
     return vertex.vertex === 0 ? this.createLeft(target, target) : this.createTopLeft(target, target);
@@ -142,7 +142,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     yield offset + 6;
   }
 
-  createEdgeOcclusion(coord: IGridCoord, edge: IGridEdge, z: number): EdgeOcclusion {
+  createEdgeOcclusion(coord: GridCoord, edge: GridEdge, z: number): EdgeOcclusion {
     let [edgeA, edgeB] = [new THREE.Vector3(), new THREE.Vector3()];
 
     let centre = this.createCentre(new THREE.Vector3(), edge.x, edge.y, z);
@@ -152,7 +152,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     return new EdgeOcclusion(centre, edgeA, edgeB, this._hexSize * 0.01);
   }
 
-  *createOcclusionTestVertices(coord: IGridCoord, z: number, alpha: number): Iterable<THREE.Vector3> {
+  *createOcclusionTestVertices(coord: GridCoord, z: number, alpha: number): Iterable<THREE.Vector3> {
     let centre = new THREE.Vector3();
     yield this.createCoordCentre(centre, coord, z);
 
@@ -225,7 +225,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     return [ 0, 1, 2 ];
   }
 
-  forEachAdjacentFace(coord: IGridCoord, fn: (face: IGridCoord, edge: IGridEdge) => void) {
+  forEachAdjacentFace(coord: GridCoord, fn: (face: GridCoord, edge: GridEdge) => void) {
     // Top left
     fn(
       { x: coord.x - 1, y: coord.y },
@@ -263,7 +263,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     );
   }
 
-  getEdgeFaceAdjacency(edge: IGridEdge): IGridCoord[] {
+  getEdgeFaceAdjacency(edge: GridEdge): GridCoord[] {
     switch (edge.edge) {
       case 0: // left
         return [{ x: edge.x - 1, y: edge.y }, { x: edge.x, y: edge.y }];
@@ -276,7 +276,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     }
   }
 
-  getEdgeVertexAdjacency(edge: IGridEdge): IGridVertex[] {
+  getEdgeVertexAdjacency(edge: GridEdge): GridVertex[] {
     switch (edge.edge) {
       case 0:
         return [{ x: edge.x, y: edge.y, vertex: 0 }, { x: edge.x, y: edge.y, vertex: 1 }];
@@ -289,7 +289,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     }
   }
 
-  getVertexEdgeAdjacency(vertex: IGridVertex): IGridEdge[] {
+  getVertexEdgeAdjacency(vertex: GridVertex): GridEdge[] {
     switch (vertex.vertex) {
       case 0:
         return [
@@ -311,7 +311,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     return new HexGridGeometry(this._hexSize, 1);
   }
 
-  transformToEdge(m: THREE.Matrix4, coord: IGridEdge): THREE.Matrix4 {
+  transformToEdge(m: THREE.Matrix4, coord: GridEdge): THREE.Matrix4 {
     const centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
     m.makeTranslation(centre.x, centre.y, 0);
     return coord.edge === 2 ? m.multiply(
@@ -321,7 +321,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     ) : m;
   }
 
-  transformToVertex(m: THREE.Matrix4, coord: IGridVertex): THREE.Matrix4 {
+  transformToVertex(m: THREE.Matrix4, coord: GridVertex): THREE.Matrix4 {
     const centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
     m.makeTranslation(centre.x, centre.y, 0);
     return coord.vertex === 1 ? m.multiply(

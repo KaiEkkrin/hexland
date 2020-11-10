@@ -1,6 +1,6 @@
 import { Change, ChangeType, ChangeCategory, TokenMove, TokenRemove, createTokenAdd, createWallAdd, createTokenMove, createWallRemove } from './change';
 import { trackChanges, SimpleChangeTracker } from './changeTracking';
-import { IGridCoord, coordString, edgeString, IGridEdge } from './coord';
+import { GridCoord, coordString, edgeString, GridEdge } from './coord';
 import { defaultTokenProperties, FeatureDictionary, IFeature } from './feature';
 import { IMap, MapType } from './map';
 import { IAnnotation } from './annotation';
@@ -10,10 +10,10 @@ import { SimpleTokenDrawing, Tokens } from './tokens';
 
 function createChangeTracker(ty: MapType, userPolicy?: IUserPolicy | undefined) {
   return new SimpleChangeTracker(
-    new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
+    new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString),
     new Tokens(getTokenGeometry(ty), new SimpleTokenDrawing()),
-    new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
-    new FeatureDictionary<IGridCoord, IAnnotation>(coordString),
+    new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString),
+    new FeatureDictionary<GridCoord, IAnnotation>(coordString),
     userPolicy
   );
 }

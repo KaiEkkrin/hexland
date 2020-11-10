@@ -1,4 +1,4 @@
-import { IGridCoord, defaultGridCoord, IGridEdge, IGridVertex, defaultGridEdge } from './coord';
+import { GridCoord, defaultGridCoord, GridEdge, GridVertex, defaultGridEdge } from './coord';
 import { ISprite } from './sprite';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -64,9 +64,9 @@ export function parseTokenSize(s: string): TokenSize {
   }
 }
 
-export interface IToken extends IIdFeature<IGridCoord>, ITokenProperties {}
+export interface IToken extends IIdFeature<GridCoord>, ITokenProperties {}
 
-export const defaultArea: IFeature<IGridCoord> = {
+export const defaultArea: IFeature<GridCoord> = {
   position: defaultGridCoord,
   colour: 0
 };
@@ -76,7 +76,7 @@ export const defaultToken: IToken = {
   ...defaultTokenProperties
 };
 
-export const defaultWall: IFeature<IGridEdge> = {
+export const defaultWall: IFeature<GridEdge> = {
   position: defaultGridEdge,
   colour: 0
 };
@@ -85,14 +85,14 @@ export const defaultWall: IFeature<IGridEdge> = {
 // and use the vertex structure for the coord too, complete with the `atVertex` flag.
 // This one is used only internally, derived from the token, and never added as part
 // of a change.
-export interface ITokenText extends IFeature<IGridVertex> {
+export interface ITokenText extends IFeature<GridVertex> {
   atVertex: boolean
   size: number,
   text: string,
 }
 
 // The interface of a dictionary of these
-export interface IFeatureDictionary<K extends IGridCoord, F extends IFeature<K>> extends Iterable<F> {
+export interface IFeatureDictionary<K extends GridCoord, F extends IFeature<K>> extends Iterable<F> {
   // Returns true if the feature wasn't already present (we added it), else false
   // (we didn't replace it.)
   add(f: F): boolean;
@@ -117,7 +117,7 @@ export interface IFeatureDictionary<K extends IGridCoord, F extends IFeature<K>>
 }
 
 // A basic feature dictionary that can be re-used or extended
-export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> implements IFeatureDictionary<K, F> {
+export class FeatureDictionary<K extends GridCoord, F extends IFeature<K>> implements IFeatureDictionary<K, F> {
   private readonly _toIndex: (coord: K) => string;
   private readonly _values: Map<string, F>;
 
@@ -191,25 +191,25 @@ export class FeatureDictionary<K extends IGridCoord, F extends IFeature<K>> impl
 // - The coords that are *occupied* by tokens, which is more in the case of larger tokens.
 // Here we provide the latter in the form of the `at` method.  We also make it possible to
 // look up tokens by id, which allows us to decouple a lot of the UI from token positioning.
-export interface ITokenDictionary extends IFeatureDictionary<IGridCoord, IToken> {
+export interface ITokenDictionary extends IFeatureDictionary<GridCoord, IToken> {
   // Returns the token that occupies this grid face, or undefined if none.
   // (Distinct from `get` which will only return a token if its native
   // position is the given one.)
-  at(face: IGridCoord): IToken | undefined;
+  at(face: GridCoord): IToken | undefined;
 
   // The clone should produce a token dictionary
   clone(): ITokenDictionary;
 
   // Returns all the face positions of a given token.
-  enumerateFacePositions(token: IToken): Iterable<IGridCoord>;
+  enumerateFacePositions(token: IToken): Iterable<GridCoord>;
 
   // Returns all the fill edge positions of a given token.
   // (Probably won't need calling externally.)
-  enumerateFillEdgePositions(token: IToken): Iterable<IGridEdge>;
+  enumerateFillEdgePositions(token: IToken): Iterable<GridEdge>;
 
   // Returns true if we have a fill edge here, else false.  (For checking for
   // conflicts with walls.)
-  hasFillEdge(edge: IGridEdge): boolean;
+  hasFillEdge(edge: GridEdge): boolean;
 
   // Returns the token with the given id, or undefined for none.
   ofId(id: string): IToken | undefined;

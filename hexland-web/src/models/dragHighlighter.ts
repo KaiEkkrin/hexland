@@ -1,5 +1,5 @@
 import { Change, WallAdd, WallRemove, AreaAdd, AreaRemove, createAreaAdd, createWallAdd, createWallRemove, createAreaRemove } from "../data/change";
-import { IGridCoord, IGridEdge, edgesEqual, coordsEqual, edgeString, coordString, IGridVertex, verticesEqual, vertexString } from "../data/coord";
+import { GridCoord, GridEdge, edgesEqual, coordsEqual, edgeString, coordString, GridVertex, verticesEqual, vertexString } from "../data/coord";
 import { IFeature, IFeatureDictionary } from '../data/feature';
 import { IDragRectangle } from "./interfaces";
 
@@ -8,7 +8,7 @@ import fluent from "fluent-iterable";
 // Helps handling a hover highlight with drag to select many and release to commit
 // them into new features.
 // We assume two colours in the highlights: 0 for add, 1 for remove.
-abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
+abstract class DragHighlighter<K extends GridCoord, F extends IFeature<K>> {
   private readonly _features: IFeatureDictionary<K, F>; // inspect, but do not edit directly!
   private readonly _highlights: IFeatureDictionary<K, F>;
 
@@ -157,64 +157,64 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
   }
 }
 
-export class EdgeHighlighter extends DragHighlighter<IGridEdge, IFeature<IGridEdge>> {
-  protected keysEqual(a: IGridEdge, b: IGridEdge | undefined) {
+export class EdgeHighlighter extends DragHighlighter<GridEdge, IFeature<GridEdge>> {
+  protected keysEqual(a: GridEdge, b: GridEdge | undefined) {
     return edgesEqual(a, b);
   }
 
-  protected keyString(a: IGridEdge | undefined) {
+  protected keyString(a: GridEdge | undefined) {
     return a === undefined ? "undefined" : edgeString(a);
   }
 
-  protected createFeatureAdd(position: IGridEdge, colour: number): WallAdd {
+  protected createFeatureAdd(position: GridEdge, colour: number): WallAdd {
     return createWallAdd({ position: position, colour: colour });
   }
 
-  protected createFeatureRemove(position: IGridEdge): WallRemove {
+  protected createFeatureRemove(position: GridEdge): WallRemove {
     return createWallRemove(position);
   }
 
-  protected createHighlight(position: IGridEdge, subtract: boolean): IFeature<IGridEdge> {
+  protected createHighlight(position: GridEdge, subtract: boolean): IFeature<GridEdge> {
     return { position: position, colour: subtract ? 1 : 0 };
   }
 }
 
 // This face highlighter is extended to support rectangle highlighting.
-export class FaceHighlighter extends DragHighlighter<IGridCoord, IFeature<IGridCoord>> {
+export class FaceHighlighter extends DragHighlighter<GridCoord, IFeature<GridCoord>> {
   private readonly _dragRectangle: IDragRectangle;
 
-  private _startPosition: IGridCoord | undefined;
+  private _startPosition: GridCoord | undefined;
 
   constructor(
-    features: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
-    highlights: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
+    features: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
+    highlights: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
     dragRectangle: IDragRectangle
   ) {
     super(features, highlights);
     this._dragRectangle = dragRectangle;
   }
 
-  protected keysEqual(a: IGridCoord, b: IGridCoord | undefined) {
+  protected keysEqual(a: GridCoord, b: GridCoord | undefined) {
     return coordsEqual(a, b);
   }
 
-  protected keyString(a: IGridCoord | undefined) {
+  protected keyString(a: GridCoord | undefined) {
     return a === undefined ? "undefined" : coordString(a);
   }
 
-  protected createFeatureAdd(position: IGridCoord, colour: number): AreaAdd {
+  protected createFeatureAdd(position: GridCoord, colour: number): AreaAdd {
     return createAreaAdd({ position: position, colour: colour });
   }
 
-  protected createFeatureRemove(position: IGridCoord): AreaRemove {
+  protected createFeatureRemove(position: GridCoord): AreaRemove {
     return createAreaRemove(position);
   }
 
-  protected createHighlight(position: IGridCoord, subtract: boolean): IFeature<IGridCoord> {
+  protected createHighlight(position: GridCoord, subtract: boolean): IFeature<GridCoord> {
     return { position: position, colour: subtract ? 1 : 0 };
   }
 
-  protected dragTo(position: IGridCoord, subtract: boolean) {
+  protected dragTo(position: GridCoord, subtract: boolean) {
     if (this._dragRectangle.isEnabled() && this._startPosition !== undefined) {
       // We highlight the contents of the rectangle between our start position
       // and this one, replacing anything we might have had; the filtering is
@@ -234,42 +234,42 @@ export class FaceHighlighter extends DragHighlighter<IGridCoord, IFeature<IGridC
     this._startPosition = undefined;
   }
 
-  dragCancel(position: IGridCoord | undefined, colour: number) {
+  dragCancel(position: GridCoord | undefined, colour: number) {
     super.dragCancel(position, colour);
     this._startPosition = undefined;
   }
 
-  dragEnd(position: IGridCoord | undefined, colour: number) {
+  dragEnd(position: GridCoord | undefined, colour: number) {
     let result = super.dragEnd(position, colour);
     this._startPosition = undefined;
     return result;
   }
 
-  dragStart(position: IGridCoord | undefined, colour: number) {
+  dragStart(position: GridCoord | undefined, colour: number) {
     super.dragStart(position, colour);
     this._startPosition = position;
   }
 }
 
 // The vertex highlighter doesn't actually support making changes (none are relevant right now)
-export class VertexHighlighter extends DragHighlighter<IGridVertex, IFeature<IGridVertex>> {
-  protected keysEqual(a: IGridVertex, b: IGridVertex | undefined) {
+export class VertexHighlighter extends DragHighlighter<GridVertex, IFeature<GridVertex>> {
+  protected keysEqual(a: GridVertex, b: GridVertex | undefined) {
     return verticesEqual(a, b);
   }
 
-  protected keyString(a: IGridVertex | undefined) {
+  protected keyString(a: GridVertex | undefined) {
     return a === undefined ? "undefined" : vertexString(a);
   }
 
-  protected createFeatureAdd(position: IGridVertex, colour: number) {
+  protected createFeatureAdd(position: GridVertex, colour: number) {
     return undefined;
   }
 
-  protected createFeatureRemove(position: IGridVertex) {
+  protected createFeatureRemove(position: GridVertex) {
     return undefined;
   }
 
-  protected createHighlight(position: IGridVertex, subtract: boolean): IFeature<IGridVertex> {
+  protected createHighlight(position: GridVertex, subtract: boolean): IFeature<GridVertex> {
     return { position: position, colour: subtract ? 1 : 0 };
   }
 }

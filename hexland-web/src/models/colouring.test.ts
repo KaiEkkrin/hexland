@@ -2,7 +2,7 @@ import { MapColouring } from './colouring';
 import { HexGridGeometry } from './hexGridGeometry';
 import { SquareGridGeometry } from './squareGridGeometry';
 import { FeatureDictionary, IFeature } from '../data/feature';
-import { IGridCoord, coordString } from '../data/coord';
+import { GridCoord, coordString } from '../data/coord';
 
 // TODO This will be a super trivial test because expressing complex maps in
 // code isn't nice -- to better exercise it, I should create a map colouring
@@ -146,7 +146,7 @@ test('Surround three hexes on a hex grid', () => {
 
   // The same should hold for the visualisation, except we can't expect the further-away
   // hexes to be visualised
-  let vis = new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString);
+  let vis = new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString);
   colouring.visualise(vis, (p, c, cc) => { return { position: p, colour: c / cc }; });
 
   let zeroVisColour = vis.get(zero)?.colour ?? -1;

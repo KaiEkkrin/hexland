@@ -1,10 +1,10 @@
-import { IGridCoord, defaultGridCoord } from "./coord";
+import { GridCoord, defaultGridCoord } from "./coord";
 import { IFeature } from "./feature";
 
 // Describes an annotation on the map.
 // This is expected to be rendered using React and so needs to have a unique id
 // to use as a key in the list of annotation elements.
-export interface IAnnotation extends IFeature<IGridCoord> {
+export interface IAnnotation extends IFeature<GridCoord> {
   id: string; // starts with "Token" for annotations created from token notes
   text: string;
   visibleToPlayers: boolean; // if false, only the owner will see it rendered

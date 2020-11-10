@@ -7,7 +7,7 @@ import { MockWebStorage } from './mockWebStorage';
 import { IAnnotation } from '../data/annotation';
 import { ChangeCategory, ChangeType, Changes, TokenAdd, TokenMove, WallAdd } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
-import { coordString, edgeString, IGridCoord, IGridEdge } from '../data/coord';
+import { coordString, edgeString, GridCoord, GridEdge } from '../data/coord';
 import { FeatureDictionary, IFeature } from '../data/feature';
 import { IMap, MapType } from '../data/map';
 import * as Policy from '../data/policy';
@@ -738,10 +738,10 @@ describe('test functions', () => {
     // Watch changes, mocking up the handlers:
     const tokens = new Tokens(getTokenGeometry(MapType.Square), new SimpleTokenDrawing());
     const changeTracker = new SimpleChangeTracker(
-      new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
+      new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString),
       tokens,
-      new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
-      new FeatureDictionary<IGridCoord, IAnnotation>(coordString),
+      new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString),
+      new FeatureDictionary<GridCoord, IAnnotation>(coordString),
       undefined
     );
 
