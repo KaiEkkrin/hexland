@@ -1,4 +1,4 @@
-import { IChange } from "../data/change";
+import { Change } from "../data/change";
 import { IGridVertex, IGridEdge, verticesEqual, IGridCoord, coordsEqual, vertexString } from "../data/coord";
 import { FeatureDictionary, IFeature, IFeatureDictionary } from "../data/feature";
 import { MapColouring } from "./colouring";
@@ -121,7 +121,7 @@ export class WallHighlighter {
   private readonly _vertexHighlighter: VertexHighlighter;
 
   // How to check whether the wall changes we made are valid
-  private readonly _validate: (changes: IChange[]) => boolean;
+  private readonly _validate: (changes: Change[]) => boolean;
 
   private _lastHoverPosition: IGridVertex | undefined = undefined;
 
@@ -130,7 +130,7 @@ export class WallHighlighter {
     walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
     wallHighlights: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
     vertexHighlights: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>>,
-    validate: (changes: IChange[]) => boolean
+    validate: (changes: Change[]) => boolean
   ) {
     this._geometry = geometry;
     this._edgeHighlighter = new EdgeHighlighter(walls, wallHighlights);
@@ -158,7 +158,7 @@ export class WallHighlighter {
     this._edgeHighlighter.dragStart(undefined, colour);
   }
 
-  dragEnd(position: IGridVertex | undefined, colour: number): IChange[] {
+  dragEnd(position: IGridVertex | undefined, colour: number): Change[] {
     this.moveHighlight(position, colour);
     if (this._edgeHighlighter.inDrag === false) {
       return [];
@@ -201,7 +201,7 @@ export class WallRectangleHighlighter {
   private readonly _faceHighlighter: FaceHighlighter;
 
   // How to check whether the wall changes we made are valid
-  private readonly _validate: (changes: IChange[]) => boolean;
+  private readonly _validate: (changes: Change[]) => boolean;
 
   private _lastHoverPosition: IGridCoord | undefined;
 
@@ -211,7 +211,7 @@ export class WallRectangleHighlighter {
     walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
     wallHighlights: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
     faceHighlights: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
-    validate: (changes: IChange[]) => boolean,
+    validate: (changes: Change[]) => boolean,
     dragRectangle: IDragRectangle
   ) {
     this._geometry = geometry;
@@ -288,7 +288,7 @@ export class RoomHighlighter extends WallRectangleHighlighter {
     walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
     wallHighlights: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>,
     faceHighlights: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>,
-    validate: (changes: IChange[]) => boolean,
+    validate: (changes: Change[]) => boolean,
     dragRectangle: IDragRectangle
   ) {
     super(geometry, faces, walls, wallHighlights, faceHighlights, validate, dragRectangle);

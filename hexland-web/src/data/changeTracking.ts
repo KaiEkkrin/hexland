@@ -1,5 +1,5 @@
 import { IAnnotation } from "./annotation";
-import { IChange, ChangeCategory, ChangeType, IAreaAdd, IAreaRemove, ITokenAdd, IWallAdd, IWallRemove, ITokenRemove, ITokenMove, INoteAdd, INoteRemove, createAreaAdd, createWallAdd, createNoteAdd, createTokenAdd } from "./change";
+import { Change, ChangeCategory, ChangeType, AreaAdd, AreaRemove, TokenAdd, WallAdd, WallRemove, TokenRemove, TokenMove, NoteAdd, NoteRemove, createAreaAdd, createWallAdd, createNoteAdd, createTokenAdd } from "./change";
 import { IGridCoord, IGridEdge } from "./coord";
 import { IFeature, IToken, IFeatureDictionary, ITokenDictionary } from "./feature";
 import { IMap } from "./map";
@@ -27,7 +27,7 @@ export interface IChangeTracker {
   changesAborted(): void;
 
   // Gets a minimal collection of changes to add everything in this tracker.
-  getConsolidated: () => IChange[];
+  getConsolidated: () => Change[];
 }
 
 // A simple implementation for testing, etc.
@@ -152,8 +152,8 @@ export class SimpleChangeTracker implements IChangeTracker {
     return;
   }
 
-  getConsolidated(): IChange[] {
-    const all: IChange[] = [];
+  getConsolidated(): Change[] {
+    const all: Change[] = [];
     this._areas.forEach(f => all.push(createAreaAdd(f)));
     
     this._tokens.forEach(f => {
@@ -173,7 +173,7 @@ export class SimpleChangeTracker implements IChangeTracker {
 }
 
 // Helps work out the theoretical change in object count from a list of changes
-export function netObjectCount(chs: Iterable<IChange>) {
+export function netObjectCount(chs: Iterable<Change>) {
   return fluent(chs).map(ch => {
     switch (ch.ty) {
       case ChangeType.Add: return 1;
@@ -184,7 +184,7 @@ export function netObjectCount(chs: Iterable<IChange>) {
 }
 
 // Handles a whole collection of (ordered) changes in one go, either applying or rejecting all.
-export function trackChanges(map: IMap, tracker: IChangeTracker, chs: Iterable<IChange>, user: string): boolean {
+export function trackChanges(map: IMap, tracker: IChangeTracker, chs: Iterable<Change>, user: string): boolean {
   // Begin applying each change (in practice, this does all the removes.)
   const applications: (IChangeApplication[]) = [];
   for (const c of chs) {
@@ -259,7 +259,7 @@ function canDoAnything(map: IMap, user: string) {
 // we want to roll back to the previous state, or undefined if this change couldn't be applied.
 // (For now, I'm going to be quite pedantic and reject even things like remove-twice, because
 // I want to quickly detect any out-of-sync situations...)
-function trackChange(map: IMap, tracker: IChangeTracker, ch: IChange, user: string): IChangeApplication | undefined {
+function trackChange(map: IMap, tracker: IChangeTracker, ch: Change, user: string): IChangeApplication | undefined {
   switch (ch.cat) {
     case ChangeCategory.Area: return canDoAnything(map, user) ? trackAreaChange(tracker, ch) : undefined;
     case ChangeCategory.Token: return trackTokenChange(map, tracker, ch, user);
@@ -269,10 +269,10 @@ function trackChange(map: IMap, tracker: IChangeTracker, ch: IChange, user: stri
   }
 }
 
-function trackAreaChange(tracker: IChangeTracker, ch: IChange): IChangeApplication | undefined {
+function trackAreaChange(tracker: IChangeTracker, ch: Change): IChangeApplication | undefined {
   switch (ch.ty) {
     case ChangeType.Add:
-      const chAdd = ch as IAreaAdd;
+      const chAdd = ch as AreaAdd;
       return {
         revert: () => undefined,
         continue: function () {
@@ -286,7 +286,7 @@ function trackAreaChange(tracker: IChangeTracker, ch: IChange): IChangeApplicati
       };
 
     case ChangeType.Remove:
-      const chRemove = ch as IAreaRemove;
+      const chRemove = ch as AreaRemove;
       const removed = tracker.areaRemove(chRemove.position);
       return removed === undefined ? undefined : {
         revert: function () {
@@ -299,10 +299,10 @@ function trackAreaChange(tracker: IChangeTracker, ch: IChange): IChangeApplicati
   }
 }
 
-function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: IChange, user: string): IChangeApplication | undefined {
+function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: Change, user: string): IChangeApplication | undefined {
   switch (ch.ty) {
     case ChangeType.Add:
-      const chAdd = ch as ITokenAdd;
+      const chAdd = ch as TokenAdd;
       return canDoAnything(map, user) ? {
         revert: () => undefined,
         continue: function () {
@@ -319,7 +319,7 @@ function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: IChange, user:
       if (!canDoAnything(map, user)) {
         return undefined;
       }
-      const chRemove = ch as ITokenRemove;
+      const chRemove = ch as TokenRemove;
       const removed = tracker.tokenRemove(map, user, chRemove.position, chRemove.tokenId);
       return removed === undefined ? undefined : {
         revert: function () {
@@ -329,7 +329,7 @@ function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: IChange, user:
       }
 
     case ChangeType.Move:
-      const chMove = ch as ITokenMove;
+      const chMove = ch as TokenMove;
       const moved = tracker.tokenRemove(map, user, chMove.oldPosition, chMove.tokenId);
       return moved === undefined ? undefined : {
         revert: function () {
@@ -355,10 +355,10 @@ function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: IChange, user:
   }
 }
 
-function trackWallChange(tracker: IChangeTracker, ch: IChange): IChangeApplication | undefined {
+function trackWallChange(tracker: IChangeTracker, ch: Change): IChangeApplication | undefined {
   switch (ch.ty) {
     case ChangeType.Add:
-      const chAdd = ch as IWallAdd;
+      const chAdd = ch as WallAdd;
       return {
         revert: () => undefined,
         continue: function () {
@@ -372,7 +372,7 @@ function trackWallChange(tracker: IChangeTracker, ch: IChange): IChangeApplicati
       }
 
     case ChangeType.Remove:
-      const chRemove = ch as IWallRemove;
+      const chRemove = ch as WallRemove;
       const removed = tracker.wallRemove(chRemove.position);
       return removed === undefined ? undefined : {
         revert: function () {
@@ -385,10 +385,10 @@ function trackWallChange(tracker: IChangeTracker, ch: IChange): IChangeApplicati
   }
 }
 
-function trackNoteChange(tracker: IChangeTracker, ch: IChange): IChangeApplication | undefined {
+function trackNoteChange(tracker: IChangeTracker, ch: Change): IChangeApplication | undefined {
   switch (ch.ty) {
     case ChangeType.Add:
-      const chAdd = ch as INoteAdd;
+      const chAdd = ch as NoteAdd;
       return {
         revert: () => undefined,
         continue: function () {
@@ -402,7 +402,7 @@ function trackNoteChange(tracker: IChangeTracker, ch: IChange): IChangeApplicati
       }
 
     case ChangeType.Remove:
-      const chRemove = ch as INoteRemove;
+      const chRemove = ch as NoteRemove;
       const removed = tracker.noteRemove(chRemove.position);
       return removed === undefined ? undefined : {
         revert: function () {

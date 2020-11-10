@@ -1,6 +1,6 @@
 import { IAdventure, IPlayer, summariseAdventure } from '../data/adventure';
 import { IAnnotation } from '../data/annotation';
-import { IChange, IChanges } from '../data/change';
+import { Change, Changes } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
 import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
 import { FeatureDictionary, IFeature, ITokenDictionary } from '../data/feature';
@@ -91,8 +91,8 @@ async function createMapTransaction(
   adventureRef: IDataReference<IAdventure>,
   newMapRef: IDataReference<IMap>,
   newMapRecord: IMap,
-  newBaseChangeRef?: IDataReference<IChanges> | undefined,
-  changes?: IChanges | undefined
+  newBaseChangeRef?: IDataReference<Changes> | undefined,
+  changes?: Changes | undefined
 ): Promise<void> {
   // Fetch things
   const profile = await view.get(profileRef);
@@ -212,7 +212,7 @@ export async function cloneMap(
 }
 
 interface IConsolidateMapChangesResult {
-  baseChange: IChanges | undefined,
+  baseChange: Changes | undefined,
   isNew: boolean // true if we wrote something, false if we just returned what was already there
 }
 
@@ -220,10 +220,10 @@ async function consolidateMapChangesTransaction(
   view: IDataView,
   logger: ILogger,
   timestampProvider: () => FirebaseFirestore.FieldValue | number,
-  baseChange: IChanges | undefined,
-  baseChangeRef: IDataReference<IChanges>,
-  incrementalChanges: IDataAndReference<IChanges>[],
-  consolidated: IChange[],
+  baseChange: Changes | undefined,
+  baseChangeRef: IDataReference<Changes>,
+  incrementalChanges: IDataAndReference<Changes>[],
+  consolidated: Change[],
   uid: string,
   resync: boolean
 ): Promise<IConsolidateMapChangesResult> {
@@ -259,7 +259,7 @@ async function consolidateMapChangesTransaction(
     user: uid,
     resync: resync
   };
-  await view.set<IChanges>(baseChangeRef, newBaseChange);
+  await view.set<Changes>(baseChangeRef, newBaseChange);
 
   // Delete all the others
   await Promise.all(incrementalChanges.map(c => view.delete(c)));
@@ -346,7 +346,7 @@ export async function consolidateMapChanges(
   m: IMap,
   resync: boolean,
   syncChanges?: (tokenDict: ITokenDictionary) => void
-): Promise<IChanges | undefined> {
+): Promise<Changes | undefined> {
   // Because we can consolidate at most 499 changes in one go due to the write limit,
   // we do this in a loop until we can't find any more:
   while (true) {

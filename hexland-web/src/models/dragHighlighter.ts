@@ -1,4 +1,4 @@
-import { IChange, IWallAdd, IWallRemove, IAreaAdd, IAreaRemove, createAreaAdd, createWallAdd, createWallRemove, createAreaRemove } from "../data/change";
+import { Change, WallAdd, WallRemove, AreaAdd, AreaRemove, createAreaAdd, createWallAdd, createWallRemove, createAreaRemove } from "../data/change";
 import { IGridCoord, IGridEdge, edgesEqual, coordsEqual, edgeString, coordString, IGridVertex, verticesEqual, vertexString } from "../data/coord";
 import { IFeature, IFeatureDictionary } from '../data/feature';
 import { IDragRectangle } from "./interfaces";
@@ -22,8 +22,8 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
 
   protected abstract keysEqual(a: K, b: K | undefined): boolean;
   protected abstract keyString(a: K | undefined): string;
-  protected abstract createFeatureAdd(position: K, colour: number): IChange | undefined;
-  protected abstract createFeatureRemove(position: K): IChange | undefined;
+  protected abstract createFeatureAdd(position: K, colour: number): Change | undefined;
+  protected abstract createFeatureRemove(position: K): Change | undefined;
   protected abstract createHighlight(position: K, subtract: boolean): F;
 
   protected addHighlightAt(position: K, subtract: boolean) {
@@ -42,7 +42,7 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
 
   // Pushes the changes into the array (if defined) and returns it, or undefined
   // if the changes are marked as not valid.
-  protected pushFeatureChanges(changes: IChange[] | undefined, colour: number, h: IFeature<K>): IChange[] | undefined {
+  protected pushFeatureChanges(changes: Change[] | undefined, colour: number, h: IFeature<K>): Change[] | undefined {
     if (this._features.get(h.position) !== undefined) {
       const remove = this.createFeatureRemove(h.position);
       if (remove !== undefined) {
@@ -70,12 +70,12 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
     this.clearHighlights();
   }
 
-  createChanges(colour: number, onlyIfValid: boolean): IChange[] {
+  createChanges(colour: number, onlyIfValid: boolean): Change[] {
     if (this._inDrag === false) {
       return [];
     }
 
-    let changes: IChange[] | undefined = [];
+    let changes: Change[] | undefined = [];
     for (const h of this._highlights) {
       const newChanges = this.pushFeatureChanges(changes, colour, h);
       if (onlyIfValid) {
@@ -99,7 +99,7 @@ abstract class DragHighlighter<K extends IGridCoord, F extends IFeature<K>> {
 
   // Returns a list of changes that would apply this edit to the map, so that it can be
   // synchronised with other clients.
-  dragEnd(position: K | undefined, colour: number): IChange[] {
+  dragEnd(position: K | undefined, colour: number): Change[] {
     this.moveHighlight(position, colour);
     if (this._inDrag === false) {
       return [];
@@ -166,11 +166,11 @@ export class EdgeHighlighter extends DragHighlighter<IGridEdge, IFeature<IGridEd
     return a === undefined ? "undefined" : edgeString(a);
   }
 
-  protected createFeatureAdd(position: IGridEdge, colour: number): IWallAdd {
+  protected createFeatureAdd(position: IGridEdge, colour: number): WallAdd {
     return createWallAdd({ position: position, colour: colour });
   }
 
-  protected createFeatureRemove(position: IGridEdge): IWallRemove {
+  protected createFeatureRemove(position: IGridEdge): WallRemove {
     return createWallRemove(position);
   }
 
@@ -202,11 +202,11 @@ export class FaceHighlighter extends DragHighlighter<IGridCoord, IFeature<IGridC
     return a === undefined ? "undefined" : coordString(a);
   }
 
-  protected createFeatureAdd(position: IGridCoord, colour: number): IAreaAdd {
+  protected createFeatureAdd(position: IGridCoord, colour: number): AreaAdd {
     return createAreaAdd({ position: position, colour: colour });
   }
 
-  protected createFeatureRemove(position: IGridCoord): IAreaRemove {
+  protected createFeatureRemove(position: IGridCoord): AreaRemove {
     return createAreaRemove(position);
   }
 

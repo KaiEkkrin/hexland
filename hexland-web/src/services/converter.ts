@@ -1,6 +1,6 @@
 import { IAdventure, IMapSummary, IPlayer } from '../data/adventure';
 import { IAnnotation, defaultAnnotation } from '../data/annotation';
-import { IChange, IChanges, ChangeType, ChangeCategory, ITokenAdd, ITokenMove, ITokenRemove, IAreaAdd, IAreaRemove, INoteAdd, INoteRemove, IWallAdd, IWallRemove } from '../data/change';
+import { Change, Changes, ChangeType, ChangeCategory, TokenAdd, TokenMove, TokenRemove, AreaAdd, AreaRemove, NoteAdd, NoteRemove, WallAdd, WallRemove } from '../data/change';
 import { ICharacter, maxCharacters } from '../data/character';
 import { IGridCoord, defaultGridCoord, IGridEdge, defaultGridEdge, coordString } from '../data/coord';
 import { IToken, defaultToken, IFeature, defaultArea, defaultWall, IFeatureDictionary, IIdFeature, FeatureDictionary, parseTokenSize } from '../data/feature';
@@ -89,7 +89,7 @@ class AddTokenFeatureConverter extends RecursingConverter<IToken> {
   }
 }
 
-class TokenMoveConverter extends RecursingConverter<ITokenMove> {
+class TokenMoveConverter extends RecursingConverter<TokenMove> {
   private readonly _newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>;
 
   constructor(newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>) {
@@ -112,7 +112,7 @@ class TokenMoveConverter extends RecursingConverter<ITokenMove> {
     this._newTokenDict = newTokenDict;
   }
 
-  convert(rawData: any): ITokenMove {
+  convert(rawData: any): TokenMove {
     const move = super.convert(rawData);
     if (move.tokenId === "") {
       // We should be able to find a token id for the old position in the new
@@ -128,7 +128,7 @@ class TokenMoveConverter extends RecursingConverter<ITokenMove> {
   }
 }
 
-class TokenRemoveConverter extends RecursingConverter<ITokenRemove> {
+class TokenRemoveConverter extends RecursingConverter<TokenRemove> {
   private readonly _newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>;
 
   constructor(newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>) {
@@ -146,7 +146,7 @@ class TokenRemoveConverter extends RecursingConverter<ITokenRemove> {
     this._newTokenDict = newTokenDict;
   }
 
-  convert(rawData: any): ITokenRemove {
+  convert(rawData: any): TokenRemove {
     const remove = super.convert(rawData);
     if (remove.tokenId === "") {
       // We should be able to find a token id for this position in the new
@@ -167,10 +167,10 @@ class TokenRemoveConverter extends RecursingConverter<ITokenRemove> {
 // (except for the token id), but it will prove helpful later on if I alter
 // more things (and should also be good for security, because it will make a
 // well-behaving client less inclined to believe a malicious one.)
-class ChangeConverter extends ShallowConverter<IChange> {
-  private readonly _tokenAddConverter: IConverter<ITokenAdd>;
-  private readonly _tokenMoveConverter: IConverter<ITokenMove>;
-  private readonly _tokenRemoveConverter: IConverter<ITokenRemove>;
+class ChangeConverter extends ShallowConverter<Change> {
+  private readonly _tokenAddConverter: IConverter<TokenAdd>;
+  private readonly _tokenMoveConverter: IConverter<TokenMove>;
+  private readonly _tokenRemoveConverter: IConverter<TokenRemove>;
 
   constructor(newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>) {
     super({ ty: ChangeType.Add, cat: ChangeCategory.Undefined });
@@ -179,7 +179,7 @@ class ChangeConverter extends ShallowConverter<IChange> {
     this._tokenRemoveConverter = new TokenRemoveConverter(newTokenDict);
   }
 
-  private convertArea(converted: IChange, rawData: any): IChange {
+  private convertArea(converted: Change, rawData: any): Change {
     switch (converted.ty) {
       case ChangeType.Add: return areaAddConverter.convert(rawData);
       case ChangeType.Remove: return areaRemoveConverter.convert(rawData);
@@ -187,7 +187,7 @@ class ChangeConverter extends ShallowConverter<IChange> {
     }
   }
 
-  private convertNote(converted: IChange, rawData: any): IChange {
+  private convertNote(converted: Change, rawData: any): Change {
     switch (converted.ty) {
       case ChangeType.Add: return noteAddConverter.convert(rawData);
       case ChangeType.Remove: return noteRemoveConverter.convert(rawData);
@@ -195,7 +195,7 @@ class ChangeConverter extends ShallowConverter<IChange> {
     }
   }
 
-  private convertToken(converted: IChange, rawData: any): IChange {
+  private convertToken(converted: Change, rawData: any): Change {
     switch (converted.ty) {
       case ChangeType.Add: return this._tokenAddConverter.convert(rawData);
       case ChangeType.Move: return this._tokenMoveConverter.convert(rawData);
@@ -204,7 +204,7 @@ class ChangeConverter extends ShallowConverter<IChange> {
     }
   }
 
-  private convertWall(converted: IChange, rawData: any): IChange {
+  private convertWall(converted: Change, rawData: any): Change {
     switch (converted.ty) {
       case ChangeType.Add: return wallAddConverter.convert(rawData);
       case ChangeType.Remove: return wallRemoveConverter.convert(rawData);
@@ -212,7 +212,7 @@ class ChangeConverter extends ShallowConverter<IChange> {
     }
   }
 
-  convert(rawData: any): IChange {
+  convert(rawData: any): Change {
     const converted = super.convert(rawData);
     switch (converted.cat) {
       case ChangeCategory.Area: return this.convertArea(converted, rawData);
@@ -224,7 +224,7 @@ class ChangeConverter extends ShallowConverter<IChange> {
   }
 }
 
-const areaAddConverter = new RecursingConverter<IAreaAdd>({
+const areaAddConverter = new RecursingConverter<AreaAdd>({
   ty: ChangeType.Add,
   cat: ChangeCategory.Area,
   feature: defaultArea
@@ -235,7 +235,7 @@ const areaAddConverter = new RecursingConverter<IAreaAdd>({
   }
 });
 
-const areaRemoveConverter = new RecursingConverter<IAreaRemove>({
+const areaRemoveConverter = new RecursingConverter<AreaRemove>({
   ty: ChangeType.Remove,
   cat: ChangeCategory.Area,
   position: defaultGridCoord
@@ -246,7 +246,7 @@ const areaRemoveConverter = new RecursingConverter<IAreaRemove>({
   }
 });
 
-const noteAddConverter = new RecursingConverter<INoteAdd>({
+const noteAddConverter = new RecursingConverter<NoteAdd>({
   ty: ChangeType.Add,
   cat: ChangeCategory.Note,
   feature: defaultAnnotation
@@ -257,7 +257,7 @@ const noteAddConverter = new RecursingConverter<INoteAdd>({
   }
 });
 
-const noteRemoveConverter = new RecursingConverter<INoteRemove>({
+const noteRemoveConverter = new RecursingConverter<NoteRemove>({
   ty: ChangeType.Remove,
   cat: ChangeCategory.Note,
   position: defaultGridCoord
@@ -270,7 +270,7 @@ const noteRemoveConverter = new RecursingConverter<INoteRemove>({
 
 function createTokenAddConverter(newTokenDict: IFeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>) {
   const featureConverter = new AddTokenFeatureConverter(newTokenDict);
-  return new RecursingConverter<ITokenAdd>({
+  return new RecursingConverter<TokenAdd>({
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: defaultToken
@@ -282,7 +282,7 @@ function createTokenAddConverter(newTokenDict: IFeatureDictionary<IGridCoord, II
   });
 }
 
-const wallAddConverter = new RecursingConverter<IWallAdd>({
+const wallAddConverter = new RecursingConverter<WallAdd>({
   ty: ChangeType.Add,
   cat: ChangeCategory.Wall,
   feature: defaultWall
@@ -293,7 +293,7 @@ const wallAddConverter = new RecursingConverter<IWallAdd>({
   }
 });
 
-const wallRemoveConverter = new RecursingConverter<IWallRemove>({
+const wallRemoveConverter = new RecursingConverter<WallRemove>({
   ty: ChangeType.Remove,
   cat: ChangeCategory.Wall,
   position: defaultGridEdge
@@ -448,7 +448,7 @@ export const profileConverter = new RecursingConverter<IProfile>({
 export function createChangesConverter() {
   const newTokenDict = new FeatureDictionary<IGridCoord, IIdFeature<IGridCoord>>(coordString);
   const changeConverter = new ChangeConverter(newTokenDict);
-  return new RecursingConverter<IChanges>({
+  return new RecursingConverter<Changes>({
     chs: [],
     timestamp: 0,
     incremental: true,

@@ -1,5 +1,5 @@
 import { IAdventure, IPlayer } from '../data/adventure';
-import { IChanges } from '../data/change';
+import { Changes } from '../data/change';
 import { ICharacter } from '../data/character';
 import { IMap, summariseMap } from '../data/map';
 import { UserLevel } from '../data/policy';
@@ -627,7 +627,7 @@ export function watchChangesAndConsolidate(
   functionsService: IFunctionsService | undefined,
   adventureId: string,
   mapId: string,
-  onNext: (chs: IChanges) => boolean, // applies changes and returns true if successful, else false
+  onNext: (chs: Changes) => boolean, // applies changes and returns true if successful, else false
   onReset: () => void, // reset the map state to blank (expect an onNext() right after)
   onEvent: (event: string, parameters: any) => void, // GA events delegate
   onError?: ((message: string, ...params: any) => void) | undefined,
@@ -663,7 +663,7 @@ export function watchChangesAndConsolidate(
   let seenBaseChange = false;
   const stopWatching = dataService.watchChanges(
     adventureId, mapId,
-    (chs: IChanges) => {
+    (chs: Changes) => {
       // If this isn't a resync and we've seen the base change already, we can
       // safely skip this; there shouldn't be any new information
       if (chs.incremental === false && chs.resync === false && seenBaseChange === true) {

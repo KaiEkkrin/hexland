@@ -1,7 +1,7 @@
 import { IToast } from "../components/interfaces";
 import { EditMode } from "../components/MapControls";
 import { IAnnotation } from "../data/annotation";
-import { IChange } from "../data/change";
+import { Change } from "../data/change";
 import { ITokenProperties } from "../data/feature";
 import { IAdventureIdentified, IIdentified } from "../data/identified";
 import { IMap } from "../data/map";
@@ -147,7 +147,7 @@ export class MapUi {
 
   private interactionEnd(cp: THREE.Vector3, shiftKey: boolean, startingState: IMapUiState) {
     const newState = { ...startingState };
-    let changes: IChange[] | undefined;
+    let changes: Change[] | undefined;
     if (this._state.isDraggingView) {
       this._stateMachine?.panEnd();
       newState.isDraggingView = false;
@@ -244,7 +244,7 @@ export class MapUi {
     return undefined;
   }
 
-  addChanges(changes: IChange[] | undefined) {
+  addChanges(changes: Change[] | undefined) {
     if (this._stateMachine === undefined) {
       return;
     }
@@ -543,7 +543,7 @@ export class MapUi {
       return;
     }
 
-    const changes: IChange[] = [];
+    const changes: Change[] = [];
     for (const t of this._state.tokensToDelete) {
       const chs = this._stateMachine?.setTokenById(t.id, undefined);
       if (chs !== undefined) {

@@ -1,5 +1,5 @@
 import { IAdventure, IPlayer } from '../data/adventure';
-import { IChange, IChanges } from '../data/change';
+import { Change, Changes } from '../data/change';
 import { ICharacter } from '../data/character';
 import { ITokenProperties } from '../data/feature';
 import { IIdentified } from '../data/identified';
@@ -70,7 +70,7 @@ export interface IDataAndReference<T> extends IDataReference<T> {
 // This service is for datastore-related operations.
 export interface IDataService extends IDataView {
   // Adds incremental changes to a map.
-  addChanges(adventureId: string, uid: string, mapId: string, changes: IChange[]): Promise<void>;
+  addChanges(adventureId: string, uid: string, mapId: string, changes: Change[]): Promise<void>;
 
   // Gets all the maps in one adventure.
   getAdventureMapRefs(adventureId: string): Promise<IDataAndReference<IMap>[]>;
@@ -86,8 +86,8 @@ export interface IDataService extends IDataView {
 
   // Gets a map.
   getMapRef(adventureId: string, id: string): IChildDataReference<IMap, IAdventure>;
-  getMapBaseChangeRef(adventureId: string, id: string, converter: IConverter<IChanges>): IDataReference<IChanges>;
-  getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number, converter: IConverter<IChanges>): Promise<IDataAndReference<IChanges>[] | undefined>;
+  getMapBaseChangeRef(adventureId: string, id: string, converter: IConverter<Changes>): IDataReference<Changes>;
+  getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number, converter: IConverter<Changes>): Promise<IDataAndReference<Changes>[] | undefined>;
 
   // Gets all my adventures, invites, and player records.
   getMyAdventures(uid: string): Promise<IDataAndReference<IAdventure>[]>;
@@ -130,7 +130,7 @@ export interface IDataService extends IDataView {
   watchChanges(
     adventureId: string,
     mapId: string,
-    onNext: (changes: IChanges) => void,
+    onNext: (changes: Changes) => void,
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ): () => void;

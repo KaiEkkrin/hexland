@@ -9,7 +9,7 @@ import { RedrawFlag } from './redrawFlag';
 import { WallHighlighter, WallRectangleHighlighter, RoomHighlighter } from './wallHighlighter';
 
 import { IAnnotation, IPositionedAnnotation } from '../data/annotation';
-import { IChange, createTokenRemove, createTokenAdd, createNoteRemove, createNoteAdd, createTokenMove } from '../data/change';
+import { Change, createTokenRemove, createTokenAdd, createNoteRemove, createNoteAdd, createTokenMove } from '../data/change';
 import { netObjectCount, trackChanges } from '../data/changeTracking';
 import { IGridCoord, coordString, coordsEqual, coordSub, coordAdd } from '../data/coord';
 import { FeatureDictionary, flipToken, IToken, ITokenDictionary, ITokenProperties, TokenSize } from '../data/feature';
@@ -226,7 +226,7 @@ export class MapStateMachine {
   private get isOwner() { return this._uid === this._map.record.owner; }
   private get seeEverything() { return this._uid === this._map.record.owner || this._map.record.ffa === true; }
 
-  private addTokenWithProperties(target: IGridCoord, properties: ITokenProperties): IChange[] {
+  private addTokenWithProperties(target: IGridCoord, properties: ITokenProperties): Change[] {
     // Work out a place around this target where the token will fit
     const newPosition = this.canResizeToken({ ...properties, position: target }, properties.size);
     if (newPosition === undefined) {
@@ -271,7 +271,7 @@ export class MapStateMachine {
     // be rejected by the change tracker, and so we create our own change tracker to do this.
     // It's safe for us to use our current areas, walls and map colouring because those won't
     // change, but we need to clone our tokens into a scratch dictionary.
-    const changes: IChange[] = [];
+    const changes: Change[] = [];
     for (const s of this._selection) {
       const tokenHere = this._tokens.get(s.position);
       if (tokenHere === undefined) {
@@ -453,7 +453,7 @@ export class MapStateMachine {
   }
 
   private onPanningEnded() {
-    let chs: IChange[] = [];
+    let chs: Change[] = [];
     if (fluent(this._selection).any()) {
       const position = this._drawing.getGridCoordAt(panningPosition);
       if (position !== undefined) {
@@ -516,7 +516,7 @@ export class MapStateMachine {
     }
   }
 
-  private setTokenProperties(token: IToken, properties: ITokenProperties): IChange[] {
+  private setTokenProperties(token: IToken, properties: ITokenProperties): Change[] {
     if (properties.id !== token.id) {
       throw RangeError("Cannot change a token's id after creation");
     }
@@ -533,7 +533,7 @@ export class MapStateMachine {
     ];
   }
 
-  private tokenMoveDragEnd(position: IGridCoord, chs: IChange[]) {
+  private tokenMoveDragEnd(position: IGridCoord, chs: Change[]) {
     this._selectionDrag.clear();
     this._selectionDragRed.clear();
     const delta = this.getTokenMoveDelta(position);
@@ -642,7 +642,7 @@ export class MapStateMachine {
     };
   }
 
-  private validateWallChanges(changes: IChange[]): boolean {
+  private validateWallChanges(changes: Change[]): boolean {
     // I need to clone the walls for this one.  The map colouring won't be relevant.
     const changeTracker = new MapChangeTracker(
       this._drawing.areas, this._tokens, this._drawing.walls.clone(), this._notes, this._userPolicy, undefined
@@ -671,7 +671,7 @@ export class MapStateMachine {
   get panningY() { return this._panningY; }
   get state(): Observable<IMapState> { return this._stateSubj; }
 
-  async addChanges(changes: IChange[] | undefined, complain: (id: string, title: string, message: string) => void) {
+  async addChanges(changes: Change[] | undefined, complain: (id: string, title: string, message: string) => void) {
     if (changes === undefined || changes.length === 0) {
       return;
     }
@@ -782,7 +782,7 @@ export class MapStateMachine {
     return this._notes.get(position);
   }
 
-  faceDragEnd(cp: THREE.Vector3, colour: number): IChange[] {
+  faceDragEnd(cp: THREE.Vector3, colour: number): Change[] {
     this.panMarginReset();
     let result = this._faceHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour);
     this._dragRectangle.reset();
@@ -796,7 +796,7 @@ export class MapStateMachine {
     this._faceHighlighter.dragStart(this._drawing.getGridCoordAt(cp), colour);
   }
 
-  flipToken(token: ITokenProperties): IChange[] | undefined {
+  flipToken(token: ITokenProperties): Change[] | undefined {
     const flipped = flipToken(token);
     if (flipped !== undefined) {
       return this.setTokenById(token.id, flipped);
@@ -996,7 +996,7 @@ export class MapStateMachine {
     this._notesNeedUpdate.setNeedsRedraw();
   }
 
-  roomDragEnd(cp: THREE.Vector3, shiftKey: boolean, colour: number): IChange[] {
+  roomDragEnd(cp: THREE.Vector3, shiftKey: boolean, colour: number): Change[] {
     this.panMarginReset();
     this._roomHighlighter.difference = shiftKey;
     let result = this._roomHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour);
@@ -1035,10 +1035,10 @@ export class MapStateMachine {
     return true;
   }
 
-  selectionDragEnd(cp: THREE.Vector3): IChange[] {
+  selectionDragEnd(cp: THREE.Vector3): Change[] {
     this.panMarginReset();
     const position = this._drawing.getGridCoordAt(cp);
-    const chs: IChange[] = [];
+    const chs: Change[] = [];
     if (position) {
       if (this._tokenMoveDragStart !== undefined) {
         this.tokenMoveDragEnd(position, chs);
@@ -1079,9 +1079,9 @@ export class MapStateMachine {
     this._drawing.setMount(mount);
   }
 
-  setNote(cp: THREE.Vector3, id: string, colour: number, text: string, visibleToPlayers: boolean): IChange[] {
+  setNote(cp: THREE.Vector3, id: string, colour: number, text: string, visibleToPlayers: boolean): Change[] {
     let position = this._drawing.getGridCoordAt(cp);
-    let chs: IChange[] = [];
+    let chs: Change[] = [];
     if (position !== undefined) {
       if (this._notes.get(position) !== undefined) {
         // Replace the existing note
@@ -1143,7 +1143,7 @@ export class MapStateMachine {
     }
   }
 
-  wallDragEnd(cp: THREE.Vector3, colour: number): IChange[] {
+  wallDragEnd(cp: THREE.Vector3, colour: number): Change[] {
     this.panMarginReset();
     let result = this._dragRectangle.isEnabled() ?
       this._wallRectangleHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour) :

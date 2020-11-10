@@ -4,21 +4,20 @@ import { IFeature, IToken } from "./feature";
 import { Timestamp } from './types';
 
 // This represents a collection of changes all made to the map at once.
-export interface IChanges {
-  chs: IChange[];
+export type Changes = {
+  chs: Change[];
   timestamp: Timestamp | number; // initialise this to `serverTimestamp`;
                                  // use the number instead for testing only
   incremental: boolean;
   resync: boolean; // true if the recipient of this change should do a resync
                    // (only if incremental === false)
   user: string; // the uid that made these changes.
-}
+};
 
 // This represents any change made to the map.
-export interface IChange {
-  ty: ChangeType;
-  cat: ChangeCategory;
-}
+export type Change =
+  AreaAdd | AreaRemove | TokenAdd | TokenMove | TokenRemove |
+  WallAdd | WallRemove | NoteAdd | NoteRemove | NoChange;
 
 export enum ChangeType {
   Add = 1,
@@ -34,47 +33,69 @@ export enum ChangeCategory {
   Note = 4,
 }
 
-// We'll cast to one of these depending on the values of `ty` and `cat`
-export interface IAreaAdd extends IChange {
+export type AreaAdd = {
+  ty: ChangeType.Add;
+  cat: ChangeCategory.Area;
   feature: IFeature<IGridCoord>;
-}
+};
 
-export interface IAreaRemove extends IChange {
+export type AreaRemove = {
+  ty: ChangeType.Remove;
+  cat: ChangeCategory.Area;
   position: IGridCoord;
-}
+};
 
-export interface ITokenAdd extends IChange {
+export type TokenAdd = {
+  ty: ChangeType.Add;
+  cat: ChangeCategory.Token;
   feature: IToken;
-}
+};
 
-export interface ITokenMove extends IChange {
+export type TokenMove = {
+  ty: ChangeType.Move;
+  cat: ChangeCategory.Token;
   newPosition: IGridCoord;
   oldPosition: IGridCoord;
   tokenId: string; // must match what's currently there
-}
+};
 
-export interface ITokenRemove extends IChange {
+export type TokenRemove = {
+  ty: ChangeType.Remove;
+  cat: ChangeCategory.Token;
   position: IGridCoord;
   tokenId: string; // must match what's currently there
-}
+};
 
-export interface IWallAdd extends IChange {
+export type WallAdd = {
+  ty: ChangeType.Add;
+  cat: ChangeCategory.Wall;
   feature: IFeature<IGridEdge>;
-}
+};
 
-export interface IWallRemove extends IChange {
+export type WallRemove = {
+  ty: ChangeType.Remove;
+  cat: ChangeCategory.Wall;
   position: IGridEdge;
-}
+};
 
-export interface INoteAdd extends IChange {
+export type NoteAdd = {
+  ty: ChangeType.Add;
+  cat: ChangeCategory.Note;
   feature: IAnnotation;
-}
+};
 
-export interface INoteRemove extends IChange {
+export type NoteRemove = {
+  ty: ChangeType.Remove;
+  cat: ChangeCategory.Note;
   position: IGridCoord;
-}
+};
 
-export function createAreaAdd(feature: IFeature<IGridCoord>): IAreaAdd {
+export type NoChange = {
+  ty: ChangeType.Add;
+  cat: ChangeCategory.Undefined;
+};
+
+export function createAreaAdd(feature: IFeature<IGridCoord>): AreaAdd {
   return {
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
@@ -82,7 +103,7 @@ export function createAreaAdd(feature: IFeature<IGridCoord>): IAreaAdd {
   };
 }
 
-export function createAreaRemove(position: IGridCoord): IAreaRemove {
+export function createAreaRemove(position: IGridCoord): AreaRemove {
   return {
     ty: ChangeType.Remove,
     cat: ChangeCategory.Area,
@@ -90,7 +111,7 @@ export function createAreaRemove(position: IGridCoord): IAreaRemove {
   };
 }
 
-export function createTokenAdd(feature: IToken): ITokenAdd {
+export function createTokenAdd(feature: IToken): TokenAdd {
   return {
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
@@ -98,7 +119,7 @@ export function createTokenAdd(feature: IToken): ITokenAdd {
   };
 }
 
-export function createTokenMove(oldPosition: IGridCoord, newPosition: IGridCoord, tokenId: string): ITokenMove {
+export function createTokenMove(oldPosition: IGridCoord, newPosition: IGridCoord, tokenId: string): TokenMove {
   return {
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
@@ -108,7 +129,7 @@ export function createTokenMove(oldPosition: IGridCoord, newPosition: IGridCoord
   };
 }
 
-export function createTokenRemove(position: IGridCoord, tokenId: string): ITokenRemove {
+export function createTokenRemove(position: IGridCoord, tokenId: string): TokenRemove {
   return {
     ty: ChangeType.Remove,
     cat: ChangeCategory.Token,
@@ -117,7 +138,7 @@ export function createTokenRemove(position: IGridCoord, tokenId: string): IToken
   };
 }
 
-export function createWallAdd(feature: IFeature<IGridEdge>): IWallAdd {
+export function createWallAdd(feature: IFeature<IGridEdge>): WallAdd {
   return {
     ty: ChangeType.Add,
     cat: ChangeCategory.Wall,
@@ -125,7 +146,7 @@ export function createWallAdd(feature: IFeature<IGridEdge>): IWallAdd {
   };
 }
 
-export function createWallRemove(position: IGridEdge): IWallRemove {
+export function createWallRemove(position: IGridEdge): WallRemove {
   return {
     ty: ChangeType.Remove,
     cat: ChangeCategory.Wall,
@@ -133,7 +154,7 @@ export function createWallRemove(position: IGridEdge): IWallRemove {
   };
 }
 
-export function createNoteAdd(feature: IAnnotation): INoteAdd {
+export function createNoteAdd(feature: IAnnotation): NoteAdd {
   return {
     ty: ChangeType.Add,
     cat: ChangeCategory.Note,
@@ -141,7 +162,7 @@ export function createNoteAdd(feature: IAnnotation): INoteAdd {
   };
 }
 
-export function createNoteRemove(position: IGridCoord): INoteRemove {
+export function createNoteRemove(position: IGridCoord): NoteRemove {
   return {
     ty: ChangeType.Remove,
     cat: ChangeCategory.Note,

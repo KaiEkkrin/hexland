@@ -5,7 +5,7 @@ import { FunctionsService } from './functions';
 import { IDataService, IUser } from './interfaces';
 import { MockWebStorage } from './mockWebStorage';
 import { IAnnotation } from '../data/annotation';
-import { ChangeCategory, ChangeType, IChanges, ITokenAdd, ITokenMove, IWallAdd } from '../data/change';
+import { ChangeCategory, ChangeType, Changes, TokenAdd, TokenMove, WallAdd } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
 import { coordString, edgeString, IGridCoord, IGridEdge } from '../data/coord';
 import { FeatureDictionary, IFeature } from '../data/feature';
@@ -54,7 +54,7 @@ interface IEmul {
 }
 
 interface IChangesEvent {
-  changes: IChanges;
+  changes: Changes;
   accepted: boolean;
 }
 
@@ -216,7 +216,7 @@ describe('test functions', () => {
   });
 
   // Some functions to help the consolidate and clone tests
-  function createAddToken1(uid: string): ITokenAdd {
+  function createAddToken1(uid: string): TokenAdd {
     return {
       ty: ChangeType.Add,
       cat: ChangeCategory.Token,
@@ -235,7 +235,7 @@ describe('test functions', () => {
     };
   }
 
-  function createMoveToken1(x: number): ITokenMove {
+  function createMoveToken1(x: number): TokenMove {
     // This function keeps moving the token along, generating lots of moves.
     return {
       ty: ChangeType.Move,
@@ -246,7 +246,7 @@ describe('test functions', () => {
     };
   }
 
-  function createAddWall1(): IWallAdd {
+  function createAddWall1(): WallAdd {
     return {
       ty: ChangeType.Add,
       cat: ChangeCategory.Wall,
@@ -275,15 +275,15 @@ describe('test functions', () => {
 
     const addTokenRecord = changes?.[0].chs.find(ch => ch.cat === ChangeCategory.Token);
     expect(addTokenRecord?.ty).toBe(ChangeType.Add);
-    expect((addTokenRecord as ITokenAdd).feature.id).toBe('token1');
-    expect((addTokenRecord as ITokenAdd).feature.position.x).toBe(expectedX);
-    expect((addTokenRecord as ITokenAdd).feature.position.y).toBe(3);
+    expect((addTokenRecord as TokenAdd).feature.id).toBe('token1');
+    expect((addTokenRecord as TokenAdd).feature.position.x).toBe(expectedX);
+    expect((addTokenRecord as TokenAdd).feature.position.y).toBe(3);
 
     const addWallRecord = changes?.[0].chs.find(ch => ch.cat === ChangeCategory.Wall);
     expect(addWallRecord?.ty).toBe(ChangeType.Add);
-    expect((addWallRecord as IWallAdd).feature.position.x).toBe(0);
-    expect((addWallRecord as IWallAdd).feature.position.y).toBe(0);
-    expect((addWallRecord as IWallAdd).feature.colour).toBe(0);
+    expect((addWallRecord as WallAdd).feature.position.x).toBe(0);
+    expect((addWallRecord as WallAdd).feature.position.y).toBe(0);
+    expect((addWallRecord as WallAdd).feature.colour).toBe(0);
   }
 
   async function testConsolidate(moveCount: number) {
@@ -746,7 +746,7 @@ describe('test functions', () => {
     );
 
     let changesSeen = new Subject<IChangesEvent>();
-    function onNext(changes: IChanges) {
+    function onNext(changes: Changes) {
       const accepted = trackChanges(mapRecord as IMap, changeTracker, changes.chs, user.uid);
       changesSeen.next({ changes: changes, accepted: accepted });
       return accepted;
@@ -767,7 +767,7 @@ describe('test functions', () => {
     expect(finish).not.toBeUndefined();
     try {
       // Push in a first change and wait for it -- it should be accepted.
-      const addToken1: ITokenAdd = {
+      const addToken1: TokenAdd = {
         ty: ChangeType.Add,
         cat: ChangeCategory.Token,
         feature: {
@@ -797,7 +797,7 @@ describe('test functions', () => {
       expect(onError).not.toHaveBeenCalled();
 
       // Push in another good change and make sure it's accepted
-      const moveToken1: ITokenMove = {
+      const moveToken1: TokenMove = {
         ty: ChangeType.Move,
         cat: ChangeCategory.Token,
         tokenId: '1',
@@ -814,14 +814,14 @@ describe('test functions', () => {
       expect(moveOne.changes.user).toBe(user.uid);
       expect(moveOne.changes.chs).toHaveLength(1);
       expect(moveOne.changes.chs[0].cat).toBe(ChangeCategory.Token);
-      expect((moveOne.changes.chs[0] as ITokenMove).newPosition.x).toBe(-1);
-      expect((moveOne.changes.chs[0] as ITokenMove).newPosition.y).toBe(-2);
+      expect((moveOne.changes.chs[0] as TokenMove).newPosition.x).toBe(-1);
+      expect((moveOne.changes.chs[0] as TokenMove).newPosition.y).toBe(-2);
       expect(onReset).not.toHaveBeenCalled();
       expect(onError).not.toHaveBeenCalled();
 
       // Push in a bad change, setting ourselves up to reject it.
       // This should cause a resync
-      const badMoveToken1: ITokenMove = {
+      const badMoveToken1: TokenMove = {
         ty: ChangeType.Move,
         cat: ChangeCategory.Token,
         tokenId: '1',
@@ -839,8 +839,8 @@ describe('test functions', () => {
       expect(resync.changes.chs).toHaveLength(1);
       expect(resync.changes.chs[0].cat).toBe(ChangeCategory.Token);
       expect(resync.changes.chs[0].ty).toBe(ChangeType.Add);
-      expect((resync.changes.chs[0] as ITokenAdd).feature.position.x).toBe(-1);
-      expect((resync.changes.chs[0] as ITokenAdd).feature.position.y).toBe(-2);
+      expect((resync.changes.chs[0] as TokenAdd).feature.position.x).toBe(-1);
+      expect((resync.changes.chs[0] as TokenAdd).feature.position.y).toBe(-2);
       expect(onReset).toHaveBeenCalledTimes(1);
       expect(onError).not.toHaveBeenCalled();
 
@@ -853,7 +853,7 @@ describe('test functions', () => {
       const badMoveToken2 = { ...badMoveToken1, tokenId: '2' };
       const badMoveToken3 = { ...badMoveToken1, tokenId: '3' };
       for (let i = 0; i < 5; ++i) {
-        const moveTokenAgain: ITokenMove = {
+        const moveTokenAgain: TokenMove = {
           ty: ChangeType.Move,
           cat: ChangeCategory.Token,
           tokenId: '1',

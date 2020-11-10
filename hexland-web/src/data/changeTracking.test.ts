@@ -1,7 +1,7 @@
-import { ChangeType, ChangeCategory, ITokenMove, ITokenRemove, createTokenAdd, createWallAdd, createTokenMove, createWallRemove } from './change';
+import { Change, ChangeType, ChangeCategory, TokenMove, TokenRemove, createTokenAdd, createWallAdd, createTokenMove, createWallRemove } from './change';
 import { trackChanges, SimpleChangeTracker } from './changeTracking';
 import { IGridCoord, coordString, edgeString, IGridEdge } from './coord';
-import { FeatureDictionary, IFeature } from './feature';
+import { defaultTokenProperties, FeatureDictionary, IFeature } from './feature';
 import { IMap, MapType } from './map';
 import { IAnnotation } from './annotation';
 import { IUserPolicy, standardUser } from './policy';
@@ -36,7 +36,7 @@ function createTestMap(ffa: boolean): IMap {
 test('One area can be added and removed', () => {
   let map = createTestMap(false);
   let tracker = createChangeTracker(map.ty);
-  let chs = [{
+  let chs: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
     feature: {
@@ -49,7 +49,7 @@ test('One area can be added and removed', () => {
   expect(ok).toBeTruthy();
   expect(tracker.objectCount).toBe(1);
 
-  let chs2 = [{
+  let chs2: Change[] = [{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Area,
     position: { x: 1, y: 2 }
@@ -67,7 +67,7 @@ test('One area can be added and removed', () => {
 test('Multiple areas can be added and removed', () => {
   let map = createTestMap(false);
   let tracker = createChangeTracker(map.ty);
-  let chs = [{
+  let chs: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
     feature: {
@@ -94,7 +94,7 @@ test('Multiple areas can be added and removed', () => {
   expect(ok).toBeTruthy();
   expect(tracker.objectCount).toBe(3);
 
-  let chs2 = [{
+  let chs2: Change[] = [{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Area,
     position: { x: 1, y: 2 }
@@ -112,7 +112,7 @@ test('Multiple areas can be added and removed', () => {
 test('Areas cannot be added on top of each other', () => {
   let map = createTestMap(false);
   let tracker = createChangeTracker(map.ty);
-  let chs = [{
+  let chs: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
     feature: {
@@ -125,7 +125,7 @@ test('Areas cannot be added on top of each other', () => {
   expect(ok).toBeTruthy();
   expect(tracker.objectCount).toBe(1);
 
-  let chs2 = [{
+  let chs2: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
     feature: {
@@ -148,7 +148,7 @@ test('Areas cannot be added on top of each other', () => {
   // After that operation, we should still have the area added the first time
   // but not the other area added the second time -- the whole second operation
   // should have been cancelled
-  let chs3 = [{
+  let chs3: Change[] = [{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Area,
     position: { x: 1, y: 2 }
@@ -158,7 +158,7 @@ test('Areas cannot be added on top of each other', () => {
   expect(ok).toBeTruthy();
   expect(tracker.objectCount).toBe(0);
 
-  let chs4 = [{
+  let chs4: Change[] = [{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Area,
     position: { x: 0, y: 2 }
@@ -171,7 +171,7 @@ test('Areas cannot be added on top of each other', () => {
 test('A double-remove area operation is also cancelled', () => {
   let map = createTestMap(false);
   let tracker = createChangeTracker(map.ty);
-  let chs = [{
+  let chs: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
     feature: {
@@ -198,7 +198,7 @@ test('A double-remove area operation is also cancelled', () => {
   expect(ok).toBeTruthy();
 
   // This should remove nothing
-  let chs2 = [{
+  let chs2: Change[] = [{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Area,
     position: { x: 1, y: 2 }
@@ -216,7 +216,7 @@ test('A double-remove area operation is also cancelled', () => {
   expect(ok).toBeFalsy();
 
   // ...as exemplified by this proper removal
-  let chs3 = [{
+  let chs3: Change[] = [{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Area,
     position: { x: 1, y: 2 }
@@ -236,7 +236,7 @@ test('A double-remove area operation is also cancelled', () => {
 test('Walls cannot be added on top of each other', () => {
   let map = createTestMap(false);
   let tracker = createChangeTracker(map.ty);
-  let chs = [{
+  let chs: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Wall,
     feature: {
@@ -248,7 +248,7 @@ test('Walls cannot be added on top of each other', () => {
   let ok = trackChanges(map, tracker, chs, ownerUid);
   expect(ok).toBeTruthy();
 
-  let chs2 = [{
+  let chs2: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Wall,
     feature: {
@@ -270,7 +270,7 @@ test('Walls cannot be added on top of each other', () => {
   // After that operation, we should still have the wall added the first time
   // but not the other area added the second time -- the whole second operation
   // should have been cancelled
-  let chs3 = [{
+  let chs3: Change[] = [{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Wall,
     position: { x: 1, y: 2, edge: 0 }
@@ -279,7 +279,7 @@ test('Walls cannot be added on top of each other', () => {
   ok = trackChanges(map, tracker, chs3, ownerUid);
   expect(ok).toBeTruthy();
 
-  let chs4 = [{
+  let chs4: Change[] = [{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Wall,
     position: { x: 0, y: 2, edge: 1 }
@@ -292,7 +292,7 @@ test('Walls cannot be added on top of each other', () => {
 test('A double-remove wall operation is also cancelled', () => {
   let map = createTestMap(false);
   let tracker = createChangeTracker(map.ty);
-  let chs = [{
+  let chs: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Wall,
     feature: {
@@ -319,7 +319,7 @@ test('A double-remove wall operation is also cancelled', () => {
   expect(ok).toBeTruthy();
 
   // This should remove nothing
-  let chs2 = [{
+  let chs2: Change[] = [{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Wall,
     position: { x: 1, y: 2, edge: 0 }
@@ -337,7 +337,7 @@ test('A double-remove wall operation is also cancelled', () => {
   expect(ok).toBeFalsy();
 
   // ...as exemplified by this proper removal
-  let chs3 = [{
+  let chs3: Change[] = [{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Wall,
     position: { x: 1, y: 2, edge: 0 }
@@ -357,25 +357,26 @@ test('A double-remove wall operation is also cancelled', () => {
 test('Tokens cannot be added on top of each other', () => {
   let map = createTestMap(false);
   let tracker = createChangeTracker(map.ty);
-  let chs = [{
+  let chs: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 1, y: 2 },
       colour: 3,
       text: "a",
       id: "a",
-      size: "1"
     }
   }];
 
   let ok = trackChanges(map, tracker, chs, ownerUid);
   expect(ok).toBeTruthy();
 
-  let chs2 = [{
+  let chs2: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 0, y: 2 },
       colour: 3,
       text: "b",
@@ -386,6 +387,7 @@ test('Tokens cannot be added on top of each other', () => {
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 1, y: 2 },
       colour: 4,
       text: "c",
@@ -400,7 +402,7 @@ test('Tokens cannot be added on top of each other', () => {
   // After that operation, we should still have the token added the first time
   // but not the other area added the second time -- the whole second operation
   // should have been cancelled
-  let chs3 = [{
+  let chs3: Change[] = [{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Token,
     position: { x: 1, y: 2 },
@@ -410,7 +412,7 @@ test('Tokens cannot be added on top of each other', () => {
   ok = trackChanges(map, tracker, chs3, ownerUid);
   expect(ok).toBeTruthy();
 
-  let chs4 = [{
+  let chs4: Change[] = [{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Token,
     position: { x: 0, y: 2 },
@@ -424,10 +426,11 @@ test('Tokens cannot be added on top of each other', () => {
 test('A token can be moved around', () => {
   let map = createTestMap(false);
   let tracker = createChangeTracker(map.ty);
-  let chs = [{
+  let chs: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 1, y: 2 },
       colour: 3,
       text: "a",
@@ -439,7 +442,7 @@ test('A token can be moved around', () => {
   let ok = trackChanges(map, tracker, chs, ownerUid);
   expect(ok).toBeTruthy();
 
-  let chs2 = [{
+  let chs2: Change[] = [{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 2, y: 2 },
@@ -450,7 +453,7 @@ test('A token can be moved around', () => {
   ok = trackChanges(map, tracker, chs2, ownerUid);
   expect(ok).toBeTruthy();
 
-  let chs3 = [{
+  let chs3: Change[] = [{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 1, y: 2 },
@@ -463,7 +466,7 @@ test('A token can be moved around', () => {
 
   // A redundant move from its current position back to the same position
   // should be fine
-  let chs4 = [{
+  let chs4: Change[] = [{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 1, y: 2 },
@@ -475,7 +478,7 @@ test('A token can be moved around', () => {
   expect(ok).toBeTruthy();
 
   // We shouldn't be able to move it from a non-existent position, though
-  let chs5 = [{
+  let chs5: Change[] = [{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 3, y: 2 },
@@ -490,10 +493,11 @@ test('A token can be moved around', () => {
 test('Multiple tokens can be moved together', () => {
   let map = createTestMap(false);
   let tracker = createChangeTracker(map.ty);
-  let chs = [{
+  let chs: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 1, y: 2 },
       colour: 3,
       text: "a",
@@ -504,6 +508,7 @@ test('Multiple tokens can be moved together', () => {
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 1, y: 3 },
       colour: 1,
       text: "b",
@@ -514,6 +519,7 @@ test('Multiple tokens can be moved together', () => {
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 2, y: 2 },
       colour: 2,
       text: "c",
@@ -527,7 +533,7 @@ test('Multiple tokens can be moved together', () => {
 
   // I should not be able to move the two row-aligned tokens diagonally left-down one, because
   // token "b" is in the way:
-  let chs2 = [{
+  let chs2: Change[] = [{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 0, y: 3 },
@@ -546,7 +552,7 @@ test('Multiple tokens can be moved together', () => {
 
   // I should be able to move the two row-aligned tokens left one, so that
   // "c" occupies the position "a" previously had, with no problems:
-  let chs3 = [{
+  let chs3: Change[] = [{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 0, y: 2 },
@@ -567,10 +573,11 @@ test('Multiple tokens can be moved together', () => {
 test('Multiple tokens can be moved together (in the other order)', () => {
   let map = createTestMap(false);
   let tracker = createChangeTracker(map.ty);
-  let chs = [{
+  let chs: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 1, y: 2 },
       colour: 3,
       text: "a",
@@ -581,6 +588,7 @@ test('Multiple tokens can be moved together (in the other order)', () => {
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 1, y: 3 },
       colour: 1,
       text: "b",
@@ -591,6 +599,7 @@ test('Multiple tokens can be moved together (in the other order)', () => {
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 2, y: 2 },
       colour: 2,
       text: "c",
@@ -604,7 +613,7 @@ test('Multiple tokens can be moved together (in the other order)', () => {
 
   // I should not be able to move the two row-aligned tokens diagonally left-down one, because
   // token "b" is in the way:
-  let chs2 = [{
+  let chs2: Change[] = [{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 1, y: 3 },
@@ -623,7 +632,7 @@ test('Multiple tokens can be moved together (in the other order)', () => {
 
   // I should be able to move the two row-aligned tokens left one, so that
   // "c" occupies the position "a" previously had, with no problems:
-  let chs3 = [{
+  let chs3: Change[] = [{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 1, y: 2 },
@@ -644,10 +653,11 @@ test('Multiple tokens can be moved together (in the other order)', () => {
 test('I can move a token and add another one in its place', () => {
   let map = createTestMap(false);
   let tracker = createChangeTracker(map.ty);
-  let chs = [{
+  let chs: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 1, y: 2 },
       colour: 3,
       text: "a",
@@ -658,6 +668,7 @@ test('I can move a token and add another one in its place', () => {
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 1, y: 1 },
       colour: 2,
       text: "blocker",
@@ -670,10 +681,11 @@ test('I can move a token and add another one in its place', () => {
   expect(ok).toBeTruthy();
 
   // This won't work, because the "blocker" token hasn't moved
-  let chs2 = [{
+  let chs2: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 1, y: 1 },
       colour: 1,
       text: "new",
@@ -692,10 +704,11 @@ test('I can move a token and add another one in its place', () => {
   expect(ok).toBeFalsy();
 
   // This will work, because the "a" token has moved
-  let chs3 = [{
+  let chs3: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 1, y: 2 },
       colour: 1,
       text: "new",
@@ -714,7 +727,7 @@ test('I can move a token and add another one in its place', () => {
   expect(ok).toBeTruthy();
 
   // Removing them checks they all appeared as expected
-  let chs4 = [{
+  let chs4: Change[] = [{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Token,
     position: { x: 1, y: 1 },
@@ -741,16 +754,12 @@ test('Walls cannot be created inside tokens', () => {
 
   const chs1 = [
     createTokenAdd({
+      ...defaultTokenProperties,
       position: { x: 0, y: 0 },
       colour: 0,
       id: 'a',
-      note: '',
-      noteVisibleToPlayers: false,
-      players: [],
       size: '2 (left)',
       text: 'A',
-      characterId: "",
-      sprites: []
     })
   ];
 
@@ -899,7 +908,7 @@ const uid2 = "uid2";
 test('A non-owner cannot add and remove areas', () => {
   let map = createTestMap(false);
   let tracker = createChangeTracker(map.ty);
-  let chs = [{
+  let chs: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
     feature: {
@@ -914,7 +923,7 @@ test('A non-owner cannot add and remove areas', () => {
   ok = trackChanges(map, tracker, chs, ownerUid);
   expect(ok).toBeTruthy();
 
-  let chs2 = [{
+  let chs2: Change[] = [{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Area,
     position: { x: 1, y: 2 }
@@ -934,7 +943,7 @@ test('A non-owner cannot add and remove areas', () => {
 test('A non-owner cannot add and remove walls', () => {
   let map = createTestMap(false);
   let tracker = createChangeTracker(map.ty);
-  let chs = [{
+  let chs: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Wall,
     feature: {
@@ -949,7 +958,7 @@ test('A non-owner cannot add and remove walls', () => {
   ok = trackChanges(map, tracker, chs, ownerUid);
   expect(ok).toBeTruthy();
 
-  let chs2 = [{
+  let chs2: Change[] = [{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Wall,
     position: { x: 1, y: 2, edge: 1 }
@@ -969,10 +978,11 @@ test('A non-owner cannot add and remove walls', () => {
 test('A non-owner cannot alter tokens', () => {
   let map = createTestMap(false);
   let tracker = createChangeTracker(map.ty);
-  let chs = [{
+  let chs: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 1, y: 2 },
       colour: 3,
       text: "a",
@@ -987,7 +997,7 @@ test('A non-owner cannot alter tokens', () => {
   ok = trackChanges(map, tracker, chs, ownerUid);
   expect(ok).toBeTruthy();
 
-  let chs2 = [{
+  let chs2: Change[] = [{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Token,
     position: { x: 1, y: 2 },
@@ -1007,10 +1017,11 @@ test('A non-owner cannot alter tokens', () => {
 test('Users can move only their own tokens', () => {
   let map = createTestMap(false);
   let tracker = createChangeTracker(map.ty);
-  let chs = [{
+  let chs: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 1, y: 2 },
       colour: 3,
       id: "tid1",
@@ -1022,6 +1033,7 @@ test('Users can move only their own tokens', () => {
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 2, y: 2 },
       colour: 2,
       id: "tid2",
@@ -1033,6 +1045,7 @@ test('Users can move only their own tokens', () => {
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 3, y: 2 },
       colour: 1,
       id: "tid3",
@@ -1045,7 +1058,7 @@ test('Users can move only their own tokens', () => {
   let ok = trackChanges(map, tracker, chs, ownerUid);
   expect(ok).toBeTruthy();
 
-  function move(x: number, oldY: number, newY: number, tokenId: string): ITokenMove {
+  function move(x: number, oldY: number, newY: number, tokenId: string): TokenMove {
     return {
       ty: ChangeType.Move,
       cat: ChangeCategory.Token,
@@ -1100,7 +1113,7 @@ test('Users can move only their own tokens', () => {
 test('In FFA mode, a non-owner can create areas', () => {
   let map = createTestMap(true);
   let tracker = createChangeTracker(map.ty);
-  let chs = [{
+  let chs: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
     feature: {
@@ -1112,7 +1125,7 @@ test('In FFA mode, a non-owner can create areas', () => {
   let ok = trackChanges(map, tracker, chs, uid1);
   expect(ok).toBeTruthy();
 
-  let chs2 = [{
+  let chs2: Change[] = [{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Area,
     position: { x: 1, y: 2 }
@@ -1129,7 +1142,7 @@ test('In FFA mode, a non-owner can create areas', () => {
 test('In FFA mode, a non-owner can create walls', () => {
   let map = createTestMap(true);
   let tracker = createChangeTracker(map.ty);
-  let chs = [{
+  let chs: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Wall,
     feature: {
@@ -1141,7 +1154,7 @@ test('In FFA mode, a non-owner can create walls', () => {
   let ok = trackChanges(map, tracker, chs, uid1);
   expect(ok).toBeTruthy();
 
-  let chs2 = [{
+  let chs2: Change[] = [{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Wall,
     position: { x: 1, y: 2, edge: 1 }
@@ -1158,10 +1171,11 @@ test('In FFA mode, a non-owner can create walls', () => {
 test('In FFA mode, a non-owner can do all token operations', () => {
   let map = createTestMap(true);
   let tracker = createChangeTracker(map.ty);
-  let chs = [{
+  let chs: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 1, y: 2 },
       colour: 3,
       text: "a",
@@ -1173,6 +1187,7 @@ test('In FFA mode, a non-owner can do all token operations', () => {
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 2, y: 2 },
       colour: 2,
       text: "b",
@@ -1184,6 +1199,7 @@ test('In FFA mode, a non-owner can do all token operations', () => {
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 3, y: 2 },
       colour: 1,
       text: "c",
@@ -1195,7 +1211,7 @@ test('In FFA mode, a non-owner can do all token operations', () => {
   let ok = trackChanges(map, tracker, chs, uid1);
   expect(ok).toBeTruthy();
 
-  function move(x: number, oldY: number, newY: number, id: string): ITokenMove {
+  function move(x: number, oldY: number, newY: number, id: string): TokenMove {
     return {
       ty: ChangeType.Move,
       cat: ChangeCategory.Token,
@@ -1210,7 +1226,7 @@ test('In FFA mode, a non-owner can do all token operations', () => {
   expect(ok).toBeTruthy();
 
   // I can remove them too
-  function remove(x: number, y: number, id: string): ITokenRemove {
+  function remove(x: number, y: number, id: string): TokenRemove {
     return {
       ty: ChangeType.Remove,
       cat: ChangeCategory.Token,
@@ -1236,7 +1252,7 @@ test('Policy blocks us from adding too many objects', () => {
   });
 
   // We should be able to add up to the limit
-  let chs = [{
+  let chs: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
     feature: {
@@ -1247,6 +1263,7 @@ test('Policy blocks us from adding too many objects', () => {
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 0, y: 0 },
       colour: 1,
       text: "a",
@@ -1267,10 +1284,11 @@ test('Policy blocks us from adding too many objects', () => {
   expect(tracker.objectCount).toBe(3);
 
   // At this point we shouldn't be able to add any more...
-  let chs2 = [{
+  let chs2: Change[] = [{
     ty: ChangeType.Add,
     cat: ChangeCategory.Token,
     feature: {
+      ...defaultTokenProperties,
       position: { x: 0, y: 1 },
       colour: 1,
       text: "b",
@@ -1284,7 +1302,7 @@ test('Policy blocks us from adding too many objects', () => {
   expect(tracker.objectCount).toBe(3);
 
   // ...but we should still be able to move existing tokens...
-  let chs3 = [{
+  let chs3: Change[] = [{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     oldPosition: { x: 0, y: 0 },
@@ -1297,7 +1315,7 @@ test('Policy blocks us from adding too many objects', () => {
   expect(tracker.objectCount).toBe(3);
 
   // ...and if we remove an existing object, we can add a new one
-  let chs4 = [{
+  let chs4: Change[] = [{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Wall,
     position: { x: 0, y: 0, edge: 0 }

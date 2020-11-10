@@ -146,7 +146,7 @@ describe('test app', () => {
     let acceptElement = await findByRole('button', { name: /Accept/i });
     expect(acceptElement).toBeInTheDocument();
 
-    const ownerElement = await findByRole('button', { name: user.displayName });
+    const ownerElement = await findByRole('button', { name: /^A User/ });
     expect(ownerElement).toBeInTheDocument();
 
     // Click that accept button

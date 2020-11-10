@@ -3,7 +3,7 @@ import firebase from 'firebase/app';
 import * as Convert from './converter';
 import { IDataService, IDataReference, IDataView, IDataAndReference, IChildDataReference } from './interfaces';
 import { IAdventure, IPlayer } from '../data/adventure';
-import { IChange, IChanges } from '../data/change';
+import { Change, Changes } from '../data/change';
 import { IIdentified } from '../data/identified';
 import { IImages } from '../data/image';
 import { IInvite } from '../data/invite';
@@ -145,7 +145,7 @@ export class DataService implements IDataService {
 
   // IDataService implementation
 
-  async addChanges(adventureId: string, uid: string, mapId: string, chs: IChange[]): Promise<void> {
+  async addChanges(adventureId: string, uid: string, mapId: string, chs: Change[]): Promise<void> {
     await this._db.collection(adventures).doc(adventureId).collection(maps).doc(mapId).collection(changes).add({
       chs: chs,
       timestamp: this._timestampProvider(),
@@ -181,13 +181,13 @@ export class DataService implements IDataService {
     return new ChildDataReference<IMap, IAdventure>(d, Convert.mapConverter, Convert.adventureConverter);
   }
 
-  getMapBaseChangeRef(adventureId: string, id: string, converter: Convert.IConverter<IChanges>): IDataReference<IChanges> {
+  getMapBaseChangeRef(adventureId: string, id: string, converter: Convert.IConverter<Changes>): IDataReference<Changes> {
     const d = this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(id).collection(changes).doc(baseChange);
-    return new DataReference<IChanges>(d, converter);
+    return new DataReference<Changes>(d, converter);
   }
 
-  async getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number, converter: Convert.IConverter<IChanges>): Promise<IDataAndReference<IChanges>[] | undefined> {
+  async getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number, converter: Convert.IConverter<Changes>): Promise<IDataAndReference<Changes>[] | undefined> {
     const s = await this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(id).collection(changes)
       .where("incremental", "==", true)
@@ -282,7 +282,7 @@ export class DataService implements IDataService {
   watchChanges(
     adventureId: string,
     mapId: string,
-    onNext: (chs: IChanges) => void,
+    onNext: (chs: Changes) => void,
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ) {
