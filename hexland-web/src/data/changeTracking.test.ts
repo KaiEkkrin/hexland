@@ -1,9 +1,11 @@
-import { Change, ChangeType, ChangeCategory, TokenMove, TokenRemove, createTokenAdd, createWallAdd, createTokenMove, createWallRemove } from './change';
+import { Change, ChangeType, ChangeCategory, TokenMove, TokenRemove, createTokenAdd, createWallAdd, createTokenMove, createWallRemove, createImageAdd, createImageRemove } from './change';
 import { trackChanges, SimpleChangeTracker } from './changeTracking';
 import { GridCoord, coordString, edgeString, GridEdge } from './coord';
 import { defaultTokenProperties, FeatureDictionary, IFeature } from './feature';
 import { IMap, MapType } from './map';
 import { IAnnotation } from './annotation';
+import { IdDictionary } from './identified';
+import { createPixelAnchor, createVertexAnchor, IMapImage } from './image';
 import { IUserPolicy, standardUser } from './policy';
 import { getTokenGeometry } from './tokenGeometry';
 import { SimpleTokenDrawing, Tokens } from './tokens';
@@ -14,6 +16,7 @@ function createChangeTracker(ty: MapType, userPolicy?: IUserPolicy | undefined) 
     new Tokens(getTokenGeometry(ty), new SimpleTokenDrawing()),
     new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString),
     new FeatureDictionary<GridCoord, IAnnotation>(coordString),
+    new IdDictionary<IMapImage>(),
     userPolicy
   );
 }
@@ -900,6 +903,48 @@ test('Tokens cannot be moved into walls', () => {
   expect(ok).toBeTruthy();
 });
 
+test('Images can be added and removed', () => {
+  const map = createTestMap(false);
+  const tracker = createChangeTracker(map.ty);
+
+  const chs1 = [
+    createImageAdd(
+      '/image1.png', 'a', createVertexAnchor(0, 0, 1), createVertexAnchor(1, 1, 1)
+    ),
+    createImageAdd(
+      '/image2.png', 'b', createPixelAnchor(0, 0), createPixelAnchor(100, 100)
+    )
+  ];
+
+  let ok = trackChanges(map, tracker, chs1, ownerUid);
+  expect(ok).toBeTruthy();
+
+  // We can't remove an image that isn't there
+  const chs2 = [createImageRemove('c')];
+  ok = trackChanges(map, tracker, chs2, ownerUid);
+  expect(ok).toBeFalsy();
+
+  // ...or re-add the same one
+  ok = trackChanges(map, tracker, chs1, ownerUid);
+  expect(ok).toBeFalsy();
+
+  // ...but we can move an existing image, and remove one that *is* there
+  const chs3 = [
+    createImageAdd(
+      '/image1.png', 'a', createVertexAnchor(1, 1, 1), createVertexAnchor(3, 3, 0)
+    ),
+    createImageRemove('a'),
+    createImageRemove('b')
+  ];
+  ok = trackChanges(map, tracker, chs3, ownerUid);
+  expect(ok).toBeTruthy();
+
+  // That kept image a
+  const chs4 = [createImageRemove('a')];
+  ok = trackChanges(map, tracker, chs4, ownerUid);
+  expect(ok).toBeTruthy();
+});
+
 // == FFA OFF: USER VALIDATION ==
 
 const uid1 = "uid1";
@@ -973,6 +1018,33 @@ test('A non-owner cannot add and remove walls', () => {
   // ...but not twice
   ok = trackChanges(map, tracker, chs2, ownerUid);
   expect(ok).toBeFalsy();
+});
+
+test('A non-owner cannot add and remove images', () => {
+  const map = createTestMap(false);
+  const tracker = createChangeTracker(map.ty);
+
+  const chs1 = [
+    createImageAdd(
+      '/image1.png', 'a', createVertexAnchor(0, 0, 1), createVertexAnchor(1, 1, 1)
+    ),
+    createImageAdd(
+      '/image2.png', 'b', createPixelAnchor(0, 0), createPixelAnchor(100, 100)
+    )
+  ];
+
+  let ok = trackChanges(map, tracker, chs1, uid1);
+  expect(ok).toBeFalsy();
+
+  ok = trackChanges(map, tracker, chs1, ownerUid);
+  expect(ok).toBeTruthy();
+
+  const chs2 = [createImageRemove('b')];
+  ok = trackChanges(map, tracker, chs2, uid1);
+  expect(ok).toBeFalsy();
+
+  ok = trackChanges(map, tracker, chs2, ownerUid);
+  expect(ok).toBeTruthy();
 });
 
 test('A non-owner cannot alter tokens', () => {
@@ -1167,6 +1239,27 @@ test('In FFA mode, a non-owner can create walls', () => {
   ok = trackChanges(map, tracker, chs2, uid1);
   expect(ok).toBeFalsy();
 });
+
+test('In FFA mode, a non-owner can add and remove images', () => {
+  const map = createTestMap(true);
+  const tracker = createChangeTracker(map.ty);
+
+  const chs1 = [
+    createImageAdd(
+      '/image1.png', 'a', createVertexAnchor(0, 0, 1), createVertexAnchor(1, 1, 1)
+    ),
+    createImageAdd(
+      '/image2.png', 'b', createPixelAnchor(0, 0), createPixelAnchor(100, 100)
+    )
+  ];
+
+  let ok = trackChanges(map, tracker, chs1, uid1);
+  expect(ok).toBeTruthy();
+
+  const chs2 = [createImageRemove('b')];
+  ok = trackChanges(map, tracker, chs2, uid1);
+  expect(ok).toBeTruthy();
+})
 
 test('In FFA mode, a non-owner can do all token operations', () => {
   let map = createTestMap(true);

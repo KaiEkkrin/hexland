@@ -3,6 +3,8 @@ import { IAnnotation } from "../data/annotation";
 import { SimpleChangeTracker } from "../data/changeTracking";
 import { GridCoord, GridEdge } from "../data/coord";
 import { IFeatureDictionary, IFeature, IToken, ITokenDictionary } from "../data/feature";
+import { IIdDictionary } from "../data/identified";
+import { IMapImage } from "../data/image";
 import { IMap } from "../data/map";
 import { IUserPolicy } from "../data/policy";
 
@@ -21,12 +23,13 @@ export class MapChangeTracker extends SimpleChangeTracker {
     tokens: ITokenDictionary,
     walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
     notes: IFeatureDictionary<GridCoord, IAnnotation>,
+    images: IIdDictionary<IMapImage>,
     userPolicy: IUserPolicy | undefined,
     colouring?: MapColouring | undefined,
     handleChangesApplied?: ((haveTokensChanged: boolean, objectCount: number) => void) | undefined,
     handleChangesAborted?: (() => void) | undefined
   ) {
-    super(areas, tokens, walls, notes, userPolicy);
+    super(areas, tokens, walls, notes, images, userPolicy);
     this._colouring = colouring;
     this._handleChangesApplied = handleChangesApplied;
     this._handleChangesAborted = handleChangesAborted;

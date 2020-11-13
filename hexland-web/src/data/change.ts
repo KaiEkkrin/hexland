@@ -1,6 +1,7 @@
 import { IAnnotation } from "./annotation";
 import { GridCoord, GridEdge } from "./coord";
 import { IFeature, IToken } from "./feature";
+import { Anchor } from "./image";
 import { Timestamp } from './types';
 
 // This represents a collection of changes all made to the map at once.
@@ -17,7 +18,7 @@ export type Changes = {
 // This represents any change made to the map.
 export type Change =
   AreaAdd | AreaRemove | TokenAdd | TokenMove | TokenRemove |
-  WallAdd | WallRemove | NoteAdd | NoteRemove | NoChange;
+  WallAdd | WallRemove | NoteAdd | NoteRemove | ImageAdd | ImageRemove | NoChange;
 
 export enum ChangeType {
   Add = 1,
@@ -31,6 +32,7 @@ export enum ChangeCategory {
   Token = 2,
   Wall = 3,
   Note = 4,
+  Image = 5
 }
 
 export type AreaAdd = {
@@ -90,10 +92,27 @@ export type NoteRemove = {
   position: GridCoord;
 };
 
+export type ImageAdd = {
+  ty: ChangeType.Add;
+  cat: ChangeCategory.Image;
+  imagePath: string;
+  id: string; // uniquely identify this image on the map in case there are multiple of the same path
+  start: Anchor;
+  end: Anchor;
+};
+
+export type ImageRemove = {
+  ty: ChangeType.Remove;
+  cat: ChangeCategory.Image;
+  id: string;
+};
+
 export type NoChange = {
   ty: ChangeType.Add;
   cat: ChangeCategory.Undefined;
 };
+
+export const defaultChange: NoChange = { ty: ChangeType.Add, cat: ChangeCategory.Undefined };
 
 export function createAreaAdd(feature: IFeature<GridCoord>): AreaAdd {
   return {
@@ -167,5 +186,24 @@ export function createNoteRemove(position: GridCoord): NoteRemove {
     ty: ChangeType.Remove,
     cat: ChangeCategory.Note,
     position: position
+  };
+}
+
+export function createImageAdd(imagePath: string, imageId: string, start: Anchor, end: Anchor): ImageAdd {
+  return {
+    ty: ChangeType.Add,
+    cat: ChangeCategory.Image,
+    imagePath: imagePath,
+    id: imageId,
+    start: start,
+    end: end
+  };
+}
+
+export function createImageRemove(imageId: string): ImageRemove {
+  return {
+    ty: ChangeType.Remove,
+    cat: ChangeCategory.Image,
+    id: imageId
   };
 }

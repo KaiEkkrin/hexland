@@ -1,10 +1,12 @@
 import { MapColouring } from './colouring';
 import { HexGridGeometry } from './hexGridGeometry';
 import { MapChangeTracker } from './mapChangeTracker';
-import { ChangeType, ChangeCategory } from '../data/change';
+import { ChangeType, ChangeCategory, TokenAdd, TokenMove, WallRemove, WallAdd } from '../data/change';
 import { trackChanges, IChangeTracker } from '../data/changeTracking';
 import { GridEdge, GridCoord, coordString, edgeString } from '../data/coord';
 import { FeatureDictionary, IFeature } from '../data/feature';
+import { IdDictionary } from '../data/identified';
+import { IMapImage } from '../data/image';
 import { MapType } from '../data/map';
 import { IAnnotation } from '../data/annotation';
 import { SimpleTokenDrawing, Tokens } from '../data/tokens';
@@ -42,7 +44,7 @@ function buildWallsOfThreeHexes(changeTracker: IChangeTracker) {
     { x: 0, y: 1, edge: 1 },
     { x: 1, y: 0, edge: 0 }
   ].map(p => {
-    return {
+    return <WallAdd>{
       ty: ChangeType.Add,
       cat: ChangeCategory.Wall,
       feature: { position: p, colour: 0 }
@@ -57,10 +59,11 @@ test('Unprivileged users cannot move other users\' tokens', () => {
   const tokens = new Tokens(getTokenGeometry(MapType.Hex), new SimpleTokenDrawing());
   const walls = new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString);
   const notes = new FeatureDictionary<GridCoord, IAnnotation>(coordString);
+  const images = new IdDictionary<IMapImage>();
 
   const handleChangesApplied = jest.fn();
   const handleChangesAborted = jest.fn();
-  let changeTracker = new MapChangeTracker(areas, tokens, walls, notes, undefined, undefined,
+  let changeTracker = new MapChangeTracker(areas, tokens, walls, notes, images, undefined, undefined,
     handleChangesApplied, handleChangesAborted);
 
   // The walls should be irrelevant here :)
@@ -74,7 +77,7 @@ test('Unprivileged users cannot move other users\' tokens', () => {
     { position: { x: 0, y: 0 }, colour: 0, id: "a", players: [uid1], size: "1", text: "Zero" },
     { position: { x: 0, y: 1 }, colour: 0, id: "b", players: [uid2], size: "1", text: "Inner2" },
   ].map(t => {
-    return {
+    return <TokenAdd>{
       ty: ChangeType.Add,
       cat: ChangeCategory.Token,
       feature: t
@@ -87,7 +90,7 @@ test('Unprivileged users cannot move other users\' tokens', () => {
   expect(handleChangesApplied.mock.calls[1][0]).toBe(true); // this time token changes were made
   expect(handleChangesAborted.mock.calls.length).toBe(0);
 
-  const moveWithinInner = {
+  const moveWithinInner = <TokenMove>{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 1, y: 0 },
@@ -109,7 +112,7 @@ test('Unprivileged users cannot move other users\' tokens', () => {
   expect(handleChangesAborted.mock.calls.length).toBe(1);
 
   // neither of them can move both by swapping their positions:
-  const moveSwap = [{
+  const moveSwap: TokenMove[] = [{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 0, y: 0 },
@@ -141,7 +144,7 @@ test('Unprivileged users cannot move other users\' tokens', () => {
 
   // ...and after that, uid2 can still move their token back to its
   // now-vacant original position
-  const moveBack = {
+  const moveBack = <TokenMove>{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 0, y: 1 },
@@ -161,11 +164,12 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
   const tokens = new Tokens(getTokenGeometry(MapType.Hex), new SimpleTokenDrawing());
   const walls = new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString);
   const notes = new FeatureDictionary<GridCoord, IAnnotation>(coordString);
+  const images = new IdDictionary<IMapImage>();
   const colouring = new MapColouring(new HexGridGeometry(100, 8));
 
   const handleChangesApplied = jest.fn();
   const handleChangesAborted = jest.fn();
-  let changeTracker = new MapChangeTracker(areas, tokens, walls, notes, undefined, colouring,
+  let changeTracker = new MapChangeTracker(areas, tokens, walls, notes, images, undefined, colouring,
     handleChangesApplied, handleChangesAborted);
 
   let ok = buildWallsOfThreeHexes(changeTracker);
@@ -183,7 +187,7 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
     { position: { x: 0, y: 1 }, colour: 0, id: "b", players: [uid1], size: "1", text: "Inner" },
     { position: { x: -2, y: 2 }, colour: 0, id: "c", players: [uid1], size: "1", text: "Outer" }
   ].map(t => {
-    return {
+    return <TokenAdd>{
       ty: ChangeType.Add,
       cat: ChangeCategory.Token,
       feature: t
@@ -196,7 +200,7 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
   expect(handleChangesApplied.mock.calls[1][0]).toBe(true); // this time token changes were made
   expect(handleChangesAborted.mock.calls.length).toBe(0);
 
-  const moveZeroToOuter = {
+  const moveZeroToOuter = <TokenMove>{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 1, y: -1 },
@@ -204,7 +208,7 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
     tokenId: "a"
   };
 
-  const moveWithinInner = {
+  const moveWithinInner = <TokenMove>{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 1, y: 0 },
@@ -212,7 +216,7 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
     tokenId: "b"
   };
 
-  const moveOuterToOuter = {
+  const moveOuterToOuter = <TokenMove>{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: -1, y: 1 },
@@ -241,7 +245,7 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
 
   // If we remove one of the walls between zero and outer, we can do that move too, even
   // if it's not the shortest-path wall
-  const removeWall = {
+  const removeWall = <WallRemove>{
     ty: ChangeType.Remove,
     cat: ChangeCategory.Wall,
     position: { x: -1, y: 1, edge: 2 }
@@ -265,7 +269,7 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
   // console.log("outer colour: " + colouring.colourOf({ x: 1, y: -1 }));
 
   // We still couldn't move it into the inner area, though
-  const moveOuterToInner = {
+  const moveOuterToInner = <TokenMove>{
     ty: ChangeType.Move,
     cat: ChangeCategory.Token,
     newPosition: { x: 0, y: 1 },

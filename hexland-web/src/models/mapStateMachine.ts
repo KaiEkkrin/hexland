@@ -42,20 +42,20 @@ const zAxis = new THREE.Vector3(0, 0, 1);
 
 // Describes the map state as managed by the state machine below and echoed
 // to the Map component.
-export interface IMapState {
+export type MapState = {
   isOwner: boolean;
   seeEverything: boolean;
   annotations: IPositionedAnnotation[];
   tokens: (ITokenProperties & ISelectable)[];
   objectCount?: number | undefined; // undefined for irrelevant (no policy)
   zoom: number;
-}
+};
 
 export interface ISelectable {
   selectable: boolean;
 }
 
-export function createDefaultState(): IMapState {
+export function createDefaultState(): MapState {
   return {
     isOwner: true,
     seeEverything: true,
@@ -113,10 +113,10 @@ export class MapStateMachine {
   private readonly _scratchVector2 = new THREE.Vector3();
   private readonly _scratchVector3 = new THREE.Vector3();
 
-  private readonly _stateSubj = new ReplaySubject<IMapState>(1);
+  private readonly _stateSubj = new ReplaySubject<MapState>(1);
 
   private _map: IAdventureIdentified<IMap>;
-  private _state: IMapState;
+  private _state: MapState;
   private _userPolicy: IUserPolicy | undefined;
 
   private _changeTracker: MapChangeTracker;
@@ -282,7 +282,8 @@ export class MapStateMachine {
     }
 
     const changeTracker = new MapChangeTracker(
-      this._drawing.areas, this._tokens.clone(), this._drawing.walls, this._notes, this._userPolicy, this._mapColouring
+      this._drawing.areas, this._tokens.clone(), this._drawing.walls, this._notes, this._drawing.images,
+      this._userPolicy, this._mapColouring
     );
     return trackChanges(this._map.record, changeTracker, changes, this._uid);
   }
@@ -300,7 +301,8 @@ export class MapStateMachine {
     // I only need to clone the tokens for this experimental change tracker because the other
     // things definitely won't change
     const changeTracker = new MapChangeTracker(
-      this._drawing.areas, this._tokens.clone(), this._drawing.walls, this._notes, this._userPolicy, this._mapColouring
+      this._drawing.areas, this._tokens.clone(), this._drawing.walls, this._notes, this._drawing.images,
+      this._userPolicy, this._mapColouring
     );
 
     const removeToken = existingToken === undefined ? [] : [createTokenRemove(token.position, token.id)];
@@ -337,6 +339,7 @@ export class MapStateMachine {
       this._tokens,
       this._drawing.walls,
       this._notes,
+      this._drawing.images,
       this._userPolicy,
       this._mapColouring,
       (haveTokensChanged: boolean, objectCount: number) => {
@@ -603,7 +606,7 @@ export class MapStateMachine {
     this._tokenMoveDragSelectionPosition = position;
   }
 
-  private updateAnnotations(state: IMapState): IMapState {
+  private updateAnnotations(state: MapState): MapState {
     const positioned: IPositionedAnnotation[] = [];
     const [target, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
     const worldToLoSViewport = this._drawing.getWorldToLoSViewport(this._scratchMatrix2);
@@ -633,7 +636,7 @@ export class MapStateMachine {
     return { ...state, annotations: positioned };
   }
 
-  private updateTokens(state: IMapState): IMapState {
+  private updateTokens(state: MapState): MapState {
     return {
       ...state,
       tokens: [...fluent(this._tokens).map(t => ({
@@ -645,7 +648,8 @@ export class MapStateMachine {
   private validateWallChanges(changes: Change[]): boolean {
     // I need to clone the walls for this one.  The map colouring won't be relevant.
     const changeTracker = new MapChangeTracker(
-      this._drawing.areas, this._tokens, this._drawing.walls.clone(), this._notes, this._userPolicy, undefined
+      this._drawing.areas, this._tokens, this._drawing.walls.clone(), this._notes, this._drawing.images,
+      this._userPolicy, undefined
     );
     return trackChanges(this._map.record, changeTracker, changes, this._uid);
   }
@@ -655,7 +659,7 @@ export class MapStateMachine {
   // return the new state if applicable (copied, not mutated!), or undefined to
   // keep the existing state.
   private withStateChange(
-    fn: (state: IMapState) => IMapState | undefined
+    fn: (state: MapState) => MapState | undefined
   ) {
     const newState = fn(this._state);
     if (newState !== undefined) {
@@ -669,7 +673,7 @@ export class MapStateMachine {
   get objectCount() { return this._state.objectCount; }
   get panningX() { return this._panningX; }
   get panningY() { return this._panningY; }
-  get state(): Observable<IMapState> { return this._stateSubj; }
+  get state(): Observable<MapState> { return this._stateSubj; }
 
   async addChanges(changes: Change[] | undefined, complain: (id: string, title: string, message: string) => void) {
     if (changes === undefined || changes.length === 0) {
@@ -948,7 +952,7 @@ export class MapStateMachine {
   }
 
   // Resets the view, centreing on a token with the given id.
-  resetView(tokenId?: string | undefined, newMapState?: IMapState | undefined) {
+  resetView(tokenId?: string | undefined, newMapState?: MapState | undefined) {
     this._cameraTranslation.set(0, 0, 0);
     this._cameraRotation.copy(this._defaultRotation);
     this._cameraScaling.set(zoomDefault, zoomDefault, 1);

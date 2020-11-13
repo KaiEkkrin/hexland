@@ -4,6 +4,8 @@ import { Change, Changes } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
 import { GridCoord, GridEdge, coordString, edgeString } from '../data/coord';
 import { FeatureDictionary, IFeature, ITokenDictionary } from '../data/feature';
+import { IdDictionary } from '../data/identified';
+import { IMapImage } from '../data/image';
 import { IInvite } from '../data/invite';
 import { IMap, MapType, summariseMap } from '../data/map';
 import { getUserPolicy, IInviteExpiryPolicy } from '../data/policy';
@@ -308,6 +310,7 @@ async function tryConsolidateMapChanges(
     tokenDict,
     new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString),
     new FeatureDictionary<GridCoord, IAnnotation>(coordString),
+    new IdDictionary<IMapImage>(),
     ownerPolicy
     // new MapColouring(m.ty === MapType.Hex ? new HexGridGeometry(1, 1) : new SquareGridGeometry(1, 1))
   );

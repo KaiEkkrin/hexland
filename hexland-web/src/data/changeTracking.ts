@@ -1,12 +1,14 @@
 import { IAnnotation } from "./annotation";
-import { Change, ChangeCategory, ChangeType, AreaAdd, AreaRemove, TokenAdd, WallAdd, WallRemove, TokenRemove, TokenMove, NoteAdd, NoteRemove, createAreaAdd, createWallAdd, createNoteAdd, createTokenAdd } from "./change";
+import { Change, ChangeCategory, ChangeType, AreaAdd, AreaRemove, TokenAdd, WallAdd, WallRemove, TokenRemove, TokenMove, NoteAdd, NoteRemove, createAreaAdd, createWallAdd, createNoteAdd, createTokenAdd, ImageAdd, ImageRemove } from "./change";
 import { GridCoord, GridEdge } from "./coord";
 import { IFeature, IToken, IFeatureDictionary, ITokenDictionary } from "./feature";
+import { IMapImage } from "./image";
 import { IMap } from "./map";
 import { IUserPolicy } from "./policy";
 
 import { v4 as uuidv4 } from 'uuid';
 import fluent from "fluent-iterable";
+import { IIdDictionary } from "./identified";
 
 export interface IChangeTracker {
   objectCount: number;
@@ -19,6 +21,8 @@ export interface IChangeTracker {
   wallRemove: (position: GridEdge) => IFeature<GridEdge> | undefined;
   noteAdd: (feature: IAnnotation) => boolean;
   noteRemove: (position: GridCoord) => IAnnotation | undefined;
+  imageAdd: (image: IMapImage) => boolean;
+  imageRemove: (id: string) => IMapImage | undefined;
 
   // Called after a batch of changes has been completed, before any redraw.
   changesApplied(): void;
@@ -36,6 +40,7 @@ export class SimpleChangeTracker implements IChangeTracker {
   private readonly _tokens: ITokenDictionary;
   private readonly _walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>;
   private readonly _notes: IFeatureDictionary<GridCoord, IAnnotation>;
+  private readonly _images: IIdDictionary<IMapImage>;
   private readonly _userPolicy: IUserPolicy | undefined;
 
   private _objectCount = 0;
@@ -45,25 +50,27 @@ export class SimpleChangeTracker implements IChangeTracker {
     tokens: ITokenDictionary,
     walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
     notes: IFeatureDictionary<GridCoord, IAnnotation>,
+    images: IIdDictionary<IMapImage>,
     userPolicy: IUserPolicy | undefined
   ) {
     this._areas = areas;
     this._tokens = tokens;
     this._walls = walls;
     this._notes = notes;
+    this._images = images;
     this._userPolicy = userPolicy;
   }
 
-  private policyAdd<K extends GridCoord, F extends IFeature<K>>(
-    dict: IFeatureDictionary<K, F>,
-    feature: F
+  private policyAdd<F>(
+    doAdd: () => boolean,
+    doRemove: () => F | undefined
   ): boolean {
-    const added = dict.add(feature);
+    const added = doAdd();
     if (added) {
       ++this._objectCount;
       if (this._userPolicy !== undefined && this._objectCount > this._userPolicy.objects) {
         // Oops
-        this.policyRemove(dict, feature.position);
+        this.policyRemove(doRemove);
         return false;
       }
     }
@@ -71,11 +78,8 @@ export class SimpleChangeTracker implements IChangeTracker {
     return added;
   }
 
-  private policyRemove<K extends GridCoord, F extends IFeature<K>>(
-    dict: IFeatureDictionary<K, F>,
-    position: K
-  ): F | undefined {
-    const removed = dict.remove(position);
+  private policyRemove<F>(doRemove: () => F | undefined) {
+    const removed = doRemove();
     if (removed !== undefined) {
       --this._objectCount;
     }
@@ -86,11 +90,11 @@ export class SimpleChangeTracker implements IChangeTracker {
   get objectCount() { return this._objectCount; }
 
   areaAdd(feature: IFeature<GridCoord>) {
-    return this.policyAdd(this._areas, feature);
+    return this.policyAdd(() => this._areas.add(feature), () => this._areas.remove(feature.position));
   }
 
   areaRemove(position: GridCoord) {
-    return this.policyRemove(this._areas, position);
+    return this.policyRemove(() => this._areas.remove(position));
   }
 
   clear() {
@@ -109,14 +113,14 @@ export class SimpleChangeTracker implements IChangeTracker {
       }
     }
 
-    return this.policyAdd(this._tokens, feature);
+    return this.policyAdd(() => this._tokens.add(feature), () => this._tokens.remove(feature.position));
   }
 
   tokenRemove(map: IMap, user: string, position: GridCoord, tokenId: string | undefined) {
-    const removed = this.policyRemove(this._tokens, position);
+    const removed = this.policyRemove(() => this._tokens.remove(position));
     if (removed !== undefined && removed.id !== tokenId) {
       // Oops, ID mismatch, put it back!
-      this.policyAdd(this._tokens, removed);
+      this.policyAdd(() => this._tokens.add(removed), () => this._tokens.remove(position));
       return undefined;
     }
 
@@ -129,19 +133,27 @@ export class SimpleChangeTracker implements IChangeTracker {
       return false;
     }
 
-    return this.policyAdd(this._walls, feature);
+    return this.policyAdd(() => this._walls.add(feature), () => this._walls.remove(feature.position));
   }
 
   wallRemove(position: GridEdge) {
-    return this.policyRemove(this._walls, position);
+    return this.policyRemove(() => this._walls.remove(position));
   }
 
   noteAdd(feature: IAnnotation) {
-    return this.policyAdd(this._notes, feature);
+    return this.policyAdd(() => this._notes.add(feature), () => this._notes.remove(feature.position));
   }
 
   noteRemove(position: GridCoord) {
-    return this.policyRemove(this._notes, position);
+    return this.policyRemove(() => this._notes.remove(position));
+  }
+
+  imageAdd(image: IMapImage) {
+    return this.policyAdd(() => this._images.add(image), () => this._images.remove(image.id));
+  }
+
+  imageRemove(id: string) {
+    return this.policyRemove(() => this._images.remove(id));
   }
 
   changesApplied() {
@@ -265,6 +277,7 @@ function trackChange(map: IMap, tracker: IChangeTracker, ch: Change, user: strin
     case ChangeCategory.Token: return trackTokenChange(map, tracker, ch, user);
     case ChangeCategory.Wall: return canDoAnything(map, user) ? trackWallChange(tracker, ch) : undefined;
     case ChangeCategory.Note: return canDoAnything(map, user) ? trackNoteChange(tracker, ch) : undefined;
+    case ChangeCategory.Image: return canDoAnything(map, user) ? trackImageChange(tracker, ch) : undefined;
     default: return undefined;
   }
 }
@@ -400,7 +413,35 @@ function trackNoteChange(tracker: IChangeTracker, ch: NoteAdd | NoteRemove): ICh
           if (removed !== undefined) { tracker.noteAdd(removed); }
         },
         continue: function () { return doNothing; }
+      };
+
+    default: return undefined;
+  }
+}
+
+function trackImageChange(tracker: IChangeTracker, ch: ImageAdd | ImageRemove): IChangeApplication | undefined {
+  switch (ch.ty) {
+    case ChangeType.Add:
+      return {
+        revert: () => undefined,
+        continue: function() {
+          const added = tracker.imageAdd(ch);
+          return added ? {
+            revert: function() {
+              tracker.imageRemove(ch.id);
+            }
+          } : undefined;
+        }
       }
+
+    case ChangeType.Remove:
+      const removed = tracker.imageRemove(ch.id);
+      return removed === undefined ? undefined : {
+        revert: function() {
+          if (removed !== undefined) { tracker.imageAdd(removed); }
+        },
+        continue: function() { return doNothing; }
+      };
 
     default: return undefined;
   }

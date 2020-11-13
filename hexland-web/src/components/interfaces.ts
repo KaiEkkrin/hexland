@@ -1,7 +1,7 @@
 import { IAdventure, IPlayer } from '../data/adventure';
 import { IAdventureIdentified, IIdentified } from '../data/identified';
 import { IMap } from '../data/map';
-import { IMapState, MapStateMachine } from '../models/mapStateMachine';
+import { MapState, MapStateMachine } from '../models/mapStateMachine';
 import { IDataService, IUser, IAuth, IAuthProvider, IAnalytics, IFunctionsService, IStorage, ISpriteManager } from '../services/interfaces';
 
 import firebase from 'firebase/app';
@@ -72,7 +72,7 @@ export interface IAdventureContext {
 
 export interface IMapContext {
   map?: IAdventureIdentified<IMap> | undefined;
-  mapState: IMapState;
+  mapState: MapState;
   stateMachine?: MapStateMachine | undefined;
 }
 

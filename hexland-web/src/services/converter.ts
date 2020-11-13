@@ -1,10 +1,10 @@
 import { IAdventure, IMapSummary, IPlayer } from '../data/adventure';
 import { IAnnotation, defaultAnnotation } from '../data/annotation';
-import { Change, Changes, ChangeType, ChangeCategory, TokenAdd, TokenMove, TokenRemove, AreaAdd, AreaRemove, NoteAdd, NoteRemove, WallAdd, WallRemove } from '../data/change';
+import { Change, Changes, ChangeType, ChangeCategory, TokenAdd, TokenMove, TokenRemove, AreaAdd, AreaRemove, NoteAdd, NoteRemove, WallAdd, WallRemove, ImageAdd, ImageRemove, defaultChange } from '../data/change';
 import { ICharacter, maxCharacters } from '../data/character';
-import { GridCoord, defaultGridCoord, GridEdge, defaultGridEdge, coordString } from '../data/coord';
+import { GridCoord, defaultGridCoord, GridEdge, defaultGridEdge, coordString, defaultGridVertex } from '../data/coord';
 import { IToken, defaultToken, IFeature, defaultArea, defaultWall, IFeatureDictionary, IIdFeature, FeatureDictionary, parseTokenSize } from '../data/feature';
-import { IImage, IImages } from '../data/image';
+import { Anchor, defaultAnchor, IImage, IImages, NoAnchor, PixelAnchor, VertexAnchor } from '../data/image';
 import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
 import { IAdventureSummary, IProfile } from '../data/profile';
@@ -173,7 +173,7 @@ class ChangeConverter extends ShallowConverter<Change> {
   private readonly _tokenRemoveConverter: IConverter<TokenRemove>;
 
   constructor(newTokenDict: IFeatureDictionary<GridCoord, IIdFeature<GridCoord>>) {
-    super({ ty: ChangeType.Add, cat: ChangeCategory.Undefined });
+    super(defaultChange);
     this._tokenAddConverter = createTokenAddConverter(newTokenDict);
     this._tokenMoveConverter = new TokenMoveConverter(newTokenDict);
     this._tokenRemoveConverter = new TokenRemoveConverter(newTokenDict);
@@ -183,7 +183,15 @@ class ChangeConverter extends ShallowConverter<Change> {
     switch (converted.ty) {
       case ChangeType.Add: return areaAddConverter.convert(rawData);
       case ChangeType.Remove: return areaRemoveConverter.convert(rawData);
-      default: return converted;
+      default: return defaultChange;
+    }
+  }
+
+  private convertImage(converted: Change, rawData: any): Change {
+    switch (converted.ty) {
+      case ChangeType.Add: return imageAddConverter.convert(rawData);
+      case ChangeType.Remove: return imageRemoveConverter.convert(rawData);
+      default: return defaultChange;
     }
   }
 
@@ -191,7 +199,7 @@ class ChangeConverter extends ShallowConverter<Change> {
     switch (converted.ty) {
       case ChangeType.Add: return noteAddConverter.convert(rawData);
       case ChangeType.Remove: return noteRemoveConverter.convert(rawData);
-      default: return converted;
+      default: return defaultChange;
     }
   }
 
@@ -200,7 +208,7 @@ class ChangeConverter extends ShallowConverter<Change> {
       case ChangeType.Add: return this._tokenAddConverter.convert(rawData);
       case ChangeType.Move: return this._tokenMoveConverter.convert(rawData);
       case ChangeType.Remove: return this._tokenRemoveConverter.convert(rawData);
-      default: return converted;
+      default: return defaultChange;
     }
   }
 
@@ -208,7 +216,7 @@ class ChangeConverter extends ShallowConverter<Change> {
     switch (converted.ty) {
       case ChangeType.Add: return wallAddConverter.convert(rawData);
       case ChangeType.Remove: return wallRemoveConverter.convert(rawData);
-      default: return converted;
+      default: return defaultChange;
     }
   }
 
@@ -216,10 +224,11 @@ class ChangeConverter extends ShallowConverter<Change> {
     const converted = super.convert(rawData);
     switch (converted.cat) {
       case ChangeCategory.Area: return this.convertArea(converted, rawData);
+      case ChangeCategory.Image: return this.convertImage(converted, rawData);
       case ChangeCategory.Note: return this.convertNote(converted, rawData);
       case ChangeCategory.Token: return this.convertToken(converted, rawData);
       case ChangeCategory.Wall: return this.convertWall(converted, rawData);
-      default: return converted;
+      default: return defaultChange;
     }
   }
 }
@@ -266,6 +275,26 @@ const noteRemoveConverter = new RecursingConverter<NoteRemove>({
     conv.position = gridCoordConverter.convert(raw);
     return conv;
   }
+});
+
+const imageAddConverter = new RecursingConverter<ImageAdd>({
+  ty: ChangeType.Add,
+  cat: ChangeCategory.Image,
+  imagePath: "",
+  id: "",
+  start: defaultAnchor,
+  end: defaultAnchor
+}, {
+  "start": (conv, raw) => {
+    conv.start = anchorConverter.convert(raw);
+    return conv;
+  }
+});
+
+const imageRemoveConverter = new ShallowConverter<ImageRemove>({
+  ty: ChangeType.Remove,
+  cat: ChangeCategory.Image,
+  id: ""
 });
 
 function createTokenAddConverter(newTokenDict: IFeatureDictionary<GridCoord, IIdFeature<GridCoord>>) {
@@ -324,6 +353,23 @@ const wallConverter = new RecursingConverter<IFeature<GridEdge>>(defaultWall, {
     return conv;
   },
 });
+
+class AnchorConverter extends ShallowConverter<Anchor> {
+  convert(rawData: any): Anchor {
+    const converted = super.convert(rawData);
+    switch (converted.anchorType) {
+      case 'vertex': return vertexAnchorConverter.convert(rawData);
+      case 'pixel': return pixelAnchorConverter.convert(rawData);
+      default: return noAnchorConverter.convert(rawData);
+    }
+  }
+}
+
+const anchorConverter = new AnchorConverter(defaultAnchor);
+
+const vertexAnchorConverter = new ShallowConverter<VertexAnchor>({ anchorType: 'vertex', position: defaultGridVertex });
+const pixelAnchorConverter = new ShallowConverter<PixelAnchor>({ anchorType: 'pixel', x: 0, y: 0 });
+const noAnchorConverter = new ShallowConverter<NoAnchor>(defaultAnchor);
 
 const gridCoordConverter = new ShallowConverter<GridCoord>(defaultGridCoord);
 const gridEdgeConverter = new ShallowConverter<GridEdge>(defaultGridEdge);

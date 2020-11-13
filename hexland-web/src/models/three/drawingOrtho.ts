@@ -1,4 +1,6 @@
 import { GridCoord, GridVertex } from '../../data/coord';
+import { IdDictionary, IIdDictionary } from '../../data/identified';
+import { IMapImage } from '../../data/image';
 import { ITokenGeometry } from '../../data/tokenGeometry';
 import { ITokenDrawing } from '../../data/tokens';
 import { MapColouring } from '../colouring';
@@ -81,6 +83,7 @@ export class DrawingOrtho implements IDrawing {
   private readonly _selectionDragRed: ITokenDrawing; // likewise, but shown if the selection couldn't be dropped there
   private readonly _tokens: TokenDrawing;
   private readonly _walls: Walls;
+  private readonly _images: IIdDictionary<IMapImage>; // TODO #135 replace this with a real one
   private readonly _mapColourVisualisation: MapColourVisualisation;
 
   private readonly _textMaterial: THREE.MeshBasicMaterial;
@@ -272,6 +275,9 @@ export class DrawingOrtho implements IDrawing {
     );
     this._walls.addToScene(this._mapScene);
 
+    // The underlay images.  TODO #135
+    this._images = new IdDictionary<IMapImage>();
+
     // The map colour visualisation (added on request instead of the areas)
     this._mapColourVisualisation = new MapColourVisualisation(
       this._gridGeometry, this._needsRedraw, areaAlpha, areaZ
@@ -295,6 +301,7 @@ export class DrawingOrtho implements IDrawing {
   get tokens() { return this._tokens; }
   get tokenTexts() { return this._tokens; }
   get walls() { return this._walls; }
+  get images() { return this._images; }
 
   get highlightedAreas() { return this._highlightedAreas; }
   get highlightedVertices() { return this._highlightedVertices; }
