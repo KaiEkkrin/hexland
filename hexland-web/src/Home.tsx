@@ -28,7 +28,7 @@ import { IPageProps } from './components/interfaces';
 
 function LatestColumn() {
   const { user } = useContext(UserContext);
-  const profile = useContext(ProfileContext);
+  const { profile } = useContext(ProfileContext);
 
   const myAdventures = useMemo(
     () => profile?.adventures?.filter(a => a.owner === user?.uid) ?? [],

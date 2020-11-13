@@ -27,6 +27,56 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "invites",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "adventureId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "spritesheets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "geometry",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "supersededBy",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "freeSpaces",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "spritesheets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "geometry",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "supersededBy",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sprites",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": [
@@ -70,6 +120,32 @@
         },
         {
           "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "spritesheets",
+      "fieldPath": "sprites",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "arrayConfig": "CONTAINS",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        },
+        {
+          "arrayConfig": "CONTAINS",
           "queryScope": "COLLECTION_GROUP"
         }
       ]

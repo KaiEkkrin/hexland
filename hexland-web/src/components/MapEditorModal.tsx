@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState, useContext, useMemo } from 'react';
 
+import BusyElement from './BusyElement';
 import { UserContext } from './UserContextProvider';
+
 import { IAdventureIdentified } from '../data/identified';
 import { IMap, MapType } from '../data/map';
 import { IAdventureSummary } from '../data/profile';
@@ -45,8 +47,6 @@ function MapEditorModal({ show, adventures, map, handleClose, handleSave }: IMap
     () => name.length === 0 || description.length === 0 || isSaving,
     [isSaving, name, description]
   );
-
-  const saveText = useMemo(() => isSaving ? "Saving..." : "Save map", [isSaving]);
 
   useEffect(() => {
     setName(map?.record.name ?? "");
@@ -137,14 +137,16 @@ function MapEditorModal({ show, adventures, map, handleClose, handleSave }: IMap
             </Form.Control>
           </Form.Group>
           <Form.Group>
-            <Form.Check type="checkbox" label="Free-for-all mode" checked={ffa}
+            <Form.Check type="checkbox" id="mapFfa" label="Free-for-all mode" checked={ffa}
               onChange={handleFfaChange} />
           </Form.Group>
         </Form>
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={handleClose}>Close</Button>
-        <Button disabled={isSaveDisabled} variant="primary" onClick={doHandleSave}>{saveText}</Button>
+        <Button disabled={isSaveDisabled} variant="primary" onClick={doHandleSave}>
+          <BusyElement normal="Save map" busy="Saving..." isBusy={isSaving} />
+        </Button>
       </Modal.Footer>
     </Modal>
   );

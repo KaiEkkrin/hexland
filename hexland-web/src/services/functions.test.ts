@@ -1,19 +1,20 @@
 import { createChangesConverter } from './converter';
 import { DataService } from './dataService';
-import { deleteAdventure, deleteMap, editAdventure, editMap, ensureProfile, getAllMapChanges, leaveAdventure, registerAdventureAsRecent, registerMapAsRecent, removeAdventureFromRecent, removeMapFromRecent, updateProfile, watchChangesAndConsolidate } from './extensions';
+import { deleteAdventure, deleteCharacter, deleteMap, editAdventure, editCharacter, editMap, ensureProfile, getAllMapChanges, leaveAdventure, registerAdventureAsRecent, registerMapAsRecent, removeAdventureFromRecent, removeMapFromRecent, updateProfile, watchChangesAndConsolidate } from './extensions';
 import { FunctionsService } from './functions';
 import { IDataService, IUser } from './interfaces';
 import { MockWebStorage } from './mockWebStorage';
 import { IAnnotation } from '../data/annotation';
-import { ChangeCategory, ChangeType, IChanges, ITokenAdd, ITokenMove, IWallAdd } from '../data/change';
+import { ChangeCategory, ChangeType, Changes, TokenAdd, TokenMove, WallAdd } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
-import { coordString, edgeString, IGridCoord, IGridEdge, IGridVertex, vertexString } from '../data/coord';
-import { FeatureDictionary, IFeature, IToken } from '../data/feature';
+import { coordString, edgeString, GridCoord, GridEdge } from '../data/coord';
+import { FeatureDictionary, IFeature } from '../data/feature';
 import { IMap, MapType } from '../data/map';
 import * as Policy from '../data/policy';
-import { createTokenDictionary, SimpleTokenDrawing } from '../data/tokens';
+import { getTokenGeometry } from '../data/tokenGeometry';
+import { SimpleTokenDrawing, Tokens } from '../data/tokens';
 
-import * as firebase from 'firebase/app';
+import firebase from 'firebase/app';
 import 'firebase/firestore';
 import 'firebase/functions';
 
@@ -53,7 +54,7 @@ interface IEmul {
 }
 
 interface IChangesEvent {
-  changes: IChanges;
+  changes: Changes;
   accepted: boolean;
 }
 
@@ -215,7 +216,7 @@ describe('test functions', () => {
   });
 
   // Some functions to help the consolidate and clone tests
-  function createAddToken1(uid: string): ITokenAdd {
+  function createAddToken1(uid: string): TokenAdd {
     return {
       ty: ChangeType.Add,
       cat: ChangeCategory.Token,
@@ -227,12 +228,14 @@ describe('test functions', () => {
         size: '1',
         text: 'ONE',
         note: 'token one',
-        noteVisibleToPlayers: true
+        noteVisibleToPlayers: true,
+        characterId: "",
+        sprites: []
       }
     };
   }
 
-  function createMoveToken1(x: number): ITokenMove {
+  function createMoveToken1(x: number): TokenMove {
     // This function keeps moving the token along, generating lots of moves.
     return {
       ty: ChangeType.Move,
@@ -243,7 +246,7 @@ describe('test functions', () => {
     };
   }
 
-  function createAddWall1(): IWallAdd {
+  function createAddWall1(): WallAdd {
     return {
       ty: ChangeType.Add,
       cat: ChangeCategory.Wall,
@@ -272,15 +275,15 @@ describe('test functions', () => {
 
     const addTokenRecord = changes?.[0].chs.find(ch => ch.cat === ChangeCategory.Token);
     expect(addTokenRecord?.ty).toBe(ChangeType.Add);
-    expect((addTokenRecord as ITokenAdd).feature.id).toBe('token1');
-    expect((addTokenRecord as ITokenAdd).feature.position.x).toBe(expectedX);
-    expect((addTokenRecord as ITokenAdd).feature.position.y).toBe(3);
+    expect((addTokenRecord as TokenAdd).feature.id).toBe('token1');
+    expect((addTokenRecord as TokenAdd).feature.position.x).toBe(expectedX);
+    expect((addTokenRecord as TokenAdd).feature.position.y).toBe(3);
 
     const addWallRecord = changes?.[0].chs.find(ch => ch.cat === ChangeCategory.Wall);
     expect(addWallRecord?.ty).toBe(ChangeType.Add);
-    expect((addWallRecord as IWallAdd).feature.position.x).toBe(0);
-    expect((addWallRecord as IWallAdd).feature.position.y).toBe(0);
-    expect((addWallRecord as IWallAdd).feature.colour).toBe(0);
+    expect((addWallRecord as WallAdd).feature.position.x).toBe(0);
+    expect((addWallRecord as WallAdd).feature.position.y).toBe(0);
+    expect((addWallRecord as WallAdd).feature.colour).toBe(0);
   }
 
   async function testConsolidate(moveCount: number) {
@@ -399,7 +402,8 @@ describe('test functions', () => {
     } catch {}
 
     // Join the adventure.
-    await userFunctionsService.joinAdventure(a1Id, invite ?? "");
+    let joinedId = await userFunctionsService.joinAdventure(invite ?? "");
+    expect(joinedId).toBe(a1Id);
 
     // Having done that, I can open the adventure and map, and register them as recent:
     const a1Record = await userDataService.get(userDataService.getAdventureRef(a1Id));
@@ -433,7 +437,8 @@ describe('test functions', () => {
     // If I join the adventure a second time, it shouldn't barf:
     // (it should update some fields, but verifying that is fiddly, and not the
     // most important thing)
-    await userFunctionsService.joinAdventure(a1Id, invite ?? "");
+    joinedId = await userFunctionsService.joinAdventure(invite ?? "");
+    expect(joinedId).toBe(a1Id);
 
     await registerAdventureAsRecent(userDataService, user.uid, a1Id, a1Record);
     await registerMapAsRecent(userDataService, user.uid, a1Id, m1Id, m1Record);
@@ -488,7 +493,8 @@ describe('test functions', () => {
 
     // As user 1, join user 2's adventure (which will make it recent)
     const user1Functions = new FunctionsService(user1Emul.functions);
-    await user1Functions.joinAdventure(a2Id, invite ?? "");
+    let joinedId = await user1Functions.joinAdventure(invite ?? "");
+    expect(joinedId).toBe(a2Id);
     const a2 = await user1DataService.get(user1DataService.getAdventureRef(a2Id));
 
     // Now, change our display name
@@ -584,7 +590,8 @@ describe('test functions', () => {
     } catch {}
 
     // Join the adventure.
-    await userFunctionsService.joinAdventure(a1Id, invite ?? "");
+    let joinedId = await userFunctionsService.joinAdventure(invite ?? "");
+    expect(joinedId).toBe(a1Id);
 
     // Check I can fetch that map now
     let m1Record = await userDataService.get(userDataService.getMapRef(a1Id, m1Id));
@@ -658,7 +665,8 @@ describe('test functions', () => {
     await ensureProfile(userDataService, user, undefined);
 
     // Join the adventure.
-    await userFunctionsService.joinAdventure(a1Id, invite ?? "", testPolicy);
+    let joinedId = await userFunctionsService.joinAdventure(invite ?? "", testPolicy);
+    expect(joinedId).toBe(a1Id);
 
     // Having done that, I can open it and see my player record in it:
     let a1Record = await userDataService.get(userDataService.getAdventureRef(a1Id));
@@ -681,7 +689,7 @@ describe('test functions', () => {
     // Wait long enough for that invite to have expired
     await new Promise(r => setTimeout(r, 4000));
     try {
-      await user2FunctionsService.joinAdventure(a1Id, invite ?? "", testPolicy);
+      await user2FunctionsService.joinAdventure(invite ?? "", testPolicy);
       fail('Invite should have expired');
     } catch (e) {
       expect(e.message).toMatch(/expired/i);
@@ -696,7 +704,8 @@ describe('test functions', () => {
     const invite3 = await functionsService.inviteToAdventure(a1Id, testPolicy);
     expect(invite3).not.toBe(invite);
 
-    await user2FunctionsService.joinAdventure(a1Id, invite3 ?? "", testPolicy);
+    joinedId = await user2FunctionsService.joinAdventure(invite3 ?? "", testPolicy);
+    expect(joinedId).toBe(a1Id);
     p2Record = await user2DataService.get(user2DataService.getPlayerRef(a1Id, user2.uid));
     expect(p2Record).not.toBeUndefined();
     expect(p2Record?.playerId).toBe(user2.uid);
@@ -727,21 +736,17 @@ describe('test functions', () => {
     expect(mapRecord).not.toBeUndefined();
 
     // Watch changes, mocking up the handlers:
-    const tokens = createTokenDictionary(MapType.Square, new SimpleTokenDrawing(
-      new FeatureDictionary<IGridCoord, IToken>(coordString),
-      new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
-      new FeatureDictionary<IGridVertex, IFeature<IGridVertex>>(vertexString)
-    ));
+    const tokens = new Tokens(getTokenGeometry(MapType.Square), new SimpleTokenDrawing());
     const changeTracker = new SimpleChangeTracker(
-      new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
+      new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString),
       tokens,
-      new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
-      new FeatureDictionary<IGridCoord, IAnnotation>(coordString),
+      new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString),
+      new FeatureDictionary<GridCoord, IAnnotation>(coordString),
       undefined
     );
 
     let changesSeen = new Subject<IChangesEvent>();
-    function onNext(changes: IChanges) {
+    function onNext(changes: Changes) {
       const accepted = trackChanges(mapRecord as IMap, changeTracker, changes.chs, user.uid);
       changesSeen.next({ changes: changes, accepted: accepted });
       return accepted;
@@ -762,7 +767,7 @@ describe('test functions', () => {
     expect(finish).not.toBeUndefined();
     try {
       // Push in a first change and wait for it -- it should be accepted.
-      const addToken1: ITokenAdd = {
+      const addToken1: TokenAdd = {
         ty: ChangeType.Add,
         cat: ChangeCategory.Token,
         feature: {
@@ -773,7 +778,9 @@ describe('test functions', () => {
           size: '1',
           text: 'ONE',
           note: '',
-          noteVisibleToPlayers: false
+          noteVisibleToPlayers: false,
+          characterId: "",
+          sprites: []
         }
       };
       const addOnePromise = changesSeen.pipe(first()).toPromise();
@@ -790,7 +797,7 @@ describe('test functions', () => {
       expect(onError).not.toHaveBeenCalled();
 
       // Push in another good change and make sure it's accepted
-      const moveToken1: ITokenMove = {
+      const moveToken1: TokenMove = {
         ty: ChangeType.Move,
         cat: ChangeCategory.Token,
         tokenId: '1',
@@ -807,14 +814,14 @@ describe('test functions', () => {
       expect(moveOne.changes.user).toBe(user.uid);
       expect(moveOne.changes.chs).toHaveLength(1);
       expect(moveOne.changes.chs[0].cat).toBe(ChangeCategory.Token);
-      expect((moveOne.changes.chs[0] as ITokenMove).newPosition.x).toBe(-1);
-      expect((moveOne.changes.chs[0] as ITokenMove).newPosition.y).toBe(-2);
+      expect((moveOne.changes.chs[0] as TokenMove).newPosition.x).toBe(-1);
+      expect((moveOne.changes.chs[0] as TokenMove).newPosition.y).toBe(-2);
       expect(onReset).not.toHaveBeenCalled();
       expect(onError).not.toHaveBeenCalled();
 
       // Push in a bad change, setting ourselves up to reject it.
       // This should cause a resync
-      const badMoveToken1: ITokenMove = {
+      const badMoveToken1: TokenMove = {
         ty: ChangeType.Move,
         cat: ChangeCategory.Token,
         tokenId: '1',
@@ -832,8 +839,8 @@ describe('test functions', () => {
       expect(resync.changes.chs).toHaveLength(1);
       expect(resync.changes.chs[0].cat).toBe(ChangeCategory.Token);
       expect(resync.changes.chs[0].ty).toBe(ChangeType.Add);
-      expect((resync.changes.chs[0] as ITokenAdd).feature.position.x).toBe(-1);
-      expect((resync.changes.chs[0] as ITokenAdd).feature.position.y).toBe(-2);
+      expect((resync.changes.chs[0] as TokenAdd).feature.position.x).toBe(-1);
+      expect((resync.changes.chs[0] as TokenAdd).feature.position.y).toBe(-2);
       expect(onReset).toHaveBeenCalledTimes(1);
       expect(onError).not.toHaveBeenCalled();
 
@@ -846,7 +853,7 @@ describe('test functions', () => {
       const badMoveToken2 = { ...badMoveToken1, tokenId: '2' };
       const badMoveToken3 = { ...badMoveToken1, tokenId: '3' };
       for (let i = 0; i < 5; ++i) {
-        const moveTokenAgain: ITokenMove = {
+        const moveTokenAgain: TokenMove = {
           ty: ChangeType.Move,
           cat: ChangeCategory.Token,
           tokenId: '1',
@@ -974,6 +981,139 @@ describe('test functions', () => {
     if (m2IncrementalChanges !== undefined) {
       expect(m2IncrementalChanges).toHaveLength(0);
     }
+  });
+
+  async function createAndDeleteCharacters(dataService: IDataService, adventureId: string, uid: string) {
+    const [c1Id, c2Id] = [uuidv4(), uuidv4()];
+    await editCharacter(dataService, adventureId, uid, {
+      id: c1Id,
+      name: "One",
+      text: "ONE",
+      sprites: []
+    });
+
+    await editCharacter(dataService, adventureId, uid, {
+      id: c2Id,
+      name: "Two",
+      text: "TWO",
+      sprites: []
+    });
+
+    // They should appear in the player record
+    let player = await dataService.get(dataService.getPlayerRef(adventureId, uid));
+    if (player?.characters === undefined) {
+      fail('No character list');
+    }
+
+    expect(player.characters.length).toBe(2);
+
+    let c1 = player.characters.find(c => c.id === c1Id);
+    expect(c1).not.toBeUndefined();
+    if (c1 !== undefined) {
+      expect(c1.name).toBe("One");
+      expect(c1.text).toBe("ONE");
+    }
+
+    let c2 = player.characters.find(c => c.id === c2Id);
+    expect(c2).not.toBeUndefined();
+    if (c2 !== undefined) {
+      expect(c2.name).toBe("Two");
+      expect(c2.text).toBe("TWO");
+    }
+
+    // Edit one
+    await editCharacter(dataService, adventureId, uid, {
+      id: c2Id,
+      name: "Two (edited)",
+      text: "TW2",
+      sprites: []
+    });
+
+    // Fetch and observe changes
+    player = await dataService.get(dataService.getPlayerRef(adventureId, uid));
+    if (player?.characters === undefined) {
+      fail('No character list');
+    }
+
+    expect(player.characters.length).toBe(2);
+
+    c1 = player.characters.find(c => c.id === c1Id);
+    expect(c1).not.toBeUndefined();
+    if (c1 !== undefined) {
+      expect(c1.name).toBe("One");
+      expect(c1.text).toBe("ONE");
+    }
+
+    c2 = player.characters.find(c => c.id === c2Id);
+    expect(c2).not.toBeUndefined();
+    if (c2 !== undefined) {
+      expect(c2.name).toBe("Two (edited)");
+      expect(c2.text).toBe("TW2");
+    }
+
+    // Delete one
+    await deleteCharacter(dataService, adventureId, uid, c1Id);
+
+    // Fetch and observe changes
+    player = await dataService.get(dataService.getPlayerRef(adventureId, uid));
+    if (player?.characters === undefined) {
+      fail('No character list');
+    }
+
+    expect(player.characters.length).toBe(1);
+
+    c2 = player.characters.find(c => c.id === c2Id);
+    expect(c2).not.toBeUndefined();
+    if (c2 !== undefined) {
+      expect(c2.name).toBe("Two (edited)");
+      expect(c2.text).toBe("TW2");
+    }
+  }
+
+  test('create and delete characters as the map owner', async () => {
+    // make sure my user is set up
+    const user = createTestUser('Owner', 'owner@example.com', 'google.com');
+    const emul = initializeEmul(user);
+    const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
+    const functionsService = new FunctionsService(emul.functions);
+    const profile = await ensureProfile(dataService, user, undefined);
+    expect(profile?.name).toBe('Owner');
+
+    // create an adventure
+    const a1Id = await functionsService.createAdventure('Adventure One', 'First adventure');
+
+    // Exercise character functions
+    await createAndDeleteCharacters(dataService, a1Id, user.uid);
+  });
+
+  test('create and delete characters as a joining player', async () => {
+    // make sure my user is set up
+    const owner = createTestUser('Owner', 'owner@example.com', 'google.com');
+    const emul = initializeEmul(owner);
+    const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
+    const functionsService = new FunctionsService(emul.functions);
+    const profile = await ensureProfile(dataService, owner, undefined);
+    expect(profile?.name).toBe('Owner');
+
+    // create an adventure
+    const a1Id = await functionsService.createAdventure('Adventure One', 'First adventure');
+
+    // Get myself a profile as a different user
+    const user = createTestUser('User 1', 'user1@example.com', 'google.com');
+    const userEmul = initializeEmul(user);
+    const userDataService = new DataService(userEmul.db, firebase.firestore.FieldValue.serverTimestamp);
+    const userFunctionsService = new FunctionsService(userEmul.functions);
+    await ensureProfile(userDataService, user, undefined);
+
+    // Issue an invite to that adventure
+    const invite = await functionsService.inviteToAdventure(a1Id, Policy.defaultInviteExpiryPolicy);
+    expect(invite).not.toBeUndefined();
+
+    // Join the adventure.
+    await userFunctionsService.joinAdventure(invite ?? "");
+
+    // Exercise character functions
+    await createAndDeleteCharacters(userDataService, a1Id, user.uid);
   });
 
   // I expect this will be a bit heavy too
@@ -1183,6 +1323,68 @@ describe('test functions', () => {
       expect(maps2[1]?.imagePath).toBe("");
       expect(maps2[2]?.imagePath).toBe("");
       expect(maps2[3]?.imagePath).toBe(path02);
+    });
+
+    test('create a sprite', async () => {
+      const owner = createTestUser('Owner', 'owner@example.com', 'google.com');
+      const emul = initializeEmul(owner);
+      const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
+      const functionsService = new FunctionsService(emul.functions);
+      const storage = new MockWebStorage(functionsService, storageLocation);
+
+      // Make sure the user has a profile
+      await ensureProfile(dataService, owner, undefined);
+
+      // Add a new adventure
+      const a1Id = await functionsService.createAdventure('Adventure One', 'First adventure');
+      let a1 = await dataService.get(dataService.getAdventureRef(a1Id));
+      expect(a1).not.toBeUndefined();
+      expect(a1?.imagePath).toBe("");
+
+      // Upload an image for it
+      const buffer = fs.readFileSync(testImages[0]);
+      const path = `images/${owner.uid}/one`;
+      await storage.ref(path).put(buffer, { customMetadata: { originalName: 'st01.png' } });
+
+      // Create a sprite of that image
+      const sprite = await functionsService.addSprites(a1Id, "4x4", [path]);
+      expect(sprite).toHaveLength(1);
+      expect(sprite[0].source).toBe(path);
+      expect(sprite[0].geometry).toBe("4x4");
+
+      // A spritesheet should have appeared
+      let spritesheets = await dataService.getSpritesheetsBySource(a1Id, "4x4", [path]);
+      expect(spritesheets).toHaveLength(1);
+      expect(spritesheets?.[0].data.sprites).toHaveLength(1);
+      expect(spritesheets?.[0].data.sprites).toContain(path);
+      expect(spritesheets?.[0].data.geometry).toBe("4x4");
+      expect(spritesheets?.[0].data.freeSpaces).toBe(15);
+
+      // Upload another image
+      const buffer2 = fs.readFileSync(testImages[1]);
+      const path2 = `images/${owner.uid}/two`;
+      await storage.ref(path2).put(buffer2, { customMetadata: { originalName: 'st02.png' } });
+
+      // Create a sprite of it
+      // `addSprites` may return other sprites that it moved to a new spritesheet while
+      // doing this.
+      const sprite2 = await functionsService.addSprites(a1Id, "4x4", [path2]);
+      const sr2 = sprite2.find(r => r.source === path2);
+      expect(sr2).not.toBeUndefined();
+      expect(sr2?.geometry).toBe("4x4");
+
+      // That image should have gone into a new spritesheet replacing the old one, because it
+      // had free space
+      spritesheets = await dataService.getSpritesheetsBySource(a1Id, "4x4", [path, path2]);
+      expect(spritesheets).toHaveLength(1);
+      expect(spritesheets?.[0].data.sprites).toHaveLength(2);
+      expect(spritesheets?.[0].data.sprites).toContain(path);
+      expect(spritesheets?.[0].data.sprites).toContain(path2);
+      expect(spritesheets?.[0].data.geometry).toBe("4x4");
+      expect(spritesheets?.[0].data.freeSpaces).toBe(14);
+
+      // TODO #149 Plenty more to test here.  Filling the sheet so it starts another;
+      // deleting images and having their spaces re-used.
     });
   });
 });

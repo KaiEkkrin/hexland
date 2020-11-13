@@ -2,7 +2,7 @@ import { DataService } from './dataService';
 import { ensureProfile } from './extensions';
 import { IUser } from './interfaces';
 
-import * as firebase from 'firebase/app';
+import firebase from 'firebase/app';
 import 'firebase/firestore';
 
 import { clearFirestoreData, initializeTestApp } from '@firebase/rules-unit-testing';

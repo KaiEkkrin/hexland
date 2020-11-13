@@ -1,6 +1,12 @@
+import { IAdventure, IPlayer } from '../data/adventure';
+import { IAdventureIdentified, IIdentified } from '../data/identified';
+import { IMap } from '../data/map';
+import { IMapState, MapStateMachine } from '../models/mapStateMachine';
+import { IDataService, IUser, IAuth, IAuthProvider, IAnalytics, IFunctionsService, IStorage, ISpriteManager } from '../services/interfaces';
+
+import firebase from 'firebase/app';
 import { Subject } from 'rxjs';
-import { IIdentified } from '../data/identified';
-import { IDataService, IUser, IAuth, IAuthProvider, IAnalytics, IFunctionsService, IStorage } from '../services/interfaces';
+import { IProfile } from '../data/profile';
 
 export interface IContextProviderProps {
   children?: React.ReactNode;
@@ -13,6 +19,7 @@ export interface IFirebaseContext {
   googleAuthProvider?: IAuthProvider | undefined;
   storage?: firebase.storage.Storage | undefined;
   timestampProvider?: (() => firebase.firestore.FieldValue) | undefined;
+  usingLocalEmulators?: boolean | undefined;
   // Creates an Analytics provider
   createAnalytics?: (() => IAnalytics) | undefined;
 }
@@ -24,6 +31,15 @@ export interface IUserContext {
   dataService?: IDataService | undefined;
   functionsService?: IFunctionsService | undefined;
   storageService?: IStorage | undefined;
+}
+
+export interface IProfileContext {
+  profile?: IProfile | undefined;
+
+  // The login component must call this *before* registering any new user with a
+  // specified display name.  The profile context, which is responsible for ensuring
+  // the user's profile, will pop the new email and set the display name accordingly.
+  expectNewUser?: (email: string, displayName: string) => void;
 }
 
 export interface ISignInMethodsContext {
@@ -46,6 +62,18 @@ export interface IToast {
 export interface IStatusContext {
   // The subject of toast additions (record set) or removals (record not set.)
   toasts: Subject<IIdentified<IToast | undefined>>;
+}
+
+export interface IAdventureContext {
+  adventure?: IIdentified<IAdventure> | undefined;
+  players: IPlayer[];
+  spriteManager?: ISpriteManager | undefined;
+}
+
+export interface IMapContext {
+  map?: IAdventureIdentified<IMap> | undefined;
+  mapState: IMapState;
+  stateMachine?: MapStateMachine | undefined;
 }
 
 export interface IFirebaseProps {

@@ -1,5 +1,6 @@
 import { IAdventure, IPlayer } from '../data/adventure';
-import { IChanges } from '../data/change';
+import { Changes } from '../data/change';
+import { ICharacter } from '../data/character';
 import { IMap, summariseMap } from '../data/map';
 import { UserLevel } from '../data/policy';
 import { IAdventureSummary, IProfile } from '../data/profile';
@@ -30,18 +31,21 @@ export async function ensureProfile(
 
       // Keep the user's email in sync if required, and replace any default display name
       let profileNeedsUpdate = false;
+      const profileUpdates: any = {};
       if ((profile.name === "" || profile.name === defaultDisplayName) && displayName !== undefined) {
         profile.name = displayName;
+        profileUpdates.name = displayName;
         profileNeedsUpdate = true;
       }
 
       if (profile.email !== user.email && user.email !== null) {
         profile.email = user.email;
+        profileUpdates.email = user.email;
         profileNeedsUpdate = true;
       }
 
       if (profileNeedsUpdate === true) {
-        await view.update(profileRef, profile);
+        await view.update(profileRef, profileUpdates);
       }
 
       return profile;
@@ -554,13 +558,76 @@ export async function getAllMapChanges(
   return changes;
 }
 
+async function editCharacterTransaction(
+  view: IDataView,
+  playerRef: IDataReference<IPlayer>,
+  character: ICharacter
+) {
+  const player = await view.get(playerRef);
+  if (player === undefined) {
+    throw Error("No such character");
+  }
+
+  const found = player.characters.find(c => c.id === character.id);
+  if (found !== undefined) {
+    Object.assign(found, character);
+  } else {
+    player.characters.push(character);
+  }
+
+  await view.update(playerRef, { characters: player.characters });
+}
+
+// Adds or edits a character.
+export async function editCharacter(
+  dataService: IDataService | undefined,
+  adventureId: string,
+  uid: string | undefined,
+  character: ICharacter
+) {
+  if (dataService === undefined || uid === undefined) {
+    return;
+  }
+
+  const playerRef = dataService.getPlayerRef(adventureId, uid);
+  await dataService.runTransaction(tr => editCharacterTransaction(tr, playerRef, character));
+}
+
+async function deleteCharacterTransaction(
+  view: IDataView,
+  playerRef: IDataReference<IPlayer>,
+  characterId: string
+) {
+  const player = await view.get(playerRef);
+  if (player === undefined) {
+    throw Error("No such character");
+  }
+
+  await view.update(playerRef, { characters: player.characters.filter(c => c.id !== characterId) });
+}
+
+// Deletes a character.
+export async function deleteCharacter(
+  dataService: IDataService | undefined,
+  adventureId: string,
+  uid: string | undefined,
+  characterId: string
+) {
+  if (dataService === undefined || uid === undefined) {
+    return;
+  }
+
+  const playerRef = dataService.getPlayerRef(adventureId, uid);
+  await dataService.runTransaction(tr => deleteCharacterTransaction(tr, playerRef, characterId));
+}
+
 // Watches map changes and automatically consolidates at a suitable interval.
 export function watchChangesAndConsolidate(
   dataService: IDataService | undefined,
   functionsService: IFunctionsService | undefined,
   adventureId: string,
   mapId: string,
-  onNext: (chs: IChanges) => boolean, // applies changes and returns true if successful, else false
+  onNext: (chs: Changes) => boolean, // applies changes and returns true if successful, else false
   onReset: () => void, // reset the map state to blank (expect an onNext() right after)
   onEvent: (event: string, parameters: any) => void, // GA events delegate
   onError?: ((message: string, ...params: any) => void) | undefined,
@@ -596,7 +663,7 @@ export function watchChangesAndConsolidate(
   let seenBaseChange = false;
   const stopWatching = dataService.watchChanges(
     adventureId, mapId,
-    (chs: IChanges) => {
+    (chs: Changes) => {
       // If this isn't a resync and we've seen the base change already, we can
       // safely skip this; there shouldn't be any new information
       if (chs.incremental === false && chs.resync === false && seenBaseChange === true) {

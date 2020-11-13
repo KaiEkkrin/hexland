@@ -45,7 +45,8 @@ function Shared({ navbarTitle, setNavbarTitle }: IPageProps) {
     <RequireLoggedIn>
       <Container>
         <Row>
-          <Col>
+          <Col className="mt-4">
+            <h5>Adventures shared with me</h5>
             <AdventureCollection uid={user?.uid}
               adventures={adventures} showNewAdventure={false} />
           </Col>

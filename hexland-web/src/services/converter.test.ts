@@ -1,5 +1,5 @@
 import * as Convert from './converter';
-import { ChangeType, ChangeCategory, ITokenAdd, ITokenMove, ITokenRemove } from '../data/change';
+import { ChangeType, ChangeCategory, TokenAdd, TokenMove, TokenRemove } from '../data/change';
 import { defaultGridCoord } from '../data/coord';
 import { UserLevel } from '../data/policy';
 
@@ -45,9 +45,9 @@ test('A token operation without id receives the a fresh id', () => {
   expect(convertedChanges.chs[2].ty).toBe(ChangeType.Remove);
 
   // The token changes should now have gained their own rolling id:
-  const tokenAdd0 = convertedChanges.chs[0] as ITokenAdd;
-  const tokenMove1 = convertedChanges.chs[1] as ITokenMove;
-  const tokenRemove2 = convertedChanges.chs[2] as ITokenRemove;
+  const tokenAdd0 = convertedChanges.chs[0] as TokenAdd;
+  const tokenMove1 = convertedChanges.chs[1] as TokenMove;
+  const tokenRemove2 = convertedChanges.chs[2] as TokenRemove;
   expect(tokenAdd0.feature.id).not.toBeUndefined();
   expect(tokenMove1.tokenId).not.toBeUndefined();
   expect(tokenRemove2.tokenId).not.toBeUndefined();
@@ -57,14 +57,14 @@ test('A token operation without id receives the a fresh id', () => {
   expect(tokenRemove2.tokenId).toBe(tokenMove1.tokenId);
 
   // I should have incidentally filled in "noteVisibleToPlayers" as false
-  expect((convertedChanges.chs[0] as ITokenAdd).feature.noteVisibleToPlayers).toBe(false);
+  expect((convertedChanges.chs[0] as TokenAdd).feature.noteVisibleToPlayers).toBe(false);
 
   // ...and my remove position should have been correct
-  expect((convertedChanges.chs[2] as ITokenRemove).position.x).toBe(0);
-  expect((convertedChanges.chs[2] as ITokenRemove).position.y).toBe(4);
+  expect((convertedChanges.chs[2] as TokenRemove).position.x).toBe(0);
+  expect((convertedChanges.chs[2] as TokenRemove).position.y).toBe(4);
 
   // Oh, and it should have been assigned the default token size
-  expect((convertedChanges.chs[0] as ITokenAdd).feature.size).toBe("1");
+  expect((convertedChanges.chs[0] as TokenAdd).feature.size).toBe("1");
 });
 
 test('A token operation with two id-less tokens receives two fresh ids', () => {
@@ -118,10 +118,10 @@ test('A token operation with two id-less tokens receives two fresh ids', () => {
   expect(convertedChanges.chs[3].ty).toBe(ChangeType.Move);
 
   // The token changes should now have gained their own rolling id:
-  const tokenAdd0 = convertedChanges.chs[0] as ITokenAdd;
-  const tokenAdd1 = convertedChanges.chs[1] as ITokenAdd;
-  const tokenMove2 = convertedChanges.chs[2] as ITokenMove;
-  const tokenMove3 = convertedChanges.chs[3] as ITokenMove;
+  const tokenAdd0 = convertedChanges.chs[0] as TokenAdd;
+  const tokenAdd1 = convertedChanges.chs[1] as TokenAdd;
+  const tokenMove2 = convertedChanges.chs[2] as TokenMove;
+  const tokenMove3 = convertedChanges.chs[3] as TokenMove;
   expect(tokenAdd0.feature.id).not.toBeUndefined();
   expect(tokenAdd1.feature.id).not.toBeUndefined();
   expect(tokenMove2.tokenId).not.toBeUndefined();
@@ -178,16 +178,16 @@ test('A token operation with id has its id retained', () => {
   expect(convertedChanges.chs[2].ty).toBe(ChangeType.Remove);
 
   // ...and the existing ids...
-  expect((convertedChanges.chs[0] as ITokenAdd).feature.id).toBe("TID1");
-  expect((convertedChanges.chs[1] as ITokenMove).tokenId).toBe("TID2");
-  expect((convertedChanges.chs[2] as ITokenRemove).tokenId).toBe("TID3");
+  expect((convertedChanges.chs[0] as TokenAdd).feature.id).toBe("TID1");
+  expect((convertedChanges.chs[1] as TokenMove).tokenId).toBe("TID2");
+  expect((convertedChanges.chs[2] as TokenRemove).tokenId).toBe("TID3");
 
   // I should have incidentally filled in "noteVisibleToPlayers" as false
-  expect((convertedChanges.chs[0] as ITokenAdd).feature.noteVisibleToPlayers).toBe(false);
+  expect((convertedChanges.chs[0] as TokenAdd).feature.noteVisibleToPlayers).toBe(false);
 
   // ...and I should have filled in the default x
-  expect((convertedChanges.chs[2] as ITokenRemove).position.x).toBe(defaultGridCoord.x);
-  expect((convertedChanges.chs[2] as ITokenRemove).position.y).toBe(4);
+  expect((convertedChanges.chs[2] as TokenRemove).position.x).toBe(defaultGridCoord.x);
+  expect((convertedChanges.chs[2] as TokenRemove).position.y).toBe(4);
 });
 
 test('The size in a token add is parsed correctly', () => {
@@ -209,7 +209,7 @@ test('The size in a token add is parsed correctly', () => {
     };
 
     const convertedChanges = Convert.createChangesConverter().convert(rawChanges);
-    expect((convertedChanges.chs[0] as ITokenAdd).feature.size).toBe(size);
+    expect((convertedChanges.chs[0] as TokenAdd).feature.size).toBe(size);
   }
 
   const invalidSizes = [
@@ -233,7 +233,7 @@ test('The size in a token add is parsed correctly', () => {
     };
 
     const convertedChanges = Convert.createChangesConverter().convert(rawChanges);
-    expect((convertedChanges.chs[0] as ITokenAdd).feature.size).toBe("1");
+    expect((convertedChanges.chs[0] as TokenAdd).feature.size).toBe("1");
   }
 });
 

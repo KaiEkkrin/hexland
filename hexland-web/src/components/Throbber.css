@@ -1,0 +1,59 @@
+.Throbber-container {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  left: 50%;
+  top: 50%;
+  transform: translateX(-50%) translateY(-50%);
+  width: 50%;
+  height: 50%;
+  z-index: 1004;
+}
+
+.Throbber-contents {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 4rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-evenly;
+}
+
+@keyframes throbber {
+  0%    { height: 20%; }
+  25%   { height: 40%; }
+  50%   { height: 20%; }
+  75%   { height: 20%; }
+}
+
+.Throbber-box {
+  background-color: rgba(255, 255, 255, 0.3);
+  animation-name: throbber;
+  animation-duration: 600ms;
+  animation-iteration-count: infinite;
+  width: 20%;
+  height: 20%;
+}
+
+.Throbber-box-0 {
+  animation-delay: 0ms;
+}
+
+.Throbber-box-1 {
+  animation-delay: 150ms;
+}
+
+.Throbber-box-2 {
+  animation-delay: 300ms;
+}
+
+.Throbber-box-3 {
+  animation-delay: 450ms;
+}
+
+.Throbber-title {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: large;
+}

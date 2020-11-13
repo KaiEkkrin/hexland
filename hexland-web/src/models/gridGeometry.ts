@@ -1,4 +1,4 @@
-import { IGridCoord, IGridEdge, createGridCoord, createGridEdge, coordMultiplyScalar, createGridVertex, IGridVertex } from '../data/coord';
+import { GridCoord, GridEdge, createGridCoord, createGridEdge, createGridVertex, GridVertex } from '../data/coord';
 import { EdgeOcclusion } from './occlusion';
 import * as THREE from 'three';
 
@@ -11,29 +11,33 @@ export interface IGridGeometry {
   // A measure of the face size in this geometry.
   faceSize: number;
 
+  // ...and the distances between faces, along the two axes.
+  xStep: number;
+  yStep: number;
+
   // Some more parameters:
   maxEdge: number;
   epsilon: number;
 
   // Creates the co-ordinates of the centre of this face.
-  createCoordCentre(target: THREE.Vector3, coord: IGridCoord, z: number): THREE.Vector3;
+  createCoordCentre(target: THREE.Vector3, coord: GridCoord, z: number): THREE.Vector3;
 
   // Creates the co-ordinates of a suitable position to put an annotation.
   // Invalidates the scratch vectors.
-  createAnnotationPosition(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, coord: IGridCoord, z: number, alpha: number): THREE.Vector3;
+  createAnnotationPosition(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, coord: GridCoord, z: number, alpha: number): THREE.Vector3;
 
   // The same, but for a token's annotation.
   // Invalidates the scratch vectors.
-  createTokenAnnotationPosition(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, coord: IGridCoord, z: number, alpha: number): THREE.Vector3;
+  createTokenAnnotationPosition(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, coord: GridCoord, z: number, alpha: number): THREE.Vector3;
 
   // Creates the co-ordinates of the centre of this edge.  Invalidates the scratch vectors.
-  createEdgeCentre(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, edge: IGridEdge, z: number): THREE.Vector3;
+  createEdgeCentre(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, edge: GridEdge, z: number): THREE.Vector3;
 
   // Creates the co-ordinates of the centre of this vertex.
-  createVertexCentre(target: THREE.Vector3, vertex: IGridVertex, z: number): THREE.Vector3;
+  createVertexCentre(target: THREE.Vector3, vertex: GridVertex, z: number): THREE.Vector3;
 
   // Creates the edge occlusion tester for the edge when seen from the coord.
-  createEdgeOcclusion(coord: IGridCoord, edge: IGridEdge, z: number): EdgeOcclusion;
+  createEdgeOcclusion(coord: GridCoord, edge: GridEdge, z: number): EdgeOcclusion;
 
   // Creates the 'face' attribute array that matches `createSolidVertices` when used
   // for the grid colours.
@@ -48,7 +52,7 @@ export interface IGridGeometry {
   createLoSIndices(): number[];
 
   // Creates the vertices to use for an occlusion test.
-  createOcclusionTestVertices(coord: IGridCoord, z: number, alpha: number): Iterable<THREE.Vector3>;
+  createOcclusionTestVertices(coord: GridCoord, z: number, alpha: number): Iterable<THREE.Vector3>;
 
   // Creates the vertices involved in drawing the grid tile in solid.
   // The alpha number specifies how much of a face is covered.
@@ -92,56 +96,50 @@ export interface IGridGeometry {
 
   // Decodes the given sample from a coord texture (these must be 4 values
   // starting from the offset) into a grid coord.
-  decodeCoordSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): IGridCoord | undefined;
+  decodeCoordSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): GridCoord | undefined;
 
   // Decodes the given sample from a vertex texture (these must be 4 values
   // starting from the offset) into a grid coord.
-  decodeVertexSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): IGridVertex | undefined;
+  decodeVertexSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): GridVertex | undefined;
 
   // Evaluates the function for each face adjacent to the given one.
-  forEachAdjacentFace(coord: IGridCoord, fn: (face: IGridCoord, edge: IGridEdge) => void): void;
+  forEachAdjacentFace(coord: GridCoord, fn: (face: GridCoord, edge: GridEdge) => void): void;
 
   // Gets the faces adjacent to the given edge. (TODO adjacent edges too?)
-  getEdgeFaceAdjacency(edge: IGridEdge): IGridCoord[];
+  getEdgeFaceAdjacency(edge: GridEdge): GridCoord[];
 
   // Gets the vertices adjacent to the given edge.
-  getEdgeVertexAdjacency(edge: IGridEdge): IGridVertex[];
+  getEdgeVertexAdjacency(edge: GridEdge): GridVertex[];
 
   // Gets the edges adjacent to the given vertex.
-  getVertexEdgeAdjacency(vertex: IGridVertex): IGridEdge[];
+  getVertexEdgeAdjacency(vertex: GridVertex): GridEdge[];
 
   // Emits the same grid geometry but with a tileDim of 1; useful for initialising
   // instanced draws.
   toSingle(): IGridGeometry;
 
-  // Transforms the object, assumed to be at the zero co-ordinate, to be at the
-  // given one instead.
-  transformToCoord(o: THREE.Object3D, coord: IGridCoord): void;
-
-  // Transforms the object, assumed to be at the given co-ordinate, back to the
-  // origin position.
-  transformToOrigin(o: THREE.Object3D, coord: IGridCoord): void;
-
-  // Transforms the object, assumed to be at the zero edge, to be at the
-  // given one instead.
-  transformToEdge(o: THREE.Object3D, coord: IGridEdge): void;
-
-  // Transforms the object, assumed to be at the zero vertex, to be at the
-  // given one instead.
-  transformToVertex(o: THREE.Object3D, coord: IGridVertex): void;
+  // Creates a transform from the zero co-ordinate to the given one.
+  transformToCoord(m: THREE.Matrix4, coord: GridCoord): THREE.Matrix4;
+  transformToEdge(m: THREE.Matrix4, coord: GridEdge): THREE.Matrix4;
+  transformToVertex(m: THREE.Matrix4, coord: GridVertex): THREE.Matrix4;
 
   // Emits the shader declarations required by `createShaderSnippet()` below.
   createShaderDeclarations(): string[];
 
-  // Emits a shader function `vec2 createCoordCentre(const in vec2 coord)` that will
-  // calculate the coord centre in this geometry.
+  // Emits relevant shader functions for working with the grid in this geometry.
   createShaderSnippet(): string[];
 
   // Emits the uniform declarations required by the shader snippet.
   createShaderUniforms(): any;
 
   // Populates the shader uniforms.
-  populateShaderUniforms(uniforms: any): void;
+  populateShaderUniforms(
+    uniforms: any, faceTex?: THREE.WebGLRenderTarget | undefined, tileOrigin?: THREE.Vector2 | undefined
+  ): void;
+
+  // Clears any values from the shader uniforms that might be dangerous to keep around,
+  // e.g. acquired textures.
+  clearShaderUniforms(uniforms: any): void;
 }
 
 export class EdgeGeometry { // to help me share the edge code
@@ -171,6 +169,8 @@ export abstract class BaseGeometry {
   private readonly _maxVertex: number;
   private readonly _epsilon: number;
 
+  private readonly _faceStep = new THREE.Vector2();
+
   constructor(tileDim: number, maxEdge: number, maxVertex: number) {
     if (maxVertex > maxEdge) {
       throw new RangeError("maxVertex must not be greater than maxEdge");
@@ -195,20 +195,20 @@ export abstract class BaseGeometry {
 
   protected abstract createCentre(target: THREE.Vector3, x: number, y: number, z: number): THREE.Vector3;
 
-  createCoordCentre(target: THREE.Vector3, coord: IGridCoord, z: number): THREE.Vector3 {
+  createCoordCentre(target: THREE.Vector3, coord: GridCoord, z: number): THREE.Vector3 {
     return this.createCentre(target, coord.x, coord.y, z);
   }
 
-  protected abstract createEdgeGeometry(coord: IGridEdge, alpha: number, z: number): EdgeGeometry;
+  protected abstract createEdgeGeometry(coord: GridEdge, alpha: number, z: number): EdgeGeometry;
   protected abstract createEdgeVertices(target1: THREE.Vector3, target2: THREE.Vector3, centre: THREE.Vector3, edge: number): void;
 
-  createEdgeCentre(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, edge: IGridEdge, z: number): THREE.Vector3 {
+  createEdgeCentre(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, edge: GridEdge, z: number): THREE.Vector3 {
     this.createCoordCentre(scratch2, edge, z);
     this.createEdgeVertices(target, scratch1, scratch2, edge.edge);
     return target.lerp(scratch1, 0.5);
   }
 
-  abstract createVertexCentre(target: THREE.Vector3, vertex: IGridVertex, z: number): THREE.Vector3;
+  abstract createVertexCentre(target: THREE.Vector3, vertex: GridVertex, z: number): THREE.Vector3;
 
   protected abstract getVertexRadius(alpha: number): number;
 
@@ -319,6 +319,8 @@ export abstract class BaseGeometry {
       1, 2, 3
     ];
   }
+  
+  abstract createSolidVertices(tile: THREE.Vector2, alpha: number, z: number): Iterable<THREE.Vector3>;
 
   createSolidVertexVertices(tile: THREE.Vector2, alpha: number, z: number, maxVertex?: number | undefined): THREE.Vector3[] {
     let radius = this.getVertexRadius(alpha);
@@ -356,6 +358,64 @@ export abstract class BaseGeometry {
     }
   }
 
+  createShaderDeclarations() {
+    return [
+      "uniform vec2 faceStep;",
+      "uniform sampler2D faceTex;",
+      "uniform float maxEdge;",
+      "uniform float tileDim;",
+      "uniform vec2 tileOrigin;"
+    ];
+  }
+
+  createShaderSnippet() {
+    return [
+      "vec2 fromPackedXYAbs(const in float s) {",
+      "  float absValue = floor(s * tileDim * tileDim);",
+      "  return vec2(mod(absValue, tileDim), floor(absValue / tileDim));",
+      "}",
+
+      // ignores the edge value packed along with the sign
+      "bool fromPackedXYSign(const in vec2 s, out vec2 unpacked) {",
+      "  unpacked = fromPackedXYAbs(s.x);",
+      "  float signAndEdgeValue = floor(s.y * 8.0 * maxEdge);",
+      "  if (signAndEdgeValue <= 0.0) {",
+      "    return false;",
+      "  }",
+      "  if (mod(signAndEdgeValue, 2.0) == 1.0) {",
+      "    unpacked.x = -unpacked.x;",
+      "  }",
+      "  if (mod(floor(signAndEdgeValue * 0.5), 2.0) == 1.0) {",
+      "    unpacked.y = -unpacked.y;",
+      "  }",
+      "  return true;",
+      "}",
+
+      // Should do the same as the TypeScript function, `decodeCoordSample`,
+      // but from a UV (0..1).
+      "bool decodeCoordSample(const in vec2 uv, out vec2 coord) {",
+      "  vec4 coordSample = texture2D(faceTex, uv + faceStep);",
+      "  vec2 tile;",
+      "  if (fromPackedXYSign(coordSample.xy, tile) == false) {",
+      "    return false;",
+      "  }",
+      "  vec2 face = fromPackedXYAbs(coordSample.z);",
+      "  coord = (tile + tileOrigin) * tileDim + face;",
+      "  return true;",
+      "}"
+    ];
+  }
+
+  createShaderUniforms() {
+    return {
+      faceStep: { type: 'v2', value: null },
+      faceTex: { value: null },
+      maxEdge: { type: 'f', value: null },
+      tileDim: { type: 'f', value: null },
+      tileOrigin: { type: 'v2', value: null }
+    };
+  }
+
   createVertexAttributes(maxVertex?: number | undefined) {
     maxVertex = Math.min(maxVertex ?? this.maxVertex, this.maxVertex);
     let attrs = new Float32Array(this.tileDim * this.tileDim * maxVertex * (vertexRimCount + 1) * 3);
@@ -381,27 +441,43 @@ export abstract class BaseGeometry {
     return vertices;
   }
 
-  decodeCoordSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): IGridCoord | undefined {
+  decodeCoordSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): GridCoord | undefined {
     let tile = this.fromPackedXYEdge(sample, offset)[0];
     let face = this.fromPackedXYAbs(sample, offset + 2);
     return tile instanceof THREE.Vector2 ? createGridCoord(tile.add(tileOrigin), face, this.tileDim) : undefined;
   }
 
-  decodeVertexSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): IGridVertex | undefined {
+  decodeVertexSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): GridVertex | undefined {
     let [tile, vertex] = this.fromPackedXYEdge(sample, offset);
     let face = this.fromPackedXYAbs(sample, offset + 2);
     return tile instanceof THREE.Vector2 ? createGridVertex(tile.add(tileOrigin), face, this.tileDim, vertex as number)
       : undefined;
   }
 
-  transformToCoord(o: THREE.Object3D, coord: IGridCoord): void {
-    let centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
-    o.translateX(centre.x);
-    o.translateY(centre.y);
+  populateShaderUniforms(
+    uniforms: any, faceTex?: THREE.WebGLRenderTarget | undefined, tileOrigin?: THREE.Vector2 | undefined
+  ) {
+    if (faceTex !== undefined) {
+      this._faceStep.set(0.25 / faceTex.width, 0.25 / faceTex.height);
+      uniforms['faceTex'].value = faceTex.texture;
+    } else {
+      this._faceStep.set(0, 0);
+    }
+
+    uniforms['faceStep'].value = this._faceStep;
+    uniforms['maxEdge'].value = this.maxEdge;
+    uniforms['tileDim'].value = this.tileDim;
+    if (tileOrigin !== undefined) {
+      uniforms['tileOrigin'].value = tileOrigin;
+    }
   }
 
-  transformToOrigin(o: THREE.Object3D, coord: IGridCoord): void {
-    let negated = coordMultiplyScalar(coord, -1);
-    this.transformToCoord(o, negated);
+  clearShaderUniforms(uniforms: any) {
+    uniforms['faceTex'].value = undefined;
+  }
+
+  transformToCoord(m: THREE.Matrix4, coord: GridCoord): THREE.Matrix4 {
+    const centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
+    return m.makeTranslation(centre.x, centre.y, 0);
   }
 }

@@ -1,4 +1,4 @@
-import { IGridCoord } from '../data/coord';
+import { GridCoord } from '../data/coord';
 import { IGridGeometry } from './gridGeometry';
 import { IDragRectangle, IOutlinedRectangle } from './interfaces';
 import { TestVertexCollection, RectangleOcclusion } from './occlusion';
@@ -12,7 +12,7 @@ const zAxis = new THREE.Vector3(0, 0, 1);
 // in some circumstances.
 export class DragRectangle implements IDragRectangle {
   private readonly _outlined: IOutlinedRectangle;
-  private readonly _getGridCoordAt: (cp: THREE.Vector3) => IGridCoord | undefined;
+  private readonly _getGridCoordAt: (cp: THREE.Vector3) => GridCoord | undefined;
   private readonly _getViewportToWorld: (target: THREE.Matrix4) => THREE.Matrix4;
 
   private readonly _testVertexCollection: TestVertexCollection;
@@ -23,7 +23,7 @@ export class DragRectangle implements IDragRectangle {
   constructor(
     outlined: IOutlinedRectangle,
     geometry: IGridGeometry,
-    getGridCoordAt: (cp: THREE.Vector3) => IGridCoord | undefined,
+    getGridCoordAt: (cp: THREE.Vector3) => GridCoord | undefined,
     getViewportToWorld: (target: THREE.Matrix4) => THREE.Matrix4
   ) {
     this._outlined = outlined;
@@ -71,7 +71,7 @@ export class DragRectangle implements IDragRectangle {
   createFilter() {
     if (this._start === undefined || this._outlined.scale.x < 1 || this._outlined.scale.y < 1) {
       // There definitely isn't anything to select
-      return (c: IGridCoord) => false;
+      return (c: GridCoord) => false;
     }
 
     // To achieve this, I need to get the drag rectangle into world co-ordinates,
@@ -86,7 +86,7 @@ export class DragRectangle implements IDragRectangle {
     // For efficiency, we create the test vertices once and then transform them
     // as required
     const rectangleOcclusion = new RectangleOcclusion(0, [...rectanglePoints]);
-    return (c: IGridCoord) => {
+    return (c: GridCoord) => {
       for (let v of this._testVertexCollection.enumerate(c)) {
         if (rectangleOcclusion.test(v) === true) {
           return true;

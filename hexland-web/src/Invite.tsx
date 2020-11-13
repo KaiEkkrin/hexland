@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useMemo, useCallback } from 're
 import './App.css';
 
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
+import BusyElement from './components/BusyElement';
 import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { StatusContext } from './components/StatusContextProvider';
@@ -15,39 +16,41 @@ import Button from 'react-bootstrap/Button';
 import { RouteComponentProps, useHistory } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 
-function Invite(props: IInvitePageProps & IPageProps) {
+interface IInvitePageProps {
+  inviteId: string;
+}
+
+function Invite({ inviteId, navbarTitle, setNavbarTitle }: IInvitePageProps & IPageProps) {
   const userContext = useContext(UserContext);
-  const profile = useContext(ProfileContext);
+  const { profile } = useContext(ProfileContext);
   const analyticsContext = useContext(AnalyticsContext);
   const statusContext = useContext(StatusContext);
   const history = useHistory();
 
   useEffect(() => {
-    if (props.navbarTitle !== "") {
-      props.setNavbarTitle("");
+    if (navbarTitle !== "") {
+      setNavbarTitle("");
     }
-  }, [props.navbarTitle, props.setNavbarTitle]);
+  }, [navbarTitle, setNavbarTitle]);
 
   // Because the `joinAdventure` function is likely to be cold-started and may take a
   // little while to run, we change the button to "Joining..." while it's happening:
   const [buttonDisabled, setButtonDisabled] = useState(false);
-  const buttonText = useMemo(() => buttonDisabled ? 'Joining...' : 'Join', [buttonDisabled]);
-
   useEffect(() => {
-    if (props.inviteId) {
+    if (inviteId) {
       setButtonDisabled(false);
     }
-  }, [props.inviteId]);
+  }, [inviteId]);
 
   const [invite, setInvite] = useState(undefined as IInvite | undefined);
   useEffect(() => {
     if (userContext.dataService !== undefined) {
-      let inviteRef = userContext.dataService.getInviteRef(props.adventureId, props.inviteId);
+      let inviteRef = userContext.dataService.getInviteRef(inviteId);
       userContext.dataService.get(inviteRef)
         .then(i => setInvite(i))
-        .catch(e => analyticsContext.logError("Failed to fetch invite " + props.inviteId, e));
+        .catch(e => analyticsContext.logError("Failed to fetch invite " + inviteId, e));
     }
-  }, [userContext.dataService, analyticsContext, props.adventureId, props.inviteId]);
+  }, [userContext.dataService, analyticsContext, inviteId]);
 
   const inviteDescription = useMemo(() =>
     invite === undefined ? "(no such invite)" : invite.adventureName + " by " + invite.ownerName,
@@ -55,14 +58,14 @@ function Invite(props: IInvitePageProps & IPageProps) {
 
   const handleJoin = useCallback(() => {
     setButtonDisabled(true);
-    userContext.functionsService?.joinAdventure(props.adventureId, props.inviteId)
-      .then(() => {
-        analyticsContext.analytics?.logEvent("join_group", { "group_id": props.adventureId });
-        history.replace("/adventure/" + props.adventureId);
+    userContext.functionsService?.joinAdventure(inviteId)
+      .then(adventureId => {
+        analyticsContext.analytics?.logEvent("join_group", { "group_id": adventureId });
+        history.replace("/adventure/" + adventureId);
       })
       .catch(e => {
         setButtonDisabled(false);
-        analyticsContext.logError("Failed to join adventure " + props.adventureId, e);
+        analyticsContext.logError("Failed to join using invite " + inviteId, e);
         const message = String(e.message);
         if (message) {
           statusContext.toasts.next({ id: uuidv4(), record: {
@@ -70,32 +73,24 @@ function Invite(props: IInvitePageProps & IPageProps) {
           }});
         }
       });
-  }, [analyticsContext, userContext, props.adventureId, props.inviteId, history, setButtonDisabled, statusContext]);
+  }, [analyticsContext, userContext, inviteId, history, setButtonDisabled, statusContext]);
 
   return (
     <div>
       <header className="App-header">
         <h5>{profile?.name ?? "Unknown"}, you have been invited to join {inviteDescription}.</h5>
-        <Button variant="primary" disabled={buttonDisabled} onClick={handleJoin}>{buttonText}</Button>
+        <Button variant="primary" disabled={buttonDisabled} onClick={handleJoin}>
+          <BusyElement normal="Join" busy="Joining..." isBusy={buttonDisabled} />
+        </Button>
       </header>
     </div>
   );
 }
 
-interface IInvitePageProps {
-  adventureId: string;
-  inviteId: string;
-}
-
 function InvitePage(props: RouteComponentProps<IInvitePageProps> & IPageProps) {
   return (
     <RequireLoggedIn>
-      <Invite
-        adventureId={props.match.params.adventureId}
-        inviteId={props.match.params.inviteId}
-        navbarTitle={props.navbarTitle}
-        setNavbarTitle={props.setNavbarTitle}
-      />
+      <Invite inviteId={props.match.params.inviteId} {...props} />
     </RequireLoggedIn>
   );
 }

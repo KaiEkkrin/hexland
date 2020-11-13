@@ -1,4 +1,4 @@
-import { IGridCoord } from '../../data/coord';
+import { GridCoord } from '../../data/coord';
 import { IFeature } from '../../data/feature';
 import { InstancedFeatureObject } from './instancedFeatureObject';
 
@@ -31,7 +31,7 @@ export interface IColourParameters {
 const defaultColour = new THREE.Color(0, 0, 0);
 
 // This instanced feature object chooses a numbered colour from a palette.
-export class PaletteColouredFeatureObject<K extends IGridCoord, F extends IFeature<K>> extends InstancedFeatureObject<K, F> {
+export class PaletteColouredFeatureObject<K extends GridCoord, F extends IFeature<K>> extends InstancedFeatureObject<K, F> {
   private readonly _colourAttr: THREE.InstancedBufferAttribute;
   private readonly _geometry: THREE.InstancedBufferGeometry;
   private readonly _colours: number[]; // not instanced, but lets us change the palette
@@ -44,7 +44,7 @@ export class PaletteColouredFeatureObject<K extends IGridCoord, F extends IFeatu
   // The constructor will add the colour attribute to the geometry automatically.
   constructor(
     toIndex: (k: K) => string,
-    transformTo: (o: THREE.Object3D, position: K) => void,
+    transformTo: (m: THREE.Matrix4, position: K) => THREE.Matrix4,
     maxInstances: number,
     createGeometry: () => THREE.InstancedBufferGeometry,
     colourParameters: IColourParameters
@@ -120,17 +120,17 @@ const selectionColourPalette = [
   new THREE.Color(0x006060)
 ];
 
-function getSelectionColourBlending(i: number) {
-  if (i === 0 || i === 2) {
+function getSelectionColourBlending(i: string) {
+  if (i === '0' || i === '2') {
     return THREE.AdditiveBlending;
-  } else if (i === 1 || i === 3) {
+  } else if (i === '1' || i === '3') {
     return THREE.SubtractiveBlending;
   } else {
     throw RangeError("Invalid selection colour value: " + i);
   }
 }
 
-export function createSelectionColourParameters(i: number) {
+export function createSelectionColourParameters(i: string) {
   return {
     palette: selectionColourPalette,
     blending: getSelectionColourBlending(i)

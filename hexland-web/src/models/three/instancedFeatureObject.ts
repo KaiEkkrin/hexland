@@ -1,11 +1,11 @@
-import { IGridCoord } from '../../data/coord';
+import { GridCoord } from '../../data/coord';
 import { FeatureDictionary, IFeature } from '../../data/feature';
 
 import * as THREE from 'three';
 
 // The interface of the instanced feature object, which describes a collection
 // of features all drawn using the same instanced mesh added to a scene.
-export interface IInstancedFeatureObject<K extends IGridCoord, F extends IFeature<K>> {
+export interface IInstancedFeatureObject<K extends GridCoord, F extends IFeature<K>> {
   addToScene(scene: THREE.Scene): void;
   removeFromScene(scene: THREE.Scene): void;
 
@@ -18,8 +18,9 @@ export interface IInstancedFeatureObject<K extends IGridCoord, F extends IFeatur
 
 // A base class that manages a collection of features all drawn using the
 // same instanced mesh added to a scene.
-export abstract class InstancedFeatureObject<K extends IGridCoord, F extends IFeature<K>> implements IInstancedFeatureObject<K, F> {
-  private readonly _transformTo: (o: THREE.Object3D, position: K) => void;
+export abstract class InstancedFeatureObject<K extends GridCoord, F extends IFeature<K>> implements IInstancedFeatureObject<K, F> {
+  private readonly _toIndex: (k: K) => string;
+  private readonly _transformTo: (m: THREE.Matrix4, position: K) => THREE.Matrix4;
   private readonly _maxInstances: number;
 
   private readonly _indexes: FeatureDictionary<K, IFeature<K>>; // colour as instance index number
@@ -31,9 +32,10 @@ export abstract class InstancedFeatureObject<K extends IGridCoord, F extends IFe
 
   constructor(
     toIndex: (k: K) => string,
-    transformTo: (o: THREE.Object3D, position: K) => void,
+    transformTo: (m: THREE.Matrix4, position: K) => THREE.Matrix4,
     maxInstances: number
   ) {
+    this._toIndex = toIndex;
     this._transformTo = transformTo;
     this._maxInstances = maxInstances;
     this._indexes = new FeatureDictionary<K, IFeature<K>>(toIndex);
@@ -49,6 +51,8 @@ export abstract class InstancedFeatureObject<K extends IGridCoord, F extends IFe
     return this._mesh;
   }
 
+  protected get toIndex() { return this._toIndex; }
+
   // Override this to describe how to create the mesh.
   protected abstract createMesh(maxInstances: number): THREE.InstancedMesh;
 
@@ -56,9 +60,8 @@ export abstract class InstancedFeatureObject<K extends IGridCoord, F extends IFe
   // filling in other instanced attributes.
   protected addFeature(f: F, instanceIndex: number) {
     // All features have a position, which we create now
-    let o = new THREE.Object3D();
-    this._transformTo(o, f.position);
-    o.updateMatrix();
+    const o = new THREE.Object3D();
+    this._transformTo(o.matrix, f.position);
     this.mesh.setMatrixAt(instanceIndex, o.matrix);
     this.mesh.instanceMatrix.needsUpdate = true;
   }
@@ -108,7 +111,7 @@ export abstract class InstancedFeatureObject<K extends IGridCoord, F extends IFe
   }
 
   remove(f: F) {
-    let instanceIndex = this._indexes.remove(f.position);
+    const instanceIndex = this._indexes.remove(f.position);
     if (instanceIndex === undefined) {
       return false;
     }

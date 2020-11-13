@@ -1,6 +1,6 @@
 import { IStorage, IStorageReference } from './interfaces';
 
-import * as firebase from 'firebase/app';
+import firebase from 'firebase/app';
 import 'firebase/storage';
 
 // The real Firebase storage implementation.
@@ -28,6 +28,10 @@ export class StorageReference implements IStorageReference {
     await this._ref.delete();
   }
 
+  async download(destination: string): Promise<void> {
+    throw Error("Not supported");
+  }
+
   async getDownloadURL(): Promise<string> {
     const url = await this._ref.getDownloadURL();
     return String(url);
@@ -38,5 +42,9 @@ export class StorageReference implements IStorageReference {
     await this._ref.put(file, {
       customMetadata: metadata.customMetadata
     });
+  }
+
+  async upload(source: string, metadata: { contentType: string }): Promise<void> {
+    throw Error("Not supported");
   }
 }

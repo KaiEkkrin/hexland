@@ -1,10 +1,13 @@
 import { MapType } from "../data/map";
 import { IInviteExpiryPolicy } from "../data/policy";
+import { ISprite } from "../data/sprite";
+import { spriteConverter } from "./converter";
 import { IFunctionsService } from "./interfaces";
 
-import * as firebase from 'firebase/app';
+import firebase from 'firebase/app';
 
 export class FunctionsService implements IFunctionsService {
+  private readonly _addSprites: firebase.functions.HttpsCallable;
   private readonly _createAdventure: firebase.functions.HttpsCallable;
   private readonly _createMap: firebase.functions.HttpsCallable;
   private readonly _cloneMap: firebase.functions.HttpsCallable;
@@ -15,6 +18,7 @@ export class FunctionsService implements IFunctionsService {
   private readonly _joinAdventure: firebase.functions.HttpsCallable;
 
   constructor(functions: firebase.functions.Functions) {
+    this._addSprites = functions.httpsCallable('addSprites');
     this._createAdventure = functions.httpsCallable('createAdventure');
     this._createMap = functions.httpsCallable('createMap');
     this._cloneMap = functions.httpsCallable('cloneMap');
@@ -23,6 +27,23 @@ export class FunctionsService implements IFunctionsService {
     this._handleMockStorageUpload = functions.httpsCallable('handleMockStorageUpload');
     this._inviteToAdventure = functions.httpsCallable('inviteToAdventure');
     this._joinAdventure = functions.httpsCallable('joinAdventure');
+  }
+
+  async addSprites(adventureId: string, geometry: string, sources: string[]): Promise<ISprite[]> {
+    // We split the sources list up into groups of 10, since that's the longest
+    // the Function will accept
+    const sprites: ISprite[] = [];
+    for (let i = 0; i < sources.length; i += 10) {
+      const result = await this._addSprites({
+        adventureId: adventureId, geometry: geometry,
+        sources: sources.slice(i, Math.min(i + 10, sources.length))
+      });
+      if (Array.isArray(result.data)) {
+        sprites.push(...result.data.map(d => spriteConverter.convert(d)));
+      }
+    }
+
+    return sprites;
   }
 
   async createAdventure(name: string, description: string): Promise<string> {
@@ -75,14 +96,12 @@ export class FunctionsService implements IFunctionsService {
   }
 
   async joinAdventure(
-    adventureId: string,
-    inviteId: string,
-    policy?: IInviteExpiryPolicy | undefined // for testing purposes only
+    inviteId: string, policy?: IInviteExpiryPolicy | undefined // for testing purposes only
   ) {
-    await this._joinAdventure({
-      adventureId: adventureId,
+    const result = await this._joinAdventure({
       inviteId: inviteId,
       ...policy
     });
+    return String(result.data);
   }
 }

@@ -6,6 +6,7 @@ import functionLogger from './services/functionLogger';
 import * as ImageExtensions from './services/imageExtensions';
 import { IStorage } from './services/interfaces';
 import { MockStorage } from './services/mockStorage';
+import * as SpriteExtensions from './services/spriteExtensions';
 import { Storage } from './services/storage';
 
 import * as admin from 'firebase-admin';
@@ -194,6 +195,7 @@ export const inviteToAdventure = functions.region(region).https.onCall(async (da
 });
 
 // Joins an adventure (with invite validation.)
+// Returns the id of the adventure you joined.
 
 export const joinAdventure = functions.region(region).https.onCall(async (data, context) => {
   // Do the authorization thing, by bearer token:
@@ -205,13 +207,12 @@ export const joinAdventure = functions.region(region).https.onCall(async (data, 
 
   // In this case, we need no further authorization for the decoded token itself;
   // we just need to check they specified a valid invite
-  const adventureId = data['adventureId'];
   const inviteId = data['inviteId'];
-  if (!adventureId || !inviteId) {
+  if (!inviteId) {
     throw new functions.https.HttpsError('invalid-argument', 'No adventure or map id supplied');
   }
 
-  await Extensions.joinAdventure(dataService, uid, adventureId, inviteId, getInviteExpiryPolicy(data));
+  return await Extensions.joinAdventure(dataService, uid, inviteId, getInviteExpiryPolicy(data));
 });
 
 // Deletes an image.
@@ -229,6 +230,34 @@ export const deleteImage = functions.region(region).https.onCall(async (data, co
 
   await ImageExtensions.deleteImage(dataService, storage, functionLogger, uid, path);
 });
+
+// Adds sprites.
+// This seems to chew a lot of memory, hence the higher memory limit setting.  Hopefully
+// this won't turn out overly expensive!
+
+export const addSprites = functions.region(region).runWith({ memory: '1GB' }).https.onCall(async (data, context) => {
+  const uid = context.auth?.uid;
+  if (uid === undefined) {
+    throw new functions.https.HttpsError('unauthenticated', 'No uid found');
+  }
+
+  const adventureId = data['adventureId'];
+  const geometry = data['geometry'];
+  const sources = data['sources'];
+  if (!adventureId || !sources) {
+    throw new functions.https.HttpsError('invalid-argument', 'No adventure id or sources supplied');
+  }
+
+  const sourceList = Array.isArray(sources) ? sources.map(s => String(s)) : [];
+  if (sourceList.length === 0) {
+    throw new functions.https.HttpsError('invalid-argument', 'No sources supplied');
+  }
+
+  return await SpriteExtensions.addSprites(
+    dataService, functionLogger, storage, uid, String(adventureId), String(geometry),
+    sourceList, admin.firestore.Timestamp.now
+  );
+})
 
 // == TRIGGER FUNCTIONS ==
 

@@ -1,4 +1,4 @@
-import { IGridCoord, coordString } from '../../data/coord';
+import { GridCoord, coordString } from '../../data/coord';
 import { IFeature } from '../../data/feature';
 import { createPaletteColouredAreaObject } from './areas';
 import { MapColouring } from '../colouring';
@@ -15,7 +15,7 @@ import * as THREE from 'three';
 
 const defaultColour = new THREE.Color(0x222222); // should be distinctive -- I shouldn't see this
 
-export class MapColourVisualisation extends InstancedFeatures<IGridCoord, IFeature<IGridCoord>> {
+export class MapColourVisualisation extends InstancedFeatures<GridCoord, IFeature<GridCoord>> {
   private _colourCount = 0;
 
   // We start off with no colours; you need to call visualise() to define colours.
@@ -36,7 +36,7 @@ export class MapColourVisualisation extends InstancedFeatures<IGridCoord, IFeatu
   }
 
   visualise(scene: THREE.Scene, colouring: MapColouring) {
-    colouring.visualise(this, (position: IGridCoord, mapColour: number, mapColourCount: number) => {
+    colouring.visualise(this, (position: GridCoord, mapColour: number, mapColourCount: number) => {
       // If our scene has changed or the number of map colours has changed, we need to re-colour
       // our objects:
       if (scene !== this.scene || mapColourCount !== this._colourCount) {

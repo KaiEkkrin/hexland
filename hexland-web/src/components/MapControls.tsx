@@ -10,12 +10,13 @@ import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import ToggleButton from 'react-bootstrap/ToggleButton';
 import Tooltip from 'react-bootstrap/Tooltip';
 
-import { faDotCircle, faDrawPolygon, faMousePointer, faPlus, faSquare, IconDefinition, faCog, faSuitcase, faMapMarker, faVectorSquare, faSearchPlus, faSearchMinus } from '@fortawesome/free-solid-svg-icons';
+import { faDotCircle, faDrawPolygon, faMousePointer, faPlus, faSquare, IconDefinition, faCog, faSuitcase, faMapMarker, faVectorSquare, faSearchPlus, faSearchMinus, faUser } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 export enum EditMode {
   Select = "select",
   Token = "token",
+  CharacterToken = "characterToken",
   Notes = "notes",
   Area = "area",
   Wall = "wall",
@@ -86,6 +87,11 @@ function MapControls(props: IMapControlsProps) {
           mode={props.editMode} setMode={props.setEditMode}
         >
           Add and edit <u>t</u>okens
+        </ModeButton>,
+        <ModeButton key={EditMode.CharacterToken} value={EditMode.CharacterToken} icon={faUser}
+          mode={props.editMode} setMode={props.setEditMode}
+        >
+          Add and edit <u>c</u>haracter tokens
         </ModeButton>,
         <ModeButton key={EditMode.Notes} value={EditMode.Notes} icon={faMapMarker}
           mode={props.editMode} setMode={props.setEditMode}

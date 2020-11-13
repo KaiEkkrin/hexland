@@ -1,7 +1,7 @@
 import { IToast } from "../components/interfaces";
 import { EditMode } from "../components/MapControls";
 import { IAnnotation } from "../data/annotation";
-import { IChange } from "../data/change";
+import { Change } from "../data/change";
 import { ITokenProperties } from "../data/feature";
 import { IAdventureIdentified, IIdentified } from "../data/identified";
 import { IMap } from "../data/map";
@@ -13,6 +13,7 @@ import { Subject } from 'rxjs';
 import * as THREE from 'three';
 import { v4 as uuidv4 } from 'uuid';
 import { editMap } from "../services/extensions";
+import { IImage } from "../data/image";
 
 // This class manages a variety of map UI related state changes with side effects
 // that I don't trust React to do properly (React `useReducer` may dispatch actions
@@ -40,14 +41,18 @@ export interface IMapUiState {
 
   showMapEditor: boolean;
   showTokenEditor: boolean;
+  showCharacterTokenEditor: boolean;
   showNoteEditor: boolean;
   showTokenDeletion: boolean;
+  showTokenImageDeletion: boolean;
 
   tokenToEdit?: ITokenProperties | undefined;
   tokenToEditPosition?: THREE.Vector3 | undefined;
   noteToEdit?: IAnnotation | undefined;
   noteToEditPosition?: THREE.Vector3 | undefined;
   tokensToDelete: ITokenProperties[];
+
+  imageToDelete?: IImage | undefined;
 }
 
 export function createDefaultUiState(): IMapUiState {
@@ -64,8 +69,10 @@ export function createDefaultUiState(): IMapUiState {
     mouseDown: false,
     showMapEditor: false,
     showTokenEditor: false,
+    showCharacterTokenEditor: false,
     showNoteEditor: false,
     showTokenDeletion: false,
+    showTokenImageDeletion: false,
     tokensToDelete: [],
   };
 }
@@ -76,20 +83,22 @@ export function isAnEditorOpen(state: IMapUiState): boolean {
 }
 
 export class MapUi {
+  private readonly _stateMachine: MapStateMachine | undefined;
   private readonly _setState: (state: IMapUiState) => void;
   private readonly _getClientPosition: (x: number, y: number) => THREE.Vector3 | undefined;
   private readonly _logError: (message: string, e: any, fatal?: boolean | undefined) => void;
   private readonly _toasts: Subject<IIdentified<IToast | undefined>>;
 
   private _state = createDefaultUiState();
-  private _stateMachine: MapStateMachine | undefined;
 
   constructor(
+    stateMachine: MapStateMachine | undefined,
     setState: (state: IMapUiState) => void,
     getClientPosition: (x: number, y: number) => THREE.Vector3 | undefined,
     logError: (message: string, e: any, fatal?: boolean | undefined) => void,
     toasts: Subject<IIdentified<IToast | undefined>>
   ) {
+    this._stateMachine = stateMachine;
     this._setState = setState;
     this._getClientPosition = getClientPosition;
     this._logError = logError;
@@ -119,9 +128,26 @@ export class MapUi {
     this._setState(newState);
   }
 
+  private decideHowToEditToken(token: ITokenProperties | undefined, defaultToCharacter?: boolean | undefined) {
+    switch (token?.characterId) {
+      case undefined:
+        if (this._state.editMode === EditMode.CharacterToken || defaultToCharacter === true) {
+          return { showCharacterTokenEditor: true, showTokenEditor: false };
+        } else {
+          return { showCharacterTokenEditor: false, showTokenEditor: true };
+        }
+
+      case "":
+        return { showCharacterTokenEditor: false, showTokenEditor: true };
+
+      default:
+        return { showCharacterTokenEditor: true, showTokenEditor: false };
+    }
+  }
+
   private interactionEnd(cp: THREE.Vector3, shiftKey: boolean, startingState: IMapUiState) {
     const newState = { ...startingState };
-    let changes: IChange[] | undefined;
+    let changes: Change[] | undefined;
     if (this._state.isDraggingView) {
       this._stateMachine?.panEnd();
       newState.isDraggingView = false;
@@ -132,9 +158,14 @@ export class MapUi {
           break;
 
         case EditMode.Token:
-          newState.showTokenEditor = true;
+        case EditMode.CharacterToken:
           newState.tokenToEdit = this._stateMachine?.getToken(cp);
           newState.tokenToEditPosition = cp;
+
+          // Try to be clever about contextually editing the token in the right way
+          const { showCharacterTokenEditor, showTokenEditor } = this.decideHowToEditToken(newState.tokenToEdit);
+          newState.showCharacterTokenEditor = showCharacterTokenEditor;
+          newState.showTokenEditor = showTokenEditor;
           break;
 
         case EditMode.Notes:
@@ -213,18 +244,15 @@ export class MapUi {
     return undefined;
   }
 
-  get stateMachine() { return this._stateMachine; }
-  set stateMachine(value: MapStateMachine | undefined) { this._stateMachine = value; }
-
-  addChanges(changes: IChange[] | undefined) {
+  addChanges(changes: Change[] | undefined) {
     if (this._stateMachine === undefined) {
       return;
     }
 
     this._stateMachine.addChanges(changes, (id, title, message) => {
       this._toasts.next({ id: id, record: { title: title, message: message }});
-    }).then(() => console.log(`Added ${changes?.length} changes`))
-      .catch(e => this._logError(`Error adding ${changes?.length} changes`, e));
+    }).then(() => console.log(`Added ${changes?.length} changes to map ${this._stateMachine?.map.id}`))
+      .catch(e => this._logError(`Error adding ${changes?.length} changes to map ${this._stateMachine?.map.id}`, e));
   }
 
   contextMenu(e: MouseEvent, bounds: DOMRect) {
@@ -261,8 +289,8 @@ export class MapUi {
     });
   }
 
-  editToken() {
-    if (this._state.showTokenEditor) {
+  editToken(defaultToCharacter?: boolean | undefined) {
+    if (this._state.showTokenEditor || this._state.showCharacterTokenEditor) {
       return;
     }
 
@@ -275,7 +303,7 @@ export class MapUi {
     const token = this._stateMachine?.getToken(cp);
     this.changeState({
       ...this._state,
-      showTokenEditor: true,
+      ...this.decideHowToEditToken(token, defaultToCharacter),
       tokenToEdit: token,
       tokenToEditPosition: cp
     });
@@ -285,6 +313,15 @@ export class MapUi {
     if (this._state.showContextMenu === true) {
       this.changeState({ ...this._state, showContextMenu: false });
     }
+  }
+
+  imageDeletionClose() {
+    this.changeState({
+      ...this._state,
+      showTokenImageDeletion: false,
+      showTokenEditor: true, // hopefully the rest of its settings will be preserved :)
+      imageToDelete: undefined
+    });
   }
 
   keyDown(e: KeyboardEvent) {
@@ -408,6 +445,7 @@ export class MapUi {
       this._state.showMapEditor === false &&
       this._state.showTokenDeletion === false &&
       this._state.showTokenEditor === false &&
+      this._state.showCharacterTokenEditor === false &&
       this._state.showNoteEditor === false &&
       this._state.editMode === EditMode.Select
     ) {
@@ -419,6 +457,7 @@ export class MapUi {
       showMapEditor: false,
       showTokenDeletion: false,
       showTokenEditor: false,
+      showCharacterTokenEditor: false,
       showNoteEditor: false,
       editMode: EditMode.Select
     });
@@ -504,7 +543,7 @@ export class MapUi {
       return;
     }
 
-    const changes: IChange[] = [];
+    const changes: Change[] = [];
     for (const t of this._state.tokensToDelete) {
       const chs = this._stateMachine?.setTokenById(t.id, undefined);
       if (chs !== undefined) {
@@ -529,6 +568,19 @@ export class MapUi {
     this.modalClose();
   }
 
+  tokenEditorDeleteImage(image: IImage | undefined) {
+    if (image === undefined) {
+      return;
+    }
+
+    this.changeState({
+      ...this._state,
+      showTokenEditor: false, // will be put back when the image deletion modal is closed
+      showTokenImageDeletion: true,
+      imageToDelete: image
+    });
+  }
+
   tokenEditorSave(properties: ITokenProperties) {
     console.log(`saving token with properties ${JSON.stringify(properties)} and position ${this._state.tokenToEditPosition?.toArray()}`);
     if (this._state.tokenToEditPosition !== undefined) {
@@ -543,6 +595,7 @@ export class MapUi {
   }
 
   touchEnd(e: React.TouchEvent) {
+    e.preventDefault();
     const t = this.touchMove(e);
     if (t === undefined || isAnEditorOpen(this._state) || isAMovementKeyDown(this._state.keysDown)) {
       return;
@@ -552,6 +605,8 @@ export class MapUi {
   }
 
   touchMove(e: React.TouchEvent) {
+    e.preventDefault();
+
     // This only takes effect if the touch we're tracking has changed
     const t = this.isTrackingTouch(e);
     if (t === undefined) {
@@ -567,6 +622,7 @@ export class MapUi {
   }
 
   touchStart(e: React.TouchEvent) {
+    e.preventDefault();
     if (this._state.touch !== undefined || e.changedTouches.length === 0) {
       return;
     }

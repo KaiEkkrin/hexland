@@ -4,6 +4,8 @@ import { IPlayer } from '../data/adventure';
 import { ITokenProperties } from '../data/feature';
 import { hexColours } from '../models/featureColour';
 
+import SpriteImage from './SpriteImage';
+
 import Badge from 'react-bootstrap/Badge';
 import Dropdown from 'react-bootstrap/Dropdown';
 import ListGroup from 'react-bootstrap/ListGroup';
@@ -56,13 +58,24 @@ function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
         >Owner</Badge>
       )];
     } else if (myTokens.length > 0) {
-      return myTokens.map(t => (
-        <Badge key={"badge_" + t.id} className="ml-2 mt-1"
-          title={"Player " + props.player.playerName + " has token " + t.text}
-          style={{ backgroundColor: hexColours[t.colour], color: "black", userSelect: "none" }}
-          onClick={() => props.resetView?.(t.id)}
-        >{t.text}</Badge>
-      ));
+      return myTokens.map(t => {
+        const key = `badge_${t.id}`;
+        const title = `Player ${props.player.playerName} has token ${t.text}`;
+        if (t.characterId.length > 0 || t.sprites.length > 0) { // TODO #46 deal with no-image characters...
+          return (
+            <SpriteImage key={key} className="ml-2 mt-1" altName={props.player.playerName}
+              size={32} border="1px solid" borderColour={hexColours[t.colour]} token={t}
+              onClick={() => props.resetView?.(t.id)} />
+          );
+        } else {
+          return (
+            <Badge key={key} className="ml-2 mt-1" title={title}
+              style={{ backgroundColor: hexColours[t.colour], color: "black", userSelect: "none" }}
+              onClick={() => props.resetView?.(t.id)}
+            >{t.text}</Badge>
+          );
+        }
+      });
     } else if (props.showNoTokenWarning === true) {
       return [(
         <Badge key="noTokenBadge" className="ml-2 mt-1" hidden={isNoTokenHidden} variant="warning"
@@ -77,7 +90,10 @@ function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
   const contentItems = useMemo(() => {
     // Always show the player name
     const items = [(
-      <div key="nameItem" style={{ wordBreak: "break-all", wordWrap: "break-word" }}>{props.player.playerName}{blockedBadge}</div>
+      <div key="nameItem"
+        style={{ wordBreak: "break-all", wordWrap: "break-word" }}
+        aria-label={`Player ${props.player.playerName}`}
+      >{props.player.playerName}{blockedBadge}</div>
     )];
 
     // If we have a block item, show that in a little menu to make it less threatening
@@ -104,9 +120,7 @@ function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
 
   return (
     <ListGroup.Item className="Map-info-list-item">
-      <div title={"Player " + props.player.playerName}
-        style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between" }}
-      >
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between" }}>
         {contentItems}
       </div>
     </ListGroup.Item>

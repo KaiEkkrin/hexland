@@ -1,8 +1,13 @@
 import React, { useContext, useEffect, useReducer, useState, useMemo, useCallback } from 'react';
 import './App.css';
 
+import { AdventureContext } from './components/AdventureContextProvider';
 import AdventureModal from './components/AdventureModal';
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
+import BusyElement from './components/BusyElement';
+import CharacterDeletionModal from './components/CharacterDeletionModal';
+import CharacterEditorModal from './components/CharacterEditorModal';
+import CharacterList from './components/CharacterList';
 import ImageCardContent from './components/ImageCardContent';
 import ImageDeletionModal from './components/ImageDeletionModal';
 import ImagePickerModal from './components/ImagePickerModal';
@@ -10,16 +15,15 @@ import MapCollection from './components/MapCollection';
 import PlayerInfoList from './components/PlayerInfoList';
 import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
-import { StatusContext } from './components/StatusContextProvider';
 import { UserContext } from './components/UserContextProvider';
 
 import { IPageProps } from './components/interfaces';
 import { IAdventure, summariseAdventure, IPlayer, IMapSummary } from './data/adventure';
-import { IIdentified } from './data/identified';
+import { ICharacter, maxCharacters } from './data/character';
 import { IImage } from './data/image';
 import { IMap } from './data/map';
 import { getUserPolicy } from './data/policy';
-import { deleteMap, registerAdventureAsRecent, editAdventure, deleteAdventure, leaveAdventure, removeAdventureFromRecent, editMap } from './services/extensions';
+import { deleteMap, editAdventure, deleteAdventure, leaveAdventure, editMap, editCharacter, deleteCharacter } from './services/extensions';
 
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
@@ -34,8 +38,6 @@ import { Link, RouteComponentProps, useHistory } from 'react-router-dom';
 import { faImage } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-import { v4 as uuidv4 } from 'uuid';
-
 interface IAdventureProps {
   adventureId: string;
 }
@@ -43,8 +45,8 @@ interface IAdventureProps {
 function Adventure({ adventureId, navbarTitle, setNavbarTitle }: IAdventureProps & IPageProps) {
   const { dataService, functionsService, user } = useContext(UserContext);
   const { analytics, logError } = useContext(AnalyticsContext);
-  const profile = useContext(ProfileContext);
-  const { toasts } = useContext(StatusContext);
+  const { profile } = useContext(ProfileContext);
+  const { adventure, players } = useContext(AdventureContext);
   const history = useHistory();
 
   const userPolicy = useMemo(
@@ -52,89 +54,28 @@ function Adventure({ adventureId, navbarTitle, setNavbarTitle }: IAdventureProps
     [profile]
   );
 
-  const [adventure, setAdventure] = useState<IIdentified<IAdventure> | undefined>(undefined);
-  useEffect(() => {
-    const uid = user?.uid;
-    if (uid === undefined) {
-      return;
-    }
-
-    const d = dataService?.getAdventureRef(adventureId);
-    const playerRef = dataService?.getPlayerRef(adventureId, uid);
-    if (d === undefined || playerRef === undefined) {
-      return;
-    }
-
-    // How to handle an adventure load failure.
-    function couldNotLoad(message: string) {
-      toasts.next({
-        id: uuidv4(),
-        record: { title: 'Error loading adventure', message: message }
-      });
-
-      const uid = user?.uid;
-      if (uid && d) {
-        removeAdventureFromRecent(dataService, uid, d.id)
-          .catch(e => logError("Error removing adventure from recent", e));
-      }
-
-      history.replace('/');
-    }
-
-    // Check this adventure exists and can be fetched (the watch doesn't do this for us)
-    // We do this by checking for the player record because that also allows us to check if
-    // we're blocked; being blocked necessarily doesn't stop us from getting the adventure
-    // from the db (only the maps), but showing it to the user in that state would *not*
-    // be a helpful thing to do
-    dataService?.get(playerRef)
-      .then(r => {
-        // Deliberately try not to show the player the difference between the adventure being
-        // deleted and the player being blocked!  Might avoid a confrontation...
-        if (r === undefined || r?.allowed === false) {
-          couldNotLoad("That adventure does not exist.");
-        }
-      })
-      .catch(e => {
-        logError("Error checking for adventure " + adventureId + ": ", e);
-        couldNotLoad(e.message);
-      });
-
-    analytics?.logEvent("select_content", {
-      "content_type": "adventure",
-      "item_id": adventureId
-    });
-    return dataService?.watch(d,
-      a => setAdventure(a === undefined ? undefined : { id: adventureId, record: a }),
-      e => logError("Error watching adventure " + adventureId + ": ", e));
-  }, [dataService, user, analytics, logError, history, adventureId, toasts]);
-
   const title = useMemo(() => {
+    if (adventure === undefined) {
+      return "";
+    }
+
     if (adventure?.record.owner !== user?.uid) {
       return adventure?.record.name ?? "";
     }
 
-    return (adventure?.record.name ?? "") + " (" + (adventure?.record.maps.length ?? 0) + "/" + (userPolicy?.maps ?? 0) + ")";
+    const adventureLink = "/adventure/" + adventure.id;
+    const objectsString = "(" + (adventure.record.maps.length) + "/" + (userPolicy?.maps ?? 0) + ")";
+    return (
+      <div style={{ overflowWrap: 'normal' }}>
+        <Link aria-label="Link to this adventure" to={adventureLink}>{adventure.record.name}</Link> {objectsString}
+      </div>
+    );
   }, [adventure, user, userPolicy]);
   useEffect(() => {
     if (title !== navbarTitle) {
       setNavbarTitle(title);
     }
   }, [navbarTitle, setNavbarTitle, title]);
-
-  // Track changes to the adventure
-  useEffect(() => {
-    const uid = user?.uid;
-    if (
-      dataService === undefined || adventure === undefined ||
-      uid === undefined
-    ) {
-      return;
-    }
-
-    registerAdventureAsRecent(dataService, uid, adventure.id, adventure.record)
-      .then(() => console.log("registered adventure " + adventure.id + " as recent"))
-      .catch(e => logError("Failed to register adventure " + adventure.id + " as recent", e));
-  }, [logError, dataService, user, adventure]);
 
   // Derive the adventures list for the map collection
   const adventures = useMemo(
@@ -145,11 +86,6 @@ function Adventure({ adventureId, navbarTitle, setNavbarTitle }: IAdventureProps
   // We want to be able to set the "create invite link" button's text to "Creating..." while it's
   // happening, which might take a moment:
   const [createInviteButtonDisabled, setCreateInviteButtonDisabled] = useState(false);
-  const createInviteText = useMemo(
-    () => createInviteButtonDisabled ? "Creating invite link..." : "Create invite link",
-    [createInviteButtonDisabled]
-  );
-
   useEffect(() => {
     if (adventureId) {
       setCreateInviteButtonDisabled(false);
@@ -166,7 +102,7 @@ function Adventure({ adventureId, navbarTitle, setNavbarTitle }: IAdventureProps
     setCreateInviteButtonDisabled(true);
     analytics?.logEvent("share", { "content_type": "adventure", "item_id": adventureId });
     functionsService.inviteToAdventure(adventure.id)
-      .then(l => setInviteLink(adventureId + "/invite/" + l))
+      .then(l => setInviteLink("/invite/" + l))
       .catch(e => {
         setCreateInviteButtonDisabled(false);
         logError("Failed to create invite link for " + adventureId, e);
@@ -174,20 +110,6 @@ function Adventure({ adventureId, navbarTitle, setNavbarTitle }: IAdventureProps
   }, [adventure, analytics, logError, adventureId, setCreateInviteButtonDisabled, setInviteLink, functionsService]);
 
   // Adventure editing support
-  const [players, setPlayers] = useState<IPlayer[]>([]);
-  useEffect(() => {
-    if (dataService === undefined) {
-      setPlayers([]);
-      return () => {};
-    }
-
-    return dataService.watchPlayers(
-      adventureId,
-      setPlayers,
-      e => logError("Failed to watch players of adventure " + adventureId, e)
-    );
-  }, [logError, dataService, adventureId]);
-
   const playersTitle = useMemo(() => {
     if (adventure?.record.owner !== user?.uid) {
       return "Players";
@@ -249,6 +171,10 @@ function Adventure({ adventureId, navbarTitle, setNavbarTitle }: IAdventureProps
 
   const showBlockedText = useMemo(() => showBlocked === true ? "Hide blocked" : "Show blocked", [showBlocked]);
 
+  // Support for the characters list
+  const [showEditCharacter, setShowEditCharacter] = useState(false);
+  const [showDeleteCharacter, setShowDeleteCharacter] = useState(false);
+
   const handleModalClose = useCallback(() => {
     setShowBlockPlayer(false);
     setShowUnblockPlayer(false);
@@ -257,7 +183,13 @@ function Adventure({ adventureId, navbarTitle, setNavbarTitle }: IAdventureProps
     setShowImagePicker(false);
     setShowDeleteAdventure(false);
     setShowLeaveAdventure(false);
-  }, [setShowBlockPlayer, setShowUnblockPlayer, setShowEditAdventure, setShowImageDeletion, setShowImagePicker, setShowDeleteAdventure, setShowLeaveAdventure]);
+    setShowEditCharacter(false);
+    setShowDeleteCharacter(false);
+  }, [
+    setShowBlockPlayer, setShowUnblockPlayer, setShowEditAdventure, setShowImageDeletion,
+    setShowImagePicker, setShowDeleteAdventure, setShowLeaveAdventure, setShowEditCharacter,
+    setShowDeleteCharacter
+  ]);
 
   const handleShowBlockPlayer = useCallback((player: IPlayer) => {
     setShowBlockPlayer(true);
@@ -399,12 +331,71 @@ function Adventure({ adventureId, navbarTitle, setNavbarTitle }: IAdventureProps
       .catch(e => logError("Error leaving adventure " + adventureId, e));
   }, [dataService, user, logError, adventureId, handleModalClose, history]);
 
+  // Support for the character list
+  const myPlayer = useMemo(() => players.filter(p => p.playerId === user?.uid), [players, user]);
+  const otherPlayers = useMemo(() => players.filter(p => p.playerId !== user?.uid), [players, user]);
+  const showOtherCharacters = useMemo(() => otherPlayers.length > 0, [otherPlayers]);
+  const [characterToEdit, setCharacterToEdit] = useState<ICharacter | undefined>(undefined);
+
+  const createCharacterDisabled = useMemo(
+    () => myPlayer.length === 0 || myPlayer[0].characters.length >= maxCharacters,
+    [myPlayer]
+  );
+
+  const myCharactersTitle = useMemo(() => {
+    const characterCount = myPlayer.length > 0 ? myPlayer[0].characters.length : 0;
+    return `My Characters (${characterCount}/${maxCharacters})`;
+  }, [myPlayer]);
+
+  const handleCreateCharacter = useCallback(() => {
+    setCharacterToEdit(undefined);
+    setShowEditCharacter(true);
+  }, [setCharacterToEdit, setShowEditCharacter]);
+
+  const handleEditCharacter = useCallback((character: ICharacter) => {
+    setCharacterToEdit(character);
+    setShowEditCharacter(true);
+  }, [setCharacterToEdit, setShowEditCharacter]);
+
+  const handleDeleteCharacter = useCallback((character: ICharacter) => {
+    setCharacterToEdit(character);
+    setShowDeleteCharacter(true);
+  }, [setCharacterToEdit, setShowDeleteCharacter]);
+
+  const handleCharacterSave = useCallback((character: ICharacter) => {
+    handleModalClose();
+    editCharacter(dataService, adventureId, user?.uid, character)
+      .then(() => {
+        console.log("Successfully edited character " + character.id);
+      })
+      .catch(e => logError("Error editing character " + character.id, e));
+  }, [dataService, user, logError, adventureId, handleModalClose]);
+
+  const handleCharacterDeletion = useCallback(() => {
+    handleModalClose();
+    if (characterToEdit === undefined) {
+      return;
+    }
+
+    deleteCharacter(dataService, adventureId, user?.uid, characterToEdit.id)
+      .then(() => {
+        console.log("Successfully deleted character " + characterToEdit.id);
+      })
+      .catch(e => logError("Error deleting character " + characterToEdit.id, e));
+  }, [dataService, user, logError, adventureId, characterToEdit, handleModalClose]);
+
+  // Maps
   const maps = useMemo(() => adventure?.record.maps ?? [], [adventure]);
   const mapDelete = useCallback((id: string) => {
     deleteMap(dataService, user?.uid, adventureId, id)
       .then(() => console.log("Map " + id + " successfully deleted"))
       .catch(e => logError("Error deleting map " + id, e));
   }, [dataService, user, adventureId, logError]);
+
+  const mapsTitle = useMemo(
+    () => `Maps (${maps.length}/${userPolicy?.maps})`,
+    [maps, userPolicy]
+  );
 
   return (
     <div>
@@ -433,7 +424,12 @@ function Adventure({ adventureId, navbarTitle, setNavbarTitle }: IAdventureProps
                       </div>
                       <div className="card-row-spaced">
                         {canEditAdventure !== true ? <div></div> : inviteLink === undefined ?
-                          <Button variant="primary" disabled={createInviteButtonDisabled} onClick={createInviteLink}>{createInviteText}</Button> :
+                          <Button variant="primary" disabled={createInviteButtonDisabled}
+                            onClick={createInviteLink}
+                          >
+                            <BusyElement normal="Create invite link"
+                              busy="Creating invite link..." isBusy={createInviteButtonDisabled} />
+                          </Button> :
                           <Link to={inviteLink}>Send this link to other players to invite them.</Link>
                         }
                         {canEditAdventure === true ?
@@ -462,10 +458,36 @@ function Adventure({ adventureId, navbarTitle, setNavbarTitle }: IAdventureProps
               </CardDeck>
             </Col>
           </Row>
-          : <div></div>
+          : null
         }
         <Row className="mt-4">
+          {myPlayer !== undefined ? (
+            <Col>
+              <div className="App-divider" />
+              <h5>{myCharactersTitle}</h5>
+              <Card className="mt-4" bg="dark" text="white">
+                <Card.Header>
+                  <Button variant="primary" onClick={handleCreateCharacter} disabled={createCharacterDisabled}>
+                    New character
+                  </Button>
+                </Card.Header>
+                <CharacterList canEdit={true} players={myPlayer} handleEdit={handleEditCharacter}
+                  handleDelete={handleDeleteCharacter} itemClassName="Map-info-list-item" />
+              </Card>
+            </Col>
+          ) : null}
+          {showOtherCharacters ? (<Col>
+            <div className="App-divider" />
+            <h5>Other Characters</h5>
+            <Card className="mt-4" bg="dark" text="white">
+              <CharacterList players={otherPlayers} showPlayerNames={true} itemClassName="Map-info-list-item" />
+            </Card>
+          </Col>) : null}
+        </Row>
+        <Row className="mt-4">
           <Col>
+            <div className="App-divider" />
+            <h5>{mapsTitle}</h5>
             <MapCollection
               adventures={adventures}
               maps={maps}
@@ -483,6 +505,18 @@ function Adventure({ adventureId, navbarTitle, setNavbarTitle }: IAdventureProps
         handleSave={handleEditAdventureSave}
         setDescription={setEditAdventureDescription}
         setName={setEditAdventureName} />
+      <CharacterEditorModal
+        show={showEditCharacter}
+        adventureId={adventureId}
+        character={characterToEdit}
+        handleClose={handleModalClose}
+        handleImageDelete={handleShowImageDeletion}
+        handleSave={handleCharacterSave} />
+      <CharacterDeletionModal
+        show={showDeleteCharacter}
+        character={characterToEdit}
+        handleClose={handleModalClose}
+        handleDelete={handleCharacterDeletion} />
       <ImagePickerModal
         show={showImagePicker}
         handleClose={handleModalClose}

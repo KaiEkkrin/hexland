@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-import * as firebase from 'firebase/app';
+import firebase from 'firebase/app';
 import 'firebase/auth';
 import 'firebase/firestore';
 
@@ -50,6 +50,7 @@ function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) 
       functions: functions,
       googleAuthProvider: {},
       timestampProvider: jest.fn(),
+      usingLocalEmulators: true,
       createAnalytics: undefined
     });
 
@@ -89,7 +90,7 @@ class SimulatedAuth implements IAuth {
     }
   }
 
-  createUserWithEmailAndPassword(email: string, password: string) {
+  createUserWithEmailAndPassword(email: string, password: string, displayName: string) {
     return this.signInSync();
   }
 

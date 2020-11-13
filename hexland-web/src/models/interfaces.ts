@@ -1,24 +1,27 @@
 import { MapColouring } from "./colouring";
-import { IGridCoord, IGridEdge, IGridVertex } from "../data/coord";
-import { IFeature, IToken, IFeatureDictionary, IIdFeature } from "../data/feature";
+import { GridCoord, GridEdge, GridVertex } from "../data/coord";
+import { IFeature, IFeatureDictionary } from "../data/feature";
 import { ITokenDrawing } from "../data/tokens";
+import { ITokenTextDrawing } from "../data/tokenTexts";
+import { ISpriteManager } from "../services/interfaces";
 
 // Describes the interface to our drawing subsystem,
 // which could be substituted out, won't exist in auto tests, etc.
 // The drawing interface exposes instanced features dictionaries directly --
 // editing these should update the drawing upon the next animation frame.
 export interface IDrawing {
-  areas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
-  tokens: ITokenDrawing<IToken>;
-  walls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
+  areas: IFeatureDictionary<GridCoord, IFeature<GridCoord>>;
+  tokens: ITokenDrawing;
+  tokenTexts: ITokenTextDrawing;
+  walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>;
 
-  highlightedAreas: IFeatureDictionary<IGridCoord, IFeature<IGridCoord>>;
-  highlightedVertices: IFeatureDictionary<IGridVertex, IFeature<IGridVertex>>;
-  highlightedWalls: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>>;
+  highlightedAreas: IFeatureDictionary<GridCoord, IFeature<GridCoord>>;
+  highlightedVertices: IFeatureDictionary<GridVertex, IFeature<GridVertex>>;
+  highlightedWalls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>;
 
-  selection: ITokenDrawing<IIdFeature<IGridCoord>>;
-  selectionDrag: ITokenDrawing<IIdFeature<IGridCoord>>;
-  selectionDragRed: ITokenDrawing<IIdFeature<IGridCoord>>;
+  selection: ITokenDrawing;
+  selectionDrag: ITokenDrawing;
+  selectionDragRed: ITokenDrawing;
 
   // A drawing always exposes a single outlined rectangle that can be used
   // for drag-boxes etc.  This object will be drawn separately and will not
@@ -30,17 +33,21 @@ export interface IDrawing {
   // respectively.
   animate(onPreAnimate?: (() => void) | undefined, onPostAnimate?: (() => void) | undefined): void;
 
-  // Checks whether the given viewport position (-1..1) is within the current LoS.
+  // Checks whether the given LoS viewport position (-1..1) is within the current LoS.
   checkLoS(cp: THREE.Vector3): boolean;
 
   // These functions turn viewport co-ordinates (0..windowWidth, 0..windowHeight)
   // into face, edge or vertex coords
-  getGridCoordAt(cp: THREE.Vector3): IGridCoord | undefined;
-  getGridVertexAt(cp: THREE.Vector3): IGridVertex | undefined;
+  getGridCoordAt(cp: THREE.Vector3): GridCoord | undefined;
+  getGridVertexAt(cp: THREE.Vector3): GridVertex | undefined;
 
   // Gets a viewport-to-world transfomation matrix, where the viewport visible
   // range is (-1..1).
   getViewportToWorld(target: THREE.Matrix4): THREE.Matrix4;
+
+  // Gets a world-to-LoS-viewport transformation matrix, where the viewport visible
+  // range is (-1..1).  Use this to create the vectors required for the `checkLoS` method.
+  getWorldToLoSViewport(target: THREE.Matrix4): THREE.Matrix4;
 
   // Gets a world-to-viewport transformation matrix, where the viewport visible
   // range is (-1..1).
@@ -53,10 +60,16 @@ export interface IDrawing {
   resize(translation: THREE.Vector3, rotation: THREE.Quaternion, scaling: THREE.Vector3): void;
 
   // Sets the token positions whose LoS we should draw, or undefined to show everything.
-  setLoSPositions(positions: IGridCoord[] | undefined, seeEverything: boolean): void;
+  setLoSPositions(positions: GridCoord[] | undefined, seeEverything: boolean): void;
+
+  // Sets the mount point of the rendered drawing.
+  setMount(mount: HTMLDivElement | undefined): void;
 
   // Sets whether or not to show the map colour visualisation.
   setShowMapColourVisualisation(show: boolean, mapColouring: MapColouring): void;
+
+  // Swaps to a different sprite manager.
+  setSpriteManager(spriteManager: ISpriteManager): void;
 
   // Cleans up and releases all resources.
   dispose(): void;
@@ -66,10 +79,10 @@ export interface IDrawing {
 // implemented by an IOutlinedRectangle, below.)
 export interface IDragRectangle {
   // Creates a filter function admitting features within the current drag rectangle.
-  createFilter(): (c: IGridCoord) => boolean;
+  createFilter(): (c: GridCoord) => boolean;
 
   // Enumerates all the grid coords within the current drag rectangle.
-  enumerateCoords(): Iterable<IGridCoord>;
+  enumerateCoords(): Iterable<GridCoord>;
 
   // True if the drag rectangle is enabled and visible, else false.
   isEnabled(): boolean;

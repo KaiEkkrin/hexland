@@ -1,13 +1,16 @@
-import { IGridEdge, edgeString } from '../../data/coord';
-import { IFeature, IFeatureDictionary } from '../../data/feature';
+import { GridEdge, edgeString } from '../../data/coord';
+import { IFeature, IFeatureDictionary, ITokenProperties } from '../../data/feature';
 import { IGridGeometry } from "../gridGeometry";
+import { IInstancedFeatureObject } from './instancedFeatureObject';
 import { InstancedFeatures } from './instancedFeatures';
 import { MultipleFeatureObject } from './multipleFeatureObject';
 import { PaletteColouredFeatureObject, IColourParameters, createSelectionColourParameters } from './paletteColouredFeatureObject';
 import { RedrawFlag } from '../redrawFlag';
+import { ISpriteProperties, SpriteFeatureObject } from './spriteFeatureObject';
+import { TextureCache } from './textureCache';
+import { ITokenUvTransform } from './uv';
 
 import * as THREE from 'three';
-import { IInstancedFeatureObject } from './instancedFeatureObject';
 
 export function createTokenFillEdgeGeometry(gridGeometry: IGridGeometry, alpha: number, z: number) {
   const vertices = [...gridGeometry.createTokenFillEdgeVertices(alpha, z)];
@@ -41,32 +44,57 @@ export function createPaletteColouredWallObject(createGeometry: () => THREE.Inst
 }
 
 export function createSelectionColouredWallObject(createGeometry: () => THREE.InstancedBufferGeometry, gridGeometry: IGridGeometry) {
-  return (maxInstances: number) => new MultipleFeatureObject<IGridEdge, IFeature<IGridEdge>>(
-    (i: number, maxInstances: number) => new PaletteColouredFeatureObject(
+  return (maxInstances: number) => new MultipleFeatureObject<GridEdge, IFeature<GridEdge>>(
+    (i: string, maxInstances: number) => new PaletteColouredFeatureObject(
       edgeString,
       (o, p) => gridGeometry.transformToEdge(o, p),
       maxInstances,
       createGeometry,
       createSelectionColourParameters(i)
     ),
-    f => f.colour,
+    f => `${f.colour}`,
     maxInstances
   );
 }
 
-export type Edges = InstancedFeatures<IGridEdge, IFeature<IGridEdge>>;
+export function createSpriteEdgeObject(
+  gridGeometry: IGridGeometry,
+  redrawFlag: RedrawFlag,
+  textureCache: TextureCache,
+  uvTransform: ITokenUvTransform,
+  alpha: number,
+  z: number
+) {
+  const edgeGeometry = createTokenFillEdgeGeometry(gridGeometry, alpha, z);
+  return (maxInstances: number) => new MultipleFeatureObject<GridEdge, IFeature<GridEdge> & ITokenProperties & ISpriteProperties>(
+    (url: string, maxInstances: number) => new SpriteFeatureObject(
+      redrawFlag,
+      textureCache,
+      edgeString,
+      (o, p) => gridGeometry.transformToEdge(o, p),
+      maxInstances,
+      edgeGeometry,
+      f => uvTransform.getFillEdgeTransform(f),
+      url
+    ),
+    f => f.sheetEntry.url,
+    maxInstances
+  );
+}
+
+export type Edges = InstancedFeatures<GridEdge, IFeature<GridEdge>>;
 
 // The "walls" are the edges of the map that are coloured in one of our
 // known colours.  To implement line-of-sight, we synchronise this object with
 // the LoS features object.
-export class Walls extends InstancedFeatures<IGridEdge, IFeature<IGridEdge>> {
-  private readonly _losFeatures: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>> | undefined;
+export class Walls extends InstancedFeatures<GridEdge, IFeature<GridEdge>> {
+  private readonly _losFeatures: IFeatureDictionary<GridEdge, IFeature<GridEdge>> | undefined;
 
   constructor(
     gridGeometry: IGridGeometry,
     redrawFlag: RedrawFlag,
-    createFeatureObject: (maxInstances: number) => IInstancedFeatureObject<IGridEdge, IFeature<IGridEdge>>,
-    losFeatures: IFeatureDictionary<IGridEdge, IFeature<IGridEdge>> | undefined,
+    createFeatureObject: (maxInstances: number) => IInstancedFeatureObject<GridEdge, IFeature<GridEdge>>,
+    losFeatures: IFeatureDictionary<GridEdge, IFeature<GridEdge>> | undefined,
     maxInstances?: number | undefined
   ) {
     super(
@@ -79,7 +107,7 @@ export class Walls extends InstancedFeatures<IGridEdge, IFeature<IGridEdge>> {
     this._losFeatures = losFeatures;
   }
 
-  add(f: IFeature<IGridEdge>) {
+  add(f: IFeature<GridEdge>) {
     if (super.add(f)) {
       this._losFeatures?.add({ position: f.position, colour: 0 });
       return true;
@@ -93,7 +121,7 @@ export class Walls extends InstancedFeatures<IGridEdge, IFeature<IGridEdge>> {
     this._losFeatures?.clear();
   }
 
-  remove(oldPosition: IGridEdge) {
+  remove(oldPosition: GridEdge) {
     let feature = super.remove(oldPosition);
     if (feature !== undefined) {
       this._losFeatures?.remove(oldPosition);

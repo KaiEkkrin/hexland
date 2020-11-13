@@ -13,6 +13,30 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "1.0.3",
+    changes: [
+      "Fix newly created maps appearing blacked-out",
+      "Embed animated encounter video"
+    ]
+  },
+  {
+    version: "1.0.2",
+    changes: [
+      "Improved LoS algorithm (should reduce glitches)",
+      "Various package updates, testability and maintainability improvements"
+    ]
+  },
+  {
+    version: "1.0.0",
+    changes: [
+      "Support images in tokens",
+      "Show token image in player list",
+      "Support player-defined characters",
+      "Make the LoS calculation more stable",
+      "Shorten the invite URL (old invites will no longer be valid)"
+    ]
+  },
+  {
     version: "0.11.6",
     changes: [
       "Shrink the version button on narrow screens",

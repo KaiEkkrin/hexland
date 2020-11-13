@@ -3,34 +3,32 @@ import { FaceHighlighter } from './dragHighlighter';
 import { DragRectangle } from './dragRectangle';
 import { FeatureColour } from './featureColour';
 import { IGridGeometry } from './gridGeometry';
-import { HexGridGeometry } from './hexGridGeometry';
 import { IDrawing, IDragRectangle } from './interfaces';
 import { MapChangeTracker } from './mapChangeTracker';
 import { RedrawFlag } from './redrawFlag';
-import { SquareGridGeometry } from './squareGridGeometry';
 import { WallHighlighter, WallRectangleHighlighter, RoomHighlighter } from './wallHighlighter';
 
 import { IAnnotation, IPositionedAnnotation } from '../data/annotation';
-import { IChange, createTokenRemove, createTokenAdd, createNoteRemove, createNoteAdd, createTokenMove } from '../data/change';
+import { Change, createTokenRemove, createTokenAdd, createNoteRemove, createNoteAdd, createTokenMove } from '../data/change';
 import { netObjectCount, trackChanges } from '../data/changeTracking';
-import { IGridCoord, coordString, coordsEqual, coordSub, coordAdd } from '../data/coord';
+import { GridCoord, coordString, coordsEqual, coordSub, coordAdd } from '../data/coord';
 import { FeatureDictionary, flipToken, IToken, ITokenDictionary, ITokenProperties, TokenSize } from '../data/feature';
 import { IAdventureIdentified } from '../data/identified';
-import { IMap, MapType } from '../data/map';
+import { IMap } from '../data/map';
 import { IUserPolicy } from '../data/policy';
-import { createTokenDictionary } from '../data/tokens';
+import { ITokenGeometry } from '../data/tokenGeometry';
+import { Tokens } from '../data/tokens';
+import { TokensWithObservableText } from '../data/tokenTexts';
 
-import { IDataService } from '../services/interfaces';
+import { IDataService, ISpriteManager } from '../services/interfaces';
 import { createDrawing } from './three/drawing';
 
 import fluent from 'fluent-iterable';
+import { Observable, ReplaySubject } from 'rxjs';
 import * as THREE from 'three';
 
 const noteAlpha = 0.9;
 const tokenNoteAlpha = 0.6;
-
-const spacing = 75.0;
-const tileDim = 12;
 
 const panMargin = 100;
 const panStep = 0.2; // per millisecond.  Try proportion of screen size instead?
@@ -80,30 +78,25 @@ export function createDefaultState(): IMapState {
 // never find out about.
 export class MapStateMachine {
   private readonly _dataService: IDataService;
-  private readonly _map: IAdventureIdentified<IMap>;
   private readonly _uid: string;
-  private readonly _userPolicy: IUserPolicy | undefined;
 
   private readonly _drawing: IDrawing;
   private readonly _gridGeometry: IGridGeometry;
   private readonly _mapColouring: MapColouring;
-  private readonly _notes: FeatureDictionary<IGridCoord, IAnnotation>;
+  private readonly _notes: FeatureDictionary<GridCoord, IAnnotation>;
   private readonly _notesNeedUpdate = new RedrawFlag();
+  private readonly _tokenGeometry: ITokenGeometry;
 
   private readonly _selection: ITokenDictionary;
   private readonly _selectionDrag: ITokenDictionary;
   private readonly _selectionDragRed: ITokenDictionary;
-  private readonly _tokens: ITokenDictionary;
-
-  private readonly _changeTracker: MapChangeTracker;
+  private readonly _tokens: TokensWithObservableText;
 
   private readonly _dragRectangle: IDragRectangle;
   private readonly _faceHighlighter: FaceHighlighter;
   private readonly _wallHighlighter: WallHighlighter;
   private readonly _wallRectangleHighlighter: WallRectangleHighlighter;
   private readonly _roomHighlighter: RoomHighlighter;
-
-  private readonly _setState: (state: IMapState) => void;
 
   private readonly _cameraTranslation = new THREE.Vector3();
   private readonly _cameraRotation = new THREE.Quaternion();
@@ -114,12 +107,19 @@ export class MapStateMachine {
   private readonly _scratchTranslation = new THREE.Vector3();
 
   private readonly _scratchMatrix1 = new THREE.Matrix4();
+  private readonly _scratchMatrix2 = new THREE.Matrix4();
 
   private readonly _scratchVector1 = new THREE.Vector3();
   private readonly _scratchVector2 = new THREE.Vector3();
   private readonly _scratchVector3 = new THREE.Vector3();
 
+  private readonly _stateSubj = new ReplaySubject<IMapState>(1);
+
+  private _map: IAdventureIdentified<IMap>;
   private _state: IMapState;
+  private _userPolicy: IUserPolicy | undefined;
+
+  private _changeTracker: MapChangeTracker;
 
   private _lastAnimationTime: number | undefined;
 
@@ -132,9 +132,9 @@ export class MapStateMachine {
   private _isRotating = false;
   private _panLast: THREE.Vector3 | undefined;
 
-  private _tokenMoveDragStart: IGridCoord | undefined;
-  private _tokenMoveJog: IGridCoord | undefined;
-  private _tokenMoveDragSelectionPosition: IGridCoord | undefined;
+  private _tokenMoveDragStart: GridCoord | undefined;
+  private _tokenMoveJog: GridCoord | undefined;
+  private _tokenMoveDragSelectionPosition: GridCoord | undefined;
 
   private _isDisposed = false;
 
@@ -142,16 +142,17 @@ export class MapStateMachine {
     dataService: IDataService,
     map: IAdventureIdentified<IMap>,
     uid: string,
+    gridGeometry: IGridGeometry,
+    tokenGeometry: ITokenGeometry,
     colours: FeatureColour[],
-    mount: HTMLDivElement,
     userPolicy: IUserPolicy | undefined,
-    setState: (state: IMapState) => void
+    logError: (message: string, e: any) => void,
+    spriteManager: ISpriteManager
   ) {
     this._dataService = dataService;
     this._map = map;
     this._uid = uid;
     this._userPolicy = userPolicy;
-    this._setState = setState;
 
     this._state = {
       isOwner: this.isOwner,
@@ -161,12 +162,13 @@ export class MapStateMachine {
       objectCount: undefined,
       zoom: zoomDefault
     };
-    this._setState(this._state);
+    this._stateSubj.next(this._state);
 
-    this._gridGeometry = map.record.ty === MapType.Hex ?
-      new HexGridGeometry(spacing, tileDim) : new SquareGridGeometry(spacing, tileDim);
-
-    this._drawing = createDrawing(this._gridGeometry, colours, mount, this.seeEverything);
+    this._gridGeometry = gridGeometry;
+    this._tokenGeometry = tokenGeometry;
+    this._drawing = createDrawing(
+      this._gridGeometry, this._tokenGeometry, colours, this.seeEverything, logError, spriteManager
+    );
 
     this._mapColouring = new MapColouring(this._gridGeometry);
 
@@ -177,40 +179,16 @@ export class MapStateMachine {
     );
 
     // The notes are rendered with React, not with Three.js
-    this._notes = new FeatureDictionary<IGridCoord, IAnnotation>(coordString);
+    this._notes = new FeatureDictionary<GridCoord, IAnnotation>(coordString);
 
     // Here is our higher-level token tracking:
-    this._selection = createTokenDictionary(map.record.ty, this._drawing.selection);
-    this._selectionDrag = createTokenDictionary(map.record.ty, this._drawing.selectionDrag);
-    this._selectionDragRed = createTokenDictionary(map.record.ty, this._drawing.selectionDragRed);
-    this._tokens = createTokenDictionary(
-      map.record.ty, this._drawing.tokens,
+    this._selection = new Tokens(tokenGeometry, this._drawing.selection);
+    this._selectionDrag = new Tokens(tokenGeometry, this._drawing.selectionDrag);
+    this._selectionDragRed = new Tokens(tokenGeometry, this._drawing.selectionDragRed);
+    this._tokens = new TokensWithObservableText(
+      tokenGeometry, this._drawing.tokens, this._drawing.tokenTexts,
+      t => spriteManager.lookupCharacter(t)
       // TODO #119 Provide a way to separately mark which face gets the text written on...?
-    );
-
-    this._changeTracker = new MapChangeTracker(
-      this._drawing.areas,
-      this._tokens,
-      this._drawing.walls,
-      this._notes,
-      userPolicy,
-      this._mapColouring,
-      (haveTokensChanged: boolean, objectCount: number) => {
-        this.withStateChange(getState => {
-          const state = getState();
-          if (haveTokensChanged) {
-            this.cleanUpSelection();
-          }
-
-          this.buildLoS(state);
-          this._drawing.handleChangesApplied(this._mapColouring);
-          if (haveTokensChanged) {
-            this.updateTokens(state);
-          }
-          state.objectCount = this._userPolicy === undefined ? undefined : objectCount;
-          return true;
-        });
-      }
     );
 
     this._faceHighlighter = new FaceHighlighter(
@@ -236,6 +214,7 @@ export class MapStateMachine {
       this._drawing.highlightedAreas, this.validateWallChanges, this._dragRectangle
     );
 
+    this._changeTracker = this.createChangeTracker();
     this.resize();
 
     this.onPostAnimate = this.onPostAnimate.bind(this);
@@ -247,7 +226,7 @@ export class MapStateMachine {
   private get isOwner() { return this._uid === this._map.record.owner; }
   private get seeEverything() { return this._uid === this._map.record.owner || this._map.record.ffa === true; }
 
-  private addTokenWithProperties(target: IGridCoord, properties: ITokenProperties): IChange[] {
+  private addTokenWithProperties(target: GridCoord, properties: ITokenProperties): Change[] {
     // Work out a place around this target where the token will fit
     const newPosition = this.canResizeToken({ ...properties, position: target }, properties.size);
     if (newPosition === undefined) {
@@ -257,7 +236,7 @@ export class MapStateMachine {
     return [createTokenAdd({ ...properties, position: newPosition })];
   }
 
-  private buildLoS(state: IMapState) {
+  private buildLoS() {
     this._drawing.setLoSPositions(this.getLoSPositions(), this.seeEverything);
 
     // Building the LoS implies that we will need to update annotations
@@ -265,7 +244,7 @@ export class MapStateMachine {
     this._notesNeedUpdate.setNeedsRedraw();
   }
 
-  private canDropSelectionAt(position: IGridCoord) {
+  private canDropSelectionAt(position: GridCoord) {
     const delta = this.getTokenMoveDelta(position);
     if (delta === undefined) {
       return false;
@@ -273,13 +252,13 @@ export class MapStateMachine {
 
     // #27: As a non-enforced improvement (just like LoS as a whole), we stop non-owners from
     // dropping tokens outside of the current LoS.
-    const worldToViewport = this._drawing.getWorldToViewport(this._scratchMatrix1);
+    const worldToLoSViewport = this._drawing.getWorldToLoSViewport(this._scratchMatrix1);
     if (this.seeEverything === false) {
       // We draw the LoS from the point of view of all selected faces, so that a large token
       // gets to see around small things
       const withinLoS = fluent(this._drawing.selection.faces).map(f => {
         this._gridGeometry.createCoordCentre(this._scratchVector1, coordAdd(f.position, delta), 0);
-        this._scratchVector1.applyMatrix4(worldToViewport);
+        this._scratchVector1.applyMatrix4(worldToLoSViewport);
         return this._drawing.checkLoS(this._scratchVector1);
       }).reduce((a, b) => a && b, true);
 
@@ -292,7 +271,7 @@ export class MapStateMachine {
     // be rejected by the change tracker, and so we create our own change tracker to do this.
     // It's safe for us to use our current areas, walls and map colouring because those won't
     // change, but we need to clone our tokens into a scratch dictionary.
-    const changes: IChange[] = [];
+    const changes: Change[] = [];
     for (const s of this._selection) {
       const tokenHere = this._tokens.get(s.position);
       if (tokenHere === undefined) {
@@ -308,7 +287,7 @@ export class MapStateMachine {
     return trackChanges(this._map.record, changeTracker, changes, this._uid);
   }
 
-  private canResizeToken(token: IToken, newSize: TokenSize): IGridCoord | undefined {
+  private canResizeToken(token: IToken, newSize: TokenSize): GridCoord | undefined {
     // Checks whether we can resize this token to the given new size, returning the new position
     // that it would adopts, or, if the token doesn't exist already, whether we can place a new
     // token of the given size.
@@ -325,7 +304,7 @@ export class MapStateMachine {
     );
 
     const removeToken = existingToken === undefined ? [] : [createTokenRemove(token.position, token.id)];
-    for (const face of this._tokens.enumerateFacePositions({ ...token, size: newSize })) {
+    for (const face of this._tokenGeometry.enumerateFacePositions({ ...token, size: newSize })) {
       const addToken = createTokenAdd({ ...token, size: newSize, position: face });
       if (trackChanges(this._map.record, changeTracker, [...removeToken, addToken], this._uid) === true) {
         return face;
@@ -350,6 +329,31 @@ export class MapStateMachine {
         this._selection.add(token);
       }
     }
+  }
+
+  private createChangeTracker(): MapChangeTracker {
+    return new MapChangeTracker(
+      this._drawing.areas,
+      this._tokens,
+      this._drawing.walls,
+      this._notes,
+      this._userPolicy,
+      this._mapColouring,
+      (haveTokensChanged: boolean, objectCount: number) => {
+        this.withStateChange(state => {
+          if (haveTokensChanged) {
+            this.cleanUpSelection();
+          }
+
+          this.buildLoS();
+          this._drawing.handleChangesApplied(this._mapColouring);
+          return {
+            ...(haveTokensChanged ? this.updateTokens(state) : state),
+            objectCount: this._userPolicy === undefined ? undefined : objectCount 
+          };
+        });
+      }
+    );
   }
 
   private *enumerateAnnotations() {
@@ -391,7 +395,7 @@ export class MapStateMachine {
     }
   }
 
-  private getTokenMoveDelta(position: IGridCoord) {
+  private getTokenMoveDelta(position: GridCoord) {
     if (this._tokenMoveDragStart === undefined || this._tokenMoveJog === undefined) {
       return undefined;
     }
@@ -404,10 +408,7 @@ export class MapStateMachine {
   private onPostAnimate() {
     // We update annotations after the render because they are dependent on the LoS
     if (this._notesNeedUpdate.needsRedraw()) {
-      this.withStateChange(getState => {
-        this.updateAnnotations(getState());
-        return true;
-      });
+      this.withStateChange(state => this.updateAnnotations(state));
     }
   }
 
@@ -452,7 +453,7 @@ export class MapStateMachine {
   }
 
   private onPanningEnded() {
-    let chs: IChange[] = [];
+    let chs: Change[] = [];
     if (fluent(this._selection).any()) {
       const position = this._drawing.getGridCoordAt(panningPosition);
       if (position !== undefined) {
@@ -507,7 +508,7 @@ export class MapStateMachine {
       }
 
       // TODO Possible optimisation here rejecting tokens that are definitely too far away
-      for (const facePosition of this._tokens.enumerateFacePositions(token)) {
+      for (const facePosition of this._tokenGeometry.enumerateFacePositions(token)) {
         if (inDragRectangle(facePosition)) {
           this._selection.add({ ...token, position: token.position });
         }
@@ -515,7 +516,7 @@ export class MapStateMachine {
     }
   }
 
-  private setTokenProperties(token: IToken, properties: ITokenProperties): IChange[] {
+  private setTokenProperties(token: IToken, properties: ITokenProperties): Change[] {
     if (properties.id !== token.id) {
       throw RangeError("Cannot change a token's id after creation");
     }
@@ -532,7 +533,7 @@ export class MapStateMachine {
     ];
   }
 
-  private tokenMoveDragEnd(position: IGridCoord, chs: IChange[]) {
+  private tokenMoveDragEnd(position: GridCoord, chs: Change[]) {
     this._selectionDrag.clear();
     this._selectionDragRed.clear();
     const delta = this.getTokenMoveDelta(position);
@@ -562,7 +563,7 @@ export class MapStateMachine {
     this._tokenMoveDragSelectionPosition = undefined;
   }
 
-  private tokenMoveDragStart(position: IGridCoord) {
+  private tokenMoveDragStart(position: GridCoord) {
     this._tokenMoveDragStart = position;
     this._tokenMoveJog = { x: 0, y: 0 };
     this._tokenMoveDragSelectionPosition = position;
@@ -571,7 +572,7 @@ export class MapStateMachine {
     this._selection.forEach(f => this._selectionDrag.add(f));
   }
 
-  private tokenMoveDragTo(position: IGridCoord | undefined) {
+  private tokenMoveDragTo(position: GridCoord | undefined) {
     if (position === undefined) {
       return;
     }
@@ -602,10 +603,11 @@ export class MapStateMachine {
     this._tokenMoveDragSelectionPosition = position;
   }
 
-  private updateAnnotations(state: IMapState) {
-    let positioned: IPositionedAnnotation[] = [];
-    let [target, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
-    let worldToViewport = this._drawing.getWorldToViewport(this._scratchMatrix1);
+  private updateAnnotations(state: IMapState): IMapState {
+    const positioned: IPositionedAnnotation[] = [];
+    const [target, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+    const worldToLoSViewport = this._drawing.getWorldToLoSViewport(this._scratchMatrix2);
+    const worldToViewport = this._drawing.getWorldToViewport(this._scratchMatrix1);
     for (let n of this.enumerateAnnotations()) {
       // Skip notes not marked as player-visible
       if (!this.seeEverything && n.visibleToPlayers === false) {
@@ -614,7 +616,7 @@ export class MapStateMachine {
 
       // Skip notes outside of the current LoS
       this._gridGeometry.createCoordCentre(target, n.position, 0);
-      target.applyMatrix4(worldToViewport);
+      target.applyMatrix4(worldToLoSViewport);
       if (!this.seeEverything && !this._drawing.checkLoS(target)) {
         continue;
       }
@@ -628,16 +630,19 @@ export class MapStateMachine {
       positioned.push({ clientX: target.x, clientY: target.y, ...n });
     }
 
-    state.annotations = positioned;
+    return { ...state, annotations: positioned };
   }
 
-  private updateTokens(state: IMapState) {
-    state.tokens = [...fluent(this._tokens).map(t => ({
-      ...t, selectable: this.canSelectToken(t)
-    }))];
+  private updateTokens(state: IMapState): IMapState {
+    return {
+      ...state,
+      tokens: [...fluent(this._tokens).map(t => ({
+        ...t, selectable: this.canSelectToken(t)
+      }))]
+    };
   }
 
-  private validateWallChanges(changes: IChange[]): boolean {
+  private validateWallChanges(changes: Change[]): boolean {
     // I need to clone the walls for this one.  The map colouring won't be relevant.
     const changeTracker = new MapChangeTracker(
       this._drawing.areas, this._tokens, this._drawing.walls.clone(), this._notes, this._userPolicy, undefined
@@ -646,32 +651,17 @@ export class MapStateMachine {
   }
 
   // Helps create a new map state that might be a combination of more than
-  // one change, and publish it once when we're done.
-  // The supplied function should call `getState` to fetch a state object only when
-  // it means to change it, and then mutate that object.  This ensures there will be
-  // only one copy and not many.
-  // Careful: the output of `getState` is a shallow copy of the state, the caller
-  // is responsible for copying anything within as required.
+  // one change, and publish it once when we're done.  The callback function should
+  // return the new state if applicable (copied, not mutated!), or undefined to
+  // keep the existing state.
   private withStateChange(
-    fn: (getState: () => IMapState) => boolean
+    fn: (state: IMapState) => IMapState | undefined
   ) {
-    let initial = this._state;
-    let updated: IMapState[] = [];
-    function getState() {
-      if (updated.length === 0) {
-        updated.push({ ...initial });
-      }
-
-      return updated[0];
+    const newState = fn(this._state);
+    if (newState !== undefined) {
+      this._state = newState;
+      this._stateSubj.next(newState);
     }
-
-    if (fn(getState) && updated.length > 0) {
-      this._state = updated[0];
-      this._setState(updated[0]);
-      return true;
-    }
-
-    return false;
   }
 
   get changeTracker() { return this._changeTracker; }
@@ -679,8 +669,9 @@ export class MapStateMachine {
   get objectCount() { return this._state.objectCount; }
   get panningX() { return this._panningX; }
   get panningY() { return this._panningY; }
+  get state(): Observable<IMapState> { return this._stateSubj; }
 
-  async addChanges(changes: IChange[] | undefined, complain: (id: string, title: string, message: string) => void) {
+  async addChanges(changes: Change[] | undefined, complain: (id: string, title: string, message: string) => void) {
     if (changes === undefined || changes.length === 0) {
       return;
     }
@@ -735,11 +726,50 @@ export class MapStateMachine {
     // The LoS may change as a result of no longer having a specific
     // token selected
     if (wasAnythingSelected) {
-      this.withStateChange(getState => {
-        this.buildLoS(getState());
-        return true;
-      });
+      this.buildLoS();
     }
+  }
+
+  configure(
+    map: IAdventureIdentified<IMap>,
+    spriteManager: ISpriteManager,
+    userPolicy: IUserPolicy | undefined
+  ) {
+    if (map.record.ty !== this._map.record.ty) {
+      throw RangeError(`Incompatible map types: ${map.record.ty} and ${this._map.record.ty}`);
+    }
+
+    // Make sure changes are loaded *after* we do this, otherwise an empty map
+    // will be shown!
+    this._faceHighlighter.clear();
+    this._wallHighlighter.clear();
+    this._wallRectangleHighlighter.clear();
+    this._roomHighlighter.clear();
+    this._dragRectangle.reset();
+
+    this.clearSelection();
+
+    this._drawing.areas.clear();
+    this._tokens.clear();
+    this._drawing.walls.clear();
+    this._notes.clear();
+    this._notesNeedUpdate.setNeedsRedraw();
+    this._mapColouring.clear();
+
+    // Switch ourselves to the new map
+    this._map = map;
+    this._userPolicy = userPolicy;
+    this._changeTracker = this.createChangeTracker();
+    this._tokens.setObserveCharacter(t => spriteManager.lookupCharacter(t));
+    this._drawing.setSpriteManager(spriteManager);
+    this.resetView(undefined, {
+      isOwner: this.isOwner,
+      seeEverything: this.seeEverything,
+      annotations: [],
+      tokens: [],
+      objectCount: undefined,
+      zoom: zoomDefault
+    }); // provides a state update
   }
 
   // For editing
@@ -752,7 +782,7 @@ export class MapStateMachine {
     return this._notes.get(position);
   }
 
-  faceDragEnd(cp: THREE.Vector3, colour: number): IChange[] {
+  faceDragEnd(cp: THREE.Vector3, colour: number): Change[] {
     this.panMarginReset();
     let result = this._faceHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour);
     this._dragRectangle.reset();
@@ -766,7 +796,7 @@ export class MapStateMachine {
     this._faceHighlighter.dragStart(this._drawing.getGridCoordAt(cp), colour);
   }
 
-  flipToken(token: ITokenProperties): IChange[] | undefined {
+  flipToken(token: ITokenProperties): Change[] | undefined {
     const flipped = flipToken(token);
     if (flipped !== undefined) {
       return this.setTokenById(token.id, flipped);
@@ -795,7 +825,7 @@ export class MapStateMachine {
   // we want to jog on a first press and pan on a repeat.
   // Thus, `jogSelection` starts a token move if we don't have one already, and returns
   // true if it started one, else false.
-  jogSelection(delta: IGridCoord) {
+  jogSelection(delta: GridCoord) {
     this.onPanningStarted();
     if (this._tokenMoveJog === undefined) {
       return false;
@@ -918,7 +948,7 @@ export class MapStateMachine {
   }
 
   // Resets the view, centreing on a token with the given id.
-  resetView(tokenId?: string | undefined) {
+  resetView(tokenId?: string | undefined, newMapState?: IMapState | undefined) {
     this._cameraTranslation.set(0, 0, 0);
     this._cameraRotation.copy(this._defaultRotation);
     this._cameraScaling.set(zoomDefault, zoomDefault, 1);
@@ -955,12 +985,7 @@ export class MapStateMachine {
     }
 
     // The zoom is echoed to the map state so remember to update that
-    this.withStateChange(getState => {
-      const state = getState();
-      state.zoom = zoomDefault;
-      return true;
-    });
-
+    this.withStateChange(state => ({ ...(newMapState ?? state), zoom: zoomDefault }));
     this.resize();
   }
 
@@ -971,7 +996,7 @@ export class MapStateMachine {
     this._notesNeedUpdate.setNeedsRedraw();
   }
 
-  roomDragEnd(cp: THREE.Vector3, shiftKey: boolean, colour: number): IChange[] {
+  roomDragEnd(cp: THREE.Vector3, shiftKey: boolean, colour: number): Change[] {
     this.panMarginReset();
     this._roomHighlighter.difference = shiftKey;
     let result = this._roomHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour);
@@ -1003,20 +1028,17 @@ export class MapStateMachine {
     if (selected === undefined) {
       this.clearSelection();
       this._selection.add(token);
-      this.withStateChange(getState => {
-        this.buildLoS(getState());
-        return true;
-      });
+      this.buildLoS();
     }
 
     this.tokenMoveDragStart(position);
     return true;
   }
 
-  selectionDragEnd(cp: THREE.Vector3): IChange[] {
+  selectionDragEnd(cp: THREE.Vector3): Change[] {
     this.panMarginReset();
     const position = this._drawing.getGridCoordAt(cp);
-    const chs: IChange[] = [];
+    const chs: Change[] = [];
     if (position) {
       if (this._tokenMoveDragStart !== undefined) {
         this.tokenMoveDragEnd(position, chs);
@@ -1033,10 +1055,7 @@ export class MapStateMachine {
       // when they come back via the watcher, and so we should do so now.
       // (Not always, because that can cause LoS flicker)
       if (chs.length === 0) {
-        this.withStateChange(getState => {
-          this.buildLoS(getState());
-          return true;
-        });
+        this.buildLoS();
       }
     }
 
@@ -1056,9 +1075,13 @@ export class MapStateMachine {
     }
   }
 
-  setNote(cp: THREE.Vector3, id: string, colour: number, text: string, visibleToPlayers: boolean): IChange[] {
+  setMount(mount: HTMLDivElement | undefined) {
+    this._drawing.setMount(mount);
+  }
+
+  setNote(cp: THREE.Vector3, id: string, colour: number, text: string, visibleToPlayers: boolean): Change[] {
     let position = this._drawing.getGridCoordAt(cp);
-    let chs: IChange[] = [];
+    let chs: Change[] = [];
     if (position !== undefined) {
       if (this._notes.get(position) !== undefined) {
         // Replace the existing note
@@ -1120,7 +1143,7 @@ export class MapStateMachine {
     }
   }
 
-  wallDragEnd(cp: THREE.Vector3, colour: number): IChange[] {
+  wallDragEnd(cp: THREE.Vector3, colour: number): Change[] {
     this.panMarginReset();
     let result = this._dragRectangle.isEnabled() ?
       this._wallRectangleHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour) :
@@ -1139,17 +1162,18 @@ export class MapStateMachine {
   }
 
   zoomBy(amount: number, step?: number | undefined) {
-    this.withStateChange(getState => {
-      const state = getState();
-      state.zoom = Math.min(zoomMax, Math.max(zoomMin, state.zoom * Math.pow(step ?? zoomStep, -amount)));
-      this._cameraScaling.set(state.zoom, state.zoom, 1);
-      return true;
+    this.withStateChange(state => {
+      const newZoom = Math.min(zoomMax, Math.max(zoomMin, state.zoom * Math.pow(step ?? zoomStep, -amount)));
+      this._cameraScaling.set(newZoom, newZoom, 1);
+      return { ...state, zoom: newZoom };
     });
     this.resize();
   }
 
   dispose() {
     if (this._isDisposed === false) {
+      console.log("disposing map state machine");
+      this._stateSubj.complete();
       this._drawing.dispose();
       this._isDisposed = true;
     }

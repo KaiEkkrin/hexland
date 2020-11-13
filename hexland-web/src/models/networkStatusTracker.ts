@@ -1,4 +1,4 @@
-import { IChanges } from '../data/change';
+import { Changes } from '../data/change';
 
 import dayjs from 'dayjs';
 import { Observable, Subject } from 'rxjs';
@@ -25,7 +25,7 @@ class NetworkStatusTracker {
 
   // Call this with any applicable changes and we'll measure the apparent latency
   // and add it to our readings.
-  onChanges(changes: IChanges) {
+  onChanges(changes: Changes) {
     const now = dayjs();
     this._resyncs = this._resyncs.filter(r => now.diff(r, 'millisecond') <= retentionMillis);
     if (changes.resync === true && this._seenBaseChange === true) {

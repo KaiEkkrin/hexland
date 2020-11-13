@@ -29,6 +29,7 @@ function AdventureCollection(props: IAdventureCollectionProps) {
   const [showEditAdventure, setShowEditAdventure] = useState(false);
 
   const handleNewAdventureClick = useCallback(() => {
+    console.log(`opening new adventure dialog`);
     setEditName("New adventure");
     setEditDescription("");
     setShowEditAdventure(true);

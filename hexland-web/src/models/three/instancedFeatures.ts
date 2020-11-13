@@ -1,4 +1,4 @@
-import { IGridCoord } from '../../data/coord';
+import { GridCoord } from '../../data/coord';
 import { FeatureDictionary, IFeature, IFeatureDictionary } from '../../data/feature';
 import { Drawn } from '../drawn';
 import { IGridGeometry } from "../gridGeometry";
@@ -12,7 +12,7 @@ import * as THREE from 'three';
 // objects, creating more as required.
 // (Argh, more inheritance!  I don't like it, but in this case as with the geometry
 // it seems to fit the problem at hand...)
-export class InstancedFeatures<K extends IGridCoord, F extends IFeature<K>> extends Drawn implements IFeatureDictionary<K, F> {
+export class InstancedFeatures<K extends GridCoord, F extends IFeature<K>> extends Drawn implements IFeatureDictionary<K, F> {
   private readonly _maxInstances: number;
   private readonly _features: FeatureDictionary<K, F>;
 

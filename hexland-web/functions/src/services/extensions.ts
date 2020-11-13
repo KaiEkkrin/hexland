@@ -1,15 +1,18 @@
 import { IAdventure, IPlayer, summariseAdventure } from '../data/adventure';
 import { IAnnotation } from '../data/annotation';
-import { IChange, IChanges } from '../data/change';
+import { Change, Changes } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
-import { IGridCoord, IGridEdge, coordString, edgeString } from '../data/coord';
-import { FeatureDictionary, IFeature } from '../data/feature';
+import { GridCoord, GridEdge, coordString, edgeString } from '../data/coord';
+import { FeatureDictionary, IFeature, ITokenDictionary } from '../data/feature';
 import { IInvite } from '../data/invite';
 import { IMap, MapType, summariseMap } from '../data/map';
 import { getUserPolicy, IInviteExpiryPolicy } from '../data/policy';
 import { IAdventureSummary, IProfile } from '../data/profile';
-import { createTokenDictionary, SimpleTokenDrawing } from '../data/tokens';
+import { getTokenGeometry } from '../data/tokenGeometry';
+import { Tokens, SimpleTokenDrawing } from '../data/tokens';
+
 import * as Convert from './converter';
+import { IAdminDataService } from './extraInterfaces';
 import { updateProfileAdventures, updateProfileMaps, updateAdventureMaps } from './helpers';
 import { IDataService, IDataView, IDataReference, IDataAndReference, ILogger } from './interfaces';
 
@@ -55,7 +58,8 @@ async function createAdventureTransaction(
     id: newAdventureRef.id,
     playerId: profileRef.id,
     playerName: profile.name,
-    allowed: true
+    allowed: true,
+    characters: []
   });
 
   // Add it to the user's profile as a recent adventure
@@ -87,8 +91,8 @@ async function createMapTransaction(
   adventureRef: IDataReference<IAdventure>,
   newMapRef: IDataReference<IMap>,
   newMapRecord: IMap,
-  newBaseChangeRef?: IDataReference<IChanges> | undefined,
-  changes?: IChanges | undefined
+  newBaseChangeRef?: IDataReference<Changes> | undefined,
+  changes?: Changes | undefined
 ): Promise<void> {
   // Fetch things
   const profile = await view.get(profileRef);
@@ -208,7 +212,7 @@ export async function cloneMap(
 }
 
 interface IConsolidateMapChangesResult {
-  baseChange: IChanges | undefined,
+  baseChange: Changes | undefined,
   isNew: boolean // true if we wrote something, false if we just returned what was already there
 }
 
@@ -216,10 +220,10 @@ async function consolidateMapChangesTransaction(
   view: IDataView,
   logger: ILogger,
   timestampProvider: () => FirebaseFirestore.FieldValue | number,
-  baseChange: IChanges | undefined,
-  baseChangeRef: IDataReference<IChanges>,
-  incrementalChanges: IDataAndReference<IChanges>[],
-  consolidated: IChange[],
+  baseChange: Changes | undefined,
+  baseChangeRef: IDataReference<Changes>,
+  incrementalChanges: IDataAndReference<Changes>[],
+  consolidated: Change[],
   uid: string,
   resync: boolean
 ): Promise<IConsolidateMapChangesResult> {
@@ -255,7 +259,7 @@ async function consolidateMapChangesTransaction(
     user: uid,
     resync: resync
   };
-  await view.set<IChanges>(baseChangeRef, newBaseChange);
+  await view.set<Changes>(baseChangeRef, newBaseChange);
 
   // Delete all the others
   await Promise.all(incrementalChanges.map(c => view.delete(c)));
@@ -271,7 +275,8 @@ async function tryConsolidateMapChanges(
   adventureId: string,
   mapId: string,
   m: IMap,
-  resync: boolean
+  resync: boolean,
+  syncChanges?: (tokenDict: ITokenDictionary) => void
 ): Promise<IConsolidateMapChangesResult> {
   // Fetch all the current changes for this map, along with their refs.
   // It's important to use the same converter for the base and incremental changes so that any
@@ -297,11 +302,12 @@ async function tryConsolidateMapChanges(
   // technically cheat and non-owners would believe them), but it will save huge amounts of
   // CPU time (especially valuable if this is going to be called in a Firebase Function.)
   const ownerPolicy = getUserPolicy(ownerProfile.level);
+  const tokenDict = new Tokens(getTokenGeometry(m.ty), new SimpleTokenDrawing());
   const tracker = new SimpleChangeTracker(
-    new FeatureDictionary<IGridCoord, IFeature<IGridCoord>>(coordString),
-    createTokenDictionary(m.ty, new SimpleTokenDrawing()),
-    new FeatureDictionary<IGridEdge, IFeature<IGridEdge>>(edgeString),
-    new FeatureDictionary<IGridCoord, IAnnotation>(coordString),
+    new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString),
+    tokenDict,
+    new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString),
+    new FeatureDictionary<GridCoord, IAnnotation>(coordString),
     ownerPolicy
     // new MapColouring(m.ty === MapType.Hex ? new HexGridGeometry(1, 1) : new SquareGridGeometry(1, 1))
   );
@@ -318,6 +324,9 @@ async function tryConsolidateMapChanges(
       isResync = true;
     }
   });
+
+  // Make any synchronous changes at this point
+  syncChanges?.(tokenDict);
   const consolidated = tracker.getConsolidated();
 
   // Apply it
@@ -335,13 +344,14 @@ export async function consolidateMapChanges(
   adventureId: string,
   mapId: string,
   m: IMap,
-  resync: boolean
-): Promise<IChanges | undefined> {
+  resync: boolean,
+  syncChanges?: (tokenDict: ITokenDictionary) => void
+): Promise<Changes | undefined> {
   // Because we can consolidate at most 499 changes in one go due to the write limit,
   // we do this in a loop until we can't find any more:
   while (true) {
     const result = await tryConsolidateMapChanges(
-      dataService, logger, timestampProvider, adventureId, mapId, m, resync
+      dataService, logger, timestampProvider, adventureId, mapId, m, resync, syncChanges
     );
     if (result.isNew === false) {
       return result.baseChange;
@@ -379,7 +389,7 @@ async function isValidInvite(
 // Either creates an invite record for an adventure and returns it, or returns
 // the existing one if it's still valid.  Returns the invite ID.
 export async function inviteToAdventure(
-  dataService: IDataService,
+  dataService: IAdminDataService,
   timestampProvider: () => FirebaseFirestore.FieldValue,
   adventure: IAdventureSummary,
   policy: IInviteExpiryPolicy
@@ -392,8 +402,9 @@ export async function inviteToAdventure(
 
   // If we couldn't, make a new one and return that
   const id = uuidv4();
-  const inviteRef = dataService.getInviteRef(adventure.id, id);
+  const inviteRef = dataService.getInviteRef(id);
   await dataService.set(inviteRef, {
+    adventureId: adventure.id,
     adventureName: adventure.name,
     owner: adventure.owner,
     ownerName: adventure.ownerName,
@@ -406,26 +417,11 @@ export async function inviteToAdventure(
 async function joinAdventureTransaction(
   view: IDataView,
   adventureRef: IDataReference<IAdventure>,
-  inviteRef: IDataReference<IInvite>,
   playerRef: IDataReference<IPlayer>,
   otherPlayers: IDataAndReference<IPlayer>[],
   profileRef: IDataReference<IProfile>,
-  ownerProfileRef: IDataReference<IProfile>,
-  policy: IInviteExpiryPolicy
-): Promise<void> {
-  const invite = await view.get(inviteRef);
-  if (invite === undefined) {
-    throw new functions.https.HttpsError('not-found', 'No such invite');
-  }
-
-  if (typeof(invite.timestamp) !== 'number') {
-    const inviteDate = dayjs((invite.timestamp as FirebaseFirestore.Timestamp).toDate());
-    const age = dayjs().diff(inviteDate, policy.timeUnit);
-    if (age >= policy.expiry) {
-      throw new functions.https.HttpsError('deadline-exceeded', 'Invite has expired');
-    }
-  }
-
+  ownerProfileRef: IDataReference<IProfile>
+): Promise<string> {
   const ownerProfile = await view.get(ownerProfileRef);
   if (ownerProfile === undefined) {
     throw new functions.https.HttpsError('not-found', 'No profile for the adventure owner');
@@ -447,19 +443,18 @@ async function joinAdventureTransaction(
     throw new functions.https.HttpsError('not-found', 'No profile for this user');
   }
 
+  // Create or update the player record, and return that
   const player = await view.get(playerRef);
   if (player === undefined) {
-    await view.set<IPlayer>(playerRef, { // remember this is an adventure summary plus player details
-      id: adventureRef.id,
-      name: adventure.name,
-      description: adventure.description,
-      owner: adventure.owner,
-      ownerName: adventure.ownerName,
-      imagePath: adventure.imagePath,
+    // remember this is an adventure summary plus player details
+    const newPlayer: IPlayer = {
+      ...summariseAdventure(adventureRef.id, adventure),
       playerId: playerRef.id,
       playerName: profile.name,
-      allowed: true
-    });
+      allowed: true,
+      characters: []
+    };
+    await view.set<IPlayer>(playerRef, newPlayer);
   } else {
     // Update that record in case there are changes
     if (
@@ -469,6 +464,11 @@ async function joinAdventureTransaction(
       player.imagePath !== adventure.imagePath ||
       player.playerName !== profile.name
     ) {
+      player.name = adventure.name;
+      player.description = adventure.description;
+      player.ownerName = adventure.ownerName;
+      player.imagePath = adventure.imagePath;
+      player.playerName = profile.name;
       await view.update(playerRef, {
         name: adventure.name,
         description: adventure.description,
@@ -484,19 +484,35 @@ async function joinAdventureTransaction(
   if (adventures !== undefined) {
     await view.update(profileRef, { adventures: adventures });
   }
+
+  return adventureRef.id;
 }
 
 export async function joinAdventure(
   dataService: IDataService,
   uid: string,
-  adventureId: string,
   inviteId: string,
   policy: IInviteExpiryPolicy
-): Promise<void> {
-  const adventureRef = dataService.getAdventureRef(adventureId);
-  const inviteRef = dataService.getInviteRef(adventureId, inviteId);
-  const playerRef = dataService.getPlayerRef(adventureId, uid);
+): Promise<string> {
+  const inviteRef = dataService.getInviteRef(inviteId);
   const profileRef = dataService.getProfileRef(uid);
+
+  // We need to fetch and verify the invite so that we can get the adventure id
+  const invite = await dataService.get(inviteRef);
+  if (invite === undefined) {
+    throw new functions.https.HttpsError('not-found', 'No such invite');
+  }
+
+  if (typeof(invite.timestamp) !== 'number') {
+    const inviteDate = dayjs((invite.timestamp as FirebaseFirestore.Timestamp).toDate());
+    const age = dayjs().diff(inviteDate, policy.timeUnit);
+    if (age >= policy.expiry) {
+      throw new functions.https.HttpsError('deadline-exceeded', 'Invite has expired');
+    }
+  }
+
+  const adventureRef = dataService.getAdventureRef(invite.adventureId);
+  const playerRef = dataService.getPlayerRef(invite.adventureId, uid);
 
   // Before going any further we need to fish up what players are currently
   // joined to that adventure, so that we can make the policy decision of
@@ -505,7 +521,7 @@ export async function joinAdventure(
   // to have a small window for a race condition here for now.  In future I
   // can sync this with the adventures record or even merge the player list
   // into the adventures record entirely, instead.
-  const otherPlayers = await dataService.getPlayerRefs(adventureId);
+  const otherPlayers = await dataService.getPlayerRefs(invite.adventureId);
 
   const adventure = await dataService.get(adventureRef);
   if (adventure === undefined) {
@@ -513,7 +529,7 @@ export async function joinAdventure(
   }
 
   const ownerProfileRef = dataService.getProfileRef(adventure?.owner)
-  await dataService.runTransaction(tr => joinAdventureTransaction(
-    tr, adventureRef, inviteRef, playerRef, otherPlayers, profileRef, ownerProfileRef, policy
+  return await dataService.runTransaction(tr => joinAdventureTransaction(
+    tr, adventureRef, playerRef, otherPlayers, profileRef, ownerProfileRef
   ));
 }

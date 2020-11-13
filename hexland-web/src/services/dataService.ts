@@ -1,14 +1,15 @@
-import * as firebase from 'firebase/app';
+import firebase from 'firebase/app';
 
 import * as Convert from './converter';
 import { IDataService, IDataReference, IDataView, IDataAndReference, IChildDataReference } from './interfaces';
 import { IAdventure, IPlayer } from '../data/adventure';
-import { IChange, IChanges } from '../data/change';
+import { Change, Changes } from '../data/change';
 import { IIdentified } from '../data/identified';
 import { IImages } from '../data/image';
 import { IInvite } from '../data/invite';
 import { IMap } from '../data/map';
 import { IProfile } from '../data/profile';
+import { ISpritesheet } from '../data/sprite';
 
 // Well-known collection names.
 const profiles = "profiles";
@@ -19,6 +20,7 @@ const maps = "maps";
 const changes = "changes";
 const baseChange = "base";
 const players = "players";
+const spritesheets = "spritesheets";
 
 // A non-generic base data reference helps our isEqual implementation.
 
@@ -143,7 +145,7 @@ export class DataService implements IDataService {
 
   // IDataService implementation
 
-  async addChanges(adventureId: string, uid: string, mapId: string, chs: IChange[]): Promise<void> {
+  async addChanges(adventureId: string, uid: string, mapId: string, chs: Change[]): Promise<void> {
     await this._db.collection(adventures).doc(adventureId).collection(maps).doc(mapId).collection(changes).add({
       chs: chs,
       timestamp: this._timestampProvider(),
@@ -169,18 +171,9 @@ export class DataService implements IDataService {
     return new DataReference<IImages>(d, Convert.imagesConverter);
   }
 
-  getInviteRef(adventureId: string, id: string): IDataReference<IInvite> {
-    const d = this._db.collection(adventures).doc(adventureId).collection(invites).doc(id);
+  getInviteRef(id: string): IDataReference<IInvite> {
+    const d = this._db.collection(invites).doc(id);
     return new DataReference<IInvite>(d, Convert.inviteConverter);
-  }
-
-  async getLatestInviteRef(adventureId: string): Promise<IDataAndReference<IInvite> | undefined> {
-    const s = await this._db.collection(adventures).doc(adventureId).collection(invites)
-      .orderBy("timestamp", "desc")
-      .limit(1)
-      .get();
-    return (s.empty || s.docs.length === 0) ? undefined :
-      new DataAndReference(s.docs[0].ref, s.docs[0].data(), Convert.inviteConverter);
   }
 
   getMapRef(adventureId: string, id: string): IChildDataReference<IMap, IAdventure> {
@@ -188,13 +181,13 @@ export class DataService implements IDataService {
     return new ChildDataReference<IMap, IAdventure>(d, Convert.mapConverter, Convert.adventureConverter);
   }
 
-  getMapBaseChangeRef(adventureId: string, id: string, converter: Convert.IConverter<IChanges>): IDataReference<IChanges> {
+  getMapBaseChangeRef(adventureId: string, id: string, converter: Convert.IConverter<Changes>): IDataReference<Changes> {
     const d = this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(id).collection(changes).doc(baseChange);
-    return new DataReference<IChanges>(d, converter);
+    return new DataReference<Changes>(d, converter);
   }
 
-  async getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number, converter: Convert.IConverter<IChanges>): Promise<IDataAndReference<IChanges>[] | undefined> {
+  async getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number, converter: Convert.IConverter<Changes>): Promise<IDataAndReference<Changes>[] | undefined> {
     const s = await this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(id).collection(changes)
       .where("incremental", "==", true)
@@ -226,12 +219,25 @@ export class DataService implements IDataService {
   async getPlayerRefs(adventureId: string): Promise<IDataAndReference<IPlayer>[]> {
     const s = await this._db.collection(adventures).doc(adventureId).collection(players).get();
     return s.docs.map(d => new DataAndReference(
-      d.ref, Convert.playerConverter.convert(d.data()), Convert.playerConverter));
+      d.ref, Convert.playerConverter.convert(d.data()), Convert.playerConverter
+    ));
   }
 
   getProfileRef(uid: string): IDataReference<IProfile> {
     const d = this._db.collection(profiles).doc(uid);
     return new DataReference<IProfile>(d, Convert.profileConverter);
+  }
+
+  async getSpritesheetsBySource(adventureId: string, geometry: string, sources: string[]): Promise<IDataAndReference<ISpritesheet>[]> {
+    const s = await this._db.collection(adventures).doc(adventureId)
+      .collection(spritesheets)
+      .where("geometry", "==", geometry)
+      .where("supersededBy", "==", "")
+      .where("sprites", "array-contains-any", sources)
+      .get();
+    return s.docs.map(d => new DataAndReference(
+      d.ref, Convert.spritesheetConverter.convert(d.data()), Convert.spritesheetConverter
+    ));
   }
 
   runTransaction<T>(fn: (dataView: IDataView) => Promise<T>): Promise<T> {
@@ -276,7 +282,7 @@ export class DataService implements IDataService {
   watchChanges(
     adventureId: string,
     mapId: string,
-    onNext: (chs: IChanges) => void,
+    onNext: (chs: Changes) => void,
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ) {
@@ -320,6 +326,20 @@ export class DataService implements IDataService {
     return this._db.collectionGroup(players).where("playerId", "==", uid).onSnapshot(s => {
       onNext(s.docs.map(d => Convert.playerConverter.convert(d.data())));
     }, onError, onCompletion);
+  }
+
+  watchSpritesheets(
+    adventureId: string,
+    onNext: (spritesheets: IDataAndReference<ISpritesheet>[]) => void,
+    onError?: ((error: Error) => void) | undefined,
+    onCompletion?: (() => void) | undefined
+  ) {
+    return this._db.collection(adventures).doc(adventureId).collection(spritesheets)
+      .onSnapshot(s => {
+        onNext(s.docs.map(d => new DataAndReference(
+          d.ref, Convert.spritesheetConverter.convert(d.data()), Convert.spritesheetConverter
+        )));
+      }, onError, onCompletion);
   }
 }
 

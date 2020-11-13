@@ -1,5 +1,11 @@
 import * as THREE from 'three';
 
+export interface IShader {
+  uniforms: any;
+  vertexShader: string;
+  fragmentShader: string;
+}
+
 // A hopefully-convenient base class for filtering the whole screen,
 // expecting a shader that does only the basics in the vertex shader
 // (because we'll always draw it with a screen-covering rectangle.)

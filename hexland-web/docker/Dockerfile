@@ -8,7 +8,7 @@ ENV USER=${USER}
 
 # Install all required tools
 RUN apt-get update && \
-    apt-get install -yqq default-jre less && \
+    apt-get install -yqq default-jre imagemagick less && \
     apt-get clean && apt-get autoclean && rm -fr /var/lib/apt/lists/* && \
     yarn global add firebase-admin firebase-tools npm-run-all
 

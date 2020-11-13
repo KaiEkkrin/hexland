@@ -1,11 +1,14 @@
-import { coordString, IGridCoord } from '../../data/coord';
-import { IFeature, IIdFeature } from '../../data/feature';
+import { coordString, GridCoord } from '../../data/coord';
+import { IFeature, IIdFeature, IToken } from '../../data/feature';
 import { IGridGeometry } from "../gridGeometry";
 import { IInstancedFeatureObject } from './instancedFeatureObject';
 import { InstancedFeatures } from './instancedFeatures';
 import { MultipleFeatureObject } from './multipleFeatureObject';
 import { PaletteColouredFeatureObject, IColourParameters, createSelectionColourParameters } from './paletteColouredFeatureObject';
 import { RedrawFlag } from '../redrawFlag';
+import { ISpriteProperties, SpriteFeatureObject } from './spriteFeatureObject';
+import { TextureCache } from './textureCache';
+import { ITokenUvTransform } from './uv';
 
 import * as THREE from 'three';
 
@@ -34,17 +37,44 @@ export function createPaletteColouredAreaObject(gridGeometry: IGridGeometry, alp
   );
 }
 
-export function createSelectionColouredAreaObject(gridGeometry: IGridGeometry, alpha: number, areaZ: number) {
+export function createSelectionColouredAreaObject(
+  gridGeometry: IGridGeometry, alpha: number, areaZ: number
+) {
   const areaGeometry = createSingleAreaGeometry(gridGeometry, alpha, areaZ);
-  return (maxInstances: number) => new MultipleFeatureObject<IGridCoord, IFeature<IGridCoord>>(
-    (i: number, maxInstances: number) => new PaletteColouredFeatureObject(
+  return (maxInstances: number) => new MultipleFeatureObject(
+    (i: string, maxInstances: number) => new PaletteColouredFeatureObject(
       coordString,
       (o, p) => gridGeometry.transformToCoord(o, p),
       maxInstances,
       areaGeometry,
       createSelectionColourParameters(i)
     ),
-    f => f.colour,
+    f => `${f.colour}`,
+    maxInstances
+  );
+}
+
+export function createSpriteAreaObject(
+  gridGeometry: IGridGeometry,
+  redrawFlag: RedrawFlag,
+  textureCache: TextureCache,
+  uvTransform: ITokenUvTransform,
+  alpha: number,
+  areaZ: number
+) {
+  const areaGeometry = createSingleAreaGeometry(gridGeometry, alpha, areaZ);
+  return (maxInstances: number) => new MultipleFeatureObject<GridCoord, IToken & ISpriteProperties>(
+    (url: string, maxInstances: number) => new SpriteFeatureObject(
+      redrawFlag,
+      textureCache,
+      coordString,
+      (o, p) => gridGeometry.transformToCoord(o, p),
+      maxInstances,
+      areaGeometry,
+      f => uvTransform.getFaceTransform(f),
+      url
+    ),
+    f => f.sheetEntry.url,
     maxInstances
   );
 }
@@ -52,24 +82,24 @@ export function createSelectionColouredAreaObject(gridGeometry: IGridGeometry, a
 export function createAreas(
   gridGeometry: IGridGeometry,
   needsRedraw: RedrawFlag,
-  createFeatureObject: (maxInstances: number) => IInstancedFeatureObject<IGridCoord, IFeature<IGridCoord>>,
+  createFeatureObject: (maxInstances: number) => IInstancedFeatureObject<GridCoord, IFeature<GridCoord>>,
   maxInstances?: number | undefined
 ) {
-  return new InstancedFeatures<IGridCoord, IFeature<IGridCoord>>(
+  return new InstancedFeatures<GridCoord, IFeature<GridCoord>>(
     gridGeometry, needsRedraw, coordString, createFeatureObject, maxInstances
   );
 }
 
-export function createSelectedAreas(
+export function createSelectedAreas<F extends IFeature<GridCoord>>(
   gridGeometry: IGridGeometry,
   needsRedraw: RedrawFlag,
-  createFeatureObject: (maxInstances: number) => IInstancedFeatureObject<IGridCoord, IIdFeature<IGridCoord>>,
+  createFeatureObject: (maxInstances: number) => IInstancedFeatureObject<GridCoord, F>,
   maxInstances?: number | undefined
 ) {
-  return new InstancedFeatures<IGridCoord, IIdFeature<IGridCoord>>(
+  return new InstancedFeatures<GridCoord, F>(
     gridGeometry, needsRedraw, coordString, createFeatureObject, maxInstances
   );
 }
 
-export type Areas = InstancedFeatures<IGridCoord, IFeature<IGridCoord>>;
-export type SelectedAreas = InstancedFeatures<IGridCoord, IIdFeature<IGridCoord>>; // so we can look up which token was selected
+export type Areas = InstancedFeatures<GridCoord, IFeature<GridCoord>>;
+export type SelectedAreas = InstancedFeatures<GridCoord, IIdFeature<GridCoord>>; // so we can look up which token was selected

@@ -1,7 +1,6 @@
 import React, { useContext, useMemo, useCallback, useState, useEffect } from 'react';
-import { useAsyncTask, useAsyncRun } from 'react-hooks-async';
-//import { RouteComponentProps } from 'react-router';
-//import { withRouter } from 'react-router-dom';
+
+import './Navigation.css';
 
 import { AnalyticsContext } from './AnalyticsContextProvider';
 import { FirebaseContext } from './FirebaseContextProvider';
@@ -21,6 +20,7 @@ import Modal from 'react-bootstrap/Modal';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 
+import { useAsyncTask, useAsyncRun } from 'react-hooks-async';
 import Measure from 'react-measure';
 import { LinkContainer } from 'react-router-bootstrap';
 
@@ -131,16 +131,16 @@ const fetchAvatar = async (abortController: AbortController, profile: IUser | nu
 };
 
 function Avatar(props: { children?: React.ReactNode }) {
-  const userContext = useContext(UserContext);
+  const { user } = useContext(UserContext);
 
   // We show an avatar (based on the hash of the user's email address) if one is available
   const fetchAvatarTask = useAsyncTask(fetchAvatar);
-  useAsyncRun(fetchAvatarTask, userContext.user);
+  useAsyncRun(fetchAvatarTask, user);
 
   const profileImgUrl = useMemo(() => {
     const dataUrl = fetchAvatarTask.result;
     const cachedDataUrl = localStorage.getItem("profile.image");
-    const emailMd5 = userContext.user?.emailMd5;
+    const emailMd5 = user?.emailMd5;
     const cachedEmailMd5 = localStorage.getItem("profile.emailMd5");
 
     const dataUrlValid = dataUrl !== undefined && dataUrl !== null;
@@ -156,10 +156,16 @@ function Avatar(props: { children?: React.ReactNode }) {
     } else {
       return "";
     }
-  }, [fetchAvatarTask.result, userContext.user]);
+  }, [fetchAvatarTask.result, user]);
+
+  const title = useMemo(
+    () => user?.emailVerified === true ? `${user.displayName} (Verified)` :
+    `${user?.displayName} (Not verified)`,
+    [user]
+  );
 
   return (
-    <div style={{display: "inline-flex", position: "relative", alignItems: "center"}}>
+    <div style={{display: "inline-flex", position: "relative", alignItems: "center"}} title={title}>
       <div style={{position: "absolute", backgroundColor: "rgba(0,0,0,1)",
                    borderRadius: "15px", width: "30px", height: "30px"}}></div>
       <div style={{position: "absolute", backgroundImage: `url("${profileImgUrl}")`,
@@ -173,11 +179,11 @@ function Avatar(props: { children?: React.ReactNode }) {
   );
 }
 
-function NavLogin() {
+function NavLogin({ expanded }: { expanded: boolean }) {
   const { auth } = useContext(FirebaseContext);
   const { dataService, user } = useContext(UserContext);
   const { signInMethods } = useContext(SignInMethodsContext);
-  const profile = useContext(ProfileContext);
+  const { profile } = useContext(ProfileContext);
   const statusContext = useContext(StatusContext);
   const { enabled, setEnabled, logError } = useContext(AnalyticsContext);
 
@@ -232,10 +238,21 @@ function NavLogin() {
       return;
     }
 
-    updateProfile(dataService, user?.uid, editDisplayName)
-      .then(() => console.log("successfully updated profile"))
-      .catch(e => logError("error updating profile:", e));
-  }, [setEnabled, logError, editAnalyticsEnabled, editDisplayName, handleModalClose, dataService, user]);
+    async function doUpdateProfile() {
+      if (!user) {
+        return;
+      }
+
+      await updateProfile(dataService, user.uid, editDisplayName);
+      if (editDisplayName !== displayName) {
+        await user.updateProfile({ displayName: displayName });
+      }
+
+      console.log(`successfully updated profile of ${editDisplayName}`);
+    }
+
+    doUpdateProfile().catch(e => logError("error updating profile", e));
+  }, [setEnabled, logError, displayName, editAnalyticsEnabled, editDisplayName, handleModalClose, dataService, user]);
 
   const saveProfileDisabled = useMemo(() => editDisplayName.length === 0, [editDisplayName]);
 
@@ -291,13 +308,13 @@ function NavLogin() {
   const profileButton = useMemo(() => {
     if (isPasswordUser) {
       return (
-        <Dropdown alignRight>
+        <Dropdown>
           <Dropdown.Toggle variant="primary">
             <Avatar>
               {displayName}{verifiedIcon}
             </Avatar>
           </Dropdown.Toggle>
-          <Dropdown.Menu>
+          <Dropdown.Menu alignRight={!expanded}>
             <Dropdown.Item onClick={handleEditProfile}>Edit profile</Dropdown.Item>
             <Dropdown.Item onClick={handleChangePassword}>Change password</Dropdown.Item>
             {resendVerificationItem}
@@ -314,7 +331,7 @@ function NavLogin() {
       );
     }
   }, [
-    displayName, handleChangePassword, handleEditProfile, isPasswordUser,
+    displayName, expanded, handleChangePassword, handleEditProfile, isPasswordUser,
     resendVerificationItem, verifiedIcon
   ]);
 
@@ -403,19 +420,30 @@ function Navigation(props: INavigationProps) {
     [expanded, width]
   );
 
+  // Delete the firebase emulator warning, which is all well and good but
+  // screws up e2e testing.
+  // This code needs to go into a ubiquitous component inside the router -- the Navigation
+  // seems as good a place as any
+  useEffect(() => {
+    const emulatorWarnings = document.getElementsByClassName('firebase-emulator-warning');
+    for (const w of emulatorWarnings) {
+      w.remove();
+    }
+  }, []);
+
   return (
     <Measure bounds onResize={r => setWidth(r.bounds?.width)}>
       {({ measureRef }) => (
         <div ref={measureRef}>
           <Navbar bg="dark" expand="lg" variant="dark" sticky="top" onToggle={setExpanded}>
             <LinkContainer to="/">
-              <Navbar.Brand className="App-brand">
+              <Navbar.Brand className="Navigation-brand">
                 <img src="/logo32.svg" alt="logo" height={32} />
-                <div className="App-brand-text">
-                  <div className="App-brand-main">
+                <div className="Navigation-brand-text">
+                  <div className="Navigation-brand-main">
                     wall &amp; shadow
                   </div>
-                  <div className="App-brand-shadow">
+                  <div className="Navigation-brand-shadow">
                     wall &amp; shadow
                   </div>
                 </div>
@@ -424,9 +452,9 @@ function Navigation(props: INavigationProps) {
             <Navbar.Collapse id="basic-navbar-nav">
               <NavPageLinks />
             </Navbar.Collapse>
-            <Navbar.Text className="justify-content-centre" hidden={childrenHidden}>{props.children}</Navbar.Text>
+            <Navbar.Text className="justify-content-center" hidden={childrenHidden}>{props.children}</Navbar.Text>
             <Navbar.Collapse id="basic-navbar-nav" className="justify-content-end">
-              <NavLogin />
+              <NavLogin expanded={expanded} />
             </Navbar.Collapse>
             <Navbar.Toggle aria-controls="basic-navbar-nav" />
           </Navbar>

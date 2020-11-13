@@ -4,12 +4,13 @@ import * as Convert from './converter';
 import { IAdminDataService, ICollectionGroupQueryResult } from './extraInterfaces';
 import { IChildDataReference, IDataReference, IDataView, IDataAndReference } from './interfaces';
 import { IAdventure, IPlayer } from '../data/adventure';
-import { IChange, IChanges } from '../data/change';
+import { Change, Changes } from '../data/change';
 import { IIdentified } from '../data/identified';
 import { IImages } from '../data/image';
 import { IInvite } from '../data/invite';
 import { IMap } from '../data/map';
 import { IProfile } from '../data/profile';
+import { ISpritesheet } from '../data/sprite';
 
 // This data services is like the one in the web application, but uses the Admin SDK instead.
 
@@ -22,6 +23,7 @@ const maps = "maps";
 const changes = "changes";
 const baseChange = "base";
 const players = "players";
+const spritesheets = "spritesheets";
 
 // A non-generic base data reference helps our isEqual implementation.
 
@@ -159,7 +161,7 @@ export class AdminDataService implements IAdminDataService {
 
   // IDataService implementation
 
-  async addChanges(adventureId: string, uid: string, mapId: string, chs: IChange[]): Promise<void> {
+  async addChanges(adventureId: string, uid: string, mapId: string, chs: Change[]): Promise<void> {
     await this._db.collection(adventures).doc(adventureId).collection(maps).doc(mapId).collection(changes).add({
       chs: chs,
       timestamp: this._timestampProvider(),
@@ -187,18 +189,28 @@ export class AdminDataService implements IAdminDataService {
     ));
   }
 
+  async getAllSpritesheetsBySource(source: string): Promise<IDataAndReference<ISpritesheet>[]> {
+    const s = await this._db.collectionGroup(spritesheets)
+      .where("sprites", "array-contains", source)
+      .get();
+    return s.docs.map(d => new DataAndReference(
+      d.ref, Convert.spritesheetConverter.convert(d.data()), Convert.spritesheetConverter
+    ));
+  }
+
   getImagesRef(uid: string): IDataReference<IImages> {
     const d = this._db.collection(images).doc(uid);
     return new DataReference<IImages>(d, Convert.imagesConverter);
   }
 
-  getInviteRef(adventureId: string, id: string): IDataReference<IInvite> {
-    const d = this._db.collection(adventures).doc(adventureId).collection(invites).doc(id);
+  getInviteRef(id: string): IDataReference<IInvite> {
+    const d = this._db.collection(invites).doc(id);
     return new DataReference<IInvite>(d, Convert.inviteConverter);
   }
 
   async getLatestInviteRef(adventureId: string): Promise<IDataAndReference<IInvite> | undefined> {
-    const s = await this._db.collection(adventures).doc(adventureId).collection(invites)
+    const s = await this._db.collection(invites)
+      .where("adventureId", "==", adventureId)
       .orderBy("timestamp", "desc")
       .limit(1)
       .get();
@@ -211,13 +223,13 @@ export class AdminDataService implements IAdminDataService {
     return new ChildDataReference<IMap, IAdventure>(d, Convert.mapConverter, Convert.adventureConverter);
   }
 
-  getMapBaseChangeRef(adventureId: string, id: string, converter: Convert.IConverter<IChanges>): IDataReference<IChanges> {
+  getMapBaseChangeRef(adventureId: string, id: string, converter: Convert.IConverter<Changes>): IDataReference<Changes> {
     const d = this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(id).collection(changes).doc(baseChange);
-    return new DataReference<IChanges>(d, converter);
+    return new DataReference<Changes>(d, converter);
   }
 
-  async getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number, converter: Convert.IConverter<IChanges>): Promise<IDataAndReference<IChanges>[] | undefined> {
+  async getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number, converter: Convert.IConverter<Changes>): Promise<IDataAndReference<Changes>[] | undefined> {
     const s = await this._db.collection(adventures).doc(adventureId)
       .collection(maps).doc(id).collection(changes)
       .where("incremental", "==", true)
@@ -264,6 +276,36 @@ export class AdminDataService implements IAdminDataService {
     return new DataReference<IProfile>(d, Convert.profileConverter);
   }
 
+  async getSpritesheetsByFreeSpace(adventureId: string, geometry: string): Promise<IDataAndReference<ISpritesheet>[]> {
+    const s = await this._db.collection(adventures).doc(adventureId)
+      .collection("spritesheets")
+      .where("geometry", "==", geometry)
+      .where("supersededBy", "==", "")
+      .where("freeSpaces", ">", 0)
+      .get();
+    return s.docs.map(d => new DataAndReference(
+      d.ref, Convert.spritesheetConverter.convert(d.data()), Convert.spritesheetConverter
+    ));
+  }
+
+  async getSpritesheetsBySource(adventureId: string, geometry: string, sources: string[]): Promise<IDataAndReference<ISpritesheet>[]> {
+    const s = await this._db.collection(adventures).doc(adventureId)
+      .collection("spritesheets")
+      .where("geometry", "==", geometry)
+      .where("supersededBy", "==", "")
+      .where("sprites", "array-contains-any", sources)
+      .get();
+    return s.docs.map(d => new DataAndReference(
+      d.ref, Convert.spritesheetConverter.convert(d.data()), Convert.spritesheetConverter
+    ));
+  }
+
+  getSpritesheetRef(adventureId: string, id: string): IDataReference<ISpritesheet> {
+    const d = this._db.collection(adventures).doc(adventureId)
+      .collection(spritesheets).doc(id);
+    return new DataReference<ISpritesheet>(d, Convert.spritesheetConverter);
+  }
+
   runTransaction<T>(fn: (dataView: IDataView) => Promise<T>): Promise<T> {
     return this._db.runTransaction(tr => {
       const tdv = new TransactionalDataView(tr);
@@ -304,7 +346,7 @@ export class AdminDataService implements IAdminDataService {
   watchChanges(
     adventureId: string,
     mapId: string,
-    onNext: (chs: IChanges) => void,
+    onNext: (chs: Changes) => void,
     onError?: ((error: Error) => void) | undefined
   ) {
     const converter = Convert.createChangesConverter();
@@ -342,6 +384,20 @@ export class AdminDataService implements IAdminDataService {
     return this._db.collectionGroup(players).where("playerId", "==", uid).onSnapshot(s => {
       onNext(s.docs.map(d => Convert.playerConverter.convert(d.data())));
     }, onError);
+  }
+
+  watchSpritesheets(
+    adventureId: string,
+    onNext: (spritesheets: IDataAndReference<ISpritesheet>[]) => void,
+    onError?: ((error: Error) => void) | undefined
+  ) {
+    return this._db.collection(adventures).doc(adventureId).collection(spritesheets)
+      .where("supersededBy", "==", "")
+      .onSnapshot(s => {
+        onNext(s.docs.map(d => new DataAndReference(
+          d.ref, Convert.spritesheetConverter.convert(d.data), Convert.spritesheetConverter
+        )));
+      }, onError);
   }
 }
 

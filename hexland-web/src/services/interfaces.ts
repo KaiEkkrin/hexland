@@ -1,17 +1,22 @@
 import { IAdventure, IPlayer } from '../data/adventure';
-import { IChange, IChanges } from '../data/change';
+import { Change, Changes } from '../data/change';
+import { ICharacter } from '../data/character';
+import { ITokenProperties } from '../data/feature';
 import { IIdentified } from '../data/identified';
 import { IImages } from '../data/image';
 import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
 import { IInviteExpiryPolicy } from '../data/policy';
 import { IProfile } from '../data/profile';
+import { ISprite, ISpritesheet } from '../data/sprite';
 import { IConverter } from './converter';
+
+import { Observable } from 'rxjs';
 
 // Abstracts the Firebase authentication stuff, which isn't supported by the
 // simulator.
 export interface IAuth {
-  createUserWithEmailAndPassword(email: string, password: string): Promise<IUser | null>;
+  createUserWithEmailAndPassword(email: string, password: string, displayName: string): Promise<IUser | null>;
   fetchSignInMethodsForEmail(email: string): Promise<Array<string>>;
   sendPasswordResetEmail(email: string): Promise<void>;
   signInWithEmailAndPassword(email: string, password: string): Promise<IUser | null>;
@@ -65,7 +70,7 @@ export interface IDataAndReference<T> extends IDataReference<T> {
 // This service is for datastore-related operations.
 export interface IDataService extends IDataView {
   // Adds incremental changes to a map.
-  addChanges(adventureId: string, uid: string, mapId: string, changes: IChange[]): Promise<void>;
+  addChanges(adventureId: string, uid: string, mapId: string, changes: Change[]): Promise<void>;
 
   // Gets all the maps in one adventure.
   getAdventureMapRefs(adventureId: string): Promise<IDataAndReference<IMap>[]>;
@@ -76,14 +81,13 @@ export interface IDataService extends IDataView {
   // Gets a reference to a user's images record.
   getImagesRef(uid: string): IDataReference<IImages>;
 
-  // Gets the current invite refs for an adventure.
-  getInviteRef(adventureId: string, id: string): IDataReference<IInvite>;
-  getLatestInviteRef(adventureId: string): Promise<IDataAndReference<IInvite> | undefined>;
+  // Gets an invite reference.
+  getInviteRef(id: string): IDataReference<IInvite>;
 
   // Gets a map.
   getMapRef(adventureId: string, id: string): IChildDataReference<IMap, IAdventure>;
-  getMapBaseChangeRef(adventureId: string, id: string, converter: IConverter<IChanges>): IDataReference<IChanges>;
-  getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number, converter: IConverter<IChanges>): Promise<IDataAndReference<IChanges>[] | undefined>;
+  getMapBaseChangeRef(adventureId: string, id: string, converter: IConverter<Changes>): IDataReference<Changes>;
+  getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number, converter: IConverter<Changes>): Promise<IDataAndReference<Changes>[] | undefined>;
 
   // Gets all my adventures, invites, and player records.
   getMyAdventures(uid: string): Promise<IDataAndReference<IAdventure>[]>;
@@ -97,6 +101,10 @@ export interface IDataService extends IDataView {
 
   // Gets the user's profile.
   getProfileRef(uid: string): IDataReference<IProfile>;
+
+  // Gets all spritesheets containing one of the supplied images.
+  // No more than 10 sources in one go!
+  getSpritesheetsBySource(adventureId: string, geometry: string, sources: string[]): Promise<IDataAndReference<ISpritesheet>[]>;
 
   // Runs a transaction. The `dataView` parameter accepted by the
   // transaction function does things in the transaction's context.
@@ -122,7 +130,7 @@ export interface IDataService extends IDataView {
   watchChanges(
     adventureId: string,
     mapId: string,
-    onNext: (changes: IChanges) => void,
+    onNext: (changes: Changes) => void,
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ): () => void;
@@ -142,6 +150,14 @@ export interface IDataService extends IDataView {
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ): () => void;
+
+  // Watches all (current) spritesheets in this adventure.
+  watchSpritesheets(
+    adventureId: string,
+    onNext: (spritesheets: IDataAndReference<ISpritesheet>[]) => void,
+    onError?: ((error: Error) => void) | undefined,
+    onCompletion?: (() => void) | undefined
+  ): () => void;
 }
 
 // A view of data, either the generalised data service or a transaction.
@@ -155,6 +171,9 @@ export interface IDataView {
 
 // Provides access to Firebase Functions.
 export interface IFunctionsService {
+  // Adds images to spritesheets.
+  addSprites(adventureId: string, geometry: string, sources: string[]): Promise<ISprite[]>;
+
   // Creates a new adventure, returning its ID.
   createAdventure(name: string, description: string): Promise<string>;
 
@@ -176,8 +195,8 @@ export interface IFunctionsService {
   // Creates and returns an adventure invite.
   inviteToAdventure(adventureId: string, policy?: IInviteExpiryPolicy | undefined): Promise<string>;
 
-  // Joins an adventure.
-  joinAdventure(adventureId: string, inviteId: string, policy?: IInviteExpiryPolicy | undefined): Promise<void>;
+  // Joins an adventure, returning the adventure id.
+  joinAdventure(inviteId: string, policy?: IInviteExpiryPolicy | undefined): Promise<string>;
 }
 
 // Provides logging for the extensions.
@@ -185,6 +204,38 @@ export interface ILogger {
   logError(message: string, ...optionalParams: any[]): void;
   logInfo(message: string, ...optionalParams: any[]): void;
   logWarning(message: string, ...optionalParams: any[]): void;
+}
+
+// The object cache emits these.
+export interface ICacheLease<T> {
+  value: T;
+  release: () => Promise<void>;
+}
+
+export interface ISpritesheetEntry {
+  sheet: ISpritesheet,
+  position: number,
+  url: string
+}
+
+// Looks up sprites for us with caching.
+export interface ISpriteManager {
+  // The adventure this manager is for.
+  adventureId: string;
+
+  // Looks up the character record associated with a token.  (For when you don't need to
+  // draw the sprite.)
+  lookupCharacter(token: ITokenProperties): Observable<ICharacter | undefined>;
+
+  // Looks up a sprite, returning a feed of its latest entries and download URLs.
+  lookupSprite(sprite: ISprite): Observable<ISpritesheetEntry>;
+
+  // Looks up a token's character and sprite, which could either be the token's character, or
+  // (if none) embedded in the token itself.
+  lookupToken(token: ITokenProperties): Observable<ISpritesheetEntry & { character: ICharacter | undefined }>;
+
+  // Cleans up this manager, stopping subscriptions.
+  dispose(): void;
 }
 
 // A stripped-down abstraction around Firebase Storage that lets me use a mock one in local
@@ -198,14 +249,23 @@ export interface IStorageReference {
   // Deletes the object.
   delete(): Promise<void>;
 
+  // Downloads the object from storage.
+  download(destination: string): Promise<void>;
+
   // Gets the download URL for this object.
   getDownloadURL(): Promise<string>;
 
   // Uploads a file here.
   put(file: Blob | Buffer, metadata: any): Promise<void>;
+
+  // Uploads a file here (from the filesystem.)
+  upload(source: string, metadata: { contentType: string }): Promise<void>;
 }
 
 export interface IWebDAV {
+  // For the streams, I'm going to supply the absolute minimal interface to get working...
+  createReadStream(path: string): any;
+  createWriteStream(path: string, options: any): any; 
   deleteFile(path: string): Promise<void>;
   getFileDownloadLink(path: string): string;
   putFileContents(path: string, file: Blob | Buffer): Promise<void>;

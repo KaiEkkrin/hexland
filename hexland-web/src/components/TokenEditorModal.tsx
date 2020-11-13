@@ -1,54 +1,29 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import ColourSelection from './ColourSelection';
+import TokenImageEditor from './TokenImageEditor';
 import TokenPlayerSelection from './TokenPlayerSelection';
 
 import { IPlayer } from '../data/adventure';
 import { ITokenProperties, TokenSize } from '../data/feature';
+import { IImage } from '../data/image';
+import { ISprite } from '../data/sprite';
 
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
+import Tab from 'react-bootstrap/Tab';
+import Tabs from 'react-bootstrap/Tabs';
 
 import { v4 as uuidv4 } from 'uuid';
 
-interface ITokenEditorModalProps {
-  selectedColour: number;
+interface ITokenSizeSelectionProps {
+  size: TokenSize;
   sizes: TokenSize[] | undefined;
-  show: boolean;
-  token: ITokenProperties | undefined;
-  players: IPlayer[];
-  handleClose: () => void;
-  handleDelete: () => void;
-  handleSave: (properties: ITokenProperties) => void;
+  setSize: (value: TokenSize) => void;
 }
 
-function TokenEditorModal(
-  { selectedColour, sizes, show, token, players, handleClose, handleDelete, handleSave }: ITokenEditorModalProps
-) {
-  const [text, setText] = useState("");
-  const [colour, setColour] = useState(0);
-  const [size, setSize] = useState<TokenSize>("1");
-  const [playerIds, setPlayerIds] = useState([] as string[]);
-  const [note, setNote] = useState("");
-  const [noteVisibleToPlayers, setNoteVisibleToPlayers] = useState(true);
-
-  useEffect(() => {
-    if (show) {
-      setText(token?.text ?? "");
-      setColour(token?.colour ?? selectedColour);
-      setSize(token?.size ?? "1");
-      setPlayerIds(token?.players ?? []);
-      setNote(token?.note ?? "");
-      setNoteVisibleToPlayers(token?.noteVisibleToPlayers ?? false);
-    }
-  }, [selectedColour, show, token]);
-
-  const [saveDisabled, setSaveDisabled] = useState(false);
-  useEffect(() => {
-    setSaveDisabled(text.length === 0);
-  }, [text]);
-
+export function TokenSizeSelection({ size, sizes, setSize }: ITokenSizeSelectionProps) {
   const sizeOptions = useMemo(
     () => sizes?.map(sz => (<option key={sz} value={sz}>{sz}</option>)),
     [sizes]
@@ -59,9 +34,76 @@ function TokenEditorModal(
     setSize(option.value as TokenSize);
   }, [setSize]);
 
+  return (
+    <Form.Group>
+      <Form.Label htmlFor="tokenSizeSelect">Size</Form.Label>
+      <Form.Control id="tokenSizeSelect" as="select" value={sizeString}
+        onChange={e => handleSizeChange(e as any)}
+      >
+        {sizeOptions}
+      </Form.Control>
+    </Form.Group>
+  );
+}
+
+interface ITokenEditorModalProps {
+  adventureId: string;
+  selectedColour: number;
+  sizes: TokenSize[] | undefined;
+  show: boolean;
+  token: ITokenProperties | undefined;
+  players: IPlayer[];
+  handleClose: () => void;
+  handleDelete: () => void;
+  handleImageDelete: (image: IImage | undefined) => void;
+  handleSave: (properties: ITokenProperties) => void;
+}
+
+// This modal is only for editing tokens that aren't attached to a character.
+// For that (and never the twain shall meet), see CharacterTokenEditorModal.
+function TokenEditorModal(
+  { adventureId, selectedColour, sizes, show, token, players,
+    handleClose, handleDelete, handleImageDelete, handleSave }: ITokenEditorModalProps
+) {
+  const [text, setText] = useState("");
+  const [colour, setColour] = useState(0);
+  const [size, setSize] = useState<TokenSize>("1");
+  const [playerIds, setPlayerIds] = useState([] as string[]);
+  const [note, setNote] = useState("");
+  const [noteVisibleToPlayers, setNoteVisibleToPlayers] = useState(true);
+  const [sprites, setSprites] = useState<ISprite[]>([]);
+
+  const [imageTabTitle, setImageTabTitle] = useState("Image");
+
+  // Properties
+
+  useEffect(() => {
+    if (show) {
+      setText(token?.text ?? "");
+      setColour(token?.colour ?? selectedColour);
+      setSize(token?.size ?? "1");
+      setPlayerIds(token?.players ?? []);
+      setNote(token?.note ?? "");
+      setNoteVisibleToPlayers(token?.noteVisibleToPlayers ?? false);
+      setSprites(token?.sprites ?? []);
+    }
+  }, [
+    selectedColour, show, token,
+    setText, setColour, setSize, setPlayerIds, setNote, setNoteVisibleToPlayers, setSprites
+  ]);
+
   const handleVtoPChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setNoteVisibleToPlayers(e.currentTarget.checked);
   }, [setNoteVisibleToPlayers]);
+  
+  // Save
+
+  // We can't save if there's no text/image, or if we're busy handling an image:
+  const [busySettingImage, setBusySettingImage] = useState(false);
+  const saveDisabled = useMemo(
+    () => (text.length === 0 && sprites.length === 0) || busySettingImage,
+    [busySettingImage, sprites, text]
+  );
 
   const doHandleSave = useCallback(() => {
     handleSave({
@@ -72,9 +114,11 @@ function TokenEditorModal(
       players: playerIds,
       size: size,
       note: note,
-      noteVisibleToPlayers: noteVisibleToPlayers
+      noteVisibleToPlayers: noteVisibleToPlayers,
+      characterId: "",
+      sprites: sprites
     });
-  }, [colour, note, noteVisibleToPlayers, playerIds, handleSave, token, size, text]);
+  }, [colour, note, noteVisibleToPlayers, playerIds, handleSave, token, size, text, sprites]);
 
   return (
     <Modal show={show} onHide={handleClose}>
@@ -82,44 +126,52 @@ function TokenEditorModal(
         <Modal.Title>Token</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        <Form>
-          <Form.Group>
-            <Form.Label htmlFor="tokenLabel">Label (maximum 3 characters)</Form.Label>
-            <Form.Control id="tokenLabel" type="text" maxLength={3} value={text}
-              onChange={e => setText(e.target.value)} />
-          </Form.Group>
-          <Form.Group>
-            <Form.Label htmlFor="tokenNoteText">Note text</Form.Label>
-            <Form.Control id="tokenNoteText" type="text" maxLength={30} value={note}
-              onChange={e => setNote(e.target.value)} />
-          </Form.Group>
-          <Form.Group>
-            <Form.Label htmlFor="tokenColour">Colour</Form.Label>
-            <Form.Row>
-              <ColourSelection id="tokenColour"
-                hidden={false}
-                includeNegative={false}
-                isVertical={false}
-                selectedColour={colour}
-                setSelectedColour={setColour} />
-            </Form.Row>
-          </Form.Group>
-          <Form.Group>
-            <Form.Label htmlFor="tokenSizeSelect">Size</Form.Label>
-            <Form.Control id="tokenSizeSelect" as="select" value={sizeString} onChange={e => handleSizeChange(e as any)}>
-              {sizeOptions}
-            </Form.Control>
-          </Form.Group>
-          <Form.Group>
-            <Form.Label htmlFor="tokenPlayerSelect">Assigned to players</Form.Label>
-            <TokenPlayerSelection id="tokenPlayerSelect" players={players}
-              tokenPlayerIds={playerIds} setTokenPlayerIds={setPlayerIds} />
-          </Form.Group>
-          <Form.Group>
-            <Form.Check type="checkbox" label="Note visible to players" checked={noteVisibleToPlayers}
-              onChange={handleVtoPChange} />
-          </Form.Group>
-        </Form>
+        <Tabs defaultActiveKey="properties">
+          <Tab eventKey="properties" title="Properties">
+            <Form>
+              <Form.Group>
+                <Form.Label htmlFor="tokenLabel">Label (maximum 3 characters)</Form.Label>
+                <Form.Control id="tokenLabel" type="text" maxLength={3} value={text}
+                  onChange={e => setText(e.target.value)} />
+                <Form.Text className="text-muted">
+                  This is the text drawn on the token in maps. A token must have either this label, an image or both.
+                </Form.Text>
+              </Form.Group>
+              <Form.Group>
+                <Form.Label htmlFor="tokenNoteText">Note text</Form.Label>
+                <Form.Control id="tokenNoteText" type="text" maxLength={30} value={note}
+                  onChange={e => setNote(e.target.value)} />
+              </Form.Group>
+              <Form.Group>
+                <Form.Check type="checkbox" label="Note visible to players" checked={noteVisibleToPlayers}
+                  onChange={handleVtoPChange} />
+              </Form.Group>
+              <Form.Group>
+                <Form.Label htmlFor="tokenColour">Colour</Form.Label>
+                <Form.Row>
+                  <ColourSelection id="tokenColour"
+                    hidden={false}
+                    includeNegative={false}
+                    isVertical={false}
+                    selectedColour={colour}
+                    setSelectedColour={setColour} />
+                </Form.Row>
+              </Form.Group>
+              <TokenSizeSelection size={size} sizes={sizes} setSize={setSize} />
+              <Form.Group>
+                <Form.Label htmlFor="tokenPlayerSelect">Assigned to players</Form.Label>
+                <TokenPlayerSelection id="tokenPlayerSelect" players={players}
+                  tokenPlayerIds={playerIds} setTokenPlayerIds={setPlayerIds} />
+              </Form.Group>
+            </Form>
+          </Tab>
+          <Tab eventKey="image" title={imageTabTitle}>
+            <TokenImageEditor adventureId={adventureId} altText={text} colour={colour} show={show}
+              busySettingImage={busySettingImage} setBusySettingImage={setBusySettingImage}
+              setImageTabTitle={setImageTabTitle}
+              sprites={sprites} setSprites={setSprites} handleImageDelete={handleImageDelete} />
+          </Tab>
+        </Tabs>
       </Modal.Body>
       <Modal.Footer>
         <Button variant="danger" onClick={handleDelete}>Delete</Button>

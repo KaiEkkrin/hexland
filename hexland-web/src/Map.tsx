@@ -1,9 +1,13 @@
-import React, { useEffect, useRef, useState, useContext, useMemo, useCallback, useReducer } from 'react';
+import React, { useEffect, useRef, useState, useContext, useMemo, useCallback } from 'react';
 import './App.css';
 import './Map.css';
 
-import { addToast } from './components/extensions';
+import { AdventureContext } from './components/AdventureContextProvider';
 import { AnalyticsContext } from './components/AnalyticsContextProvider';
+import CharacterTokenEditorModal from './components/CharacterTokenEditorModal';
+import { addToast } from './components/extensions';
+import ImageDeletionModal from './components/ImageDeletionModal';
+import { MapContext } from './components/MapContextProvider';
 import MapContextMenu from './components/MapContextMenu';
 import MapControls, { MapColourVisualisationMode } from './components/MapControls';
 import MapAnnotations, { ShowAnnotationFlags } from './components/MapAnnotations';
@@ -13,45 +17,38 @@ import NoteEditorModal from './components/NoteEditorModal';
 import { ProfileContext } from './components/ProfileContextProvider';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { StatusContext } from './components/StatusContextProvider';
+import Throbber from './components/Throbber';
 import TokenDeletionModal from './components/TokenDeletionModal';
 import TokenEditorModal from './components/TokenEditorModal';
 import { UserContext } from './components/UserContextProvider';
 
 import { IPageProps } from './components/interfaces';
-import { IPlayer } from './data/adventure';
-import { trackChanges } from './data/changeTracking';
 import { ITokenProperties } from './data/feature';
-import { IAdventureIdentified } from './data/identified';
+import { IImage } from './data/image';
 import { createTokenSizes, IMap, MAP_CONTAINER_CLASS } from './data/map';
 import { getUserPolicy } from './data/policy';
-import { IProfile } from './data/profile';
-import { registerMapAsRecent, watchChangesAndConsolidate, removeMapFromRecent } from './services/extensions';
-import { IDataService, IFunctionsService } from './services/interfaces';
 
-import { standardColours } from './models/featureColour';
-import { MapStateMachine, createDefaultState, zoomMax, zoomMin } from './models/mapStateMachine';
+import { zoomMax, zoomMin } from './models/mapStateMachine';
 import { createDefaultUiState, isAnEditorOpen, MapUi } from './models/mapUi';
 import { networkStatusTracker } from './models/networkStatusTracker';
 
-import { Link, RouteComponentProps, useHistory } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
 import { v4 as uuidv4 } from 'uuid';
 
 // The map component is rather large because of all the state that got pulled into it...
-function Map({ adventureId, mapId, navbarTitle, setNavbarTitle }: IMapPageProps & IPageProps) {
+function Map({ navbarTitle, setNavbarTitle }: IPageProps) {
   const { dataService, functionsService, user } = useContext(UserContext);
-  const { analytics, logError, logEvent } = useContext(AnalyticsContext);
-  const profile = useContext(ProfileContext);
+  const { logError } = useContext(AnalyticsContext);
+  const { adventure, players } = useContext(AdventureContext);
+  const { map, mapState, stateMachine } = useContext(MapContext);
+  const { profile } = useContext(ProfileContext);
   const statusContext = useContext(StatusContext);
-  const history = useHistory();
 
   const drawingRef = useRef<HTMLDivElement>(null);
 
-  const [map, setMap] = useState(undefined as IAdventureIdentified<IMap> | undefined);
-  const [players, setPlayers] = useState([] as IPlayer[]);
-  const [mapState, setMapState] = useState(createDefaultState());
   const [uiState, setUiState] = useState(createDefaultUiState());
 
   // We only track a user policy if the user is the map owner
@@ -65,7 +62,7 @@ function Map({ adventureId, mapId, navbarTitle, setNavbarTitle }: IMapPageProps 
 
   // Create a suitable title
   const title = useMemo(() => {
-    if (map === undefined || profile === undefined) {
+    if (map === undefined || mapState === undefined || profile === undefined) {
       return "";
     }
 
@@ -75,7 +72,7 @@ function Map({ adventureId, mapId, navbarTitle, setNavbarTitle }: IMapPageProps 
       undefined : "(" + mapState.objectCount + "/" + userPolicy.objects + ")";
     return (
       <div style={{ overflowWrap: 'normal' }}>
-        <Link to={adventureLink}>{map.record.adventureName}</Link> | <Link to={mapLink}>{map.record.name}</Link> {objectsString}
+        <Link aria-label="Link to this adventure" to={adventureLink}>{map.record.adventureName}</Link> | <Link aria-label="Link to this map" to={mapLink}>{map.record.name}</Link> {objectsString}
       </div>
     );
   }, [profile, map, mapState, userPolicy]);
@@ -94,15 +91,15 @@ function Map({ adventureId, mapId, navbarTitle, setNavbarTitle }: IMapPageProps 
     }
   }, [setResyncCount]);
 
-  // Building the map state machine like this lets us auto-dispose old ones.
-  // Careful, the function may be called more than once for any given pair of
-  // arguments (state, action) (wtf, React?!)
-  const [stateMachine, setStateMachine] = useReducer(
-    (state: MapStateMachine | undefined, action: MapStateMachine | undefined) => {
-      state?.dispose();
-      return action;
-    }, undefined
-  );
+  // While we have no map to show, show a spinner instead
+  const loadingSpinner = useMemo(() => stateMachine !== undefined ? <React.Fragment></React.Fragment> :
+    (<Throbber />),
+    [stateMachine]);
+
+  // Mount the drawing into our DOM tree
+  useEffect(() => {
+    stateMachine?.setMount(drawingRef?.current ?? undefined);
+  }, [drawingRef, stateMachine]);
 
   // Hide scroll bars whilst viewing the map.
   useEffect(() => {
@@ -111,131 +108,12 @@ function Map({ adventureId, mapId, navbarTitle, setNavbarTitle }: IMapPageProps 
     return () => { document.body.style.overflow = previousOverflow; };
   }, []);
 
-  // Watch the map when it changes
-  useEffect(() => {
-    if (dataService === undefined) {
-      return;
-    }
-
-    const mapRef = dataService.getMapRef(adventureId, mapId);
-
-    // How to handle a map load failure.
-    function couldNotLoad(message: string) {
-      statusContext.toasts.next({
-        id: uuidv4(),
-        record: { title: 'Error loading map', message: message }
-      });
-
-      const uid = user?.uid;
-      if (uid && mapRef) {
-        removeMapFromRecent(dataService, uid, mapRef.id)
-          .catch(e => logError("Error removing map from recent", e));
-      }
-
-      history.replace('/');
-    }
-
-    // Check this map exists and can be fetched (the watch doesn't do this for us)
-    dataService.get(mapRef)
-      .then(r => {
-        if (r === undefined) {
-          couldNotLoad('That map does not exist.');
-        }
-      })
-      .catch(e => {
-        logError("Error checking for map " + mapId + ": ", e);
-        couldNotLoad(e.message);
-      });
-
-    analytics?.logEvent("select_content", {
-      "content_type": "map",
-      "item_id": mapId
-    });
-
-    return dataService.watch<IMap>(
-      mapRef, m => setMap(m === undefined ? undefined : {
-        adventureId: adventureId,
-        id: mapId,
-        record: m
-      }),
-      e => logError("Error watching map " + mapId, e)
-    );
-  }, [dataService, user, analytics, logError, history, adventureId, mapId, statusContext]);
-
-  // Track changes to the map.
-  // We don't start watching until we have an initialised state machine (which means the
-  // consolidate is done).
-  // The "openMap" utility's dependencies are deliberately limited to prevent it from being
-  // re-created and causing lots of extra Firebase work.
-  const openMap = useCallback(async (
-    logError: (message: string, e: any, fatal?: boolean | undefined) => void,
-    dataService: IDataService,
-    functionsService: IFunctionsService,
-    uid: string,
-    profile: IProfile,
-    map: IAdventureIdentified<IMap>,
-    mount: HTMLDivElement
-  ) => {
-    // These two calls are both done on a best-effort basis, because failing shouldn't
-    // preclude us from opening the map (although hopefully they will succeed)
-    try {
-      registerMapAsRecent(dataService, uid, map.adventureId, map.id, map.record);
-    } catch (e) {
-      logError("Error registering map " + map.adventureId + "/" + map.id + " as recent", e);
-    }
-
-    try {
-      console.log("consolidating map changes");
-      functionsService.consolidateMapChanges(map.adventureId, map.id, false);
-    } catch (e) {
-      logError("Error consolidating map " + map.adventureId + "/" + map.id + " changes", e);
-    }
-
-    const userPolicy = uid === map.record.owner ? getUserPolicy(profile.level) : undefined;
-    setStateMachine(new MapStateMachine(
-      dataService, map, uid, standardColours, mount, userPolicy, setMapState
-    ));
-  }, [setMapState, setStateMachine]);
-
-  useEffect(() => {
-    const uid = user?.uid;
-    if (
-      dataService === undefined ||
-      functionsService === undefined ||
-      map === undefined ||
-      uid === undefined ||
-      profile === undefined ||
-      drawingRef?.current === null
-    ) {
-      setStateMachine(undefined);
-      return;
-    }
-
-    openMap(logError, dataService, functionsService, uid, profile, map, drawingRef?.current)
-      .catch(e => logError("Error opening map", e));
-  }, [logError, drawingRef, openMap, map, profile, dataService, functionsService, user]);
-
-  useEffect(() => {
-    if (stateMachine === undefined) {
-      return undefined;
-    }
-
-    console.log("Watching changes to map " + stateMachine.map.id);
-    networkStatusTracker.clear();
-    return watchChangesAndConsolidate(
-      dataService, functionsService,
-      stateMachine.map.adventureId, stateMachine.map.id,
-      chs => {
-        networkStatusTracker.onChanges(chs);
-        return trackChanges(stateMachine.map.record, stateMachine.changeTracker, chs.chs, chs.user);
-      },
-      () => stateMachine.changeTracker.clear(),
-      logEvent,
-      e => logError("Error watching map changes", e));
-  }, [logError, logEvent, stateMachine, dataService, functionsService]);
-
   // If we can't see anything, notify the user
   const canSeeAnything = useMemo(() => {
+    if (mapState === undefined) {
+      return false;
+    }
+
     return mapState.seeEverything || fluent(mapState.tokens).any(t => t.selectable);
   }, [mapState]);
 
@@ -257,45 +135,21 @@ function Map({ adventureId, mapId, navbarTitle, setNavbarTitle }: IMapPageProps 
     }
   }, [statusContext, canSeeAnything, stateMachine]);
 
-  // Track the adventure's players
-  useEffect(() => {
-    if (dataService === undefined) {
-      return () => {};
-    }
-
-    console.log("Watching players in adventure " + adventureId);
-    return dataService.watchPlayers(adventureId, setPlayers,
-      e => logError("Error watching players", e));
-  }, [logError, dataService, adventureId]);
-
   // == UI STUFF ==
 
   const getClientPosition = useCallback((clientX: number, clientY: number) => {
-    let bounds = drawingRef.current?.getBoundingClientRect();
-    if (bounds === undefined) {
-      return undefined;
-    }
-
-    let x = clientX - bounds.left;
-    let y = clientY - bounds.top;
-    return new THREE.Vector3(x, bounds.height - y - 1, 0);
-  }, [drawingRef]);
+    // With the change to absolute positioning, we no longer need to subtract
+    // the top left of the drawing box
+    return new THREE.Vector3(clientX, window.innerHeight - clientY - 1, 0);
+  }, []);
 
   // We have a separate state tracking object to manage the interdependencies between
   // different parts of the UI
   const ui = useMemo(
     () => statusContext.toasts === undefined ? undefined :
-      new MapUi(setUiState, getClientPosition, logError, statusContext.toasts),
-    [logError, getClientPosition, setUiState, statusContext.toasts]
+      new MapUi(stateMachine, setUiState, getClientPosition, logError, statusContext.toasts),
+    [logError, getClientPosition, setUiState, stateMachine, statusContext.toasts]
   );
-
-  // This is a bit nasty, but if we didn't update our ui object with any new map state machine
-  // we'd have to make said state machine a parameter of basically everything
-  useEffect(() => {
-    if (ui !== undefined) {
-      ui.stateMachine = stateMachine;
-    }
-  }, [stateMachine, ui]);
 
   const mapContainerClassName = useMemo(
     () => uiState.touch !== undefined || uiState.mouseDown ?
@@ -309,8 +163,8 @@ function Map({ adventureId, mapId, navbarTitle, setNavbarTitle }: IMapPageProps 
   const resetView = useCallback((c?: string | undefined) => stateMachine?.resetView(c), [stateMachine]);
   const zoomIn = useCallback(() => stateMachine?.zoomBy(-0.5, 2), [stateMachine]);
   const zoomOut = useCallback(() => stateMachine?.zoomBy(0.5, 2), [stateMachine]);
-  const zoomInDisabled = useMemo(() => mapState.zoom >= zoomMax, [mapState]);
-  const zoomOutDisabled = useMemo(() => mapState.zoom <= zoomMin, [mapState]);
+  const zoomInDisabled = useMemo(() => mapState.zoom >= zoomMax, [mapState.zoom]);
+  const zoomOutDisabled = useMemo(() => mapState.zoom <= zoomMin, [mapState.zoom]);
 
   // Sync the drawing with the map colour mode
   useEffect(() => {
@@ -343,6 +197,23 @@ function Map({ adventureId, mapId, navbarTitle, setNavbarTitle }: IMapPageProps 
     [ui]
   );
 
+  const handleTokenImageDelete = useCallback(
+    (i: IImage | undefined) => ui?.tokenEditorDeleteImage(i),
+    [ui]
+  );
+
+  const handleImageDeletionSave = useCallback(() => {
+    ui?.imageDeletionClose();
+    const imageToDelete = uiState.imageToDelete;
+    if (imageToDelete === undefined || functionsService === undefined) {
+      return;
+    }
+
+    functionsService.deleteImage(imageToDelete.path)
+      .then(() => console.log(`deleted image ${imageToDelete.path}`))
+      .catch(e => logError(`failed to delete image ${imageToDelete}`, e));
+  }, [functionsService, logError, ui, uiState]);
+
   const handleNoteEditorDelete = useCallback(() => ui?.noteEditorDelete(), [ui]);
   const handleNoteEditorSave = useCallback((id: string, colour: number, text: string, visibleToPlayers: boolean) => {
     ui?.noteEditorSave(id, colour, text, visibleToPlayers);
@@ -374,6 +245,7 @@ function Map({ adventureId, mapId, navbarTitle, setNavbarTitle }: IMapPageProps 
 
   const editNoteFromMenu = useCallback(() => ui?.editNote(), [ui]);
   const editTokenFromMenu = useCallback(() => ui?.editToken(), [ui]);
+  const editCharacterTokenFromMenu = useCallback(() => ui?.editToken(true), [ui]);
 
   const flipTokenFromMenu = useCallback(() => {
     console.log("called flipToken with x " + uiState.contextMenuX + ", y " + uiState.contextMenuY);
@@ -476,82 +348,78 @@ function Map({ adventureId, mapId, navbarTitle, setNavbarTitle }: IMapPageProps 
   }, [setCustomAnnotationFlags, setShowAnnotationFlags]);
 
   return (
-    <div className={mapContainerClassName}>
-      <div className="Map-overlay">
-        <MapControls
-          editMode={uiState.editMode}
-          setEditMode={m => ui?.setEditMode(m)}
-          selectedColour={uiState.selectedColour}
-          setSelectedColour={c => ui?.setSelectedColour(c)}
-          resetView={resetView}
-          zoomIn={zoomIn} zoomOut={zoomOut}
-          zoomInDisabled={zoomInDisabled} zoomOutDisabled={zoomOutDisabled}
-          mapColourVisualisationMode={mapColourMode}
-          setMapColourVisualisationMode={setMapColourMode}
-          canDoAnything={mapState.seeEverything}
-          isOwner={mapState.isOwner}
-          openMapEditor={() => ui?.showMapEditor()}
-          setShowAnnotationFlags={cycleShowAnnotationFlags} />
-        <MapInfo map={map?.record} players={players} tokens={mapState.tokens}
-          canDoAnything={mapState.seeEverything} resetView={resetView}
-          resyncCount={resyncCount} />
-      </div>
-      <div className="Map-content">
-        <div id="drawingDiv" ref={drawingRef}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onTouchCancel={handleTouchEnd}
-          onTouchEnd={handleTouchEnd}
-          onTouchMove={handleTouchMove}
-          onTouchStart={handleTouchStart} />
-      </div>
-      <MapEditorModal show={uiState.showMapEditor} map={map}
-        handleClose={() => ui?.modalClose()} handleSave={handleMapEditorSave} />
-      <TokenEditorModal selectedColour={uiState.selectedColour} show={uiState.showTokenEditor}
-        sizes={tokenSizes} token={uiState.tokenToEdit}
-        players={players} handleClose={handleModalClose}
-        handleDelete={handleTokenEditorDelete} handleSave={handleTokenEditorSave} />
-      <TokenDeletionModal show={uiState.showTokenDeletion} tokens={uiState.tokensToDelete}
-        handleClose={handleModalClose} handleDelete={handleTokenDeletion} />
-      <NoteEditorModal show={uiState.showNoteEditor} note={uiState.noteToEdit} handleClose={handleModalClose}
-        handleDelete={handleNoteEditorDelete} handleSave={handleNoteEditorSave} />
-      <MapAnnotations annotations={mapState.annotations} showFlags={showAnnotationFlags} customFlags={customAnnotationFlags}
-        setCustomFlags={setCustomAnnotationFlags} suppressAnnotations={uiState.isDraggingView} />
-      <MapContextMenu
-        show={uiState.showContextMenu}
-        hide={() => ui?.hideContextMenu()}
-        x={uiState.contextMenuX}
-        y={uiState.contextMenuY}
-        pageRight={uiState.contextMenuPageRight}
-        pageBottom={uiState.contextMenuPageBottom}
-        token={uiState.contextMenuToken}
-        note={uiState.contextMenuNote}
-        editToken={editTokenFromMenu}
-        flipToken={flipTokenFromMenu}
-        editNote={editNoteFromMenu}
-        editMode={uiState.editMode}
-        setEditMode={m => ui?.setEditMode(m)} />
-    </div>
-  );
-}
-
-interface IMapPageProps {
-  adventureId: string;
-  mapId: string;
-}
-
-function MapPage(props: RouteComponentProps<IMapPageProps> & IPageProps) {
-  return (
     <RequireLoggedIn>
-      <Map
-        adventureId={props.match.params.adventureId}
-        mapId={props.match.params.mapId}
-        navbarTitle={props.navbarTitle}
-        setNavbarTitle={props.setNavbarTitle}
-      />
+      <div className={mapContainerClassName}>
+        <div className="Map-overlay">
+          <MapControls
+            editMode={uiState.editMode}
+            setEditMode={m => ui?.setEditMode(m)}
+            selectedColour={uiState.selectedColour}
+            setSelectedColour={c => ui?.setSelectedColour(c)}
+            resetView={resetView}
+            zoomIn={zoomIn} zoomOut={zoomOut}
+            zoomInDisabled={zoomInDisabled} zoomOutDisabled={zoomOutDisabled}
+            mapColourVisualisationMode={mapColourMode}
+            setMapColourVisualisationMode={setMapColourMode}
+            canDoAnything={mapState.seeEverything}
+            isOwner={mapState.isOwner}
+            openMapEditor={() => ui?.showMapEditor()}
+            setShowAnnotationFlags={cycleShowAnnotationFlags} />
+          <MapInfo map={map?.record} players={players} tokens={mapState.tokens}
+            canDoAnything={mapState.seeEverything} resetView={resetView}
+            resyncCount={resyncCount} />
+        </div>
+        <div className="Map-content" id="drawingDiv" ref={drawingRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onTouchCancel={handleTouchEnd}
+            onTouchEnd={handleTouchEnd}
+            onTouchMove={handleTouchMove}
+            onTouchStart={handleTouchStart}
+        />
+        {loadingSpinner}
+        <MapEditorModal show={uiState.showMapEditor} map={map}
+          handleClose={() => ui?.modalClose()} handleSave={handleMapEditorSave} />
+        <TokenEditorModal selectedColour={uiState.selectedColour} show={uiState.showTokenEditor}
+          adventureId={adventure?.id ?? ""}
+          sizes={tokenSizes} token={uiState.tokenToEdit}
+          players={players} handleClose={handleModalClose}
+          handleDelete={handleTokenEditorDelete}
+          handleImageDelete={handleTokenImageDelete}
+          handleSave={handleTokenEditorSave} />
+        <CharacterTokenEditorModal selectedColour={uiState.selectedColour}
+          show={uiState.showCharacterTokenEditor}
+          sizes={tokenSizes} token={uiState.tokenToEdit}
+          players={players} handleClose={handleModalClose}
+          handleDelete={handleTokenEditorDelete}
+          handleSave={handleTokenEditorSave} />
+        <ImageDeletionModal show={uiState.showTokenImageDeletion} image={uiState.imageToDelete}
+          handleClose={() => ui?.imageDeletionClose()} handleDelete={handleImageDeletionSave} />
+        <TokenDeletionModal show={uiState.showTokenDeletion} tokens={uiState.tokensToDelete}
+          handleClose={handleModalClose} handleDelete={handleTokenDeletion} />
+        <NoteEditorModal show={uiState.showNoteEditor} note={uiState.noteToEdit} handleClose={handleModalClose}
+          handleDelete={handleNoteEditorDelete} handleSave={handleNoteEditorSave} />
+        <MapAnnotations annotations={mapState.annotations} showFlags={showAnnotationFlags} customFlags={customAnnotationFlags}
+          setCustomFlags={setCustomAnnotationFlags} suppressAnnotations={uiState.isDraggingView} />
+        <MapContextMenu
+          show={uiState.showContextMenu}
+          hide={() => ui?.hideContextMenu()}
+          x={uiState.contextMenuX}
+          y={uiState.contextMenuY}
+          pageRight={uiState.contextMenuPageRight}
+          pageBottom={uiState.contextMenuPageBottom}
+          token={uiState.contextMenuToken}
+          note={uiState.contextMenuNote}
+          editToken={editTokenFromMenu}
+          editCharacterToken={editCharacterTokenFromMenu}
+          flipToken={flipTokenFromMenu}
+          editNote={editNoteFromMenu}
+          editMode={uiState.editMode}
+          setEditMode={m => ui?.setEditMode(m)} />
+      </div>
     </RequireLoggedIn>
   );
 }
 
-export default MapPage;
+export default Map;

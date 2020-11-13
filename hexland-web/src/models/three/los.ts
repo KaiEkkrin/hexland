@@ -1,4 +1,4 @@
-import { IGridCoord, IGridEdge, edgeString, coordsEqual } from '../../data/coord';
+import { GridCoord, GridEdge, edgeString, coordsEqual } from '../../data/coord';
 import { IFeature } from '../../data/feature';
 import { Drawn } from '../drawn';
 import { IGridGeometry } from '../gridGeometry';
@@ -84,7 +84,7 @@ const featureShader = {
 // This feature object draws the shadows cast by the walls using the above shader.
 // (It doesn't own the material.)
 // Edit the material before rendering this to draw LoS for different tokens
-class LoSFeatureObject extends InstancedFeatureObject<IGridEdge, IFeature<IGridEdge>> {
+class LoSFeatureObject extends InstancedFeatureObject<GridEdge, IFeature<GridEdge>> {
   private readonly _geometry: THREE.InstancedBufferGeometry;
   private readonly _material: THREE.ShaderMaterial;
 
@@ -110,7 +110,7 @@ class LoSFeatureObject extends InstancedFeatureObject<IGridEdge, IFeature<IGridE
   }
 }
 
-class LoSFeatures extends InstancedFeatures<IGridEdge, IFeature<IGridEdge>> {
+class LoSFeatures extends InstancedFeatures<GridEdge, IFeature<GridEdge>> {
   constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, z: number, q: number, material: THREE.ShaderMaterial, maxInstances?: number | undefined) {
     super(geometry, redrawFlag, edgeString, maxInstances => {
       return new LoSFeatureObject(geometry, z, q, material, maxInstances);
@@ -137,7 +137,7 @@ export class LoS extends Drawn {
 
   private readonly _composedTargetReader: RenderTargetReader;
 
-  private _tokenPositions: IGridCoord[] = [];
+  private _tokenPositions: GridCoord[] = [];
 
   private _isDisposed = false;
 
@@ -226,8 +226,11 @@ export class LoS extends Drawn {
   private createRenderTarget(renderWidth: number, renderHeight: number) {
     return new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
       depthBuffer: false,
-      minFilter: THREE.NearestFilter,
-      magFilter: THREE.NearestFilter,
+      // Using linear filtering here, though counter-intuitive, will reduce our vulnerability
+      // to hairline 'cracks' forming in between shadows that ought to line up but don't quite
+      // because of float inaccuracies/quirks of the rasterizer
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter,
       wrapS: THREE.ClampToEdgeWrapping,
       wrapT: THREE.ClampToEdgeWrapping,
     });
@@ -246,6 +249,7 @@ export class LoS extends Drawn {
 
   // Checks the LoS for the given client position and returns true if the position
   // is visible, else false.
+  // TODO #56 This is now really messed up and needs sorting out :)
   checkLoS(cp: THREE.Vector3) {
     const x = Math.floor((cp.x + 1) * 0.5 * this._composeRenderTarget.width);
     const y = Math.floor((cp.y + 1) * 0.5 * this._composeRenderTarget.height);
@@ -311,7 +315,7 @@ export class LoS extends Drawn {
   }
 
   // Assigns the positions of the tokens to draw LoS for.
-  setTokenPositions(positions: IGridCoord[]) {
+  setTokenPositions(positions: GridCoord[]) {
     // If these are the same, we don't need to do anything:
     if (
       positions.length === this._tokenPositions.length &&

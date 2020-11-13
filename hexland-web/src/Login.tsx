@@ -8,8 +8,6 @@ import { ProfileContext } from './components/ProfileContextProvider';
 import { StatusContext } from './components/StatusContextProvider';
 
 import { IPageProps } from './components/interfaces';
-import { DataService } from './services/dataService';
-import { ensureProfile } from './services/extensions';
 import { IUser } from './services/interfaces';
 
 import Button from 'react-bootstrap/Button';
@@ -177,9 +175,9 @@ function EmailPasswordModal({ shown, handleClose, handleSignIn, handleSignUp }: 
 }
 
 function Login({ navbarTitle, setNavbarTitle }: IPageProps) {
-  const { auth, db, googleAuthProvider, timestampProvider } = useContext(FirebaseContext);
-  const profileContext = useContext(ProfileContext);
-  const { analytics, logError } = useContext(AnalyticsContext);
+  const { auth, googleAuthProvider } = useContext(FirebaseContext);
+  const { profile, expectNewUser } = useContext(ProfileContext);
+  const { logError } = useContext(AnalyticsContext);
   const { toasts } = useContext(StatusContext);
   const history = useHistory();
 
@@ -195,12 +193,12 @@ function Login({ navbarTitle, setNavbarTitle }: IPageProps) {
 
   // Reset those message statuses as appropriate
   useEffect(() => {
-    if (profileContext !== undefined) {
+    if (profile !== undefined) {
       setLoginFailedVisible(false);
     }
-  }, [profileContext, setLoginFailedVisible]);
+  }, [profile, setLoginFailedVisible]);
 
-  const handleLoginResult = useCallback(async (user: IUser | null | undefined, newDisplayName?: string | undefined) => {
+  const handleLoginResult = useCallback(async (user: IUser | null | undefined, sendEmailVerification?: boolean | undefined) => {
     if (user === undefined) {
       throw Error("Undefined auth context or user");
     }
@@ -209,16 +207,8 @@ function Login({ navbarTitle, setNavbarTitle }: IPageProps) {
       setLoginFailedVisible(true);
       return false;
     }
-    
-    if (db === undefined || timestampProvider === undefined) {
-      throw Error("No database available");
-    }
 
-    const dataService = new DataService(db, timestampProvider);
-
-    if (newDisplayName !== undefined) {
-      // This implies it's a new user:
-      await ensureProfile(dataService, user, analytics, newDisplayName);
+    if (sendEmailVerification === true) {
       if (!user.emailVerified) {
         await user.sendEmailVerification();
         toasts.next({
@@ -229,7 +219,7 @@ function Login({ navbarTitle, setNavbarTitle }: IPageProps) {
     }
 
     return true;
-  }, [analytics, db, timestampProvider, setLoginFailedVisible, toasts]);
+  }, [setLoginFailedVisible, toasts]);
 
   const finishLogin = useCallback((success: boolean) => {
     if (success) {
@@ -254,11 +244,12 @@ function Login({ navbarTitle, setNavbarTitle }: IPageProps) {
   const handleEmailFormSignUp = useCallback((displayName: string, email: string, password: string) => {
     setShowEmailForm(false);
     setLoginFailedVisible(false);
-    auth?.createUserWithEmailAndPassword(email, password)
-      .then(u => handleLoginResult(u, displayName))
+    expectNewUser?.(email, displayName);
+    auth?.createUserWithEmailAndPassword(email, password, displayName)
+      .then(u => handleLoginResult(u, true))
       .then(finishLogin)
       .catch(handleLoginError);
-  }, [auth, finishLogin, handleLoginError, handleLoginResult, setLoginFailedVisible, setShowEmailForm]);
+  }, [auth, expectNewUser, finishLogin, handleLoginError, handleLoginResult, setLoginFailedVisible, setShowEmailForm]);
 
   const handleEmailFormSignIn = useCallback((email: string, password: string) => {
     setShowEmailForm(false);

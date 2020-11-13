@@ -1,4 +1,4 @@
-import { IGridCoord, IGridEdge, coordAdd, IGridVertex } from '../data/coord';
+import { GridCoord, GridEdge, coordAdd, GridVertex } from '../data/coord';
 import { EdgeOcclusion } from './occlusion';
 import { BaseGeometry, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
@@ -7,6 +7,8 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   private readonly _squareSize: number;
   private readonly _off: number;
 
+  private readonly _scratchMatrix = new THREE.Matrix4();
+
   constructor(squareSize: number, tileDim: number) {
     super(tileDim, 2, 1);
     this._squareSize = squareSize;
@@ -14,6 +16,8 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   get faceSize() { return this._squareSize; }
+  get xStep() { return this._squareSize; }
+  get yStep() { return this._squareSize; }
 
   protected get faceVertexCount() { return 4; }
 
@@ -37,7 +41,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     return target.set(c.x + this._off, c.y + this._off, c.z);
   }
 
-  createAnnotationPosition(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, coord: IGridCoord, z: number, alpha: number): THREE.Vector3 {
+  createAnnotationPosition(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, coord: GridCoord, z: number, alpha: number): THREE.Vector3 {
     this.createCoordCentre(target, coord, z);
     this.createBottomLeft(scratch1, target);
     this.createTopLeft(scratch2, target);
@@ -45,7 +49,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     return target.lerp(scratch1, alpha);
   }
 
-  createTokenAnnotationPosition(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, coord: IGridCoord, z: number, alpha: number): THREE.Vector3 {
+  createTokenAnnotationPosition(target: THREE.Vector3, scratch1: THREE.Vector3, scratch2: THREE.Vector3, coord: GridCoord, z: number, alpha: number): THREE.Vector3 {
     this.createCoordCentre(target, coord, z);
     this.createBottomLeft(scratch1, target);
     return target.lerp(scratch1, alpha);
@@ -65,7 +69,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     }
   }
 
-  protected createEdgeGeometry(coord: IGridEdge, alpha: number, z: number): EdgeGeometry {
+  protected createEdgeGeometry(coord: GridEdge, alpha: number, z: number): EdgeGeometry {
     let centre = this.createCoordCentre(new THREE.Vector3(), coord, z);
     let otherCentre = this.createCoordCentre(
       new THREE.Vector3(),
@@ -79,7 +83,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     return new EdgeGeometry(tip1, tip2, centre, otherCentre, alpha);
   }
 
-  createVertexCentre(target: THREE.Vector3, vertex: IGridVertex, z: number) {
+  createVertexCentre(target: THREE.Vector3, vertex: GridVertex, z: number) {
     // In the square grid, each face owns only one vertex (the top left) and we can
     // actually ignore the vertex number.
     this.createCoordCentre(target, vertex, z);
@@ -100,7 +104,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     yield baseIndex + 2;
   }
 
-  createEdgeOcclusion(coord: IGridCoord, edge: IGridEdge, z: number): EdgeOcclusion {
+  createEdgeOcclusion(coord: GridCoord, edge: GridEdge, z: number): EdgeOcclusion {
     let [edgeA, edgeB] = [new THREE.Vector3(), new THREE.Vector3()];
 
     let centre = this.createCentre(new THREE.Vector3(), edge.x, edge.y, z);
@@ -110,7 +114,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     return new EdgeOcclusion(centre, edgeA, edgeB, this._squareSize * 0.01);
   }
 
-  *createOcclusionTestVertices(coord: IGridCoord, z: number, alpha: number): Iterable<THREE.Vector3> {
+  *createOcclusionTestVertices(coord: GridCoord, z: number, alpha: number): Iterable<THREE.Vector3> {
     let centre = new THREE.Vector3();
     yield this.createCoordCentre(centre, coord, z);
 
@@ -185,7 +189,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     return [ 0, 1, 2, 1, 3, 2 ];
   }
 
-  forEachAdjacentFace(coord: IGridCoord, fn: (face: IGridCoord, edge: IGridEdge) => void) {
+  forEachAdjacentFace(coord: GridCoord, fn: (face: GridCoord, edge: GridEdge) => void) {
     // Left
     fn(
       { x: coord.x - 1, y: coord.y },
@@ -211,7 +215,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     );
   }
 
-  getEdgeFaceAdjacency(edge: IGridEdge): IGridCoord[] {
+  getEdgeFaceAdjacency(edge: GridEdge): GridCoord[] {
     switch (edge.edge) {
       case 0: // left
         return [{ x: edge.x - 1, y: edge.y }, { x: edge.x, y: edge.y }];
@@ -221,7 +225,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     }
   }
 
-  getEdgeVertexAdjacency(edge: IGridEdge): IGridVertex[] {
+  getEdgeVertexAdjacency(edge: GridEdge): GridVertex[] {
     switch (edge.edge) {
       case 0:
         return [{ x: edge.x, y: edge.y + 1, vertex: 0 }, { x: edge.x, y: edge.y, vertex: 0 }];
@@ -231,7 +235,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     }
   }
 
-  getVertexEdgeAdjacency(vertex: IGridVertex): IGridEdge[] {
+  getVertexEdgeAdjacency(vertex: GridVertex): GridEdge[] {
     return [
       { x: vertex.x, y: vertex.y, edge: 0 },
       { x: vertex.x, y: vertex.y, edge: 1 },
@@ -244,29 +248,29 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     return new SquareGridGeometry(this._squareSize, 1);
   }
 
-  transformToEdge(o: THREE.Object3D, coord: IGridEdge): void {
-    let centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
-    o.translateX(centre.x);
-    o.translateY(centre.y);
-    if (coord.edge === 1) {
-      o.rotateZ(Math.PI * 0.5);
-    }
+  transformToEdge(m: THREE.Matrix4, coord: GridEdge): THREE.Matrix4 {
+    const centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
+    m.makeTranslation(centre.x, centre.y, 0);
+    return coord.edge === 1 ? m.multiply(
+      this._scratchMatrix.makeRotationZ(Math.PI * 0.5)
+    ) : m;
   }
 
-  transformToVertex(o: THREE.Object3D, coord: IGridVertex): void {
-    let centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
-    o.translateX(centre.x);
-    o.translateY(centre.y);
+  transformToVertex(m: THREE.Matrix4, coord: GridVertex): THREE.Matrix4 {
+    const centre = this.createCoordCentre(new THREE.Vector3(), coord, 0);
+    return m.makeTranslation(centre.x, centre.y, 0);
   }
 
   createShaderDeclarations() {
     return [
+      ...super.createShaderDeclarations(),
       "uniform float squareSize;"
     ];
   }
 
   createShaderSnippet() {
     return [
+      ...super.createShaderSnippet(),
       "vec2 createCoordCentre(const in vec2 coord) {",
       "  return vec2(coord.x * squareSize, coord.y * squareSize);",
       "}"
@@ -275,11 +279,15 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
 
   createShaderUniforms() {
     return {
+      ...super.createShaderUniforms(),
       squareSize: { type: 'f', value: null }
     };
   }
 
-  populateShaderUniforms(uniforms: any) {
+  populateShaderUniforms(
+    uniforms: any, faceTex?: THREE.WebGLRenderTarget | undefined, tileOrigin?: THREE.Vector2 | undefined
+  ) {
+    super.populateShaderUniforms(uniforms, faceTex, tileOrigin);
     uniforms['squareSize'].value = this._squareSize;
   }
 }

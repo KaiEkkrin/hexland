@@ -1,6 +1,6 @@
 import { IAuth, IAuthProvider, IUser } from "./interfaces";
 
-import * as firebase from 'firebase/app';
+import firebase from 'firebase/app';
 
 import md5 from 'crypto-js/md5';
 
@@ -18,9 +18,14 @@ export class FirebaseAuth implements IAuth {
     this._auth = auth;
   }
 
-  async createUserWithEmailAndPassword(email: string, password: string) {
+  async createUserWithEmailAndPassword(email: string, password: string, displayName: string) {
     const credential = await this._auth.createUserWithEmailAndPassword(email, password);
-    return createUser(credential.user);
+    const user = createUser(credential.user);
+    if (user) {
+      await user.updateProfile({ displayName: displayName });
+    }
+
+    return user;
   }
 
   fetchSignInMethodsForEmail(email: string) {

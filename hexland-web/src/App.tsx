@@ -7,6 +7,7 @@ import { MuiThemeProvider } from '@material-ui/core/styles';
 
 import theme from './theme';
 
+import AdventureContextProvider from './components/AdventureContextProvider';
 import AdventurePage from './Adventure';
 import All from './All';
 import { AnalyticsContextProvider } from './components/AnalyticsContextProvider';
@@ -15,6 +16,7 @@ import FirebaseContextProvider from './components/FirebaseContextProvider';
 import Home from './Home';
 import InvitePage from './Invite';
 import Login from './Login';
+import MapContextProvider from './components/MapContextProvider';
 import MapPage from './Map';
 import Navigation from './components/Navigation';
 import ProfileContextProvider from './components/ProfileContextProvider';
@@ -35,7 +37,7 @@ function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
 //
   return (
     <div className="App">
-      <MuiThemeProvider theme={ theme }>
+      <MuiThemeProvider theme={theme}>
         <FirebaseContextProvider {...props}>
           <UserContextProvider>
             <AnalyticsContextProvider {...props}>
@@ -43,29 +45,33 @@ function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
                 <StatusContextProvider>
                   <Routing {...props}>
                     <Navigation>{title}</Navigation>
-                    <Switch>
-                      <Route exact path="/" render={props => (
-                        <Home {...navbarProps} {...props} />
-                      )}/>
-                      <Route exact path="/all" render={props => (
-                        <All {...navbarProps} {...props} />
-                      )}/>
-                      <Route exact path="/adventure/:adventureId" render={props => (
-                        <AdventurePage {...navbarProps} {...props} />
-                      )}/>
-                      <Route exact path="/adventure/:adventureId/invite/:inviteId" render={props => (
-                        <InvitePage {...navbarProps} {...props} />
-                      )}/>
-                      <Route exact path="/adventure/:adventureId/map/:mapId" render={props => (
-                        <MapPage {...navbarProps} {...props} />
-                      )}/>
-                      <Route exact path="/login" render={props => (
-                        <Login {...navbarProps} {...props} />
-                      )}/>
-                      <Route exact path="/shared" render={props => (
-                        <Shared {...navbarProps} {...props} />
-                      )}/>
-                    </Switch>
+                    <AdventureContextProvider>
+                      <MapContextProvider>
+                        <Switch>
+                          <Route exact path="/" render={props => (
+                            <Home {...navbarProps} {...props} />
+                          )} />
+                          <Route exact path="/all" render={props => (
+                            <All {...navbarProps} {...props} />
+                          )} />
+                          <Route exact path="/adventure/:adventureId" render={props => (
+                            <AdventurePage {...navbarProps} {...props} />
+                          )} />
+                          <Route exact path="/adventure/:adventureId/map/:mapId" render={props => (
+                            <MapPage {...navbarProps} {...props} />
+                          )} />
+                          <Route exact path="/invite/:inviteId" render={props => (
+                            <InvitePage {...navbarProps} {...props} />
+                          )} />
+                          <Route exact path="/login" render={props => (
+                            <Login {...navbarProps} {...props} />
+                          )} />
+                          <Route exact path="/shared" render={props => (
+                            <Shared {...navbarProps} {...props} />
+                          )} />
+                        </Switch>
+                      </MapContextProvider>
+                    </AdventureContextProvider>
                   </Routing>
                   <Consent />
                   <Status />

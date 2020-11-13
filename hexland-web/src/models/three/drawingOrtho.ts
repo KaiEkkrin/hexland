@@ -1,19 +1,23 @@
-import { IGridCoord, IGridVertex } from '../../data/coord';
-import { IIdFeature, IToken } from '../../data/feature';
+import { GridCoord, GridVertex } from '../../data/coord';
+import { ITokenGeometry } from '../../data/tokenGeometry';
 import { ITokenDrawing } from '../../data/tokens';
 import { MapColouring } from '../colouring';
 import { FeatureColour } from '../featureColour';
 import { IGridGeometry } from '../gridGeometry';
 import { IDrawing } from '../interfaces';
 import { RedrawFlag } from '../redrawFlag';
+import { ISpriteManager } from '../../services/interfaces';
 
 import { Areas, createPaletteColouredAreaObject, createAreas, createSelectionColouredAreaObject } from './areas';
-import { Grid, IGridLoSPreRenderParameters } from './grid';
+import { Grid } from './grid';
 import { GridFilter } from './gridFilter';
 import { LoS } from './los';
+import { createLoSFilter, ILoSPreRenderParameters, LoSFilter } from './losFilter';
 import { MapColourVisualisation } from './mapColourVisualisation';
 import { OutlinedRectangle } from './overlayRectangle';
-import { createSelectionDrawing, TokenDrawing } from './tokenDrawingOrtho';
+import { TextureCache } from './textureCache';
+import { SelectionDrawing, TokenDrawing } from './tokenDrawingOrtho';
+import { createLargeTokenUvTransform } from './uv';
 import { Vertices, createVertices, createSelectionColouredVertexObject, createSingleVertexGeometry, createTokenFillVertexGeometry, createPaletteColouredVertexObject } from './vertices';
 import { Walls, createPaletteColouredWallObject, createSelectionColouredWallObject, createWallGeometry, createTokenFillEdgeGeometry } from './walls';
 
@@ -21,9 +25,10 @@ import * as THREE from 'three';
 
 // Our Z values are in the range -1..1 so that they're the same in the shaders
 const areaZ = -0.5;
-const tokenZ = -0.4;
-const wallZ = -0.4;
-const gridZ = -0.3;
+const tokenZ = -0.3;
+const wallZ = -0.45;
+const tokenSpriteZ = -0.25;
+const gridZ = -0.4;
 const losZ = -0.2;
 const losQ = 0.2;
 const selectionZ = 0;
@@ -40,6 +45,7 @@ const wallAlpha = 0.15;
 const edgeAlpha = 0.5;
 const vertexAlpha = 0.5;
 const tokenAlpha = 0.7;
+const tokenSpriteAlpha = 0.6;
 const selectionAlpha = 0.9;
 const areaAlpha = 1.0;
 const vertexHighlightAlpha = 0.35;
@@ -47,12 +53,13 @@ const vertexHighlightAlpha = 0.35;
 // An orthographic implementation of IDrawing using THREE.js.
 export class DrawingOrtho implements IDrawing {
   private readonly _gridGeometry: IGridGeometry;
-  private readonly _mount: HTMLDivElement;
+  private readonly _logError: (message: string, e: any) => void;
 
   private readonly _camera: THREE.OrthographicCamera;
+  private readonly _losCamera: THREE.OrthographicCamera;
   private readonly _fixedCamera: THREE.OrthographicCamera;
   private readonly _overlayCamera: THREE.OrthographicCamera;
-  private readonly _renderer: THREE.WebGLRenderer;
+  private readonly _renderer: THREE.WebGLRenderer; // this is a singleton, we don't own it
   private readonly _canvasClearColour: THREE.Color;
 
   private readonly _mapScene: THREE.Scene;
@@ -60,18 +67,19 @@ export class DrawingOrtho implements IDrawing {
   private readonly _filterScene: THREE.Scene;
   private readonly _overlayScene: THREE.Scene;
 
-  private readonly _grid: Grid;
+  private readonly _grid: Grid; // TODO #160 remove the LoS part of this, replaced with LoSFilter.
   private readonly _gridFilter: GridFilter;
+  private readonly _losFilter: LoSFilter;
   private readonly _areas: Areas;
   private readonly _highlightedAreas: Areas;
   private readonly _highlightedVertices: Vertices;
   private readonly _highlightedWalls: Walls;
   private readonly _los: LoS;
-  private readonly _losParameters: IGridLoSPreRenderParameters;
-  private readonly _selection: ITokenDrawing<IIdFeature<IGridCoord>>;
-  private readonly _selectionDrag: ITokenDrawing<IIdFeature<IGridCoord>>; // a copy of the selection shown only while dragging it
-  private readonly _selectionDragRed: ITokenDrawing<IIdFeature<IGridCoord>>; // likewise, but shown if the selection couldn't be dropped there
-  private readonly _tokens: ITokenDrawing<IToken>;
+  private readonly _losParameters: ILoSPreRenderParameters;
+  private readonly _selection: ITokenDrawing;
+  private readonly _selectionDrag: ITokenDrawing; // a copy of the selection shown only while dragging it
+  private readonly _selectionDragRed: ITokenDrawing; // likewise, but shown if the selection couldn't be dropped there
+  private readonly _tokens: TokenDrawing;
   private readonly _walls: Walls;
   private readonly _mapColourVisualisation: MapColourVisualisation;
 
@@ -85,18 +93,26 @@ export class DrawingOrtho implements IDrawing {
   private readonly _scratchMatrix1 = new THREE.Matrix4();
   private readonly _scratchQuaternion = new THREE.Quaternion();
 
+  private _spriteManager: ISpriteManager;
+  private _textureCache: TextureCache;
+
+  private _mount: HTMLDivElement | undefined = undefined;
   private _showLoS = false;
   private _showMapColourVisualisation = false;
   private _disposed = false;
 
   constructor(
+    renderer: THREE.WebGLRenderer,
     gridGeometry: IGridGeometry,
+    tokenGeometry: ITokenGeometry,
     colours: FeatureColour[],
-    mount: HTMLDivElement,
-    seeEverything: boolean
+    seeEverything: boolean,
+    logError: (message: string, e: any) => void,
+    spriteManager: ISpriteManager
   ) {
+    this._renderer = renderer;
     this._gridGeometry = gridGeometry;
-    this._mount = mount;
+    this._logError = logError;
 
     // We need these to initialise things, but they'll be updated dynamically
     const renderWidth = Math.max(1, Math.floor(window.innerWidth));
@@ -104,6 +120,10 @@ export class DrawingOrtho implements IDrawing {
 
     this._camera = new THREE.OrthographicCamera(0, renderWidth, renderHeight, 0, -1, 1);
     this._camera.position.z = 0;
+
+    const [losWidth, losHeight] = this.createLoSSize(renderWidth, renderHeight);
+    this._losCamera = new THREE.OrthographicCamera(-0.5 * losWidth, 0.5 * losWidth, 0.5 * losHeight, -0.5 * losHeight, -1, 1);
+    this._losCamera.position.z = 0;
 
     this._fixedCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
     this._fixedCamera.position.z = 0;
@@ -122,11 +142,8 @@ export class DrawingOrtho implements IDrawing {
     this._filterScene = new THREE.Scene();
     this._overlayScene = new THREE.Scene();
 
-    this._renderer = new THREE.WebGLRenderer();
     this._canvasClearColour = new THREE.Color(0.1, 0.1, 0.1);
     this._renderer.autoClear = false;
-    mount.appendChild(this._renderer.domElement);
-    this._mount = mount;
 
     // Texture of face co-ordinates within the tile.
     this._grid = new Grid(
@@ -142,6 +159,14 @@ export class DrawingOrtho implements IDrawing {
     this._gridFilter = new GridFilter(this._grid.faceCoordRenderTarget.texture, gridZ);
     this._gridFilter.addToScene(this._fixedFilterScene);
 
+    this._losFilter = createLoSFilter(gridGeometry, losZ);
+
+    // Don't start with LoS if we should see everything.
+    // The state machine will call showLoSPositions() to update this after changes come in.
+    if (!seeEverything) {
+      this._losFilter.addToScene(this._fixedFilterScene);
+    }
+
     this._textMaterial = new THREE.MeshBasicMaterial({ color: 0, side: THREE.DoubleSide });
 
     const darkColourParameters = { palette: colours.map(c => c.dark) };
@@ -152,15 +177,16 @@ export class DrawingOrtho implements IDrawing {
     };
 
     // The LoS
-    const [losWidth, losHeight] = this.createLoSSize(renderWidth, renderHeight, new THREE.Vector3(2, 2, 1));
     this._los = new LoS(
       this._gridGeometry, this._needsRedraw, losZ, losQ, losWidth, losHeight
     );
 
     this._losParameters = {
+      faceCoordTarget: this._grid.faceCoordRenderTarget,
       fullyHidden: 0.0, // increased if `seeEverything`
       fullyVisible: 1.0,
-      losTarget: this._los.target
+      losTarget: this._los.target,
+      tileOrigin: this._grid.tileOrigin
     };
 
     // The filled areas
@@ -203,10 +229,10 @@ export class DrawingOrtho implements IDrawing {
     const createSelectedAreaObject = createSelectionColouredAreaObject(gridGeometry, selectionAlpha, selectionZ);
     const createSelectedWallObject = createSelectionColouredWallObject(tokenFillEdgeGeometry, gridGeometry);
     const createSelectedVertexObject = createSelectionColouredVertexObject(tokenFillVertexGeometry, gridGeometry);
-    this._selection = createSelectionDrawing(
+    this._selection = new SelectionDrawing(
       gridGeometry, this._needsRedraw, createSelectedAreaObject, createSelectedWallObject, createSelectedVertexObject, this._filterScene
     );
-    this._selectionDrag = createSelectionDrawing(
+    this._selectionDrag = new SelectionDrawing(
       gridGeometry, this._needsRedraw, createSelectedAreaObject, createSelectedWallObject, createSelectedVertexObject, this._filterScene
     );
 
@@ -219,13 +245,22 @@ export class DrawingOrtho implements IDrawing {
     const createSelectedRedVertexObject = createPaletteColouredVertexObject(
       tokenFillVertexGeometry, gridGeometry, invalidSelectionColourParameters
     );
-    this._selectionDragRed = createSelectionDrawing(
+    this._selectionDragRed = new SelectionDrawing(
       gridGeometry, this._needsRedraw, createSelectedRedAreaObject, createSelectedRedWallObject, createSelectedRedVertexObject, this._filterScene
     );
 
     // The tokens
+    this._spriteManager = spriteManager;
+    this._textureCache = new TextureCache(spriteManager, logError);
+    const uvTransform = createLargeTokenUvTransform(gridGeometry, tokenGeometry, tokenSpriteAlpha);
     this._tokens = new TokenDrawing(
-      gridGeometry, this._needsRedraw, this._textMaterial, tokenAlpha, tokenZ, textZ, lightColourParameters, this._mapScene
+      gridGeometry, this._textureCache, uvTransform, this._needsRedraw, this._textMaterial, {
+        alpha: tokenAlpha,
+        spriteAlpha: tokenSpriteAlpha,
+        z: tokenZ,
+        spriteZ: tokenSpriteZ,
+        textZ: textZ
+      }, lightColourParameters, this._mapScene
     );
 
     // The walls
@@ -247,14 +282,18 @@ export class DrawingOrtho implements IDrawing {
     this._outlinedRectangle.addToScene(this._overlayScene);
   }
 
-  private createLoSSize(width: number, height: number, scaling: THREE.Vector3) {
-    // We want the size of LoS faces to remain the same at different magnifications;
-    // it can be smaller than the rendered grid (which will improve performance)
-    return [Math.ceil(width * 0.5 / scaling.x), Math.ceil(height * 0.5 / scaling.y)];
+  private createLoSSize(width: number, height: number) {
+    // We want the size of LoS faces to remain the same at different magnifications.
+    // So that it correctly covers the drawn area at all angles, the LoS must be square,
+    // and a bit bigger than the map drawing -- but TODO #56 when I multiply width and
+    // height by 1.1 here I get mystery spots where I can see through walls in square grids (??!)
+    const [w, h] = [Math.ceil(width), Math.ceil(height)];
+    return [Math.max(w, h), Math.max(w, h)];
   }
 
   get areas() { return this._areas; }
   get tokens() { return this._tokens; }
+  get tokenTexts() { return this._tokens; }
   get walls() { return this._walls; }
 
   get highlightedAreas() { return this._highlightedAreas; }
@@ -293,20 +332,21 @@ export class DrawingOrtho implements IDrawing {
 
     if (gridNeedsRedraw || needsRedraw) {
       if (this._showLoS === true) {
-        this._los.render(this._camera, this._fixedCamera, this._renderer);
-        this._grid.preLoSRender(this._losParameters);
+        this._los.render(this._losCamera, this._fixedCamera, this._renderer);
+        this._losFilter.preRender(this._losParameters, this._losCamera);
       }
 
       this._renderer.setRenderTarget(null);
       this._renderer.setClearColor(this._canvasClearColour);
       this._renderer.clear();
       this._renderer.render(this._mapScene, this._camera);
+
       this._renderer.render(this._fixedFilterScene, this._fixedCamera);
       this._renderer.render(this._filterScene, this._camera);
       this._renderer.render(this._overlayScene, this._overlayCamera);
 
       if (this._showLoS === true) {
-        this._grid.postLoSRender();
+        this._losFilter.postRender();
       }
     }
 
@@ -317,11 +357,11 @@ export class DrawingOrtho implements IDrawing {
     return this._showLoS ? (this._los.checkLoS(cp) ?? false) : true;
   }
 
-  getGridCoordAt(cp: THREE.Vector3): IGridCoord | undefined {
+  getGridCoordAt(cp: THREE.Vector3): GridCoord | undefined {
     return this._grid.getGridCoordAt(cp);
   }
 
-  getGridVertexAt(cp: THREE.Vector3): IGridVertex | undefined {
+  getGridVertexAt(cp: THREE.Vector3): GridVertex | undefined {
     return this._grid.getGridVertexAt(this._renderer, cp);
   }
 
@@ -335,6 +375,11 @@ export class DrawingOrtho implements IDrawing {
       rotationMatrix,
       this._camera.projectionMatrixInverse
     );
+  }
+
+  getWorldToLoSViewport(target: THREE.Matrix4): THREE.Matrix4 {
+    // There's no rotation involved here
+    return target.copy(this._losCamera.projectionMatrix);
   }
 
   getWorldToViewport(target: THREE.Matrix4): THREE.Matrix4 {
@@ -370,6 +415,24 @@ export class DrawingOrtho implements IDrawing {
     this._camera.setRotationFromQuaternion(rotation);
     this._camera.updateProjectionMatrix();
 
+    // TODO #56 After the basics are working, start tweaking the LoS camera here
+    // rather than blindly following the map camera
+    // To draw a consistent LoS, we don't rotate or scale the camera, and we clamp the
+    // translation to a whole multiple of the geometry's X and Y steps
+    const [losWidth, losHeight] = this.createLoSSize(width, height);
+    const losTranslation = translation.clone().applyQuaternion(rotation);
+    const [xStep, yStep] = [2 * this._gridGeometry.xStep, 2 * this._gridGeometry.yStep];
+    const gridClampX = (x: number) => xStep * Math.floor(x / xStep);
+    const gridClampY = (y: number) => yStep * Math.floor(y / yStep);
+
+    // TODO #56 How does the grid clamp interact with scaling...?
+    this._losCamera.left = gridClampX(losTranslation.x - losWidth);
+    this._losCamera.right = this._losCamera.left + 2 * losWidth;
+    this._losCamera.top = gridClampY(losTranslation.y - losHeight);
+    this._losCamera.bottom = this._losCamera.top + 2 * losHeight;
+    this._losCamera.updateProjectionMatrix();
+    this._los.resize(losWidth, losHeight);
+
     this._overlayCamera.left = 0;
     this._overlayCamera.right = width;
     this._overlayCamera.top = height;
@@ -378,19 +441,16 @@ export class DrawingOrtho implements IDrawing {
 
     this._gridFilter.resize(width, height);
 
-    const [losWidth, losHeight] = this.createLoSSize(width, height, scaling);
-    this._los.resize(losWidth, losHeight);
-
     this._needsRedraw.setNeedsRedraw();
     this._gridNeedsRedraw.setNeedsRedraw();
   }
 
-  setLoSPositions(positions: IGridCoord[] | undefined, seeEverything: boolean) {
+  setLoSPositions(positions: GridCoord[] | undefined, seeEverything: boolean) {
     const nowShowLoS = positions !== undefined;
     if (nowShowLoS) {
-      this._grid.addLoSToScene(this._filterScene);
+      this._losFilter.addToScene(this._fixedFilterScene);
     } else {
-      this._grid.removeLoSFromScene();
+      this._losFilter.removeFromScene(this._fixedFilterScene);
     }
 
     if (positions !== undefined) {
@@ -402,6 +462,22 @@ export class DrawingOrtho implements IDrawing {
     // Doing this makes fully-hidden areas show up a bit if we can notionally
     // see everything -- for the map owner / FFA mode.
     this._losParameters.fullyHidden = seeEverything ? 0.25 : 0.0;
+  }
+
+  setMount(newMount: HTMLDivElement | undefined) {
+    if (this._mount !== undefined) {
+      try {
+        this._mount.removeChild(this._renderer.domElement);
+      } catch (e) {
+        console.warn("failed to unmount renderer dom element", String(e.message));
+      }
+    }
+
+    if (newMount !== undefined) {
+      newMount.appendChild(this._renderer.domElement);
+    }
+
+    this._mount = newMount;
   }
 
   setShowMapColourVisualisation(show: boolean, mapColouring: MapColouring) {
@@ -423,6 +499,19 @@ export class DrawingOrtho implements IDrawing {
     }
   }
 
+  setSpriteManager(spriteManager: ISpriteManager) {
+    if (spriteManager === this._spriteManager) {
+      // Nothing to do
+      return;
+    }
+
+    const oldTextureCache = this._textureCache;
+    this._spriteManager = spriteManager;
+    this._textureCache = new TextureCache(spriteManager, this._logError);
+    this._tokens.setTextureCache(this._textureCache);
+    oldTextureCache.dispose();
+  }
+
   worldToViewport(target: THREE.Vector3) {
     return target.applyEuler(this._camera.rotation) // for some reason this isn't in the projection matrix!
       .applyMatrix4(this._camera.projectionMatrix);
@@ -433,12 +522,11 @@ export class DrawingOrtho implements IDrawing {
       return;
     }
 
-    this._mount.removeChild(this._renderer.domElement);
-
-    this._renderer.dispose();
+    this.setMount(undefined);
 
     this._grid.dispose();
     this._gridFilter.dispose();
+    this._losFilter.dispose();
     this._areas.dispose();
     this._walls.dispose();
     this._highlightedAreas.dispose();
@@ -454,6 +542,9 @@ export class DrawingOrtho implements IDrawing {
     this._outlinedRectangle.dispose();
 
     this._textMaterial.dispose();
+    this._textureCache.dispose();
+
+    // do *not* dispose the renderer, it'll be re-used for the next drawing context
 
     this._disposed = true;
   }
