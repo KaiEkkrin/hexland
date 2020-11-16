@@ -17,6 +17,7 @@ import { LoS } from './los';
 import { createLoSFilter, ILoSPreRenderParameters, LoSFilter } from './losFilter';
 import { MapColourVisualisation } from './mapColourVisualisation';
 import { OutlinedRectangle } from './overlayRectangle';
+import { TextFilter } from './textFilter';
 import { TextureCache } from './textureCache';
 import { SelectionDrawing, TokenDrawing } from './tokenDrawingOrtho';
 import { createLargeTokenUvTransform } from './uv';
@@ -36,12 +37,8 @@ const losQ = 0.2;
 const selectionZ = 0;
 const highlightZ = 0.1;
 const vertexHighlightZ = 0.2;
-const textZ = 0.5; // for some reason the text doesn't alpha blend correctly; putting it
-                   // on top seems to look fine.  This might be happening because the
-                   // text was added to the scene later; I could try making a separate
-                   // LoS scene rendered after the main one to get the rendering in the
-                   // right order?
-const invalidSelectionZ = 0.6; // must hide the text
+const textZ = -0.24; // in front of the token sprite but below the LoS
+const invalidSelectionZ = 0.6;
 
 const wallAlpha = 0.15;
 const edgeAlpha = 0.5;
@@ -72,6 +69,7 @@ export class DrawingOrtho implements IDrawing {
   private readonly _grid: Grid; // TODO #160 remove the LoS part of this, replaced with LoSFilter.
   private readonly _gridFilter: GridFilter;
   private readonly _losFilter: LoSFilter;
+  private readonly _textFilter: TextFilter;
   private readonly _areas: Areas;
   private readonly _highlightedAreas: Areas;
   private readonly _highlightedVertices: Vertices;
@@ -159,8 +157,15 @@ export class DrawingOrtho implements IDrawing {
       renderHeight
     );
 
+    // So that the alpha blending works correctly, we add things to the fixed filter
+    // in back-to-front order.
+    // Because the LoS can be added or removed after the fact it should always be the
+    // top thing in the fixed filter
     this._gridFilter = new GridFilter(this._grid.faceCoordRenderTarget.texture, gridZ);
     this._gridFilter.addToScene(this._fixedFilterScene);
+
+    this._textFilter = new TextFilter(textZ, new THREE.Vector4(1, 1, 1, 1));
+    this._textFilter.addToScene(this._fixedFilterScene);
 
     this._losFilter = createLoSFilter(gridGeometry, losZ);
 
@@ -263,7 +268,7 @@ export class DrawingOrtho implements IDrawing {
         z: tokenZ,
         spriteZ: tokenSpriteZ,
         textZ: textZ
-      }, lightColourParameters, this._mapScene
+      }, lightColourParameters, this._mapScene, renderWidth, renderHeight
     );
 
     // The walls
@@ -343,6 +348,9 @@ export class DrawingOrtho implements IDrawing {
         this._losFilter.preRender(this._losParameters, this._losCamera);
       }
 
+      this._tokens.texts.render(this._renderer, this._camera);
+      this._textFilter.preRender(this._tokens.texts.target);
+
       this._renderer.setRenderTarget(null);
       this._renderer.setClearColor(this._canvasClearColour);
       this._renderer.clear();
@@ -414,6 +422,7 @@ export class DrawingOrtho implements IDrawing {
 
     this._renderer.setSize(width, height, false);
     this._grid.resize(width, height);
+    this._tokens.texts.resize(width, height);
 
     this._camera.left = translation.x + width / -scaling.x;
     this._camera.right = translation.x + width / scaling.x;
@@ -534,6 +543,7 @@ export class DrawingOrtho implements IDrawing {
     this._grid.dispose();
     this._gridFilter.dispose();
     this._losFilter.dispose();
+    this._textFilter.dispose();
     this._areas.dispose();
     this._walls.dispose();
     this._highlightedAreas.dispose();

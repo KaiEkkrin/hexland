@@ -13,6 +13,12 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "1.0.4",
+    changes: [
+      "Make token text clearer when drawn on top of dark images"
+    ]
+  },
+  {
     version: "1.0.3",
     changes: [
       "Fix newly created maps appearing blacked-out",

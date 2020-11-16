@@ -20,7 +20,7 @@ const v1RequiredExtensions = [
 function getRenderer() {
   // create the singleton renderer lazily
   if (renderer === undefined) {
-    renderer = new THREE.WebGLRenderer();
+    renderer = new THREE.WebGLRenderer({ alpha: true });
 
     // Check for functionality
     if (renderer.domElement.getContext('webgl2')) {

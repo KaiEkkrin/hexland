@@ -14,6 +14,9 @@ interface ITokenTextWithMesh extends ITokenText {
 
 const offsetMultiplicand = new THREE.Vector3(-0.5, 0.5, 0.0);
 
+// The token texts are drawn into their own buffer which is then rendered to the screen
+// via the text filter.  So, they maintain their own scene, and need to be kept apprised
+// of the screen size via resize().
 export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, ITokenText> {
   private readonly _dict = new FeatureDictionary<GridVertex, ITokenTextWithMesh>(vertexString);
 
@@ -22,6 +25,7 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
 
   private readonly _material: THREE.Material;
   private readonly _scene: THREE.Scene;
+  private readonly _target: THREE.WebGLRenderTarget;
   private readonly _z: number;
 
   // excessive allocation of these is expensive
@@ -31,16 +35,26 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
   private readonly _targetPosition = new THREE.Vector3();
   private readonly _transform = new THREE.Matrix4();
 
+  private _isDisposed = false;
+
   constructor(
     gridGeometry: IGridGeometry,
     redrawFlag: RedrawFlag,
     material: THREE.Material,
-    scene: THREE.Scene,
+    width: number,
+    height: number,
     z: number
   ) {
     super(gridGeometry, redrawFlag);
     this._material = material;
-    this._scene = scene;
+    this._scene = new THREE.Scene();
+    this._target = new THREE.WebGLRenderTarget(width, height, {
+      depthBuffer: false,
+      minFilter: THREE.NearestFilter,
+      magFilter: THREE.NearestFilter,
+      wrapS: THREE.ClampToEdgeWrapping,
+      wrapT: THREE.ClampToEdgeWrapping
+    });
     this._z = z;
   }
 
@@ -75,6 +89,22 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
 
     return geometry;
   }
+
+  get target() { return this._target; }
+
+  render(renderer: THREE.WebGLRenderer, camera: THREE.Camera) {
+    renderer.setRenderTarget(this._target);
+    renderer.setClearColor(0xffffff, 0); // clear to transparent
+    renderer.clear();
+    renderer.render(this._scene, camera);
+    renderer.setRenderTarget(null);
+  }
+
+  resize(width: number, height: number) {
+    this._target.setSize(width, height);
+  }
+
+  // DICTIONARY IMPLEMENTATION
 
   [Symbol.iterator](): Iterator<ITokenText> {
     return this.iterate();
@@ -131,6 +161,10 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
   }
 
   dispose() {
-    // Nothing to do here
+    if (this._isDisposed === false) {
+      this._scene.dispose();
+      this._target.dispose();
+      this._isDisposed = true;
+    }
   }
 }
