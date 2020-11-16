@@ -124,7 +124,7 @@ function getSelectionColourBlending(i: string) {
   if (i === '0' || i === '2') {
     return THREE.AdditiveBlending;
   } else if (i === '1' || i === '3') {
-    return THREE.SubtractiveBlending;
+    return THREE.MultiplyBlending;
   } else {
     throw RangeError("Invalid selection colour value: " + i);
   }
