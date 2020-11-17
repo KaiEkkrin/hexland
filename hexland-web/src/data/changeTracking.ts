@@ -1,5 +1,5 @@
 import { IAnnotation } from "./annotation";
-import { Change, ChangeCategory, ChangeType, AreaAdd, AreaRemove, TokenAdd, WallAdd, WallRemove, TokenRemove, TokenMove, NoteAdd, NoteRemove, createAreaAdd, createWallAdd, createNoteAdd, createTokenAdd, ImageAdd, ImageRemove } from "./change";
+import { Change, ChangeCategory, ChangeType, AreaAdd, AreaRemove, TokenAdd, WallAdd, WallRemove, TokenRemove, TokenMove, NoteAdd, NoteRemove, createAreaAdd, createWallAdd, createNoteAdd, createTokenAdd, ImageAdd, ImageRemove, createImageAdd } from "./change";
 import { GridCoord, GridEdge } from "./coord";
 import { IFeature, IToken, IFeatureDictionary, ITokenDictionary } from "./feature";
 import { IMapImage } from "./image";
@@ -180,6 +180,7 @@ export class SimpleChangeTracker implements IChangeTracker {
 
     this._walls.forEach(f => all.push(createWallAdd(f)));
     this._notes.forEach(f => all.push(createNoteAdd(f)));
+    this._images.forEach(f => all.push(createImageAdd(f)));
     return all;
   }
 }
@@ -425,10 +426,10 @@ function trackImageChange(tracker: IChangeTracker, ch: ImageAdd | ImageRemove): 
       return {
         revert: () => undefined,
         continue: function() {
-          const added = tracker.imageAdd(ch);
+          const added = tracker.imageAdd(ch.feature);
           return added ? {
             revert: function() {
-              tracker.imageRemove(ch.id);
+              tracker.imageRemove(ch.feature.id);
             }
           } : undefined;
         }

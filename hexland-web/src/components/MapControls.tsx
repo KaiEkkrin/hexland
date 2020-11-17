@@ -10,7 +10,7 @@ import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import ToggleButton from 'react-bootstrap/ToggleButton';
 import Tooltip from 'react-bootstrap/Tooltip';
 
-import { faDotCircle, faDrawPolygon, faMousePointer, faPlus, faSquare, IconDefinition, faCog, faSuitcase, faMapMarker, faVectorSquare, faSearchPlus, faSearchMinus, faUser } from '@fortawesome/free-solid-svg-icons';
+import { faDotCircle, faDrawPolygon, faMousePointer, faPlus, faSquare, IconDefinition, faCog, faSuitcase, faMapMarker, faVectorSquare, faSearchPlus, faSearchMinus, faUser, faImage } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 export enum EditMode {
@@ -21,6 +21,7 @@ export enum EditMode {
   Area = "area",
   Wall = "wall",
   Room = "room",
+  Image = "image"
 }
 
 export enum MapColourVisualisationMode {
@@ -112,6 +113,11 @@ function MapControls(props: IMapControlsProps) {
           mode={props.editMode} setMode={props.setEditMode}
         >
           Paint the union of <u>r</u>ooms.  Shift-drag to paint the difference of rooms.
+        </ModeButton>,
+        <ModeButton key={EditMode.Image} value={EditMode.Image} icon={faImage}
+          mode={props.editMode} setMode={props.setEditMode}
+        >
+          Add and edit <u>i</u>mages
         </ModeButton>
       ]);
     }

@@ -1,7 +1,7 @@
 import { IAnnotation } from "./annotation";
 import { GridCoord, GridEdge } from "./coord";
 import { IFeature, IToken } from "./feature";
-import { Anchor } from "./image";
+import { IMapImage } from "./image";
 import { Timestamp } from './types';
 
 // This represents a collection of changes all made to the map at once.
@@ -95,10 +95,7 @@ export type NoteRemove = {
 export type ImageAdd = {
   ty: ChangeType.Add;
   cat: ChangeCategory.Image;
-  imagePath: string;
-  id: string; // uniquely identify this image on the map in case there are multiple of the same path
-  start: Anchor;
-  end: Anchor;
+  feature: IMapImage;
 };
 
 export type ImageRemove = {
@@ -189,14 +186,11 @@ export function createNoteRemove(position: GridCoord): NoteRemove {
   };
 }
 
-export function createImageAdd(imagePath: string, imageId: string, start: Anchor, end: Anchor): ImageAdd {
+export function createImageAdd(feature: IMapImage): ImageAdd {
   return {
     ty: ChangeType.Add,
     cat: ChangeCategory.Image,
-    imagePath: imagePath,
-    id: imageId,
-    start: start,
-    end: end
+    feature: feature
   };
 }
 

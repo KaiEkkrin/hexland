@@ -1,6 +1,4 @@
 import { GridCoord, GridVertex } from '../../data/coord';
-import { IdDictionary, IIdDictionary } from '../../data/identified';
-import { IMapImage } from '../../data/image';
 import { ITokenGeometry } from '../../data/tokenGeometry';
 import { ITokenDrawing } from '../../data/tokens';
 import { MapColouring } from '../colouring';
@@ -8,7 +6,7 @@ import { FeatureColour } from '../featureColour';
 import { IGridGeometry } from '../gridGeometry';
 import { IDrawing } from '../interfaces';
 import { RedrawFlag } from '../redrawFlag';
-import { ISpriteManager } from '../../services/interfaces';
+import { ISpriteManager, IStorage } from '../../services/interfaces';
 
 import { Areas, createPaletteColouredAreaObject, createAreas, createSelectionColouredAreaObject } from './areas';
 import { Grid } from './grid';
@@ -25,8 +23,10 @@ import { Vertices, createVertices, createSelectionColouredVertexObject, createSi
 import { Walls, createPaletteColouredWallObject, createSelectionColouredWallObject, createWallGeometry, createTokenFillEdgeGeometry } from './walls';
 
 import * as THREE from 'three';
+import { MapImages } from './mapImages';
 
 // Our Z values are in the range -1..1 so that they're the same in the shaders
+const imageZ = -0.9;
 const areaZ = -0.5;
 const tokenZ = -0.3;
 const wallZ = -0.45;
@@ -53,6 +53,7 @@ const vertexHighlightAlpha = 0.35;
 export class DrawingOrtho implements IDrawing {
   private readonly _gridGeometry: IGridGeometry;
   private readonly _logError: (message: string, e: any) => void;
+  private readonly _storage: IStorage;
 
   private readonly _camera: THREE.OrthographicCamera;
   private readonly _losCamera: THREE.OrthographicCamera;
@@ -61,6 +62,7 @@ export class DrawingOrtho implements IDrawing {
   private readonly _renderer: THREE.WebGLRenderer; // this is a singleton, we don't own it
   private readonly _canvasClearColour: THREE.Color;
 
+  private readonly _imageScene: THREE.Scene;
   private readonly _mapScene: THREE.Scene;
   private readonly _fixedFilterScene: THREE.Scene;
   private readonly _filterScene: THREE.Scene;
@@ -81,7 +83,7 @@ export class DrawingOrtho implements IDrawing {
   private readonly _selectionDragRed: ITokenDrawing; // likewise, but shown if the selection couldn't be dropped there
   private readonly _tokens: TokenDrawing;
   private readonly _walls: Walls;
-  private readonly _images: IIdDictionary<IMapImage>; // TODO #135 replace this with a real one
+  private readonly _images: MapImages;
   private readonly _mapColourVisualisation: MapColourVisualisation;
 
   private readonly _textMaterial: THREE.MeshBasicMaterial;
@@ -109,11 +111,13 @@ export class DrawingOrtho implements IDrawing {
     colours: FeatureColour[],
     seeEverything: boolean,
     logError: (message: string, e: any) => void,
-    spriteManager: ISpriteManager
+    spriteManager: ISpriteManager,
+    storage: IStorage
   ) {
     this._renderer = renderer;
     this._gridGeometry = gridGeometry;
     this._logError = logError;
+    this._storage = storage;
 
     // We need these to initialise things, but they'll be updated dynamically
     const renderWidth = Math.max(1, Math.floor(window.innerWidth));
@@ -138,6 +142,7 @@ export class DrawingOrtho implements IDrawing {
     // These scenes need to be drawn in sequence to get the blending right and allow us
     // to draw the map itself, then overlay fixed features (the grid), then overlay LoS
     // to allow it to hide the grid, and overlay the UI overlay (drag rectangle).
+    this._imageScene = new THREE.Scene();
     this._mapScene = new THREE.Scene();
     this._fixedFilterScene = new THREE.Scene();
     this._filterScene = new THREE.Scene();
@@ -177,7 +182,11 @@ export class DrawingOrtho implements IDrawing {
 
     this._textMaterial = new THREE.MeshBasicMaterial({ color: 0, side: THREE.DoubleSide });
 
-    const darkColourParameters = { palette: colours.map(c => c.dark) };
+    const darkColourParameters = {
+      palette: colours.map(c => c.dark),
+      blending: THREE.AdditiveBlending,
+      transparent: true
+    };
     const lightColourParameters = { palette: colours.map(c => c.light) };
 
     const invalidSelectionColourParameters = {
@@ -259,7 +268,7 @@ export class DrawingOrtho implements IDrawing {
 
     // The tokens
     this._spriteManager = spriteManager;
-    this._textureCache = new TextureCache(spriteManager, logError);
+    this._textureCache = new TextureCache(spriteManager, storage, logError);
     const uvTransform = createLargeTokenUvTransform(gridGeometry, tokenGeometry, tokenSpriteAlpha);
     this._tokens = new TokenDrawing(
       gridGeometry, this._textureCache, uvTransform, this._needsRedraw, this._textMaterial, {
@@ -280,8 +289,10 @@ export class DrawingOrtho implements IDrawing {
     );
     this._walls.addToScene(this._mapScene);
 
-    // The underlay images.  TODO #135
-    this._images = new IdDictionary<IMapImage>();
+    // The underlay images.
+    this._images = new MapImages(
+      this._gridGeometry, this._needsRedraw, this._imageScene, this._textureCache, imageZ
+    );
 
     // The map colour visualisation (added on request instead of the areas)
     this._mapColourVisualisation = new MapColourVisualisation(
@@ -354,8 +365,9 @@ export class DrawingOrtho implements IDrawing {
       this._renderer.setRenderTarget(null);
       this._renderer.setClearColor(this._canvasClearColour);
       this._renderer.clear();
-      this._renderer.render(this._mapScene, this._camera);
 
+      this._renderer.render(this._imageScene, this._camera);
+      this._renderer.render(this._mapScene, this._camera);
       this._renderer.render(this._fixedFilterScene, this._fixedCamera);
       this._renderer.render(this._filterScene, this._camera);
       this._renderer.render(this._overlayScene, this._overlayCamera);
@@ -523,8 +535,9 @@ export class DrawingOrtho implements IDrawing {
 
     const oldTextureCache = this._textureCache;
     this._spriteManager = spriteManager;
-    this._textureCache = new TextureCache(spriteManager, this._logError);
+    this._textureCache = new TextureCache(spriteManager, this._storage, this._logError);
     this._tokens.setTextureCache(this._textureCache);
+    this._images.setTextureCache(this._textureCache);
     oldTextureCache.dispose();
   }
 
@@ -546,6 +559,7 @@ export class DrawingOrtho implements IDrawing {
     this._textFilter.dispose();
     this._areas.dispose();
     this._walls.dispose();
+    this._images.dispose();
     this._highlightedAreas.dispose();
     this._highlightedWalls.dispose();
     this._selection.dispose();

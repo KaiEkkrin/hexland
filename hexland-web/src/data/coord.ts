@@ -75,6 +75,10 @@ export function verticesEqual(a: GridVertex, b: GridVertex | undefined): boolean
   return (b === undefined) ? false : (coordsEqual(a, b) && a.vertex === b.vertex);
 }
 
+export function vertexAdd(a: GridVertex, b: GridCoord): GridVertex {
+  return { ...coordAdd(a, b), vertex: a.vertex };
+}
+
 export function vertexString(vertex: GridVertex) {
   return coordString(vertex) + " v=" + vertex.vertex;
 }

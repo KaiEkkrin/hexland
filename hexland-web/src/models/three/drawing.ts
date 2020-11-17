@@ -3,7 +3,7 @@ import { IGridGeometry } from "../gridGeometry";
 import { IDrawing } from "../interfaces";
 import { FeatureColour } from "../featureColour";
 import { ITokenGeometry } from "../../data/tokenGeometry";
-import { ISpriteManager } from "../../services/interfaces";
+import { ISpriteManager, IStorage } from "../../services/interfaces";
 
 import * as THREE from 'three';
 
@@ -53,9 +53,10 @@ export function createDrawing(
   colours: FeatureColour[],
   seeEverything: boolean,
   logError: (message: string, e: any) => void,
-  spriteManager: ISpriteManager
+  spriteManager: ISpriteManager,
+  storage: IStorage
 ): IDrawing {
   return new DrawingOrtho(
-    getRenderer(), gridGeometry, tokenGeometry, colours, seeEverything, logError, spriteManager
+    getRenderer(), gridGeometry, tokenGeometry, colours, seeEverything, logError, spriteManager, storage
   );
 }

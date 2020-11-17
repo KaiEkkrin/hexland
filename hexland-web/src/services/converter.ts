@@ -4,7 +4,7 @@ import { Change, Changes, ChangeType, ChangeCategory, TokenAdd, TokenMove, Token
 import { ICharacter, maxCharacters } from '../data/character';
 import { GridCoord, defaultGridCoord, GridEdge, defaultGridEdge, coordString, defaultGridVertex } from '../data/coord';
 import { IToken, defaultToken, IFeature, defaultArea, defaultWall, IFeatureDictionary, IIdFeature, FeatureDictionary, parseTokenSize } from '../data/feature';
-import { Anchor, defaultAnchor, IImage, IImages, NoAnchor, PixelAnchor, VertexAnchor } from '../data/image';
+import { Anchor, defaultAnchor, defaultMapImage, IImage, IImages, IMapImage, NoAnchor, PixelAnchor, VertexAnchor } from '../data/image';
 import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
 import { IAdventureSummary, IProfile } from '../data/profile';
@@ -280,13 +280,10 @@ const noteRemoveConverter = new RecursingConverter<NoteRemove>({
 const imageAddConverter = new RecursingConverter<ImageAdd>({
   ty: ChangeType.Add,
   cat: ChangeCategory.Image,
-  imagePath: "",
-  id: "",
-  start: defaultAnchor,
-  end: defaultAnchor
+  feature: defaultMapImage
 }, {
-  "start": (conv, raw) => {
-    conv.start = anchorConverter.convert(raw);
+  "feature": (conv, raw) => {
+    conv.feature = mapImageConverter.convert(raw);
     return conv;
   }
 });
@@ -439,6 +436,26 @@ export const imagesConverter = new RecursingConverter<IImages>({
 }, {
   "images": (conv, raw) => {
     conv.images = Array.isArray(raw) ? raw.map(r => imageConverter.convert(r)) : [];
+    return conv;
+  }
+});
+
+export const mapImageConverter = new RecursingConverter<IMapImage>({
+  id: "",
+  image: { name: "", path: "" },
+  start: defaultAnchor,
+  end: defaultAnchor
+}, {
+  "image": (conv, raw) => {
+    conv.image = imageConverter.convert(raw);
+    return conv;
+  },
+  "start": (conv, raw) => {
+    conv.start = anchorConverter.convert(raw);
+    return conv;
+  },
+  "end": (conv, raw) => {
+    conv.end = anchorConverter.convert(raw);
     return conv;
   }
 });

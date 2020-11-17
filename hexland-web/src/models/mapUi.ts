@@ -1,19 +1,19 @@
 import { IToast } from "../components/interfaces";
 import { EditMode } from "../components/MapControls";
 import { IAnnotation } from "../data/annotation";
-import { Change } from "../data/change";
+import { Change, ChangeCategory, ChangeType } from "../data/change";
 import { ITokenProperties } from "../data/feature";
 import { IAdventureIdentified, IIdentified } from "../data/identified";
+import { IImage, IMapImageProperties } from "../data/image";
 import { IMap } from "../data/map";
 import { isAMovementKeyDown, KeysDown, keysDownReducer } from "./keys";
 import { MapStateMachine } from "./mapStateMachine";
+import { editMap } from "../services/extensions";
 import { IDataService, IFunctionsService } from "../services/interfaces";
 
 import { Subject } from 'rxjs';
 import * as THREE from 'three';
 import { v4 as uuidv4 } from 'uuid';
-import { editMap } from "../services/extensions";
-import { IImage } from "../data/image";
 
 // This class manages a variety of map UI related state changes with side effects
 // that I don't trust React to do properly (React `useReducer` may dispatch actions
@@ -22,7 +22,7 @@ import { IImage } from "../data/image";
 // Having this feels kind of an inevitable symptom of interoperating between functional
 // React and stateful THREE.js :/
 
-export interface IMapUiState {
+export type MapUiState = {
   editMode: EditMode;
   isDraggingView: boolean;
   keysDown: KeysDown;
@@ -45,17 +45,20 @@ export interface IMapUiState {
   showNoteEditor: boolean;
   showTokenDeletion: boolean;
   showTokenImageDeletion: boolean;
+  showMapImageEditor: boolean;
 
   tokenToEdit?: ITokenProperties | undefined;
   tokenToEditPosition?: THREE.Vector3 | undefined;
   noteToEdit?: IAnnotation | undefined;
   noteToEditPosition?: THREE.Vector3 | undefined;
   tokensToDelete: ITokenProperties[];
+  tokenImageToDelete?: IImage | undefined;
 
-  imageToDelete?: IImage | undefined;
-}
+  mapImageToEdit?: IMapImageProperties | undefined;
+  mapImageToEditPosition?: THREE.Vector3 | undefined;
+};
 
-export function createDefaultUiState(): IMapUiState {
+export function createDefaultUiState(): MapUiState {
   return {
     editMode: EditMode.Select,
     isDraggingView: false,
@@ -73,18 +76,19 @@ export function createDefaultUiState(): IMapUiState {
     showNoteEditor: false,
     showTokenDeletion: false,
     showTokenImageDeletion: false,
+    showMapImageEditor: false,
     tokensToDelete: [],
   };
 }
 
-export function isAnEditorOpen(state: IMapUiState): boolean {
+export function isAnEditorOpen(state: MapUiState): boolean {
   return state.showMapEditor || state.showNoteEditor || state.showTokenEditor ||
     state.showTokenDeletion;
 }
 
 export class MapUi {
   private readonly _stateMachine: MapStateMachine | undefined;
-  private readonly _setState: (state: IMapUiState) => void;
+  private readonly _setState: (state: MapUiState) => void;
   private readonly _getClientPosition: (x: number, y: number) => THREE.Vector3 | undefined;
   private readonly _logError: (message: string, e: any, fatal?: boolean | undefined) => void;
   private readonly _toasts: Subject<IIdentified<IToast | undefined>>;
@@ -93,7 +97,7 @@ export class MapUi {
 
   constructor(
     stateMachine: MapStateMachine | undefined,
-    setState: (state: IMapUiState) => void,
+    setState: (state: MapUiState) => void,
     getClientPosition: (x: number, y: number) => THREE.Vector3 | undefined,
     logError: (message: string, e: any, fatal?: boolean | undefined) => void,
     toasts: Subject<IIdentified<IToast | undefined>>
@@ -113,7 +117,7 @@ export class MapUi {
     });
   }
 
-  private changeState(newState: IMapUiState) {
+  private changeState(newState: MapUiState) {
     // When the edit mode changes away from Select, we should clear any selection.
     // #36 When the edit mode changes at all, we should clear the highlights
     if (newState.editMode !== this._state.editMode) {
@@ -145,7 +149,7 @@ export class MapUi {
     }
   }
 
-  private interactionEnd(cp: THREE.Vector3, shiftKey: boolean, startingState: IMapUiState) {
+  private interactionEnd(cp: THREE.Vector3, shiftKey: boolean, startingState: MapUiState) {
     const newState = { ...startingState };
     let changes: Change[] | undefined;
     if (this._state.isDraggingView) {
@@ -185,6 +189,13 @@ export class MapUi {
         case EditMode.Room:
           changes = this._stateMachine?.roomDragEnd(cp, shiftKey, this._state.selectedColour);
           break;
+
+        case EditMode.Image:
+          // TODO #135 distinguish between a click and the end of a drag?
+          newState.showMapImageEditor = true;
+          newState.mapImageToEdit = this._stateMachine?.getImage(cp);
+          newState.mapImageToEditPosition = cp;
+          break;
       }
     }
 
@@ -212,7 +223,7 @@ export class MapUi {
     return cp;
   }
 
-  private interactionStart(cp: THREE.Vector3, shiftKey: boolean, ctrlKey: boolean, startingState: IMapUiState) {
+  private interactionStart(cp: THREE.Vector3, shiftKey: boolean, ctrlKey: boolean, startingState: MapUiState) {
     const newState = { ...startingState, showContextMenu: false };
     switch (this._state.editMode) {
       case EditMode.Select:
@@ -320,7 +331,7 @@ export class MapUi {
       ...this._state,
       showTokenImageDeletion: false,
       showTokenEditor: true, // hopefully the rest of its settings will be preserved :)
-      imageToDelete: undefined
+      tokenImageToDelete: undefined
     });
   }
 
@@ -390,6 +401,10 @@ export class MapUi {
       if (canDoAnything) {
         newState.editMode = EditMode.Area;
       }
+    } else if (e.key === 'i' || e.key === 'I') {
+      if (canDoAnything) {
+        newState.editMode = EditMode.Image;
+      }
     } else if (e.key === 'o' || e.key === 'O') {
       this._stateMachine?.resetView();
     } else if (e.key === 'r' || e.key === 'R') {
@@ -440,6 +455,35 @@ export class MapUi {
     }
   }
 
+  mapImageEditorDelete(id: string) {
+    this.addChanges([{
+      ty: ChangeType.Remove,
+      cat: ChangeCategory.Image,
+      id: id
+    }]);
+    this.modalClose();
+  }
+
+  mapImageEditorDeleteImage(image: IImage | undefined) {
+    if (image === undefined) {
+      return;
+    }
+
+    // TODO #135 implement this
+  }
+
+  mapImageEditorSave(properties: IMapImageProperties) {
+    if (this._state.mapImageToEditPosition !== undefined) {
+      try {
+        this.addChanges(this._stateMachine?.setMapImage(this._state.mapImageToEditPosition, properties));
+      } catch (e) {
+        this.addToast('Failed to save map image', String(e.message));
+      }
+    }
+    
+    this.modalClose();
+  }
+
   modalClose() {
     if (
       this._state.showMapEditor === false &&
@@ -447,6 +491,7 @@ export class MapUi {
       this._state.showTokenEditor === false &&
       this._state.showCharacterTokenEditor === false &&
       this._state.showNoteEditor === false &&
+      this._state.showMapImageEditor === false &&
       this._state.editMode === EditMode.Select
     ) {
       return;
@@ -459,6 +504,7 @@ export class MapUi {
       showTokenEditor: false,
       showCharacterTokenEditor: false,
       showNoteEditor: false,
+      showMapImageEditor: false,
       editMode: EditMode.Select
     });
   }
@@ -577,12 +623,11 @@ export class MapUi {
       ...this._state,
       showTokenEditor: false, // will be put back when the image deletion modal is closed
       showTokenImageDeletion: true,
-      imageToDelete: image
+      tokenImageToDelete: image
     });
   }
 
   tokenEditorSave(properties: ITokenProperties) {
-    console.log(`saving token with properties ${JSON.stringify(properties)} and position ${this._state.tokenToEditPosition?.toArray()}`);
     if (this._state.tokenToEditPosition !== undefined) {
       try {
         this.addChanges(this._stateMachine?.setToken(this._state.tokenToEditPosition, properties));

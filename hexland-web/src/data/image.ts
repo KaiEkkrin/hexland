@@ -41,11 +41,21 @@ export type NoAnchor = {
 export const defaultAnchor: NoAnchor = { anchorType: 'none' };
 
 // This *is* an image positioned on the map.
-export interface IMapImage extends IId {
-  imagePath: string;
+export interface IMapImageProperties extends IId {
+  image: IImage;
+}
+
+export interface IMapImage extends IMapImageProperties {
   start: Anchor;
   end: Anchor;
 }
+
+export const defaultMapImage: IMapImage = {
+  id: "",
+  image: { name: "", path: "" },
+  start: defaultAnchor,
+  end: defaultAnchor
+};
 
 export function createVertexAnchor(x: number, y: number, vertex: number): VertexAnchor {
   return {

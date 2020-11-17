@@ -30,7 +30,9 @@ export class MapColourVisualisation extends InstancedFeatures<GridCoord, IFeatur
       gridGeometry,
       redrawFlag,
       coordString,
-      createPaletteColouredAreaObject(gridGeometry, alpha, areaZ, { palette: [], defaultColour: defaultColour }),
+      createPaletteColouredAreaObject(gridGeometry, alpha, areaZ, {
+        palette: [], defaultColour: defaultColour, blending: THREE.AdditiveBlending, transparent: true
+      }),
       maxInstances
     );
   }

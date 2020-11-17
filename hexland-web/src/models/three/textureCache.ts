@@ -1,5 +1,6 @@
 import { ITokenProperties } from '../../data/feature';
-import { ICacheLease, ISpriteManager, ISpritesheetEntry } from '../../services/interfaces';
+import { IImage } from '../../data/image';
+import { ICacheLease, ISpriteManager, ISpritesheetEntry, IStorage } from '../../services/interfaces';
 import { ICacheItem, ObjectCache } from '../../services/objectCache';
 
 import { from, Observable } from 'rxjs';
@@ -10,13 +11,16 @@ const textureLoader = new THREE.TextureLoader();
 
 export class TextureCache {
   private readonly _spriteManager: ISpriteManager;
+  private readonly _storage: IStorage;
   private readonly _textureCache: ObjectCache<THREE.Texture>;
 
   constructor(
     spriteManager: ISpriteManager,
+    storage: IStorage,
     logError: (message: string, e: any) => void
   ) {
     this._spriteManager = spriteManager;
+    this._storage = storage;
     this._textureCache = new ObjectCache(logError);
     this.resolveTexture = this.resolveTexture.bind(this);
   }
@@ -47,6 +51,12 @@ export class TextureCache {
       e => from(this._textureCache.resolve(e.url, this.resolveTexture)).pipe(
         map(t => ({ ...e, texture: t }))
       )
+    ));
+  }
+
+  resolveImage(image: IImage): Observable<ICacheLease<THREE.Texture>> {
+    return from(this._storage.ref(image.path).getDownloadURL()).pipe(switchMap(
+      u => from(this._textureCache.resolve(u, this.resolveTexture))
     ));
   }
 

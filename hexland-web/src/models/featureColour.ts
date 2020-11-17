@@ -10,7 +10,7 @@ export class FeatureColour {
   constructor(hue: number) {
     // const [rDark, gDark, bDark] = chroma.hsl(hue * 360, 0.6, 0.2).rgb();
     // const [rLight, gLight, bLight] = chroma.hsl(hue * 360, 0.6, 0.5).rgb();
-    const [rDark, gDark, bDark] = chroma.lch(20, 50, hue * 360).rgb();
+    const [rDark, gDark, bDark] = chroma.lch(12, 50, hue * 360).rgb();
     const [rLight, gLight, bLight] = chroma.lch(60, 50, hue * 360).rgb();
 
     this._dark = new THREE.Color(rDark / 255, gDark / 255, bDark / 255);

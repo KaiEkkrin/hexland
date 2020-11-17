@@ -908,12 +908,14 @@ test('Images can be added and removed', () => {
   const tracker = createChangeTracker(map.ty);
 
   const chs1 = [
-    createImageAdd(
-      '/image1.png', 'a', createVertexAnchor(0, 0, 1), createVertexAnchor(1, 1, 1)
-    ),
-    createImageAdd(
-      '/image2.png', 'b', createPixelAnchor(0, 0), createPixelAnchor(100, 100)
-    )
+    createImageAdd({
+      image: { name: 'image1', path: '/image1.png' }, id: 'a',
+      start: createVertexAnchor(0, 0, 1), end: createVertexAnchor(1, 1, 1)
+    }),
+    createImageAdd({
+      image: { name: 'image2', path: '/image2.png' }, id: 'b',
+      start: createPixelAnchor(0, 0), end: createPixelAnchor(100, 100)
+    })
   ];
 
   let ok = trackChanges(map, tracker, chs1, ownerUid);
@@ -930,9 +932,10 @@ test('Images can be added and removed', () => {
 
   // ...but we can move an existing image, and remove one that *is* there
   const chs3 = [
-    createImageAdd(
-      '/image1.png', 'a', createVertexAnchor(1, 1, 1), createVertexAnchor(3, 3, 0)
-    ),
+    createImageAdd({
+      image: { name: 'image1', path: './image1.png' }, id: 'a',
+      start: createVertexAnchor(1, 1, 1), end: createVertexAnchor(3, 3, 0)
+    }),
     createImageRemove('a'),
     createImageRemove('b')
   ];
@@ -1025,12 +1028,14 @@ test('A non-owner cannot add and remove images', () => {
   const tracker = createChangeTracker(map.ty);
 
   const chs1 = [
-    createImageAdd(
-      '/image1.png', 'a', createVertexAnchor(0, 0, 1), createVertexAnchor(1, 1, 1)
-    ),
-    createImageAdd(
-      '/image2.png', 'b', createPixelAnchor(0, 0), createPixelAnchor(100, 100)
-    )
+    createImageAdd({
+      image: { name: 'image1', path: '/image1.png' }, id: 'a',
+      start: createVertexAnchor(0, 0, 1), end: createVertexAnchor(1, 1, 1)
+    }),
+    createImageAdd({
+      image: { name: 'image2', path: '/image2.png' }, id: 'b',
+      start: createPixelAnchor(0, 0), end: createPixelAnchor(100, 100)
+    })
   ];
 
   let ok = trackChanges(map, tracker, chs1, uid1);
@@ -1245,12 +1250,14 @@ test('In FFA mode, a non-owner can add and remove images', () => {
   const tracker = createChangeTracker(map.ty);
 
   const chs1 = [
-    createImageAdd(
-      '/image1.png', 'a', createVertexAnchor(0, 0, 1), createVertexAnchor(1, 1, 1)
-    ),
-    createImageAdd(
-      '/image2.png', 'b', createPixelAnchor(0, 0), createPixelAnchor(100, 100)
-    )
+    createImageAdd({
+      image: { name: 'image1', path: '/image1.png' }, id: 'a',
+      start: createVertexAnchor(0, 0, 1), end: createVertexAnchor(1, 1, 1)
+    }),
+    createImageAdd({
+      image: { name: 'image2', path: '/image2.png' }, id: 'b',
+      start: createPixelAnchor(0, 0), end: createPixelAnchor(100, 100)
+    })
   ];
 
   let ok = trackChanges(map, tracker, chs1, uid1);

@@ -12,6 +12,7 @@ import MapContextMenu from './components/MapContextMenu';
 import MapControls, { MapColourVisualisationMode } from './components/MapControls';
 import MapAnnotations, { ShowAnnotationFlags } from './components/MapAnnotations';
 import MapEditorModal from './components/MapEditorModal';
+import MapImageEditorModal from './components/MapImageEditorModal';
 import MapInfo from './components/MapInfo';
 import Navigation from './components/Navigation';
 import NoteEditorModal from './components/NoteEditorModal';
@@ -24,7 +25,7 @@ import TokenEditorModal from './components/TokenEditorModal';
 import { UserContext } from './components/UserContextProvider';
 
 import { ITokenProperties } from './data/feature';
-import { IImage } from './data/image';
+import { IImage, IMapImageProperties } from './data/image';
 import { createTokenSizes, IMap, MAP_CONTAINER_CLASS } from './data/map';
 import { getUserPolicy } from './data/policy';
 
@@ -199,7 +200,7 @@ function Map() {
 
   const handleImageDeletionSave = useCallback(() => {
     ui?.imageDeletionClose();
-    const imageToDelete = uiState.imageToDelete;
+    const imageToDelete = uiState.tokenImageToDelete;
     if (imageToDelete === undefined || functionsService === undefined) {
       return;
     }
@@ -215,6 +216,16 @@ function Map() {
   }, [ui]);
 
   const handleTokenDeletion = useCallback(() => ui?.tokenDeletion(), [ui]);
+
+  const handleMapImageEditorDelete = useCallback((id: string) => ui?.mapImageEditorDelete(id), [ui]);
+  const handleMapImageEditorDeleteImage = useCallback(
+    (image: IImage | undefined) => ui?.mapImageEditorDeleteImage(image),
+    [ui]
+  );
+  const handleMapImageEditorSave = useCallback(
+    (properties: IMapImageProperties) => ui?.mapImageEditorSave(properties),
+    [ui]
+  );
 
   // We want to disable most of the handlers, below, if a modal editor is open, to prevent
   // accidents whilst editing
@@ -392,12 +403,16 @@ function Map() {
           players={players} handleClose={handleModalClose}
           handleDelete={handleTokenEditorDelete}
           handleSave={handleTokenEditorSave} />
-        <ImageDeletionModal show={uiState.showTokenImageDeletion} image={uiState.imageToDelete}
+        <ImageDeletionModal show={uiState.showTokenImageDeletion} image={uiState.tokenImageToDelete}
           handleClose={() => ui?.imageDeletionClose()} handleDelete={handleImageDeletionSave} />
         <TokenDeletionModal show={uiState.showTokenDeletion} tokens={uiState.tokensToDelete}
           handleClose={handleModalClose} handleDelete={handleTokenDeletion} />
         <NoteEditorModal show={uiState.showNoteEditor} note={uiState.noteToEdit} handleClose={handleModalClose}
           handleDelete={handleNoteEditorDelete} handleSave={handleNoteEditorSave} />
+        <MapImageEditorModal show={uiState.showMapImageEditor} mapImage={uiState.mapImageToEdit}
+          handleClose={handleModalClose} handleDelete={handleMapImageEditorDelete}
+          handleImageDelete={handleMapImageEditorDeleteImage}
+          handleSave={handleMapImageEditorSave} />
         <MapAnnotations annotations={mapState.annotations} showFlags={showAnnotationFlags} customFlags={customAnnotationFlags}
           setCustomFlags={setCustomAnnotationFlags} suppressAnnotations={uiState.isDraggingView} />
         <MapContextMenu

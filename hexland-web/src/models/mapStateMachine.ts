@@ -9,18 +9,19 @@ import { RedrawFlag } from './redrawFlag';
 import { WallHighlighter, WallRectangleHighlighter, RoomHighlighter } from './wallHighlighter';
 
 import { IAnnotation, IPositionedAnnotation } from '../data/annotation';
-import { Change, createTokenRemove, createTokenAdd, createNoteRemove, createNoteAdd, createTokenMove } from '../data/change';
+import { Change, createTokenRemove, createTokenAdd, createNoteRemove, createNoteAdd, createTokenMove, createImageAdd, createImageRemove } from '../data/change';
 import { netObjectCount, trackChanges } from '../data/changeTracking';
-import { GridCoord, coordString, coordsEqual, coordSub, coordAdd } from '../data/coord';
+import { GridCoord, coordString, coordsEqual, coordSub, coordAdd, GridVertex, vertexAdd } from '../data/coord';
 import { FeatureDictionary, flipToken, IToken, ITokenDictionary, ITokenProperties, TokenSize } from '../data/feature';
 import { IAdventureIdentified } from '../data/identified';
+import { IMapImageProperties } from '../data/image';
 import { IMap } from '../data/map';
 import { IUserPolicy } from '../data/policy';
 import { ITokenGeometry } from '../data/tokenGeometry';
 import { Tokens } from '../data/tokens';
 import { TokensWithObservableText } from '../data/tokenTexts';
 
-import { IDataService, ISpriteManager } from '../services/interfaces';
+import { IDataService, ISpriteManager, IStorage } from '../services/interfaces';
 import { createDrawing } from './three/drawing';
 
 import fluent from 'fluent-iterable';
@@ -147,7 +148,8 @@ export class MapStateMachine {
     colours: FeatureColour[],
     userPolicy: IUserPolicy | undefined,
     logError: (message: string, e: any) => void,
-    spriteManager: ISpriteManager
+    spriteManager: ISpriteManager,
+    storage: IStorage
   ) {
     this._dataService = dataService;
     this._map = map;
@@ -167,7 +169,7 @@ export class MapStateMachine {
     this._gridGeometry = gridGeometry;
     this._tokenGeometry = tokenGeometry;
     this._drawing = createDrawing(
-      this._gridGeometry, this._tokenGeometry, colours, this.seeEverything, logError, spriteManager
+      this._gridGeometry, this._tokenGeometry, colours, this.seeEverything, logError, spriteManager, storage
     );
 
     this._mapColouring = new MapColouring(this._gridGeometry);
@@ -377,6 +379,20 @@ export class MapStateMachine {
         };
       }
     }
+  }
+
+  private getClosestVertexPosition(cp: THREE.Vector3): GridVertex | undefined {
+    const vertexPosition = this._drawing.getGridVertexAt(cp);
+    if (vertexPosition !== undefined) {
+      return vertexPosition;
+    }
+
+    const coordPosition = this._drawing.getGridCoordAt(cp);
+    if (coordPosition !== undefined) {
+      return { ...coordPosition, vertex: 0 };
+    }
+
+    return undefined;
   }
 
   private getLoSPositions() {
@@ -758,6 +774,7 @@ export class MapStateMachine {
     this._drawing.walls.clear();
     this._notes.clear();
     this._notesNeedUpdate.setNeedsRedraw();
+    this._drawing.images.clear();
     this._mapColouring.clear();
 
     // Switch ourselves to the new map
@@ -813,6 +830,32 @@ export class MapStateMachine {
     for (const s of this._selection) {
       yield s;
     }
+  }
+
+  getImage(cp: THREE.Vector3): IMapImageProperties | undefined {
+    const position = this._drawing.getGridCoordAt(cp);
+    if (position === undefined) {
+      return undefined;
+    }
+
+    for (const i of this._drawing.images) {
+      if (i.start.anchorType === 'vertex' && i.end.anchorType === 'vertex') {
+        const xStart = Math.min(i.start.position.x, i.end.position.x);
+        const yStart = Math.min(i.start.position.y, i.end.position.y);
+        const xEnd = Math.max(i.start.position.x, i.end.position.x);
+        const yEnd = Math.max(i.start.position.y, i.end.position.y);
+        if (
+          position.x >= xStart && position.y >= yStart &&
+          position.x < xEnd && position.y < yEnd
+        ) {
+          return i;
+        }
+      }
+
+      // TODO #135 deal with non-vertex-positioned images as well
+    }
+
+    return undefined;
   }
 
   // For editing
@@ -1076,6 +1119,33 @@ export class MapStateMachine {
         this.clearSelection();
         this._dragRectangle.start(cp);
       }
+    }
+  }
+
+  setMapImage(cp: THREE.Vector3, properties: IMapImageProperties): Change[] {
+    const mapImage = this._drawing.images.get(properties.id);
+    if (mapImage === undefined) {
+      // This is a new map image.  We'll start it at the given client position.
+      const vertexPosition = this.getClosestVertexPosition(cp);
+      if (vertexPosition === undefined) {
+        return [];
+      }
+
+      return [createImageAdd({
+        ...properties,
+        start: { anchorType: 'vertex', position: vertexPosition },
+        end: { anchorType: 'vertex', position: vertexAdd(vertexPosition, { x: 1, y: 1 }) }
+      })];
+    } else {
+      // We'll remove and re-add this image in the same place
+      return [
+        createImageRemove(properties.id),
+        createImageAdd({
+          ...properties,
+          start: mapImage.start,
+          end: mapImage.end
+        })
+      ];
     }
   }
 
