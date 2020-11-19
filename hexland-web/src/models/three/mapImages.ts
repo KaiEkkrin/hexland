@@ -28,9 +28,7 @@ const zAxis = new THREE.Vector3(0, 0, 1);
 // scene that is rendered before the objects (so that area alpha blending
 // applies correctly, etc.)
 export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
-  private readonly _planeGeometry: THREE.PlaneGeometry;
-  private readonly _z: number;
-
+  private readonly _bufferGeometry: THREE.BufferGeometry;
   private readonly _scene: THREE.Scene; // we don't own this
   private readonly _values = new Map<string, MapImage>();
   private readonly _meshes = new Map<string, MeshRecord>(); // id -> mesh added to scene
@@ -45,8 +43,23 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
     z: number
   ) {
     super(geometry, redrawFlag);
-    this._planeGeometry = new THREE.PlaneGeometry(1, 1, 1, 1);
-    this._z = z;
+
+    // This is a simple square at [0..1]
+    this._bufferGeometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, z),
+      new THREE.Vector3(1, 0, z),
+      new THREE.Vector3(0, 1, z),
+      new THREE.Vector3(1, 1, z)
+    ]);
+    this._bufferGeometry.setIndex([
+      0, 1, 2, 1, 2, 3
+    ]);
+
+    // ...with the UVs inverted in Y, since we draw with 0 at the top
+    this._bufferGeometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([
+      0, 1, 1, 1, 0, 0, 1, 0
+    ]), 2));
+
     this._scene = scene;
     this._textureCache = textureCache;
   }
@@ -63,7 +76,7 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
       side: THREE.DoubleSide,
       transparent: true
     });
-    const mesh = new THREE.Mesh(this._planeGeometry, material);
+    const mesh = new THREE.Mesh(this._bufferGeometry, material);
 
     const start = this.getAnchorPosition(mesh.position, f.start);
     this.getAnchorPosition(mesh.scale, f.end).sub(start).add(zAxis);
@@ -78,14 +91,14 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
   private getAnchorPosition(vec: THREE.Vector3, anchor: Anchor): THREE.Vector3 {
     switch (anchor.anchorType) {
       case 'vertex':
-        return this.geometry.createVertexCentre(vec, anchor.position, this._z);
+        return this.geometry.createVertexCentre(vec, anchor.position, 0);
 
       case 'pixel':
-        vec.set(anchor.x, anchor.y, this._z);
+        vec.set(anchor.x, anchor.y, 0);
         return vec;
 
       default:
-        vec.set(0, 0, this._z);
+        vec.set(0, 0, 0);
         return vec;
     }
   }
@@ -162,5 +175,6 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
 
   dispose() {
     this.clear(); // will also cleanup leases, materials etc.
+    this._bufferGeometry.dispose();
   }
 }

@@ -102,6 +102,7 @@ export class SimpleChangeTracker implements IChangeTracker {
     this._tokens.clear();
     this._walls.clear();
     this._notes.clear();
+    this._images.clear();
     this._objectCount = 0;
   }
 

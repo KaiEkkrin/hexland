@@ -249,6 +249,7 @@ function Map() {
     }
   }, [stateMachine, statusContext.toasts, ui]);
 
+  const editImageFromMenu = useCallback(() => ui?.editImage(), [ui]);
   const editNoteFromMenu = useCallback(() => ui?.editNote(), [ui]);
   const editTokenFromMenu = useCallback(() => ui?.editToken(), [ui]);
   const editCharacterTokenFromMenu = useCallback(() => ui?.editToken(true), [ui]);
@@ -424,10 +425,12 @@ function Map() {
           pageBottom={uiState.contextMenuPageBottom}
           token={uiState.contextMenuToken}
           note={uiState.contextMenuNote}
+          image={uiState.contextMenuImage}
           editToken={editTokenFromMenu}
           editCharacterToken={editCharacterTokenFromMenu}
           flipToken={flipTokenFromMenu}
           editNote={editNoteFromMenu}
+          editImage={editImageFromMenu}
           editMode={uiState.editMode}
           setEditMode={m => ui?.setEditMode(m)} />
       </div>

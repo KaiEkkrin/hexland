@@ -35,6 +35,7 @@ export type MapUiState = {
   contextMenuPageBottom: number;
   contextMenuToken?: ITokenProperties | undefined;
   contextMenuNote?: IAnnotation | undefined;
+  contextMenuImage?: IMapImageProperties | undefined;
 
   mouseDown: boolean;
   touch?: number | undefined;
@@ -277,7 +278,27 @@ export class MapUi {
       contextMenuPageRight: bounds.right,
       contextMenuPageBottom: bounds.bottom,
       contextMenuToken: cp ? this._stateMachine?.getToken(cp) : undefined,
-      contextMenuNote: cp ? this._stateMachine?.getNote(cp) : undefined
+      contextMenuNote: cp ? this._stateMachine?.getNote(cp) : undefined,
+      contextMenuImage: cp ? this._stateMachine?.getImage(cp) : undefined
+    });
+  }
+
+  editImage() {
+    if (this._state.showMapImageEditor) {
+      return;
+    }
+
+    const cp = this._getClientPosition(this._state.contextMenuX, this._state.contextMenuY);
+    if (!cp) {
+      return;
+    }
+
+    const image = this._stateMachine?.getImage(cp);
+    this.changeState({
+      ...this._state,
+      showMapImageEditor: true,
+      mapImageToEdit: image,
+      mapImageToEditPosition: cp
     });
   }
 

@@ -3,12 +3,13 @@ import React, { useMemo, useCallback } from 'react';
 import { EditMode } from './MapControls'; // TODO remove it from there entirely and prune some?
 import { IAnnotation } from '../data/annotation';
 import { ITokenProperties } from '../data/feature';
+import { IMapImageProperties } from '../data/image';
 
 import Card from 'react-bootstrap/Card';
 import ListGroup from 'react-bootstrap/ListGroup';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faMapMarker, faSquare, faDrawPolygon, faVectorSquare, faArrowsAltH, faUser } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faMapMarker, faSquare, faDrawPolygon, faVectorSquare, faArrowsAltH, faUser, faImage } from '@fortawesome/free-solid-svg-icons';
 
 interface IMapContextMenuItemProps {
   visible?: boolean | undefined;
@@ -38,10 +39,12 @@ interface IMapContextMenuProps {
   // What was here in the map (if anything)
   token: ITokenProperties | undefined;
   note: IAnnotation | undefined;
+  image: IMapImageProperties | undefined;
   editToken: () => void;
   editCharacterToken: () => void;
   flipToken: () => void;
   editNote: () => void;
+  editImage: () => void;
 
   editMode: EditMode;
   setEditMode: (m: EditMode) => void;
@@ -49,14 +52,15 @@ interface IMapContextMenuProps {
 
 // We replace the context menu with this when the map is seen.
 function MapContextMenu(
-  { show, hide, x, y, pageRight, pageBottom, token, note,
-    editToken, editCharacterToken, flipToken, editNote, setEditMode }: IMapContextMenuProps
+  { show, hide, x, y, pageRight, pageBottom, token, note, image,
+    editToken, editCharacterToken, flipToken, editNote, editImage, setEditMode }: IMapContextMenuProps
 ) {
   const hidden = useMemo(() => !show, [show]);
   const tokenLabel = useMemo(() => token === undefined ? "Add token" : "Edit token " + token.text, [token]);
   const showAddCharacterToken = useMemo(() => token === undefined, [token]);
   const showFlipTokenLabel = useMemo(() => token !== undefined && token.size.length > 1, [token]);
   const noteLabel = useMemo(() => note === undefined ? "Add note" : "Edit note", [note]);
+  const imageLabel = useMemo(() => image === undefined ? "Add image" : "Edit image", [image]);
 
   const left = useMemo(() => x > pageRight / 2 ? undefined : x, [x, pageRight]);
   const right = useMemo(() => x > pageRight / 2 ? pageRight - x : undefined, [x, pageRight]);
@@ -83,6 +87,11 @@ function MapContextMenu(
     editNote();
     hide();
   }, [editNote, hide]);
+
+  const handleImageClick = useCallback(() => {
+    editImage();
+    hide();
+  }, [editImage, hide]);
 
   const setAreaMode = useCallback(() => {
     setEditMode(EditMode.Area);
@@ -122,6 +131,9 @@ function MapContextMenu(
         </MapContextMenuItem>
         <MapContextMenuItem onClick={handleNoteClick}>
           <FontAwesomeIcon className="mr-1" icon={faMapMarker} color="white" />{noteLabel}
+        </MapContextMenuItem>
+        <MapContextMenuItem onClick={handleImageClick}>
+          <FontAwesomeIcon className="mr-1" icon={faImage} color="white" />{imageLabel}
         </MapContextMenuItem>
         <MapContextMenuItem onClick={setAreaMode}>
           <FontAwesomeIcon className="mr-1" icon={faSquare} color="white" />Paint <u>a</u>rea
