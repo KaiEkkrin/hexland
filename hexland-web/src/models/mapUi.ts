@@ -1,5 +1,5 @@
 import { IToast } from "../components/interfaces";
-import { EditMode } from "../components/MapControls";
+import { EditMode, Layer } from "../components/MapControls";
 import { IAnnotation } from "../data/annotation";
 import { Change, ChangeCategory, ChangeType } from "../data/change";
 import { ITokenProperties } from "../data/feature";
@@ -23,6 +23,7 @@ import { v4 as uuidv4 } from 'uuid';
 // React and stateful THREE.js :/
 
 export type MapUiState = {
+  layer: Layer;
   editMode: EditMode;
   isDraggingView: boolean;
   keysDown: KeysDown;
@@ -61,6 +62,7 @@ export type MapUiState = {
 
 export function createDefaultUiState(): MapUiState {
   return {
+    layer: Layer.Object,
     editMode: EditMode.Select,
     isDraggingView: false,
     keysDown: {},
@@ -420,22 +422,27 @@ export class MapUi {
       }
     } else if (e.key === 'a' || e.key === 'A') {
       if (canDoAnything) {
+        newState.layer = Layer.Object;
         newState.editMode = EditMode.Area;
       }
     } else if (e.key === 'i' || e.key === 'I') {
       if (canDoAnything) {
+        newState.layer = Layer.Image;
         newState.editMode = EditMode.Image;
       }
     } else if (e.key === 'o' || e.key === 'O') {
       this._stateMachine?.resetView();
     } else if (e.key === 'r' || e.key === 'R') {
       if (canDoAnything) {
+        newState.layer = Layer.Object;
         newState.editMode = EditMode.Room;
       }
     } else if (e.key === 's' || e.key === 'S') {
+      // This applies to either layer so we won't change it
       newState.editMode = EditMode.Select;
     } else if (e.key === 'w' || e.key === 'W') {
       if (canDoAnything) {
+        newState.layer = Layer.Object;
         newState.editMode = EditMode.Wall;
       }
     }
@@ -590,6 +597,12 @@ export class MapUi {
   setEditMode(editMode: EditMode) {
     if (editMode !== this._state.editMode) {
       this.changeState({ ...this._state, editMode: editMode });
+    }
+  }
+
+  setLayer(layer: Layer) {
+    if (layer !== this._state.layer) {
+      this.changeState({ ...this._state, layer: layer, editMode: EditMode.Select });
     }
   }
 

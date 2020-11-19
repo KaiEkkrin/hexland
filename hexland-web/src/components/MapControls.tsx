@@ -10,8 +10,13 @@ import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import ToggleButton from 'react-bootstrap/ToggleButton';
 import Tooltip from 'react-bootstrap/Tooltip';
 
-import { faDotCircle, faDrawPolygon, faMousePointer, faPlus, faSquare, IconDefinition, faCog, faSuitcase, faMapMarker, faVectorSquare, faSearchPlus, faSearchMinus, faUser, faImage } from '@fortawesome/free-solid-svg-icons';
+import { faDotCircle, faDrawPolygon, faMousePointer, faPlus, faSquare, IconDefinition, faCog, faSuitcase, faMapMarker, faVectorSquare, faSearchPlus, faSearchMinus, faUser, faImage, faImages, faCubes } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
+export enum Layer {
+  Image = 'image',
+  Object = 'object'
+}
 
 export enum EditMode {
   Select = "select",
@@ -53,6 +58,8 @@ function ModeButton<T>(props: IModeButtonProps<T>) {
 }
 
 interface IMapControlsProps {
+  layer: Layer;
+  setLayer(value: Layer): void;
   editMode: EditMode;
   setEditMode(value: EditMode): void;
   selectedColour: number;
@@ -73,8 +80,27 @@ interface IMapControlsProps {
 }
 
 function MapControls(props: IMapControlsProps) {
+  const layerButtons = useMemo(() => {
+    if (props.canDoAnything) {
+      return [
+        <ModeButton key={Layer.Image} value={Layer.Image} icon={faImages}
+          mode={props.layer} setMode={props.setLayer}
+        >
+          Image layer
+        </ModeButton>,
+        <ModeButton key={Layer.Object} value={Layer.Object} icon={faCubes}
+          mode={props.layer} setMode={props.setLayer}
+        >
+          Object layer
+        </ModeButton>
+      ];
+    } else {
+      return [];
+    }
+  }, [props.canDoAnything, props.layer, props.setLayer]);
+
   const modeButtons = useMemo(() => {
-    let buttons = [
+    const buttons = [
       <ModeButton key={EditMode.Select} value={EditMode.Select} icon={faMousePointer}
         mode={props.editMode} setMode={props.setEditMode}
       >
@@ -83,47 +109,52 @@ function MapControls(props: IMapControlsProps) {
     ];
 
     if (props.canDoAnything) {
-      buttons.push(...[
-        <ModeButton key={EditMode.Token} value={EditMode.Token} icon={faPlus}
-          mode={props.editMode} setMode={props.setEditMode}
-        >
-          Add and edit <u>t</u>okens
-        </ModeButton>,
-        <ModeButton key={EditMode.CharacterToken} value={EditMode.CharacterToken} icon={faUser}
-          mode={props.editMode} setMode={props.setEditMode}
-        >
-          Add and edit <u>c</u>haracter tokens
-        </ModeButton>,
-        <ModeButton key={EditMode.Notes} value={EditMode.Notes} icon={faMapMarker}
-          mode={props.editMode} setMode={props.setEditMode}
-        >
-          Add and edit map <u>n</u>otes
-        </ModeButton>,
-        <ModeButton key={EditMode.Area} value={EditMode.Area} icon={faSquare}
-          mode={props.editMode} setMode={props.setEditMode}
-        >
-          Paint <u>a</u>reas.  Shift-drag to paint rectangular areas.
-        </ModeButton>,
-        <ModeButton key={EditMode.Wall} value={EditMode.Wall} icon={faDrawPolygon}
-          mode={props.editMode} setMode={props.setEditMode}
-        >
-          Paint <u>w</u>alls.  Shift-drag to paint rectangles of walls.
-        </ModeButton>,
-        <ModeButton key={EditMode.Room} value={EditMode.Room} icon={faVectorSquare}
-          mode={props.editMode} setMode={props.setEditMode}
-        >
-          Paint the union of <u>r</u>ooms.  Shift-drag to paint the difference of rooms.
-        </ModeButton>,
-        <ModeButton key={EditMode.Image} value={EditMode.Image} icon={faImage}
-          mode={props.editMode} setMode={props.setEditMode}
-        >
-          Add and edit <u>i</u>mages
+      if (props.layer === Layer.Image) {
+        buttons.push(
+          <ModeButton key={EditMode.Image} value={EditMode.Image} icon={faImage}
+            mode={props.editMode} setMode={props.setEditMode}
+          >
+            Add and edit <u>i</u>mages
         </ModeButton>
-      ]);
+        );
+      } else {
+        buttons.push(...[
+          <ModeButton key={EditMode.Token} value={EditMode.Token} icon={faPlus}
+            mode={props.editMode} setMode={props.setEditMode}
+          >
+            Add and edit <u>t</u>okens
+        </ModeButton>,
+          <ModeButton key={EditMode.CharacterToken} value={EditMode.CharacterToken} icon={faUser}
+            mode={props.editMode} setMode={props.setEditMode}
+          >
+            Add and edit <u>c</u>haracter tokens
+        </ModeButton>,
+          <ModeButton key={EditMode.Notes} value={EditMode.Notes} icon={faMapMarker}
+            mode={props.editMode} setMode={props.setEditMode}
+          >
+            Add and edit map <u>n</u>otes
+        </ModeButton>,
+          <ModeButton key={EditMode.Area} value={EditMode.Area} icon={faSquare}
+            mode={props.editMode} setMode={props.setEditMode}
+          >
+            Paint <u>a</u>reas.  Shift-drag to paint rectangular areas.
+        </ModeButton>,
+          <ModeButton key={EditMode.Wall} value={EditMode.Wall} icon={faDrawPolygon}
+            mode={props.editMode} setMode={props.setEditMode}
+          >
+            Paint <u>w</u>alls.  Shift-drag to paint rectangles of walls.
+        </ModeButton>,
+          <ModeButton key={EditMode.Room} value={EditMode.Room} icon={faVectorSquare}
+            mode={props.editMode} setMode={props.setEditMode}
+          >
+            Paint the union of <u>r</u>ooms.  Shift-drag to paint the difference of rooms.
+        </ModeButton>,
+        ]);
+      }
     }
 
     return buttons;
-  }, [props.canDoAnything, props.editMode, props.setEditMode]);
+  }, [props.canDoAnything, props.editMode, props.layer, props.setEditMode]);
 
   const hideExtraControls = useMemo(() => !props.canDoAnything, [props.canDoAnything]);
   const isNotOwner = useMemo(() => !props.isOwner, [props.isOwner]);
@@ -133,6 +164,7 @@ function MapControls(props: IMapControlsProps) {
 
   return (
     <div className="Map-controls">
+      <ButtonGroup className="Map-control" toggle vertical>{layerButtons}</ButtonGroup>
       <ButtonGroup className="Map-control" toggle vertical>{modeButtons}</ButtonGroup>
       <ButtonGroup className="Map-control" vertical>
         <OverlayTrigger placement="right" overlay={

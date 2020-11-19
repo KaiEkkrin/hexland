@@ -362,6 +362,8 @@ function Map() {
         </div>
         <div className="Map-overlay">
           <MapControls
+            layer={uiState.layer}
+            setLayer={l => ui?.setLayer(l)}
             editMode={uiState.editMode}
             setEditMode={m => ui?.setEditMode(m)}
             selectedColour={uiState.selectedColour}
