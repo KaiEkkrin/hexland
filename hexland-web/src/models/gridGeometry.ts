@@ -1,4 +1,5 @@
 import { GridCoord, GridEdge, createGridCoord, createGridEdge, createGridVertex, GridVertex } from '../data/coord';
+import { Anchor } from '../data/image';
 import { EdgeOcclusion } from './occlusion';
 import * as THREE from 'three';
 
@@ -18,6 +19,9 @@ export interface IGridGeometry {
   // Some more parameters:
   maxEdge: number;
   epsilon: number;
+
+  // Creates an anchor position in this geometry.
+  createAnchorPosition(target: THREE.Vector3, anchor: Anchor): THREE.Vector3;
 
   // Creates the co-ordinates of the centre of this face.
   createCoordCentre(target: THREE.Vector3, coord: GridCoord, z: number): THREE.Vector3;
@@ -194,6 +198,21 @@ export abstract class BaseGeometry {
   protected abstract get faceVertexCount(): number;
 
   protected abstract createCentre(target: THREE.Vector3, x: number, y: number, z: number): THREE.Vector3;
+
+  createAnchorPosition(target: THREE.Vector3, anchor: Anchor): THREE.Vector3 {
+    switch (anchor.anchorType) {
+      case 'vertex':
+        return this.createVertexCentre(target, anchor.position, 0);
+
+      case 'pixel':
+        target.set(anchor.x, anchor.y, 0);
+        return target;
+
+      default:
+        target.set(0, 0, 0);
+        return target;
+    }
+  }
 
   createCoordCentre(target: THREE.Vector3, coord: GridCoord, z: number): THREE.Vector3 {
     return this.createCentre(target, coord.x, coord.y, z);

@@ -14,6 +14,7 @@ import { GridFilter } from './gridFilter';
 import { LoS } from './los';
 import { createLoSFilter, ILoSPreRenderParameters, LoSFilter } from './losFilter';
 import { MapColourVisualisation } from './mapColourVisualisation';
+import { MapImages, MapImageSelection } from './mapImages';
 import { OutlinedRectangle } from './overlayRectangle';
 import { TextFilter } from './textFilter';
 import { TextureCache } from './textureCache';
@@ -23,7 +24,6 @@ import { Vertices, createVertices, createSelectionColouredVertexObject, createSi
 import { Walls, createPaletteColouredWallObject, createSelectionColouredWallObject, createWallGeometry, createTokenFillEdgeGeometry } from './walls';
 
 import * as THREE from 'three';
-import { MapImages } from './mapImages';
 
 // Our Z values are in the range -1..1 so that they're the same in the shaders
 const imageZ = -0.9;
@@ -84,6 +84,8 @@ export class DrawingOrtho implements IDrawing {
   private readonly _tokens: TokenDrawing;
   private readonly _walls: Walls;
   private readonly _images: MapImages;
+  private readonly _imageSelection: MapImageSelection;
+  private readonly _imageSelectionDrag: MapImageSelection;
   private readonly _mapColourVisualisation: MapColourVisualisation;
 
   private readonly _textMaterial: THREE.MeshBasicMaterial;
@@ -294,6 +296,14 @@ export class DrawingOrtho implements IDrawing {
       this._gridGeometry, this._needsRedraw, this._imageScene, this._textureCache, imageZ
     );
 
+    this._imageSelection = new MapImageSelection(
+      this._gridGeometry, this._needsRedraw, this._filterScene, selectionZ
+    );
+
+    this._imageSelectionDrag = new MapImageSelection(
+      this._gridGeometry, this._needsRedraw, this._filterScene, selectionZ
+    );
+
     // The map colour visualisation (added on request instead of the areas)
     this._mapColourVisualisation = new MapColourVisualisation(
       this._gridGeometry, this._needsRedraw, areaAlpha, areaZ
@@ -326,6 +336,8 @@ export class DrawingOrtho implements IDrawing {
   get selection() { return this._selection; }
   get selectionDrag() { return this._selectionDrag; }
   get selectionDragRed() { return this._selectionDragRed; }
+  get imageSelection() { return this._imageSelection; }
+  get imageSelectionDrag() { return this._imageSelectionDrag; }
 
   get los() { return this._los; }
 
@@ -560,6 +572,8 @@ export class DrawingOrtho implements IDrawing {
     this._areas.dispose();
     this._walls.dispose();
     this._images.dispose();
+    this._imageSelection.dispose();
+    this._imageSelectionDrag.dispose();
     this._highlightedAreas.dispose();
     this._highlightedWalls.dispose();
     this._selection.dispose();

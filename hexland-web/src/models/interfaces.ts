@@ -25,6 +25,8 @@ export interface IDrawing {
   selection: ITokenDrawing;
   selectionDrag: ITokenDrawing;
   selectionDragRed: ITokenDrawing;
+  imageSelection: IIdDictionary<IMapImage>;
+  imageSelectionDrag: IIdDictionary<IMapImage>;
 
   // A drawing always exposes a single outlined rectangle that can be used
   // for drag-boxes etc.  This object will be drawn separately and will not
@@ -125,4 +127,10 @@ export interface IOutlinedRectangle {
   // Alters the drawn object, e.g. changing its transform.
   // The function should return true if a redraw is required, else false.
   alter(fn: (o: THREE.Object3D) => boolean): boolean;
+}
+
+// Distinguishes the different layers for editing a map.
+export enum Layer {
+  Image = 'image',
+  Object = 'object'
 }

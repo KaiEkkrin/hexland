@@ -1,11 +1,12 @@
 import { IToast } from "../components/interfaces";
-import { EditMode, Layer } from "../components/MapControls";
+import { EditMode } from "../components/MapControls";
 import { IAnnotation } from "../data/annotation";
 import { Change, ChangeCategory, ChangeType } from "../data/change";
 import { ITokenProperties } from "../data/feature";
 import { IAdventureIdentified, IIdentified } from "../data/identified";
 import { IImage, IMapImageProperties } from "../data/image";
 import { IMap } from "../data/map";
+import { Layer } from './interfaces';
 import { isAMovementKeyDown, KeysDown, keysDownReducer } from "./keys";
 import { MapStateMachine } from "./mapStateMachine";
 import { editMap } from "../services/extensions";
@@ -161,7 +162,8 @@ export class MapUi {
     } else {
       switch (this._state.editMode) {
         case EditMode.Select:
-          changes = this._stateMachine?.selectionDragEnd(cp);
+          console.log(`calling selectionDragEnd`);
+          changes = this._stateMachine?.selectionDragEnd(cp, this._state.layer);
           break;
 
         case EditMode.Token:
@@ -194,7 +196,6 @@ export class MapUi {
           break;
 
         case EditMode.Image:
-          // TODO #135 distinguish between a click and the end of a drag?
           newState.showMapImageEditor = true;
           newState.mapImageToEdit = this._stateMachine?.getImage(cp);
           newState.mapImageToEditPosition = cp;
@@ -231,8 +232,8 @@ export class MapUi {
     switch (this._state.editMode) {
       case EditMode.Select:
         if (shiftKey) {
-          this._stateMachine?.selectionDragStart(cp);
-        } else if (this._stateMachine?.selectToken(cp) !== true) {
+          this._stateMachine?.selectionDragStart(cp, this._state.layer);
+        } else if (this._stateMachine?.selectTokenOrImage(cp, this._state.layer) !== true) {
           // There's no token here -- pan or rotate the view instead.
           newState.isDraggingView = true;
           this._stateMachine?.clearSelection();

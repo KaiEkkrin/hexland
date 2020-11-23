@@ -25,6 +25,8 @@ import { Subject } from 'rxjs';
 import { filter, first } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
 import md5 from 'crypto-js/md5';
+import { IdDictionary } from '../data/identified';
+import { IMapImage } from '../data/image';
 
 const adminCredentials = require('../../firebase-admin-credentials.json');
 
@@ -742,6 +744,7 @@ describe('test functions', () => {
       tokens,
       new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString),
       new FeatureDictionary<GridCoord, IAnnotation>(coordString),
+      new IdDictionary<IMapImage>(),
       undefined
     );
 

@@ -2,6 +2,7 @@ import React, { useCallback, useMemo } from 'react';
 
 import ColourSelection from './ColourSelection';
 import { ShowAnnotationFlags } from './MapAnnotations';
+import { Layer } from '../models/interfaces';
 
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
@@ -12,11 +13,6 @@ import Tooltip from 'react-bootstrap/Tooltip';
 
 import { faDotCircle, faDrawPolygon, faMousePointer, faPlus, faSquare, IconDefinition, faCog, faSuitcase, faMapMarker, faVectorSquare, faSearchPlus, faSearchMinus, faUser, faImage, faImages, faCubes } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-
-export enum Layer {
-  Image = 'image',
-  Object = 'object'
-}
 
 export enum EditMode {
   Select = "select",

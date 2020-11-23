@@ -1,5 +1,5 @@
 import { IdDictionary, IIdDictionary } from "../../data/identified";
-import { Anchor, IMapImage } from "../../data/image";
+import { IMapImage } from "../../data/image";
 import { ICacheLease } from "../../services/interfaces";
 import { Drawn } from "../drawn";
 import { IGridGeometry } from "../gridGeometry";
@@ -23,6 +23,26 @@ type MeshRecord = {
 
 const zAxis = new THREE.Vector3(0, 0, 1);
 
+function createSquareBufferGeometry(z: number): THREE.BufferGeometry {
+  const g = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, 0, z),
+    new THREE.Vector3(1, 0, z),
+    new THREE.Vector3(0, 1, z),
+    new THREE.Vector3(1, 1, z)
+  ]);
+  g.setIndex([
+    0, 1, 2, 1, 2, 3
+  ]);
+  return g;
+}
+
+function positionMesh(gridGeometry: IGridGeometry, mesh: THREE.Mesh, image: IMapImage) {
+  const start = gridGeometry.createAnchorPosition(mesh.position, image.start);
+  gridGeometry.createAnchorPosition(mesh.scale, image.end).sub(start).add(zAxis);
+  mesh.updateMatrix();
+  mesh.updateMatrixWorld();
+}
+
 // The map images can draw into the main canvas, but because the objects are
 // dynamic (there's one draw call per image), they need to be in a separate
 // scene that is rendered before the objects (so that area alpha blending
@@ -45,15 +65,7 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
     super(geometry, redrawFlag);
 
     // This is a simple square at [0..1]
-    this._bufferGeometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0, 0, z),
-      new THREE.Vector3(1, 0, z),
-      new THREE.Vector3(0, 1, z),
-      new THREE.Vector3(1, 1, z)
-    ]);
-    this._bufferGeometry.setIndex([
-      0, 1, 2, 1, 2, 3
-    ]);
+    this._bufferGeometry = createSquareBufferGeometry(z);
 
     // ...with the UVs inverted in Y, since we draw with 0 at the top
     this._bufferGeometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([
@@ -77,30 +89,11 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
       transparent: true
     });
     const mesh = new THREE.Mesh(this._bufferGeometry, material);
-
-    const start = this.getAnchorPosition(mesh.position, f.start);
-    this.getAnchorPosition(mesh.scale, f.end).sub(start).add(zAxis);
-    mesh.updateMatrix();
-    mesh.updateMatrixWorld();
+    positionMesh(this.geometry, mesh, f);
 
     this._scene.add(mesh);
     this._meshes.set(f.id, { lease: lease, material: material, mesh: mesh });
     this.setNeedsRedraw();
-  }
-
-  private getAnchorPosition(vec: THREE.Vector3, anchor: Anchor): THREE.Vector3 {
-    switch (anchor.anchorType) {
-      case 'vertex':
-        return this.geometry.createVertexCentre(vec, anchor.position, 0);
-
-      case 'pixel':
-        vec.set(anchor.x, anchor.y, 0);
-        return vec;
-
-      default:
-        vec.set(0, 0, 0);
-        return vec;
-    }
   }
 
   [Symbol.iterator](): Iterator<IMapImage> {
@@ -176,5 +169,93 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
   dispose() {
     this.clear(); // will also cleanup leases, materials etc.
     this._bufferGeometry.dispose();
+  }
+}
+
+type SelectedMapImage = IMapImage & {
+  mesh: THREE.Mesh;
+};
+
+// This really simple wrapper contains the map image selection.
+// We don't bother with instancing for now; it's unlikely many map images will
+// be selected at once (I hope.)
+export class MapImageSelection extends Drawn implements IIdDictionary<IMapImage> {
+  private readonly _bufferGeometry: THREE.BufferGeometry;
+  private readonly _material: THREE.Material; // this is common
+  private readonly _scene: THREE.Scene; // we don't own this
+  private readonly _values = new Map<string, SelectedMapImage>();
+
+  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, scene: THREE.Scene, z: number) {
+    super(geometry, redrawFlag);
+    this._bufferGeometry = createSquareBufferGeometry(z);
+
+    this._material = new THREE.MeshBasicMaterial({
+      blending: THREE.AdditiveBlending,
+      color: 0x606060,
+      side: THREE.DoubleSide,
+      transparent: true
+    });
+    this._scene = scene;
+  }
+
+  [Symbol.iterator](): Iterator<IMapImage> {
+    return this.iterate();
+  }
+
+  add(f: IMapImage) {
+    if (this._values.has(f.id)) {
+      return false;
+    }
+
+    // Create and add a mesh representing this image selected
+    const mesh = new THREE.Mesh(this._bufferGeometry, this._material);
+    positionMesh(this.geometry, mesh, f);
+    this._scene.add(mesh);
+    this._values.set(f.id, { ...f, mesh: mesh });
+    this.setNeedsRedraw();
+    return true;
+  }
+
+  clear() {
+    // Removing everything individually lets us also remove objects from the scene
+    const toRemove = [...this.iterate()];
+    toRemove.forEach(f => this.remove(f.id));
+  }
+
+  clone(): IIdDictionary<IMapImage> {
+    return new IdDictionary<IMapImage>(this._values);
+  }
+
+  forEach(fn: (f: IMapImage) => void) {
+    this._values.forEach(fn);
+  }
+
+  get(k: string): IMapImage | undefined {
+    return this._values.get(k);
+  }
+
+  *iterate() {
+    for (const v of this._values) {
+      yield v[1];
+    }
+  }
+
+  remove(k: string): IMapImage | undefined {
+    const value = this._values.get(k);
+    if (value !== undefined) {
+      console.log(`removing selection ${k}`);
+      this._scene.remove(value.mesh);
+      this.setNeedsRedraw();
+      this._values.delete(k);
+      return value;
+    }
+
+    return undefined;
+  }
+
+  dispose() {
+    this.clear(); // will also cleanup leases, materials etc.
+    this._bufferGeometry.dispose();
+    this._material.dispose();
   }
 }

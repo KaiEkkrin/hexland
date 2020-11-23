@@ -3,7 +3,7 @@ import { FaceHighlighter } from './dragHighlighter';
 import { DragRectangle } from './dragRectangle';
 import { FeatureColour } from './featureColour';
 import { IGridGeometry } from './gridGeometry';
-import { IDrawing, IDragRectangle } from './interfaces';
+import { IDrawing, IDragRectangle, Layer } from './interfaces';
 import { MapChangeTracker } from './mapChangeTracker';
 import { RedrawFlag } from './redrawFlag';
 import { WallHighlighter, WallRectangleHighlighter, RoomHighlighter } from './wallHighlighter';
@@ -14,7 +14,7 @@ import { netObjectCount, trackChanges } from '../data/changeTracking';
 import { GridCoord, coordString, coordsEqual, coordSub, coordAdd, GridVertex, vertexAdd } from '../data/coord';
 import { FeatureDictionary, flipToken, IToken, ITokenDictionary, ITokenProperties, TokenSize } from '../data/feature';
 import { IAdventureIdentified } from '../data/identified';
-import { IMapImageProperties } from '../data/image';
+import { Anchor, anchorsEqual, IMapImage, IMapImageProperties } from '../data/image';
 import { IMap } from '../data/map';
 import { IUserPolicy } from '../data/policy';
 import { ITokenGeometry } from '../data/tokenGeometry';
@@ -136,6 +136,9 @@ export class MapStateMachine {
   private _tokenMoveDragStart: GridCoord | undefined;
   private _tokenMoveJog: GridCoord | undefined;
   private _tokenMoveDragSelectionPosition: GridCoord | undefined;
+
+  private _imageMoveDragStart = new THREE.Vector3(); // a client position
+  private _inImageMoveDrag = false;
 
   private _isDisposed = false;
 
@@ -424,6 +427,86 @@ export class MapStateMachine {
     return coordAdd(this._tokenMoveJog, coordSub(position, this._tokenMoveDragStart));
   }
 
+  private imageMoveDragEnd(cp: THREE.Vector3, chs: Change[]) {
+    // Figure out what has moved
+    const movedImages: IMapImage[] = [];
+    for (const i of this._drawing.imageSelection) {
+      const moved = this._drawing.imageSelectionDrag.get(i.id);
+      if (moved !== undefined && !(anchorsEqual(moved.start, i.start) && anchorsEqual(moved.end, i.end))) {
+        movedImages.push({ // re-create the record to avoid including meshes and things
+          id: moved.id,
+          image: moved.image,
+          start: moved.start,
+          end: moved.end
+        });
+      }
+    }
+
+    // Move the selection to those positions, and push the relevant changes
+    for (const i of movedImages) {
+      this._drawing.imageSelection.remove(i.id);
+      this._drawing.imageSelection.add(i);
+      chs.push(createImageRemove(i.id), createImageAdd(i));
+    }
+
+    this._drawing.imageSelectionDrag.clear();
+    this._inImageMoveDrag = false;
+  }
+
+  private imageMoveDragStart(cp: THREE.Vector3) {
+    this._imageMoveDragStart.copy(cp);
+    this._inImageMoveDrag = true;
+    this._drawing.imageSelectionDrag.clear();
+    this._drawing.imageSelection.forEach(i => this._drawing.imageSelectionDrag.add(i));
+  }
+
+  private imageMoveDragTo(cp: THREE.Vector3) {
+    if (!this._inImageMoveDrag) {
+      return;
+    }
+
+    // TODO #135 Fully support pixel move (may require a flag parameter to this method...)
+    // To avoid craziness, we only let you switch vertex indices if all the selected images
+    // are at the same index
+    const startPosition = this.getClosestVertexPosition(this._imageMoveDragStart);
+    const targetPosition = this.getClosestVertexPosition(cp);
+    if (!startPosition || !targetPosition || coordsEqual(startPosition, targetPosition)) {
+      return;
+    }
+
+    const baseVertex = startPosition.vertex;
+    const allowVertexSwitching = fluent(this._drawing.imageSelection).reduce(
+      (ok, i) => ok && i.start.anchorType === 'vertex' && i.start.position.vertex === baseVertex, true
+    );
+    const delta = coordSub(targetPosition, startPosition);
+
+    function moveAnchor(anchor: Anchor): Anchor | undefined {
+      if (anchor.anchorType === 'vertex') {
+        return {
+          anchorType: 'vertex',
+          position: {
+            ...coordAdd(anchor.position, delta),
+            vertex: allowVertexSwitching ? (targetPosition?.vertex ?? anchor.position.vertex) :
+              anchor.position.vertex
+          }
+        };
+      } else {
+        return undefined;
+      }
+    }
+
+    this._drawing.imageSelectionDrag.clear();
+    for (const i of this._drawing.imageSelection) {
+      const newStart = moveAnchor(i.start);
+      const newEnd = moveAnchor(i.end);
+      if (newStart !== undefined && newEnd !== undefined) {
+        this._drawing.imageSelectionDrag.add({ ...i, start: newStart, end: newEnd });
+      } else {
+        this._drawing.imageSelectionDrag.add(i);
+      }
+    }
+  }
+
   private onPostAnimate() {
     // We update annotations after the render because they are dependent on the LoS
     if (this._notesNeedUpdate.needsRedraw()) {
@@ -453,7 +536,7 @@ export class MapStateMachine {
       this.resize();
     }
 
-    // If we have tokens selected, doing this will pan them along with the view
+    // If we have tokens or images selected, doing this will pan them along with the view
     // (we must make sure this is done only with deliberate panning and not with
     // margin panning, which can be triggered by the token move itself)
     if (this._panningX !== 0 || this._panningY !== 0) {
@@ -733,19 +816,21 @@ export class MapStateMachine {
   }
 
   clearSelection() {
-    const wasAnythingSelected = fluent(this._selection).any();
+    const wasAnyTokenSelected = fluent(this._selection).any();
     this._selection.clear();
     this._selectionDrag.clear();
     this._selectionDragRed.clear();
+    this._drawing.imageSelection.clear();
     this._dragRectangle.reset();
 
     this._tokenMoveDragStart = undefined;
     this._tokenMoveJog = undefined;
     this._tokenMoveDragSelectionPosition = undefined;
+    this._inImageMoveDrag = false;
 
     // The LoS may change as a result of no longer having a specific
     // token selected
-    if (wasAnythingSelected) {
+    if (wasAnyTokenSelected) {
       this.buildLoS();
     }
   }
@@ -832,7 +917,7 @@ export class MapStateMachine {
     }
   }
 
-  getImage(cp: THREE.Vector3): IMapImageProperties | undefined {
+  getImage(cp: THREE.Vector3): IMapImage | undefined {
     const position = this._drawing.getGridCoordAt(cp);
     if (position === undefined) {
       return undefined;
@@ -858,7 +943,6 @@ export class MapStateMachine {
     return undefined;
   }
 
-  // For editing
   getToken(cp: THREE.Vector3): ITokenProperties | undefined {
     const position = this._drawing.getGridCoordAt(cp);
     if (position === undefined) {
@@ -893,10 +977,12 @@ export class MapStateMachine {
 
   moveSelectionTo(cp: THREE.Vector3) {
     this._dragRectangle.moveTo(cp);
-
-    if (this._tokenMoveDragStart !== undefined && this._tokenMoveDragSelectionPosition !== undefined) {
+    if (this._inImageMoveDrag === true) {
       this.panIfWithinMargin(cp);
-      let position = this._drawing.getGridCoordAt(cp);
+      this.imageMoveDragTo(cp);
+    } else if (this._tokenMoveDragStart !== undefined && this._tokenMoveDragSelectionPosition !== undefined) {
+      this.panIfWithinMargin(cp);
+      const position = this._drawing.getGridCoordAt(cp);
       this.tokenMoveDragTo(position);
     } else if (this._dragRectangle.isEnabled()) {
       this.panIfWithinMargin(cp);
@@ -1057,39 +1143,65 @@ export class MapStateMachine {
     this._roomHighlighter.dragStart(this._drawing.getGridCoordAt(cp), colour);
   }
 
-  // Selects the token at the client position, if there is one,
+  // Selects the token or image at the client position, if there is one,
   // and begins a drag move for it.
   // Returns true if it selected something, else false.
-  selectToken(cp: THREE.Vector3) {
+  selectTokenOrImage(cp: THREE.Vector3, layer: Layer) {
     const position = this._drawing.getGridCoordAt(cp);
     if (position === undefined) {
       return undefined;
     }
 
-    const token = this._tokens.at(position);
-    if (token === undefined || !this.canSelectToken(token)) {
-      return false;
-    }
+    if (layer === Layer.Image) {
+      const image = this.getImage(cp);
+      if (image === undefined) {
+        return false;
+      }
 
-    const selected = this._selection.at(token.position);
-    if (selected === undefined) {
-      this.clearSelection();
-      this._selection.add(token);
-      this.buildLoS();
-    }
+      const selected = this._drawing.imageSelection.get(image.id);
+      if (selected === undefined) {
+        this.clearSelection();
+        this._drawing.imageSelection.add(image);
+      }
 
-    this.tokenMoveDragStart(position);
-    return true;
+      this.imageMoveDragStart(cp);
+      return true;
+    } else { // object layer
+      const token = this._tokens.at(position);
+      if (token === undefined || !this.canSelectToken(token)) {
+        return false;
+      }
+
+      const selected = this._selection.at(token.position);
+      if (selected === undefined) {
+        this.clearSelection();
+        this._selection.add(token);
+        this.buildLoS();
+      }
+
+      this.tokenMoveDragStart(position);
+      return true;
+    }
   }
 
-  selectionDragEnd(cp: THREE.Vector3): Change[] {
+  selectionDragEnd(cp: THREE.Vector3, layer: Layer): Change[] {
     this.panMarginReset();
     const position = this._drawing.getGridCoordAt(cp);
     const chs: Change[] = [];
     if (position) {
       if (this._tokenMoveDragStart !== undefined) {
         this.tokenMoveDragEnd(position, chs);
-      } else {
+      } else if (this._inImageMoveDrag === true) {
+        this.imageMoveDragEnd(cp, chs);
+      } else if (layer === Layer.Image) {
+        // Add the image at this position
+        // TODO #135 Support multi-selecting images?  (maybe defer to another ticket)
+        const image = this.getImage(cp);
+        this._drawing.imageSelection.clear();
+        if (image !== undefined) {
+          this._drawing.imageSelection.add(image);
+        }
+      } else { // object layer
         // Always add the token at this position
         // (This is needed if the drag rectangle is very small)
         const token = this._tokens.at(position);
@@ -1110,15 +1222,25 @@ export class MapStateMachine {
     return chs;
   }
 
-  selectionDragStart(cp: THREE.Vector3) {
-    let position = this._drawing.getGridCoordAt(cp);
-    if (position) {
-      if (this._selection.at(position) !== undefined) {
-        this.tokenMoveDragStart(position);
-      } else {
-        this.clearSelection();
-        this._dragRectangle.start(cp);
+  selectionDragStart(cp: THREE.Vector3, layer: Layer) {
+    if (layer === Layer.Image) {
+      const image = this.getImage(cp);
+      if (image !== undefined) {
+        this.imageMoveDragStart(cp);
+        return;
       }
+    } else {
+      const position = this._drawing.getGridCoordAt(cp);
+      if (position && this._selection.at(position) !== undefined) {
+        this.tokenMoveDragStart(position);
+        return;
+      }
+    }
+
+    // If we got here, we've hit the background
+    this.clearSelection();
+    if (layer === Layer.Object) {
+      this._dragRectangle.start(cp);
     }
   }
 

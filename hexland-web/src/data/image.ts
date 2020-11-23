@@ -1,4 +1,4 @@
-import { GridVertex } from "./coord";
+import { GridVertex, verticesEqual } from "./coord";
 import { IId } from "./identified";
 
 // Describes the images that a user has uploaded.
@@ -56,6 +56,16 @@ export const defaultMapImage: IMapImage = {
   start: defaultAnchor,
   end: defaultAnchor
 };
+
+export function anchorsEqual(a: Anchor, b: Anchor) {
+  if (a.anchorType === 'vertex' && b.anchorType === 'vertex') {
+    return verticesEqual(a.position, b.position);
+  } else if (a.anchorType === 'pixel' && b.anchorType === 'pixel') {
+    return a.x === b.x && a.y === b.y;
+  } else {
+    return false;
+  }
+}
 
 export function createVertexAnchor(x: number, y: number, vertex: number): VertexAnchor {
   return {
