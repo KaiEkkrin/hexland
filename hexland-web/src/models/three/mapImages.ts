@@ -1,5 +1,5 @@
 import { IdDictionary, IIdDictionary } from "../../data/identified";
-import { IMapImage } from "../../data/image";
+import { Anchor, IMapControlPoint, IMapControlPointDictionary, IMapControlPointIdentifier, IMapImage } from "../../data/image";
 import { ICacheLease } from "../../services/interfaces";
 import { Drawn } from "../drawn";
 import { IGridGeometry } from "../gridGeometry";
@@ -22,6 +22,15 @@ type MeshRecord = {
 };
 
 const zAxis = new THREE.Vector3(0, 0, 1);
+
+function createSelectionMaterial() {
+  return new THREE.MeshBasicMaterial({
+    blending: THREE.AdditiveBlending,
+    color: 0x606060,
+    side: THREE.DoubleSide,
+    transparent: true
+  });
+}
 
 function createSquareBufferGeometry(z: number): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry().setFromPoints([
@@ -189,12 +198,7 @@ export class MapImageSelection extends Drawn implements IIdDictionary<IMapImage>
     super(geometry, redrawFlag);
     this._bufferGeometry = createSquareBufferGeometry(z);
 
-    this._material = new THREE.MeshBasicMaterial({
-      blending: THREE.AdditiveBlending,
-      color: 0x606060,
-      side: THREE.DoubleSide,
-      transparent: true
-    });
+    this._material = createSelectionMaterial();
     this._scene = scene;
   }
 
@@ -255,6 +259,133 @@ export class MapImageSelection extends Drawn implements IIdDictionary<IMapImage>
 
   dispose() {
     this.clear(); // will also cleanup leases, materials etc.
+    this._bufferGeometry.dispose();
+    this._material.dispose();
+  }
+}
+
+// The image control points are drawn like selected vertices at the "start" and "end" positions.
+// Because the geometry is instanced, we implement something similar to the InstancedFeatureObject;
+// for now, we don't support expand beyond the initial maxInstances, because it's super unlikely
+// to end up with many of these (multi-resize doesn't make sense...)
+export class MapControlPoints extends Drawn implements IMapControlPointDictionary {
+  private readonly _bufferGeometry: THREE.BufferGeometry;
+  private readonly _material: THREE.Material;
+  private readonly _maxInstances: number;
+  private readonly _mesh: THREE.InstancedMesh;
+  private readonly _scene: THREE.Scene; // we don't own this
+  private readonly _values = new Map<string, IMapControlPoint & { index: number }>();
+
+  // This is a queue of indices that are currently drawing an off-screen
+  // instance and could be re-used.
+  // TODO #135 Consider pulling this functionality out of InstancedFeatureObject into a
+  // more general, small class so I can re-use it here too maybe?
+  private _clearIndices: number[] = [];
+
+  constructor(
+    gridGeometry: IGridGeometry, redrawFlag: RedrawFlag,
+    scene: THREE.Scene,
+    alpha: number, z: number, maxVertex?: number | undefined, maxInstances?: number | undefined
+  ) {
+    super(gridGeometry, redrawFlag);
+
+    const vertices = [...gridGeometry.createSolidVertexVertices(new THREE.Vector2(0, 0), alpha, z, maxVertex)];
+    const indices = [...gridGeometry.createSolidVertexIndices()];
+    this._bufferGeometry = new THREE.BufferGeometry();
+    this._bufferGeometry.setFromPoints(vertices);
+    this._bufferGeometry.setIndex(indices);
+
+    this._material = createSelectionMaterial();
+    this._maxInstances = maxInstances ?? 100;
+    this._mesh = new THREE.InstancedMesh(this._bufferGeometry, this._material, this._maxInstances);
+    this._scene = scene;
+    scene.add(this._mesh);
+  }
+
+  private toKey(id: IMapControlPointIdentifier) {
+    return `${id.id} ${id.which}`;
+  }
+
+  private transformToAnchor(m: THREE.Matrix4, a: Anchor): THREE.Matrix4 {
+    switch (a.anchorType) {
+      case 'vertex':
+        return this.geometry.transformToVertex(m, a.position);
+
+      default:
+        // TODO #135 Fill this in a bit later
+        throw Error(`Unsupported anchor type: ${a.anchorType}`);
+    }
+  }
+
+  [Symbol.iterator]() {
+    return this.iterate();
+  }
+
+  add(f: IMapControlPoint) {
+    const key = this.toKey(f);
+    if (this._values.get(key) !== undefined) {
+      return false;
+    }
+
+    // Re-use an existing index if we can.   Otherwise, extend the instance list.
+    let instanceIndex = this._clearIndices.pop();
+    if (instanceIndex === undefined) {
+      if (this._mesh.count === this._maxInstances) {
+        // We've run out.
+        return false;
+      }
+
+      instanceIndex = this._mesh.count++;
+    }
+
+    // Add an instance of this feature in the right place
+    const m = this.transformToAnchor(new THREE.Matrix4(), f.anchor);
+    this._mesh.setMatrixAt(instanceIndex, m);
+    this._mesh.instanceMatrix.needsUpdate = true;
+    this.setNeedsRedraw();
+    this._values.set(key, { ...f, index: instanceIndex });
+    return true;
+  }
+
+  clear() {
+    this._values.clear();
+    this._clearIndices = [];
+    this._mesh.count = 0;
+  }
+
+  forEach(fn: (f: IMapControlPoint) => void) {
+    this._values.forEach(fn);
+  }
+
+  get(id: IMapControlPointIdentifier) {
+    return this._values.get(this.toKey(id));
+  }
+
+  *iterate() {
+    for (const v of this._values) {
+      yield v[1];
+    }
+  }
+
+  remove(id: IMapControlPointIdentifier) {
+    const key = this.toKey(id);
+    const value = this._values.get(key);
+    if (value === undefined) {
+      return undefined;
+    }
+
+    // Like the instanced feature object, we implement erasing instances by
+    // offscreening them like this:
+    const m = new THREE.Matrix4().makeTranslation(0, 0, -1000);
+    this._mesh.setMatrixAt(value.index, m);
+    this._mesh.instanceMatrix.needsUpdate = true;
+    this.setNeedsRedraw();
+    this._clearIndices.push(value.index);
+    return value;
+  }
+
+  dispose() {
+    this._scene.remove(this._mesh);
     this._bufferGeometry.dispose();
     this._material.dispose();
   }

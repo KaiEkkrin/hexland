@@ -14,7 +14,7 @@ import { GridFilter } from './gridFilter';
 import { LoS } from './los';
 import { createLoSFilter, ILoSPreRenderParameters, LoSFilter } from './losFilter';
 import { MapColourVisualisation } from './mapColourVisualisation';
-import { MapImages, MapImageSelection } from './mapImages';
+import { MapControlPoints, MapImages, MapImageSelection } from './mapImages';
 import { OutlinedRectangle } from './overlayRectangle';
 import { TextFilter } from './textFilter';
 import { TextureCache } from './textureCache';
@@ -76,6 +76,7 @@ export class DrawingOrtho implements IDrawing {
   private readonly _highlightedAreas: Areas;
   private readonly _highlightedVertices: Vertices;
   private readonly _highlightedWalls: Walls;
+  private readonly _imageControlPointHighlights: MapControlPoints;
   private readonly _los: LoS;
   private readonly _losParameters: ILoSPreRenderParameters;
   private readonly _selection: ITokenDrawing;
@@ -86,6 +87,7 @@ export class DrawingOrtho implements IDrawing {
   private readonly _images: MapImages;
   private readonly _imageSelection: MapImageSelection;
   private readonly _imageSelectionDrag: MapImageSelection;
+  private readonly _imageControlPointSelection: MapControlPoints;
   private readonly _mapColourVisualisation: MapColourVisualisation;
 
   private readonly _textMaterial: THREE.MeshBasicMaterial;
@@ -242,6 +244,11 @@ export class DrawingOrtho implements IDrawing {
     );
     this._highlightedWalls.addToScene(this._filterScene);
 
+    // The map image highlights
+    this._imageControlPointHighlights = new MapControlPoints(
+      this._gridGeometry, this._needsRedraw, this._filterScene, vertexHighlightAlpha, vertexHighlightZ
+    );
+
     // The selection
     const tokenFillEdgeGeometry = createTokenFillEdgeGeometry(gridGeometry, selectionAlpha, selectionZ);
     const tokenFillVertexGeometry = createTokenFillVertexGeometry(gridGeometry, selectionAlpha, selectionZ);
@@ -304,6 +311,10 @@ export class DrawingOrtho implements IDrawing {
       this._gridGeometry, this._needsRedraw, this._filterScene, selectionZ
     );
 
+    this._imageControlPointSelection = new MapControlPoints(
+      this._gridGeometry, this._needsRedraw, this._filterScene, vertexHighlightAlpha, vertexHighlightZ
+    );
+
     // The map colour visualisation (added on request instead of the areas)
     this._mapColourVisualisation = new MapColourVisualisation(
       this._gridGeometry, this._needsRedraw, areaAlpha, areaZ
@@ -332,12 +343,14 @@ export class DrawingOrtho implements IDrawing {
   get highlightedAreas() { return this._highlightedAreas; }
   get highlightedVertices() { return this._highlightedVertices; }
   get highlightedWalls() { return this._highlightedWalls; }
+  get imageControlPointHighlights() { return this._imageControlPointHighlights; }
 
   get selection() { return this._selection; }
   get selectionDrag() { return this._selectionDrag; }
   get selectionDragRed() { return this._selectionDragRed; }
   get imageSelection() { return this._imageSelection; }
   get imageSelectionDrag() { return this._imageSelectionDrag; }
+  get imageControlPointSelection() { return this._imageControlPointSelection; }
 
   get los() { return this._los; }
 
@@ -576,9 +589,11 @@ export class DrawingOrtho implements IDrawing {
     this._imageSelectionDrag.dispose();
     this._highlightedAreas.dispose();
     this._highlightedWalls.dispose();
+    this._imageControlPointHighlights.dispose();
     this._selection.dispose();
     this._selectionDrag.dispose();
     this._selectionDragRed.dispose();
+    this._imageControlPointSelection.dispose();
     this._tokens.dispose();
     this._walls.dispose();
     this._los.dispose();

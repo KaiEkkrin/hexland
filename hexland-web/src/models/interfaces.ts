@@ -2,7 +2,7 @@ import { MapColouring } from "./colouring";
 import { GridCoord, GridEdge, GridVertex } from "../data/coord";
 import { IFeature, IFeatureDictionary } from "../data/feature";
 import { IIdDictionary } from "../data/identified";
-import { IMapImage } from "../data/image";
+import { IMapControlPointDictionary, IMapImage } from "../data/image";
 import { ITokenDrawing } from "../data/tokens";
 import { ITokenTextDrawing } from "../data/tokenTexts";
 import { ISpriteManager } from "../services/interfaces";
@@ -21,12 +21,14 @@ export interface IDrawing {
   highlightedAreas: IFeatureDictionary<GridCoord, IFeature<GridCoord>>;
   highlightedVertices: IFeatureDictionary<GridVertex, IFeature<GridVertex>>;
   highlightedWalls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>;
+  imageControlPointHighlights: IMapControlPointDictionary;
 
   selection: ITokenDrawing;
   selectionDrag: ITokenDrawing;
   selectionDragRed: ITokenDrawing;
   imageSelection: IIdDictionary<IMapImage>;
   imageSelectionDrag: IIdDictionary<IMapImage>;
+  imageControlPointSelection: IMapControlPointDictionary;
 
   // A drawing always exposes a single outlined rectangle that can be used
   // for drag-boxes etc.  This object will be drawn separately and will not

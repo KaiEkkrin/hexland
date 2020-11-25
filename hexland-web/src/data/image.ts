@@ -1,4 +1,4 @@
-import { GridVertex, verticesEqual } from "./coord";
+import { GridVertex, vertexString, verticesEqual } from "./coord";
 import { IId } from "./identified";
 
 // Describes the images that a user has uploaded.
@@ -67,6 +67,16 @@ export function anchorsEqual(a: Anchor, b: Anchor) {
   }
 }
 
+export function anchorString(a: Anchor) {
+  if (a.anchorType === 'vertex') {
+    return 'vertex ' + vertexString(a.position);
+  } else if (a.anchorType === 'pixel') {
+    return `pixel x=${a.x} y=${a.y}`;
+  } else {
+    return `${a.anchorType}`;
+  }
+}
+
 export function createVertexAnchor(x: number, y: number, vertex: number): VertexAnchor {
   return {
     anchorType: 'vertex',
@@ -80,4 +90,23 @@ export function createPixelAnchor(x: number, y: number): PixelAnchor {
     x: x,
     y: y
   };
+}
+
+export interface IMapControlPointIdentifier {
+  id: string;
+  which: 'start' | 'end';
+}
+
+export interface IMapControlPoint extends IMapControlPointIdentifier {
+  anchor: Anchor;
+}
+
+// Presents a feature dictionary-like interface for the map control points.
+export interface IMapControlPointDictionary extends Iterable<IMapControlPoint> {
+  add(f: IMapControlPoint): boolean;
+  clear(): void;
+  forEach(fn: (f: IMapControlPoint) => void): void;
+  get(id: IMapControlPointIdentifier): IMapControlPoint | undefined;
+  iterate(): Iterable<IMapControlPoint>;
+  remove(id: IMapControlPointIdentifier): IMapControlPoint | undefined;
 }

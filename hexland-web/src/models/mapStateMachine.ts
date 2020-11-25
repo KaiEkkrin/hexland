@@ -4,6 +4,7 @@ import { DragRectangle } from './dragRectangle';
 import { FeatureColour } from './featureColour';
 import { IGridGeometry } from './gridGeometry';
 import { IDrawing, IDragRectangle, Layer } from './interfaces';
+import { ImageResizer } from './imageResizer';
 import { MapChangeTracker } from './mapChangeTracker';
 import { RedrawFlag } from './redrawFlag';
 import { WallHighlighter, WallRectangleHighlighter, RoomHighlighter } from './wallHighlighter';
@@ -98,6 +99,7 @@ export class MapStateMachine {
   private readonly _wallHighlighter: WallHighlighter;
   private readonly _wallRectangleHighlighter: WallRectangleHighlighter;
   private readonly _roomHighlighter: RoomHighlighter;
+  private readonly _imageResizer: ImageResizer;
 
   private readonly _cameraTranslation = new THREE.Vector3();
   private readonly _cameraRotation = new THREE.Quaternion();
@@ -217,6 +219,11 @@ export class MapStateMachine {
     this._roomHighlighter = new RoomHighlighter(
       this._gridGeometry, this._mapColouring, this._drawing.areas, this._drawing.walls, this._drawing.highlightedWalls,
       this._drawing.highlightedAreas, this.validateWallChanges, this._dragRectangle
+    );
+
+    this._imageResizer = new ImageResizer(
+      this._drawing.images, this._drawing.imageControlPointSelection,
+      this._drawing.imageControlPointHighlights
     );
 
     this._changeTracker = this.createChangeTracker();
@@ -398,6 +405,16 @@ export class MapStateMachine {
     return undefined;
   }
 
+  private getImageControlPointHitTest(cp: THREE.Vector3): (anchor: Anchor) => boolean {
+    // TODO #135 Support testing for near-enough pixel control point too
+    const vertex = this._drawing.getGridVertexAt(cp);
+    return (anchor: Anchor) => {
+      return vertex !== undefined && anchorsEqual(anchor, {
+        anchorType: 'vertex', position: vertex
+      });
+    };
+  }
+
   private getLoSPositions() {
     // These are the positions we should be projecting line-of-sight from.
     // For large tokens, we project a separate LoS from every face and merge them together
@@ -444,8 +461,7 @@ export class MapStateMachine {
 
     // Move the selection to those positions, and push the relevant changes
     for (const i of movedImages) {
-      this._drawing.imageSelection.remove(i.id);
-      this._drawing.imageSelection.add(i);
+      this.setSelectedImage(i);
       chs.push(createImageRemove(i.id), createImageAdd(i));
     }
 
@@ -616,6 +632,17 @@ export class MapStateMachine {
         }
       }
     }
+  }
+
+  private setSelectedImage(image: IMapImage | undefined) {
+    if (image === undefined) {
+      this._drawing.imageSelection.clear();
+    } else {
+      this._drawing.imageSelection.remove(image.id);
+      this._drawing.imageSelection.add(image);
+    }
+
+    this._imageResizer.setSelectedImage(image);
   }
 
   private setTokenProperties(token: IToken, properties: ITokenProperties): Change[] {
@@ -813,6 +840,7 @@ export class MapStateMachine {
     this._wallRectangleHighlighter.clear();
     this._roomHighlighter.clear();
     this._dragRectangle.reset();
+    this._imageResizer.dragCancel();
   }
 
   clearSelection() {
@@ -820,8 +848,8 @@ export class MapStateMachine {
     this._selection.clear();
     this._selectionDrag.clear();
     this._selectionDragRed.clear();
-    this._drawing.imageSelection.clear();
     this._dragRectangle.reset();
+    this.setSelectedImage(undefined);
 
     this._tokenMoveDragStart = undefined;
     this._tokenMoveJog = undefined;
@@ -977,7 +1005,12 @@ export class MapStateMachine {
 
   moveSelectionTo(cp: THREE.Vector3) {
     this._dragRectangle.moveTo(cp);
-    if (this._inImageMoveDrag === true) {
+    if (this._imageResizer.inDrag === true) {
+      this.panIfWithinMargin(cp);
+      // TODO #135 Support pixel anchor too (on Shift key?)
+      const vertex = this._drawing.getGridVertexAt(cp);
+      this._imageResizer.moveHighlight(vertex ? { anchorType: 'vertex', position: vertex } : undefined);
+    } else if (this._inImageMoveDrag === true) {
       this.panIfWithinMargin(cp);
       this.imageMoveDragTo(cp);
     } else if (this._tokenMoveDragStart !== undefined && this._tokenMoveDragSelectionPosition !== undefined) {
@@ -1161,7 +1194,7 @@ export class MapStateMachine {
       const selected = this._drawing.imageSelection.get(image.id);
       if (selected === undefined) {
         this.clearSelection();
-        this._drawing.imageSelection.add(image);
+        this.setSelectedImage(image);
       }
 
       this.imageMoveDragStart(cp);
@@ -1194,12 +1227,19 @@ export class MapStateMachine {
       } else if (this._inImageMoveDrag === true) {
         this.imageMoveDragEnd(cp, chs);
       } else if (layer === Layer.Image) {
-        // Add the image at this position
-        // TODO #135 Support multi-selecting images?  (maybe defer to another ticket)
-        const image = this.getImage(cp);
-        this._drawing.imageSelection.clear();
-        if (image !== undefined) {
-          this._drawing.imageSelection.add(image);
+        if (this._imageResizer.inDrag) {
+          // Complete the image resize operation
+          // TODO #135 Support pixel anchors (e.g. on Shift key?)
+          const vertex = this._drawing.getGridVertexAt(cp);
+          this._imageResizer.dragEnd(vertex ? { anchorType: 'vertex', position: vertex } : undefined, chs);
+        } else {
+          // Add the image at this position
+          // TODO #135 Support multi-selecting images?  (maybe defer to another ticket)
+          const image = this.getImage(cp);
+          this._drawing.imageSelection.clear();
+          if (image !== undefined) {
+            this._drawing.imageSelection.add(image);
+          }
         }
       } else { // object layer
         // Always add the token at this position
@@ -1224,6 +1264,12 @@ export class MapStateMachine {
 
   selectionDragStart(cp: THREE.Vector3, layer: Layer) {
     if (layer === Layer.Image) {
+      // If this starts a control point drag, go with that.
+      // Otherwise, start an image move drag instead.
+      if (this._imageResizer.dragStart(this.getImageControlPointHitTest(cp)) === true) {
+        return;
+      }
+
       const image = this.getImage(cp);
       if (image !== undefined) {
         this.imageMoveDragStart(cp);
