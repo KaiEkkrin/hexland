@@ -69,18 +69,6 @@ export function anchorsEqual(a: Anchor, b: Anchor | undefined) {
   }
 }
 
-export function anchorsFormValidImage(a: Anchor, b: Anchor | undefined) {
-  if (b === undefined) {
-    return false;
-  } else if (a.anchorType === 'vertex' && b.anchorType === 'vertex') {
-    // Don't allow images with their start and end on the same row, or the same
-    // column -- they'll be invisible, and also un-selectable, and that would be sad!
-    return a.position.x !== b.position.x && a.position.y !== b.position.y;
-  } else {
-    return true;
-  }
-}
-
 export function anchorString(a: Anchor | undefined) {
   if (a === undefined) {
     return 'undefined';

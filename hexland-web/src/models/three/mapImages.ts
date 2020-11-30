@@ -8,6 +8,7 @@ import { TextureCache } from "./textureCache";
 
 import { Subscription } from 'rxjs';
 import * as THREE from 'three';
+import { vertexString } from "../../data/coord";
 
 // Internally, we file these objects, additionally containing the material
 // and mesh so that we can manage cleanup
@@ -285,12 +286,12 @@ export class MapControlPoints extends Drawn implements IMapControlPointDictionar
   constructor(
     gridGeometry: IGridGeometry, redrawFlag: RedrawFlag,
     scene: THREE.Scene,
-    alpha: number, z: number, maxVertex?: number | undefined, maxInstances?: number | undefined
+    alpha: number, z: number, maxInstances?: number | undefined
   ) {
     super(gridGeometry, redrawFlag);
 
     const single = gridGeometry.toSingle();
-    const vertices = [...single.createSolidVertexVertices(new THREE.Vector2(0, 0), alpha, z, maxVertex)];
+    const vertices = [...single.createSolidVertexVertices(new THREE.Vector2(0, 0), alpha, z, 1)];
     const indices = [...single.createSolidVertexIndices()];
     this._bufferGeometry = new THREE.BufferGeometry();
     this._bufferGeometry.setFromPoints(vertices);
@@ -310,6 +311,7 @@ export class MapControlPoints extends Drawn implements IMapControlPointDictionar
   private transformToAnchor(m: THREE.Matrix4, a: Anchor): THREE.Matrix4 {
     switch (a.anchorType) {
       case 'vertex':
+        console.log(`drawing control point at ${vertexString(a.position)}`);
         return this.geometry.transformToVertex(m, a.position);
 
       default:

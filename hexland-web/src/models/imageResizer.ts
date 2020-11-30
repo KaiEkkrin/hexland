@@ -1,6 +1,9 @@
 import { Change, createImageAdd, createImageRemove } from "../data/change";
 import { IIdDictionary } from "../data/identified";
-import { Anchor, anchorsEqual, anchorsFormValidImage, anchorString, IMapControlPointDictionary, IMapControlPointIdentifier, IMapImage } from "../data/image";
+import { Anchor, anchorsEqual, anchorString, IMapControlPointDictionary, IMapControlPointIdentifier, IMapImage } from "../data/image";
+import { IGridGeometry } from "./gridGeometry";
+
+import * as THREE from 'three';
 
 // Manages image sizing via the (start, end) control points.
 // For now we support only one selected image at a time.
@@ -9,20 +12,40 @@ import { Anchor, anchorsEqual, anchorsFormValidImage, anchorString, IMapControlP
 // TODO #135 Would it be cleaner if this class took over responsibility for image
 // drag-move as well?
 export class ImageResizer {
+  private readonly _gridGeometry: IGridGeometry;
   private readonly _images: IIdDictionary<IMapImage>; // only read this
   private readonly _highlights: IMapControlPointDictionary; // we manage this
   private readonly _selection: IMapControlPointDictionary; // and this
 
+  private readonly _scratchVector1 = new THREE.Vector3();
+  private readonly _scratchVector2 = new THREE.Vector3();
+
   private _dragging: IMapControlPointIdentifier | undefined;
 
   constructor(
+    gridGeometry: IGridGeometry,
     images: IIdDictionary<IMapImage>,
     highlights: IMapControlPointDictionary,
-    selection: IMapControlPointDictionary
+    selection: IMapControlPointDictionary,
   ) {
+    this._gridGeometry = gridGeometry;
     this._images = images;
     this._highlights = highlights;
     this._selection = selection;
+  }
+
+  private areValidAnchorPositions(a: Anchor, b: Anchor | undefined): boolean {
+    if (b === undefined) {
+      return false;
+    }
+
+    // Don't allow images to end up super thin or super narrow, because they'll
+    // become unselectable.  Because of the fun of the hex grid we need to do this
+    // with world positions:
+    const aPosition = this._gridGeometry.createAnchorPosition(this._scratchVector1, a);
+    const separation = this._gridGeometry.createAnchorPosition(this._scratchVector2, b).sub(aPosition);
+    const threshold = 5.0;
+    return Math.abs(separation.x) > threshold && Math.abs(separation.y) > threshold;
   }
 
   get inDrag() { return this._dragging !== undefined; }
@@ -46,7 +69,7 @@ export class ImageResizer {
     if (
       image !== undefined && startedAt !== undefined && movedTo !== undefined &&
       !anchorsEqual(startedAt.anchor, movedTo.anchor) &&
-      anchorsFormValidImage(movedTo.anchor, otherAnchor) // TODO #135 draw highlights in red when this is false
+      this.areValidAnchorPositions(movedTo.anchor, otherAnchor) // TODO #135 draw highlights in red when this is false
     ) {
       // _images.get() may have returned internal fields, which we don't want to include!
       const updatedImage: IMapImage = {

@@ -76,8 +76,8 @@ export class DragRectangle implements IDragRectangle {
 
     // To achieve this, I need to get the drag rectangle into world co-ordinates,
     // which are centred at (0, 0).
-    let scale = new THREE.Vector3(2 / window.innerWidth, 2 / window.innerHeight, 1);
-    let translation = new THREE.Vector3(-1, -1, 0);
+    const scale = new THREE.Vector3(2 / window.innerWidth, 2 / window.innerHeight, 1);
+    const translation = new THREE.Vector3(-1, -1, 0);
     const viewportToWorld = this._getViewportToWorld(new THREE.Matrix4());
     const rectanglePoints =
       [...this.enumerateCanvasDragRectanglePoints(new THREE.Vector3())]

@@ -222,7 +222,8 @@ export class MapStateMachine {
     );
 
     this._imageResizer = new ImageResizer(
-      this._drawing.images, this._drawing.imageControlPointSelection,
+      this._gridGeometry, this._drawing.images,
+      this._drawing.imageControlPointSelection,
       this._drawing.imageControlPointHighlights
     );
 
@@ -952,21 +953,22 @@ export class MapStateMachine {
       return undefined;
     }
 
+    const scale = new THREE.Vector3(2 / window.innerWidth, 2 / window.innerHeight, 1);
+    const translation = new THREE.Vector3(-1, -1, 0);
+    const viewportToWorld = this._drawing.getViewportToWorld(this._scratchMatrix1);
+    const worldPosition = this._scratchVector1.copy(cp).multiply(scale).add(translation)
+      .applyMatrix4(viewportToWorld);
     for (const i of this._drawing.images) {
-      if (i.start.anchorType === 'vertex' && i.end.anchorType === 'vertex') {
-        const xStart = Math.min(i.start.position.x, i.end.position.x);
-        const yStart = Math.min(i.start.position.y, i.end.position.y);
-        const xEnd = Math.max(i.start.position.x, i.end.position.x);
-        const yEnd = Math.max(i.start.position.y, i.end.position.y);
-        if (
-          position.x >= xStart && position.y >= yStart &&
-          position.x < xEnd && position.y < yEnd
-        ) {
-          return i;
-        }
+      const startPosition = this._gridGeometry.createAnchorPosition(this._scratchVector2, i.start);
+      const endPosition = this._gridGeometry.createAnchorPosition(this._scratchVector3, i.end);
+      if (
+        worldPosition.x >= Math.min(startPosition.x, endPosition.x) &&
+        worldPosition.y >= Math.min(startPosition.y, endPosition.y) &&
+        worldPosition.x < Math.max(startPosition.x, endPosition.x) &&
+        worldPosition.y < Math.max(startPosition.y, endPosition.y)
+      ) {
+        return i;
       }
-
-      // TODO #135 deal with non-vertex-positioned images as well
     }
 
     return undefined;
