@@ -57,8 +57,10 @@ export const defaultMapImage: IMapImage = {
   end: defaultAnchor
 };
 
-export function anchorsEqual(a: Anchor, b: Anchor) {
-  if (a.anchorType === 'vertex' && b.anchorType === 'vertex') {
+export function anchorsEqual(a: Anchor, b: Anchor | undefined) {
+  if (b === undefined) {
+    return false;
+  } else if (a.anchorType === 'vertex' && b.anchorType === 'vertex') {
     return verticesEqual(a.position, b.position);
   } else if (a.anchorType === 'pixel' && b.anchorType === 'pixel') {
     return a.x === b.x && a.y === b.y;
@@ -67,8 +69,22 @@ export function anchorsEqual(a: Anchor, b: Anchor) {
   }
 }
 
-export function anchorString(a: Anchor) {
-  if (a.anchorType === 'vertex') {
+export function anchorsFormValidImage(a: Anchor, b: Anchor | undefined) {
+  if (b === undefined) {
+    return false;
+  } else if (a.anchorType === 'vertex' && b.anchorType === 'vertex') {
+    // Don't allow images with their start and end on the same row, or the same
+    // column -- they'll be invisible, and also un-selectable, and that would be sad!
+    return a.position.x !== b.position.x && a.position.y !== b.position.y;
+  } else {
+    return true;
+  }
+}
+
+export function anchorString(a: Anchor | undefined) {
+  if (a === undefined) {
+    return 'undefined';
+  } else if (a.anchorType === 'vertex') {
     return 'vertex ' + vertexString(a.position);
   } else if (a.anchorType === 'pixel') {
     return `pixel x=${a.x} y=${a.y}`;

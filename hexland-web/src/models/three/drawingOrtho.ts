@@ -312,7 +312,7 @@ export class DrawingOrtho implements IDrawing {
     );
 
     this._imageControlPointSelection = new MapControlPoints(
-      this._gridGeometry, this._needsRedraw, this._filterScene, vertexHighlightAlpha, vertexHighlightZ
+      this._gridGeometry, this._needsRedraw, this._filterScene, vertexHighlightAlpha, selectionZ
     );
 
     // The map colour visualisation (added on request instead of the areas)

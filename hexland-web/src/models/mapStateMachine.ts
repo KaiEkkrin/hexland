@@ -15,7 +15,7 @@ import { netObjectCount, trackChanges } from '../data/changeTracking';
 import { GridCoord, coordString, coordsEqual, coordSub, coordAdd, GridVertex, vertexAdd } from '../data/coord';
 import { FeatureDictionary, flipToken, IToken, ITokenDictionary, ITokenProperties, TokenSize } from '../data/feature';
 import { IAdventureIdentified } from '../data/identified';
-import { Anchor, anchorsEqual, IMapImage, IMapImageProperties } from '../data/image';
+import { Anchor, anchorsEqual, anchorString, IMapImage, IMapImageProperties } from '../data/image';
 import { IMap } from '../data/map';
 import { IUserPolicy } from '../data/policy';
 import { ITokenGeometry } from '../data/tokenGeometry';
@@ -409,6 +409,7 @@ export class MapStateMachine {
     // TODO #135 Support testing for near-enough pixel control point too
     const vertex = this._drawing.getGridVertexAt(cp);
     return (anchor: Anchor) => {
+      console.log(`testing anchor: ${anchorString(anchor)}`);
       return vertex !== undefined && anchorsEqual(anchor, {
         anchorType: 'vertex', position: vertex
       });
@@ -1186,6 +1187,10 @@ export class MapStateMachine {
     }
 
     if (layer === Layer.Image) {
+      if (this._imageResizer.dragStart(this.getImageControlPointHitTest(cp))) {
+        return true;
+      }
+
       const image = this.getImage(cp);
       if (image === undefined) {
         return false;
@@ -1227,20 +1232,20 @@ export class MapStateMachine {
       } else if (this._inImageMoveDrag === true) {
         this.imageMoveDragEnd(cp, chs);
       } else if (layer === Layer.Image) {
+        let image: IMapImage | undefined = undefined;
         if (this._imageResizer.inDrag) {
           // Complete the image resize operation
           // TODO #135 Support pixel anchors (e.g. on Shift key?)
           const vertex = this._drawing.getGridVertexAt(cp);
-          this._imageResizer.dragEnd(vertex ? { anchorType: 'vertex', position: vertex } : undefined, chs);
+          image = this._imageResizer.dragEnd(
+            vertex ? { anchorType: 'vertex', position: vertex } : undefined, chs
+          );
         } else {
           // Add the image at this position
           // TODO #135 Support multi-selecting images?  (maybe defer to another ticket)
-          const image = this.getImage(cp);
-          this._drawing.imageSelection.clear();
-          if (image !== undefined) {
-            this._drawing.imageSelection.add(image);
-          }
+          image = this.getImage(cp);
         }
+        this.setSelectedImage(image);
       } else { // object layer
         // Always add the token at this position
         // (This is needed if the drag rectangle is very small)

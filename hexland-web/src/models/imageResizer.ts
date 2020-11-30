@@ -1,6 +1,6 @@
 import { Change, createImageAdd, createImageRemove } from "../data/change";
 import { IIdDictionary } from "../data/identified";
-import { Anchor, anchorsEqual, IMapControlPointDictionary, IMapControlPointIdentifier, IMapImage } from "../data/image";
+import { Anchor, anchorsEqual, anchorsFormValidImage, anchorString, IMapControlPointDictionary, IMapControlPointIdentifier, IMapImage } from "../data/image";
 
 // Manages image sizing via the (start, end) control points.
 // For now we support only one selected image at a time.
@@ -33,31 +33,40 @@ export class ImageResizer {
   }
 
   // Populates a list of changes that would create the image edit.
-  dragEnd(anchor: Anchor | undefined, changes: Change[]) {
+  dragEnd(anchor: Anchor | undefined, changes: Change[]): IMapImage | undefined {
     this.moveHighlight(anchor);
     if (this._dragging === undefined) {
-      return;
+      return undefined;
     }
 
     const image = this._images.get(this._dragging.id);
     const startedAt = this._selection.get(this._dragging);
     const movedTo = this._highlights.get(this._dragging);
+    const otherAnchor = this._dragging.which === 'start' ? image?.end : image?.start;
     if (
       image !== undefined && startedAt !== undefined && movedTo !== undefined &&
-      !anchorsEqual(startedAt.anchor, movedTo.anchor)
+      !anchorsEqual(startedAt.anchor, movedTo.anchor) &&
+      anchorsFormValidImage(movedTo.anchor, otherAnchor) // TODO #135 draw highlights in red when this is false
     ) {
-      const updatedImage = { ...image };
-      switch (this._dragging.which) {
-        case 'start': updatedImage.start = movedTo.anchor; break;
-        case 'end': updatedImage.end = movedTo.anchor; break;
-      }
+      // _images.get() may have returned internal fields, which we don't want to include!
+      const updatedImage: IMapImage = {
+        id: image.id,
+        image: image.image,
+        start: this._dragging.which === 'start' ? movedTo.anchor : image.start,
+        end: this._dragging.which === 'end' ? movedTo.anchor : image.end
+      };
+
       changes.push(
         createImageRemove(this._dragging.id),
         createImageAdd(updatedImage)
       );
-    }
 
-    this.dragCancel();
+      this.dragCancel();
+      return updatedImage;
+    } else {
+      this.dragCancel();
+      return undefined;
+    }
   }
 
   // Returns true if we started a drag, else false.
@@ -81,41 +90,29 @@ export class ImageResizer {
     }
 
     const currently = this._highlights.get(this._dragging);
-    if (currently !== undefined && anchor !== undefined && anchorsEqual(currently.anchor, anchor)) {
+    console.log(`moving: ${anchorString(currently?.anchor)} -> ${anchorString(anchor)}`);
+    if (currently !== undefined && (anchor === undefined || anchorsEqual(currently.anchor, anchor))) {
       // No change.
       return false;
-    } else if (currently === anchor) {
-      // Also no change.
-      return false;
-    } else {
-      if (currently !== undefined) {
-        this._highlights.remove(currently);
-      }
-
-      if (anchor !== undefined) {
-        this._highlights.add({ ...this._dragging, anchor: anchor });
-      }
-
-      return true;
     }
+
+    if (currently !== undefined) {
+      this._highlights.remove(currently);
+    }
+
+    if (anchor !== undefined) {
+      console.log(`adding highlight at ${anchorString(anchor)}`);
+      this._highlights.add({ ...this._dragging, anchor: anchor });
+    }
+
+    return true;
   }
 
   // Draws the highlights for an image (or removes them.)
   setSelectedImage(image: IMapImage | undefined) {
     if (image !== undefined) {
-      // Detect an already-selected image in the same place and do nothing
-      const currentStart = this._selection.get({ id: image.id, which: 'start' });
-      const currentEnd = this._selection.get({ id: image.id, which: 'end' });
-      if (
-        currentStart !== undefined && currentEnd !== undefined &&
-        anchorsEqual(image.start, currentStart.anchor) &&
-        anchorsEqual(image.end, currentEnd.anchor)
-      ) {
-        return;
-      }
+      console.log(`selecting image ${image.id} at ${anchorString(image.start)}, ${anchorString(image.end)}`);
     }
-
-    // Otherwise, reset things
     this.dragCancel();
     this._selection.clear();
     if (image !== undefined) {

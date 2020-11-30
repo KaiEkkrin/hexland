@@ -289,8 +289,9 @@ export class MapControlPoints extends Drawn implements IMapControlPointDictionar
   ) {
     super(gridGeometry, redrawFlag);
 
-    const vertices = [...gridGeometry.createSolidVertexVertices(new THREE.Vector2(0, 0), alpha, z, maxVertex)];
-    const indices = [...gridGeometry.createSolidVertexIndices()];
+    const single = gridGeometry.toSingle();
+    const vertices = [...single.createSolidVertexVertices(new THREE.Vector2(0, 0), alpha, z, maxVertex)];
+    const indices = [...single.createSolidVertexIndices()];
     this._bufferGeometry = new THREE.BufferGeometry();
     this._bufferGeometry.setFromPoints(vertices);
     this._bufferGeometry.setIndex(indices);
@@ -381,6 +382,8 @@ export class MapControlPoints extends Drawn implements IMapControlPointDictionar
     this._mesh.instanceMatrix.needsUpdate = true;
     this.setNeedsRedraw();
     this._clearIndices.push(value.index);
+
+    this._values.delete(key);
     return value;
   }
 
