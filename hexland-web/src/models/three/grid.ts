@@ -141,13 +141,17 @@ class GridColouredFeatureObject<K extends GridCoord, F extends IFeature<K>> exte
     return new THREE.InstancedMesh(this._geometry, this.material, maxInstances);
   }
 
-  protected addFeature(f: F, instanceIndex: number) {
-    super.addFeature(f, instanceIndex);
+  protected addFeature(f: F) {
+    const instanceIndex = super.addFeature(f);
+    if (instanceIndex === undefined) {
+      return undefined;
+    }
 
     // The positions are in grid coords, of course, not tile coords -- convert them here
     this._instanceTiles[2 * instanceIndex] = Math.floor(f.position.x / this.gridGeometry.tileDim);
     this._instanceTiles[2 * instanceIndex + 1] = Math.floor(f.position.y / this.gridGeometry.tileDim);
     this._tileAttr.needsUpdate = true;
+    return instanceIndex;
   }
 
   dispose() {

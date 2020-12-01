@@ -125,7 +125,11 @@ export class ImageResizer {
 
     if (anchor !== undefined) {
       console.log(`adding highlight at ${anchorString(anchor)}`);
-      this._highlights.add({ ...this._dragging, anchor: anchor });
+      const image = this._images.get(this._dragging.id);
+      const otherAnchor = this._dragging.which === 'start' ? image?.end : image?.start;
+      this._highlights.add({
+        ...this._dragging, anchor: anchor, invalid: this.areValidAnchorPositions(anchor, otherAnchor) === false
+      });
     }
 
     return true;

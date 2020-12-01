@@ -80,11 +80,15 @@ export class PaletteColouredFeatureObject<K extends GridCoord, F extends IFeatur
     return new THREE.InstancedMesh(this._geometry, this._material, maxInstances);
   }
 
-  protected addFeature(f: F, instanceIndex: number) {
-    super.addFeature(f, instanceIndex);
+  protected addFeature(f: F) {
+    const instanceIndex = super.addFeature(f);
+    if (instanceIndex === undefined) {
+      return undefined;
+    }
 
     this._colours[instanceIndex] = f.colour;
     this.applyColour(f.colour, instanceIndex);
+    return instanceIndex;
   }
 
   setPalette(newPalette: THREE.Color[], defaultColour?: THREE.Color | undefined) {

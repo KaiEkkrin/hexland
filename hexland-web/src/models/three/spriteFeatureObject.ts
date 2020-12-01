@@ -105,8 +105,11 @@ export class SpriteFeatureObject<
     return new THREE.InstancedMesh(this._geometry, this._material, maxInstances);
   }
 
-  protected addFeature(f: F, instanceIndex: number) {
-    super.addFeature(f, instanceIndex);
+  protected addFeature(f: F) {
+    const instanceIndex = super.addFeature(f);
+    if (instanceIndex === undefined) {
+      return undefined;
+    }
 
     const { columns, rows } = fromSpriteGeometryString(f.sheetEntry.sheet.geometry);
     const scaleX = 1.0 / columns;
@@ -152,6 +155,7 @@ export class SpriteFeatureObject<
       //     ));
       //   console.log(`sprite sc : ${xy.toArray()} -> ${sc.toArray()}`);
       // });
+    return instanceIndex;
   }
 
   dispose() {

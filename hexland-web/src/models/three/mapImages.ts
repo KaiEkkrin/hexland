@@ -9,6 +9,7 @@ import { TextureCache } from "./textureCache";
 import { Subscription } from 'rxjs';
 import * as THREE from 'three';
 import { vertexString } from "../../data/coord";
+import { InstanceCountedMesh } from "./instancedFeatureObject";
 
 // Internally, we file these objects, additionally containing the material
 // and mesh so that we can manage cleanup
@@ -28,6 +29,15 @@ function createSelectionMaterial() {
   return new THREE.MeshBasicMaterial({
     blending: THREE.AdditiveBlending,
     color: 0x606060,
+    side: THREE.DoubleSide,
+    transparent: true
+  });
+}
+
+function createInvalidSelectionMaterial() {
+  return new THREE.MeshBasicMaterial({
+    blending: THREE.AdditiveBlending,
+    color: 0x600000,
     side: THREE.DoubleSide,
     transparent: true
   });
@@ -272,16 +282,11 @@ export class MapImageSelection extends Drawn implements IIdDictionary<IMapImage>
 export class MapControlPoints extends Drawn implements IMapControlPointDictionary {
   private readonly _bufferGeometry: THREE.BufferGeometry;
   private readonly _material: THREE.Material;
-  private readonly _maxInstances: number;
-  private readonly _mesh: THREE.InstancedMesh;
+  private readonly _invalidMaterial: THREE.Material;
+  private readonly _mesh: InstanceCountedMesh;
+  private readonly _invalidMesh: InstanceCountedMesh;
   private readonly _scene: THREE.Scene; // we don't own this
   private readonly _values = new Map<string, IMapControlPoint & { index: number }>();
-
-  // This is a queue of indices that are currently drawing an off-screen
-  // instance and could be re-used.
-  // TODO #135 Consider pulling this functionality out of InstancedFeatureObject into a
-  // more general, small class so I can re-use it here too maybe?
-  private _clearIndices: number[] = [];
 
   constructor(
     gridGeometry: IGridGeometry, redrawFlag: RedrawFlag,
@@ -298,10 +303,19 @@ export class MapControlPoints extends Drawn implements IMapControlPointDictionar
     this._bufferGeometry.setIndex(indices);
 
     this._material = createSelectionMaterial();
-    this._maxInstances = maxInstances ?? 100;
-    this._mesh = new THREE.InstancedMesh(this._bufferGeometry, this._material, this._maxInstances);
+    this._invalidMaterial = createInvalidSelectionMaterial();
+    this._mesh = new InstanceCountedMesh(
+      maxInstances ?? 100,
+      maxInstances => new THREE.InstancedMesh(this._bufferGeometry, this._material, maxInstances)
+    );
+    this._invalidMesh = new InstanceCountedMesh(
+      maxInstances ?? 100,
+      maxInstances => new THREE.InstancedMesh(this._bufferGeometry, this._invalidMaterial, maxInstances)
+    );
+
     this._scene = scene;
-    scene.add(this._mesh);
+    scene.add(this._mesh.mesh);
+    scene.add(this._invalidMesh.mesh);
   }
 
   private toKey(id: IMapControlPointIdentifier) {
@@ -330,21 +344,13 @@ export class MapControlPoints extends Drawn implements IMapControlPointDictionar
       return false;
     }
 
-    // Re-use an existing index if we can.   Otherwise, extend the instance list.
-    let instanceIndex = this._clearIndices.pop();
+    const m = this.transformToAnchor(new THREE.Matrix4(), f.anchor);
+    const target = f.invalid === true ? this._invalidMesh : this._mesh;
+    const instanceIndex = target.addInstance(m);
     if (instanceIndex === undefined) {
-      if (this._mesh.count === this._maxInstances) {
-        // We've run out.
-        return false;
-      }
-
-      instanceIndex = this._mesh.count++;
+      return false;
     }
 
-    // Add an instance of this feature in the right place
-    const m = this.transformToAnchor(new THREE.Matrix4(), f.anchor);
-    this._mesh.setMatrixAt(instanceIndex, m);
-    this._mesh.instanceMatrix.needsUpdate = true;
     this.setNeedsRedraw();
     this._values.set(key, { ...f, index: instanceIndex });
     return true;
@@ -352,8 +358,8 @@ export class MapControlPoints extends Drawn implements IMapControlPointDictionar
 
   clear() {
     this._values.clear();
-    this._clearIndices = [];
-    this._mesh.count = 0;
+    this._mesh.clear();
+    this._invalidMesh.clear();
   }
 
   forEach(fn: (f: IMapControlPoint) => void) {
@@ -377,21 +383,17 @@ export class MapControlPoints extends Drawn implements IMapControlPointDictionar
       return undefined;
     }
 
-    // Like the instanced feature object, we implement erasing instances by
-    // offscreening them like this:
-    const m = new THREE.Matrix4().makeTranslation(0, 0, -1000);
-    this._mesh.setMatrixAt(value.index, m);
-    this._mesh.instanceMatrix.needsUpdate = true;
+    (value.invalid === true ? this._invalidMesh : this._mesh).removeInstance(value.index);
     this.setNeedsRedraw();
-    this._clearIndices.push(value.index);
-
     this._values.delete(key);
     return value;
   }
 
   dispose() {
-    this._scene.remove(this._mesh);
+    this._scene.remove(this._mesh.mesh);
+    this._scene.remove(this._invalidMesh.mesh);
     this._bufferGeometry.dispose();
     this._material.dispose();
+    this._invalidMaterial.dispose();
   }
 }

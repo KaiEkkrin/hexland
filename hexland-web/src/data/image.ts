@@ -103,6 +103,7 @@ export interface IMapControlPointIdentifier {
 
 export interface IMapControlPoint extends IMapControlPointIdentifier {
   anchor: Anchor;
+  invalid?: boolean | undefined; // for highlights -- set to true to show in red or what have you
 }
 
 // Presents a feature dictionary-like interface for the map control points.
