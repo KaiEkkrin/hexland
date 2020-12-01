@@ -1,6 +1,7 @@
 import { MapColouring } from './colouring';
 import { FaceHighlighter } from './dragHighlighter';
 import { DragRectangle } from './dragRectangle';
+import { getClientToWorld, getWorldToClient } from './extensions';
 import { FeatureColour } from './featureColour';
 import { IGridGeometry } from './gridGeometry';
 import { IDrawing, IDragRectangle, Layer } from './interfaces';
@@ -15,7 +16,7 @@ import { netObjectCount, trackChanges } from '../data/changeTracking';
 import { GridCoord, coordString, coordsEqual, coordSub, coordAdd, GridVertex, vertexAdd } from '../data/coord';
 import { FeatureDictionary, flipToken, IToken, ITokenDictionary, ITokenProperties, TokenSize } from '../data/feature';
 import { IAdventureIdentified } from '../data/identified';
-import { Anchor, anchorsEqual, anchorString, IMapImage, IMapImageProperties } from '../data/image';
+import { Anchor, anchorsEqual, anchorString, IMapImage, IMapImageProperties, VertexAnchor } from '../data/image';
 import { IMap } from '../data/map';
 import { IUserPolicy } from '../data/policy';
 import { ITokenGeometry } from '../data/tokenGeometry';
@@ -140,6 +141,7 @@ export class MapStateMachine {
   private _tokenMoveDragSelectionPosition: GridCoord | undefined;
 
   private _imageMoveDragStart = new THREE.Vector3(); // a client position
+  private _imageMoveDragMode: 'vertex' | 'pixel' = 'vertex';
   private _inImageMoveDrag = false;
 
   private _isDisposed = false;
@@ -182,7 +184,7 @@ export class MapStateMachine {
     this._dragRectangle = new DragRectangle(
       this._drawing.outlinedRectangle, this._gridGeometry,
       cp => this._drawing.getGridCoordAt(cp),
-      t => this._drawing.getViewportToWorld(t)
+      t => getClientToWorld(t, this._drawing)
     );
 
     // The notes are rendered with React, not with Three.js
@@ -407,13 +409,29 @@ export class MapStateMachine {
   }
 
   private getImageControlPointHitTest(cp: THREE.Vector3): (anchor: Anchor) => boolean {
-    // TODO #135 Support testing for near-enough pixel control point too
     const vertex = this._drawing.getGridVertexAt(cp);
+    const clientToWorld = getClientToWorld(this._scratchMatrix1, this._drawing);
+    const worldPosition = this._scratchVector1.copy(cp).applyMatrix4(clientToWorld);
+    const hitDistanceSq = Math.pow(this._drawing.vertexHitDistance, 2);
     return (anchor: Anchor) => {
       console.log(`testing anchor: ${anchorString(anchor)}`);
-      return vertex !== undefined && anchorsEqual(anchor, {
+
+      // Test for direct vertex match
+      if (vertex !== undefined && anchorsEqual(anchor, {
         anchorType: 'vertex', position: vertex
-      });
+      })) {
+        return true;
+      }
+
+      // Test for a co-ordinate close to the world position
+      if (
+        anchor.anchorType === 'pixel' &&
+        this._scratchVector2.set(anchor.x, anchor.y, 0).distanceToSquared(worldPosition) <= hitDistanceSq
+      ) {
+        return true;
+      }
+
+      return false;
     };
   }
 
@@ -471,8 +489,9 @@ export class MapStateMachine {
     this._inImageMoveDrag = false;
   }
 
-  private imageMoveDragStart(cp: THREE.Vector3) {
+  private imageMoveDragStart(cp: THREE.Vector3, shiftKey: boolean) {
     this._imageMoveDragStart.copy(cp);
+    this._imageMoveDragMode = shiftKey ? 'pixel' : 'vertex';
     this._inImageMoveDrag = true;
     this._drawing.imageSelectionDrag.clear();
     this._drawing.imageSelection.forEach(i => this._drawing.imageSelectionDrag.add(i));
@@ -484,34 +503,46 @@ export class MapStateMachine {
     }
 
     // TODO #135 Fully support pixel move (may require a flag parameter to this method...)
-    // To avoid craziness, we only let you switch vertex indices if all the selected images
-    // are at the same index
-    const startPosition = this.getClosestVertexPosition(this._imageMoveDragStart);
-    const targetPosition = this.getClosestVertexPosition(cp);
-    if (!startPosition || !targetPosition || coordsEqual(startPosition, targetPosition)) {
-      return;
-    }
 
-    const baseVertex = startPosition.vertex;
-    const allowVertexSwitching = fluent(this._drawing.imageSelection).reduce(
-      (ok, i) => ok && i.start.anchorType === 'vertex' && i.start.position.vertex === baseVertex, true
-    );
-    const delta = coordSub(targetPosition, startPosition);
+    const moveAnchor = (() => {
+      if (this._imageMoveDragMode === 'vertex') {
+        // To avoid craziness, we only let you switch vertex indices if all the selected images
+        // are at the same index
+        const startPosition = this.getClosestVertexPosition(this._imageMoveDragStart);
+        const targetPosition = this.getClosestVertexPosition(cp);
+        if (!startPosition || !targetPosition || coordsEqual(startPosition, targetPosition)) {
+          return (anchor: Anchor) => undefined;
+        }
 
-    function moveAnchor(anchor: Anchor): Anchor | undefined {
-      if (anchor.anchorType === 'vertex') {
-        return {
-          anchorType: 'vertex',
-          position: {
-            ...coordAdd(anchor.position, delta),
-            vertex: allowVertexSwitching ? (targetPosition?.vertex ?? anchor.position.vertex) :
-              anchor.position.vertex
+        const baseVertex = startPosition.vertex;
+        const allowVertexSwitching = fluent(this._drawing.imageSelection).reduce(
+          (ok, i) => ok && i.start.anchorType === 'vertex' && i.start.position.vertex === baseVertex, true
+        );
+        const delta = coordSub(targetPosition, startPosition);
+
+        return (anchor: Anchor) => {
+          let moved: Anchor | undefined = undefined;
+          switch (anchor.anchorType) {
+            case 'vertex':
+              moved = {
+                anchorType: 'vertex',
+                position: {
+                  ...coordAdd(anchor.position, delta),
+                  vertex: allowVertexSwitching ? (targetPosition?.vertex ?? anchor.position.vertex) :
+                    anchor.position.vertex
+                }
+              };
+              break;
           }
+          return moved;
         };
-      } else {
-        return undefined;
+      } else { // pixel drag
+        return (anchor: Anchor) => {
+          // TODO #135
+          return undefined;
+        };
       }
-    }
+    })();
 
     this._drawing.imageSelectionDrag.clear();
     for (const i of this._drawing.imageSelection) {
@@ -953,11 +984,8 @@ export class MapStateMachine {
       return undefined;
     }
 
-    const scale = new THREE.Vector3(2 / window.innerWidth, 2 / window.innerHeight, 1);
-    const translation = new THREE.Vector3(-1, -1, 0);
-    const viewportToWorld = this._drawing.getViewportToWorld(this._scratchMatrix1);
-    const worldPosition = this._scratchVector1.copy(cp).multiply(scale).add(translation)
-      .applyMatrix4(viewportToWorld);
+    const clientToWorld = getClientToWorld(this._scratchMatrix1, this._drawing);
+    const worldPosition = this._scratchVector1.copy(cp).applyMatrix4(clientToWorld);
     for (const i of this._drawing.images) {
       const startPosition = this._gridGeometry.createAnchorPosition(this._scratchVector2, i.start);
       const endPosition = this._gridGeometry.createAnchorPosition(this._scratchVector3, i.end);
@@ -1136,20 +1164,11 @@ export class MapStateMachine {
 
     if (centreOn !== undefined) {
       console.log("resetView: centre on " + centreOn.x + ", " + centreOn.y);
-      const worldToViewport = this._drawing.getWorldToViewport(this._scratchMatrix1);
-      const viewportScaling = this._scratchVector1.set(
-        0.5 * window.innerWidth,
-        0.5 * window.innerHeight,
-        1
-      );
+      const worldToClient = getWorldToClient(this._scratchMatrix1, this._drawing);
       const zeroCentre = this._gridGeometry.createCoordCentre(this._scratchVector2, { x: 0, y: 0 }, 0)
-        .applyMatrix4(worldToViewport)
-        .multiply(viewportScaling);
+        .applyMatrix4(worldToClient);
       const delta = this._gridGeometry.createCoordCentre(this._scratchVector3, centreOn, 0)
-        .applyMatrix4(worldToViewport)
-        .multiply(viewportScaling)
-        .sub(zeroCentre);
-
+        .applyMatrix4(worldToClient).sub(zeroCentre);
       this._cameraTranslation.set(delta.x, -delta.y, 0);
     }
 
@@ -1182,7 +1201,7 @@ export class MapStateMachine {
   // Selects the token or image at the client position, if there is one,
   // and begins a drag move for it.
   // Returns true if it selected something, else false.
-  selectTokenOrImage(cp: THREE.Vector3, layer: Layer) {
+  selectTokenOrImage(cp: THREE.Vector3, shiftKey: boolean, layer: Layer) {
     const position = this._drawing.getGridCoordAt(cp);
     if (position === undefined) {
       return undefined;
@@ -1204,7 +1223,7 @@ export class MapStateMachine {
         this.setSelectedImage(image);
       }
 
-      this.imageMoveDragStart(cp);
+      this.imageMoveDragStart(cp, shiftKey);
       return true;
     } else { // object layer
       const token = this._tokens.at(position);
@@ -1269,7 +1288,7 @@ export class MapStateMachine {
     return chs;
   }
 
-  selectionDragStart(cp: THREE.Vector3, layer: Layer) {
+  selectionDragStart(cp: THREE.Vector3, shiftKey: boolean, layer: Layer) {
     if (layer === Layer.Image) {
       // If this starts a control point drag, go with that.
       // Otherwise, start an image move drag instead.
@@ -1279,7 +1298,7 @@ export class MapStateMachine {
 
       const image = this.getImage(cp);
       if (image !== undefined) {
-        this.imageMoveDragStart(cp);
+        this.imageMoveDragStart(cp, shiftKey);
         return;
       }
     } else {

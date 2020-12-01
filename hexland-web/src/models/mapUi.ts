@@ -232,8 +232,8 @@ export class MapUi {
     switch (this._state.editMode) {
       case EditMode.Select:
         if (shiftKey) {
-          this._stateMachine?.selectionDragStart(cp, this._state.layer);
-        } else if (this._stateMachine?.selectTokenOrImage(cp, this._state.layer) !== true) {
+          this._stateMachine?.selectionDragStart(cp, shiftKey, this._state.layer);
+        } else if (this._stateMachine?.selectTokenOrImage(cp, shiftKey, this._state.layer) !== true) {
           // There's no token here -- pan or rotate the view instead.
           newState.isDraggingView = true;
           this._stateMachine?.clearSelection();

@@ -328,8 +328,11 @@ export class MapControlPoints extends Drawn implements IMapControlPointDictionar
         console.log(`drawing control point at ${vertexString(a.position)}`);
         return this.geometry.transformToVertex(m, a.position);
 
+      case 'pixel':
+        m.makeTranslation(a.x, a.y, 0);
+        return m;
+
       default:
-        // TODO #135 Fill this in a bit later
         throw Error(`Unsupported anchor type: ${a.anchorType}`);
     }
   }

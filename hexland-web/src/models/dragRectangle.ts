@@ -13,7 +13,7 @@ const zAxis = new THREE.Vector3(0, 0, 1);
 export class DragRectangle implements IDragRectangle {
   private readonly _outlined: IOutlinedRectangle;
   private readonly _getGridCoordAt: (cp: THREE.Vector3) => GridCoord | undefined;
-  private readonly _getViewportToWorld: (target: THREE.Matrix4) => THREE.Matrix4;
+  private readonly _getClientToWorld: (target: THREE.Matrix4) => THREE.Matrix4;
 
   private readonly _testVertexCollection: TestVertexCollection;
 
@@ -24,11 +24,11 @@ export class DragRectangle implements IDragRectangle {
     outlined: IOutlinedRectangle,
     geometry: IGridGeometry,
     getGridCoordAt: (cp: THREE.Vector3) => GridCoord | undefined,
-    getViewportToWorld: (target: THREE.Matrix4) => THREE.Matrix4
+    getClientToWorld: (target: THREE.Matrix4) => THREE.Matrix4
   ) {
     this._outlined = outlined;
     this._getGridCoordAt = getGridCoordAt;
-    this._getViewportToWorld = getViewportToWorld;
+    this._getClientToWorld = getClientToWorld;
 
     // We pre-build the test vertex collection for detecting selections
     this._testVertexCollection = new TestVertexCollection(geometry, 0, 1);
@@ -76,12 +76,10 @@ export class DragRectangle implements IDragRectangle {
 
     // To achieve this, I need to get the drag rectangle into world co-ordinates,
     // which are centred at (0, 0).
-    const scale = new THREE.Vector3(2 / window.innerWidth, 2 / window.innerHeight, 1);
-    const translation = new THREE.Vector3(-1, -1, 0);
-    const viewportToWorld = this._getViewportToWorld(new THREE.Matrix4());
+    const clientToWorld = this._getClientToWorld(new THREE.Matrix4());
     const rectanglePoints =
       [...this.enumerateCanvasDragRectanglePoints(new THREE.Vector3())]
-        .map(p => p.multiply(scale).add(translation).applyMatrix4(viewportToWorld));
+        .map(p => p.applyMatrix4(clientToWorld));
 
     // For efficiency, we create the test vertices once and then transform them
     // as required

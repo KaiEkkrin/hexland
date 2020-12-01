@@ -355,6 +355,7 @@ export class DrawingOrtho implements IDrawing {
   get los() { return this._los; }
 
   get outlinedRectangle() { return this._outlinedRectangle; }
+  get vertexHitDistance() { return this._gridGeometry.getVertexRadius(vertexHighlightAlpha); }
 
   animate(preAnimate?: (() => void) | undefined, postAnimate?: (() => void) | undefined) {
     if (this._disposed) {

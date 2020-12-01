@@ -13,6 +13,12 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "1.1.0",
+    changes: [
+      "Support adding background images to maps"
+    ]
+  },
+  {
     version: "1.0.4",
     changes: [
       "Make token text clearer when drawn on top of dark images"

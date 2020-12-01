@@ -35,6 +35,10 @@ export interface IDrawing {
   // be subject to the world transform applied to everything else.
   outlinedRectangle: IOutlinedRectangle;
 
+  // The maximum distance from a pixel anchor that you can be in order to hit it,
+  // in world space.
+  vertexHitDistance: number;
+
   // Draws if need be, and requests the next animation frame.
   // The callbacks are called at the start and end of every animate() call
   // respectively.

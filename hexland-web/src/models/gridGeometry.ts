@@ -118,6 +118,9 @@ export interface IGridGeometry {
   // Gets the edges adjacent to the given vertex.
   getVertexEdgeAdjacency(vertex: GridVertex): GridEdge[];
 
+  // Gets the radius of the vertex pseudo-circle (used to draw vertex highlights, for hit testing etc.)
+  getVertexRadius(alpha: number): number;
+
   // Emits the same grid geometry but with a tileDim of 1; useful for initialising
   // instanced draws.
   toSingle(): IGridGeometry;
@@ -229,7 +232,7 @@ export abstract class BaseGeometry {
 
   abstract createVertexCentre(target: THREE.Vector3, vertex: GridVertex, z: number): THREE.Vector3;
 
-  protected abstract getVertexRadius(alpha: number): number;
+  abstract getVertexRadius(alpha: number): number;
 
   private pushEdgeVertices(vertices: THREE.Vector3[], tile: THREE.Vector2, alpha: number, x: number, y: number, z: number, e: number) {
     let edge = createGridEdge(tile, new THREE.Vector2(x, y), this.tileDim, e);
