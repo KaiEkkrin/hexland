@@ -16,7 +16,7 @@ import { netObjectCount, trackChanges } from '../data/changeTracking';
 import { GridCoord, coordString, coordsEqual, coordSub, coordAdd, GridVertex, vertexAdd } from '../data/coord';
 import { FeatureDictionary, flipToken, IToken, ITokenDictionary, ITokenProperties, TokenSize } from '../data/feature';
 import { IAdventureIdentified } from '../data/identified';
-import { Anchor, anchorsEqual, anchorString, IMapImage, IMapImageProperties, VertexAnchor } from '../data/image';
+import { Anchor, anchorsEqual, anchorString, IMapImage, IMapImageProperties } from '../data/image';
 import { IMap } from '../data/map';
 import { IUserPolicy } from '../data/policy';
 import { ITokenGeometry } from '../data/tokenGeometry';
@@ -394,6 +394,17 @@ export class MapStateMachine {
     }
   }
 
+  private getAnchor(cp: THREE.Vector3, mode: 'vertex' | 'pixel'): Anchor | undefined {
+    if (mode === 'vertex') {
+      const vertex = this._drawing.getGridVertexAt(cp);
+      return vertex ? { anchorType: 'vertex', position: vertex } : undefined;
+    } else {
+      const clientToWorld = getClientToWorld(this._scratchMatrix1, this._drawing);
+      const position = this._scratchVector1.copy(cp).applyMatrix4(clientToWorld);
+      return { anchorType: 'pixel', x: position.x, y: position.y };
+    }
+  }
+
   private getClosestVertexPosition(cp: THREE.Vector3): GridVertex | undefined {
     const vertexPosition = this._drawing.getGridVertexAt(cp);
     if (vertexPosition !== undefined) {
@@ -502,23 +513,26 @@ export class MapStateMachine {
       return;
     }
 
-    // TODO #135 Fully support pixel move (may require a flag parameter to this method...)
-
     const moveAnchor = (() => {
       if (this._imageMoveDragMode === 'vertex') {
         // To avoid craziness, we only let you switch vertex indices if all the selected images
         // are at the same index
-        const startPosition = this.getClosestVertexPosition(this._imageMoveDragStart);
-        const targetPosition = this.getClosestVertexPosition(cp);
-        if (!startPosition || !targetPosition || coordsEqual(startPosition, targetPosition)) {
+        const startVertex = this.getClosestVertexPosition(this._imageMoveDragStart);
+        const targetVertex = this.getClosestVertexPosition(cp);
+        if (!startVertex || !targetVertex || coordsEqual(startVertex, targetVertex)) {
           return (anchor: Anchor) => undefined;
         }
 
-        const baseVertex = startPosition.vertex;
+        const baseVertex = startVertex.vertex;
         const allowVertexSwitching = fluent(this._drawing.imageSelection).reduce(
           (ok, i) => ok && i.start.anchorType === 'vertex' && i.start.position.vertex === baseVertex, true
         );
-        const delta = coordSub(targetPosition, startPosition);
+        const vertexDelta = coordSub(targetVertex, startVertex);
+
+        // To move pixel anchors, we need a pixel delta too
+        const startPosition = this._gridGeometry.createVertexCentre(this._scratchVector1, startVertex, 0);
+        const pixelDelta = this._gridGeometry.createVertexCentre(this._scratchVector2, targetVertex, 0)
+          .sub(startPosition);
 
         return (anchor: Anchor) => {
           let moved: Anchor | undefined = undefined;
@@ -527,19 +541,40 @@ export class MapStateMachine {
               moved = {
                 anchorType: 'vertex',
                 position: {
-                  ...coordAdd(anchor.position, delta),
-                  vertex: allowVertexSwitching ? (targetPosition?.vertex ?? anchor.position.vertex) :
+                  ...coordAdd(anchor.position, vertexDelta),
+                  vertex: allowVertexSwitching ? (targetVertex?.vertex ?? anchor.position.vertex) :
                     anchor.position.vertex
                 }
               };
+              break;
+
+            case 'pixel':
+              moved = { anchorType: 'pixel', x: anchor.x + pixelDelta.x, y: anchor.y + pixelDelta.y };
               break;
           }
           return moved;
         };
       } else { // pixel drag
+        const clientToWorld = getClientToWorld(this._scratchMatrix1, this._drawing);
+        const startPosition = this._scratchVector1.copy(this._imageMoveDragStart).applyMatrix4(clientToWorld);
+        const pixelDelta = this._scratchVector2.copy(cp).applyMatrix4(clientToWorld).sub(startPosition);
+
+        // This one will convert any vertex anchors to pixel ones
         return (anchor: Anchor) => {
-          // TODO #135
-          return undefined;
+          let moved: Anchor | undefined = undefined;
+          switch (anchor.anchorType) {
+            case 'vertex':
+              const newPosition =
+                this._gridGeometry.createVertexCentre(this._scratchVector1, anchor.position, 0)
+                .add(pixelDelta);
+              moved = { anchorType: 'pixel', x: newPosition.x, y: newPosition.y };
+              break;
+
+            case 'pixel':
+              moved = { anchorType: 'pixel', x: anchor.x + pixelDelta.x, y: anchor.y + pixelDelta.y };
+              break;
+          }
+          return moved;
         };
       }
     })();
@@ -1038,9 +1073,7 @@ export class MapStateMachine {
     this._dragRectangle.moveTo(cp);
     if (this._imageResizer.inDrag === true) {
       this.panIfWithinMargin(cp);
-      // TODO #135 Support pixel anchor too (on Shift key?)
-      const vertex = this._drawing.getGridVertexAt(cp);
-      this._imageResizer.moveHighlight(vertex ? { anchorType: 'vertex', position: vertex } : undefined);
+      this._imageResizer.moveHighlight(mode => this.getAnchor(cp, mode));
     } else if (this._inImageMoveDrag === true) {
       this.panIfWithinMargin(cp);
       this.imageMoveDragTo(cp);
@@ -1208,7 +1241,7 @@ export class MapStateMachine {
     }
 
     if (layer === Layer.Image) {
-      if (this._imageResizer.dragStart(this.getImageControlPointHitTest(cp))) {
+      if (this._imageResizer.dragStart(this.getImageControlPointHitTest(cp), shiftKey)) {
         return true;
       }
 
@@ -1256,11 +1289,7 @@ export class MapStateMachine {
         let image: IMapImage | undefined = undefined;
         if (this._imageResizer.inDrag) {
           // Complete the image resize operation
-          // TODO #135 Support pixel anchors (e.g. on Shift key?)
-          const vertex = this._drawing.getGridVertexAt(cp);
-          image = this._imageResizer.dragEnd(
-            vertex ? { anchorType: 'vertex', position: vertex } : undefined, chs
-          );
+          image = this._imageResizer.dragEnd(mode => this.getAnchor(cp, mode), chs);
         } else {
           // Add the image at this position
           // TODO #135 Support multi-selecting images?  (maybe defer to another ticket)
@@ -1292,7 +1321,7 @@ export class MapStateMachine {
     if (layer === Layer.Image) {
       // If this starts a control point drag, go with that.
       // Otherwise, start an image move drag instead.
-      if (this._imageResizer.dragStart(this.getImageControlPointHitTest(cp)) === true) {
+      if (this._imageResizer.dragStart(this.getImageControlPointHitTest(cp), shiftKey) === true) {
         return;
       }
 

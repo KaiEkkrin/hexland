@@ -288,6 +288,8 @@ export class MapControlPoints extends Drawn implements IMapControlPointDictionar
   private readonly _scene: THREE.Scene; // we don't own this
   private readonly _values = new Map<string, IMapControlPoint & { index: number }>();
 
+  private readonly _zeroCentre: THREE.Vector3;
+
   constructor(
     gridGeometry: IGridGeometry, redrawFlag: RedrawFlag,
     scene: THREE.Scene,
@@ -316,6 +318,10 @@ export class MapControlPoints extends Drawn implements IMapControlPointDictionar
     this._scene = scene;
     scene.add(this._mesh.mesh);
     scene.add(this._invalidMesh.mesh);
+
+    this._zeroCentre = gridGeometry.createVertexCentre(
+      new THREE.Vector3(), { x: 0, y: 0, vertex: 0 }, 0
+    );
   }
 
   private toKey(id: IMapControlPointIdentifier) {
@@ -329,7 +335,7 @@ export class MapControlPoints extends Drawn implements IMapControlPointDictionar
         return this.geometry.transformToVertex(m, a.position);
 
       case 'pixel':
-        m.makeTranslation(a.x, a.y, 0);
+        m.makeTranslation(a.x - this._zeroCentre.x, a.y - this._zeroCentre.y, 0);
         return m;
 
       default:

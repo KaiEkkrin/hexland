@@ -5,7 +5,7 @@ import ExpansionToggle from './ExpansionToggle';
 import Accordion from 'react-bootstrap/Accordion';
 import Card from 'react-bootstrap/Card';
 
-import { faMapMarker } from '@fortawesome/free-solid-svg-icons';
+import { faCubes, faImages, faMapMarker } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 interface IHelpItemProps {
@@ -83,7 +83,14 @@ const ownerHelp = [
     While in this mode, <b>drag</b> to combine it with any other room you drag over, or <b>Shift-drag</b> to
     take the area you drag over away from any other existing room.
   </ExpandingHelpItem>),
-  (<HelpItem key="o5">
+  (<ExpandingHelpItem key="o5" eventKey="5" summary={(<div><b>I</b> to add an image.</div>)}>
+    Adds an image to the map background.  To move, edit and delete these images, tap the Image layer icon
+    &nbsp;<FontAwesomeIcon icon={faImages} color="white" /> to switch to the image layer, and the Object layer icon
+    &nbsp;<FontAwesomeIcon icon={faCubes} color="white" /> to switch back out again.
+    While in the Image layer, drag to move images or their control points with grid snapping, or hold Shift
+    and drag to disable grid snapping.
+  </ExpandingHelpItem>),
+  (<HelpItem key="o7">
     <b>Del</b> to delete the currently selected token(s).
   </HelpItem>),
 ];

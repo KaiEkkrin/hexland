@@ -21,6 +21,7 @@ export class ImageResizer {
   private readonly _scratchVector2 = new THREE.Vector3();
 
   private _dragging: IMapControlPointIdentifier | undefined;
+  private _dragMode: 'vertex' | 'pixel' = 'vertex';
 
   constructor(
     gridGeometry: IGridGeometry,
@@ -56,8 +57,11 @@ export class ImageResizer {
   }
 
   // Populates a list of changes that would create the image edit.
-  dragEnd(anchor: Anchor | undefined, changes: Change[]): IMapImage | undefined {
-    this.moveHighlight(anchor);
+  dragEnd(
+    getAnchor: (mode: 'vertex' | 'pixel') => Anchor | undefined,
+    changes: Change[]
+  ): IMapImage | undefined {
+    this.moveHighlight(getAnchor);
     if (this._dragging === undefined) {
       return undefined;
     }
@@ -93,11 +97,12 @@ export class ImageResizer {
   }
 
   // Returns true if we started a drag, else false.
-  dragStart(hitTest: (anchor: Anchor) => boolean): boolean {
+  dragStart(hitTest: (anchor: Anchor) => boolean, shiftKey: boolean): boolean {
     this.dragCancel();
     for (const s of this._selection) {
       if (hitTest(s.anchor) === true) {
         this._dragging = s;
+        this._dragMode = shiftKey ? 'pixel' : 'vertex';
         this._highlights.add(s);
         return true;
       }
@@ -106,12 +111,13 @@ export class ImageResizer {
     return false;
   }
 
-  // Returns true if something changed, else false.
-  moveHighlight(anchor: Anchor | undefined): boolean {
+  // Returns the anchor moved to if a move was made, else false.
+  moveHighlight(getAnchor: (mode: 'vertex' | 'pixel') => Anchor | undefined): boolean {
     if (this._dragging === undefined) {
       return false;
     }
 
+    const anchor = getAnchor(this._dragMode);
     const currently = this._highlights.get(this._dragging);
     console.log(`moving: ${anchorString(currently?.anchor)} -> ${anchorString(anchor)}`);
     if (currently !== undefined && (anchor === undefined || anchorsEqual(currently.anchor, anchor))) {
