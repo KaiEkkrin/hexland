@@ -79,6 +79,7 @@ export class ImageResizer {
       const updatedImage: IMapImage = {
         id: image.id,
         image: image.image,
+        rotation: image.rotation,
         start: this._dragging.which === 'start' ? movedTo.anchor : image.start,
         end: this._dragging.which === 'end' ? movedTo.anchor : image.end
       };

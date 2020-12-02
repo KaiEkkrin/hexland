@@ -2,10 +2,11 @@ import React, { useCallback, useContext, useEffect, useMemo, useState } from 're
 
 import { ImagePickerForm } from './ImagePickerModal';
 import { ProfileContext } from './ProfileContextProvider';
-import { IImage, IMapImageProperties } from '../data/image';
+import { IImage, IMapImageProperties, MapImageRotation } from '../data/image';
 import { getUserPolicy } from '../data/policy';
 
 import Button from 'react-bootstrap/Button';
+import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
 
 import { v4 as uuidv4 } from 'uuid';
@@ -29,6 +30,8 @@ function MapImageEditorModal(
     [profile]
   );
 
+  const [rotation, setRotation] = useState<MapImageRotation>("0");
+
   const [activeImage, setActiveImage] = useState<IImage | undefined>(undefined);
   const [imageCount, setImageCount] = useState(0);
   const activeImagePath = useMemo(() => activeImage?.path, [activeImage]);
@@ -38,6 +41,7 @@ function MapImageEditorModal(
   useEffect(() => {
     if (show) {
       setActiveImage(mapImage?.image);
+      setRotation(mapImage?.rotation ?? "0");
     }
   }, [mapImage, show]);
 
@@ -48,9 +52,10 @@ function MapImageEditorModal(
 
     handleSave({
       id: mapImage === undefined ? uuidv4() : mapImage.id,
-      image: activeImage
+      image: activeImage,
+      rotation: rotation
     });
-  }, [activeImage, handleSave, mapImage]);
+  }, [activeImage, handleSave, mapImage, rotation]);
 
   const doHandleDelete = useCallback(() => {
     if (mapImage === undefined) {
@@ -76,6 +81,19 @@ function MapImageEditorModal(
       <Modal.Body>
         <ImagePickerForm show={show} setActiveImage={setActiveImage} setImageCount={setImageCount}
           handleDelete={doHandleDeleteImage} />
+          <Form>
+        <Form.Group>
+          <Form.Label htmlFor="mapImageRotation">Rotation</Form.Label>
+          <Form.Control id="mapImageRotation" as="select" value={rotation}
+            onChange={e => setRotation(e.target.value as MapImageRotation)}
+          >
+            <option>0</option>
+            <option>90</option>
+            <option>180</option>
+            <option>270</option>
+          </Form.Control>
+        </Form.Group>
+          </Form>
       </Modal.Body>
       <Modal.Footer>
         <Button variant="danger" onClick={doHandleDelete}>Delete</Button>

@@ -443,6 +443,7 @@ export const imagesConverter = new RecursingConverter<IImages>({
 export const mapImageConverter = new RecursingConverter<IMapImage>({
   id: "",
   image: { name: "", path: "" },
+  rotation: "0",
   start: defaultAnchor,
   end: defaultAnchor
 }, {

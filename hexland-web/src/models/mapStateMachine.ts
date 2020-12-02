@@ -484,6 +484,7 @@ export class MapStateMachine {
         movedImages.push({ // re-create the record to avoid including meshes and things
           id: moved.id,
           image: moved.image,
+          rotation: moved.rotation,
           start: moved.start,
           end: moved.end
         });

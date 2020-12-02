@@ -40,9 +40,12 @@ export type NoAnchor = {
 
 export const defaultAnchor: NoAnchor = { anchorType: 'none' };
 
+export type MapImageRotation = "0" | "90" | "180" | "270"
+
 // This *is* an image positioned on the map.
 export interface IMapImageProperties extends IId {
   image: IImage;
+  rotation: MapImageRotation;
 }
 
 export interface IMapImage extends IMapImageProperties {
@@ -53,6 +56,7 @@ export interface IMapImage extends IMapImageProperties {
 export const defaultMapImage: IMapImage = {
   id: "",
   image: { name: "", path: "" },
+  rotation: "0",
   start: defaultAnchor,
   end: defaultAnchor
 };

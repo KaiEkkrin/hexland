@@ -47,11 +47,11 @@ function createSquareBufferGeometry(z: number): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry().setFromPoints([
     new THREE.Vector3(0, 0, z),
     new THREE.Vector3(1, 0, z),
+    new THREE.Vector3(1, 1, z),
     new THREE.Vector3(0, 1, z),
-    new THREE.Vector3(1, 1, z)
   ]);
   g.setIndex([
-    0, 1, 2, 1, 2, 3
+    0, 1, 3, 1, 3, 2
   ]);
   return g;
 }
@@ -68,7 +68,9 @@ function positionMesh(gridGeometry: IGridGeometry, mesh: THREE.Mesh, image: IMap
 // scene that is rendered before the objects (so that area alpha blending
 // applies correctly, etc.)
 export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
-  private readonly _bufferGeometry: THREE.BufferGeometry;
+  // For now, we support 4 different angles (0, 90, 180, 270) and implement the rotation
+  // by pre-building a different buffer geometry with different UVs for each one.
+  private readonly _bufferGeometry: THREE.BufferGeometry[];
   private readonly _scene: THREE.Scene; // we don't own this
   private readonly _values = new Map<string, MapImage>();
   private readonly _meshes = new Map<string, MeshRecord>(); // id -> mesh added to scene
@@ -85,11 +87,23 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
     super(geometry, redrawFlag);
 
     // This is a simple square at [0..1]
-    this._bufferGeometry = createSquareBufferGeometry(z);
+    this._bufferGeometry = [0, 1, 2, 3].map(_ => createSquareBufferGeometry(z));
 
     // ...with the UVs inverted in Y, since we draw with 0 at the top
-    this._bufferGeometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([
-      0, 1, 1, 1, 0, 0, 1, 0
+    this._bufferGeometry[0].setAttribute('uv', new THREE.BufferAttribute(new Float32Array([
+      0, 1, 1, 1, 1, 0, 0, 0
+    ]), 2));
+
+    this._bufferGeometry[1].setAttribute('uv', new THREE.BufferAttribute(new Float32Array([
+      0, 0, 0, 1, 1, 1, 1, 0
+    ]), 2));
+
+    this._bufferGeometry[2].setAttribute('uv', new THREE.BufferAttribute(new Float32Array([
+      1, 0, 0, 0, 0, 1, 1, 1
+    ]), 2));
+
+    this._bufferGeometry[3].setAttribute('uv', new THREE.BufferAttribute(new Float32Array([
+      1, 1, 1, 0, 0, 0, 0, 1
     ]), 2));
 
     this._scene = scene;
@@ -108,7 +122,9 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
       side: THREE.DoubleSide,
       transparent: true
     });
-    const mesh = new THREE.Mesh(this._bufferGeometry, material);
+
+    const geomIndex = f.rotation === '90' ? 1 : f.rotation === '180' ? 2 : f.rotation === '270' ? 3 : 0;
+    const mesh = new THREE.Mesh(this._bufferGeometry[geomIndex], material);
     positionMesh(this.geometry, mesh, f);
 
     this._scene.add(mesh);
@@ -188,7 +204,7 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
 
   dispose() {
     this.clear(); // will also cleanup leases, materials etc.
-    this._bufferGeometry.dispose();
+    this._bufferGeometry.map(g => g.dispose());
   }
 }
 
