@@ -47,7 +47,7 @@ export type MapUiState = {
   showCharacterTokenEditor: boolean;
   showNoteEditor: boolean;
   showTokenDeletion: boolean;
-  showTokenImageDeletion: boolean;
+  showImageDeletion: boolean;
   showMapImageEditor: boolean;
 
   tokenToEdit?: ITokenProperties | undefined;
@@ -55,7 +55,8 @@ export type MapUiState = {
   noteToEdit?: IAnnotation | undefined;
   noteToEditPosition?: THREE.Vector3 | undefined;
   tokensToDelete: ITokenProperties[];
-  tokenImageToDelete?: IImage | undefined;
+  imageToDelete?: IImage | undefined;
+  editorToRestoreAfterDeletion?: 'mapImage' | 'token' | undefined;
 
   mapImageToEdit?: IMapImageProperties | undefined;
   mapImageToEditPosition?: THREE.Vector3 | undefined;
@@ -79,7 +80,7 @@ export function createDefaultUiState(): MapUiState {
     showCharacterTokenEditor: false,
     showNoteEditor: false,
     showTokenDeletion: false,
-    showTokenImageDeletion: false,
+    showImageDeletion: false,
     showMapImageEditor: false,
     tokensToDelete: [],
   };
@@ -324,6 +325,21 @@ export class MapUi {
     });
   }
 
+  tokenEditorDeleteImage(image: IImage | undefined, editor: 'mapImage' | 'token') {
+    if (image === undefined) {
+      return;
+    }
+
+    this.changeState({
+      ...this._state,
+      showMapImageEditor: false,
+      showTokenEditor: false, // will be put back when the image deletion modal is closed
+      showImageDeletion: true,
+      imageToDelete: image,
+      editorToRestoreAfterDeletion: editor
+    });
+  }
+
   editToken(defaultToCharacter?: boolean | undefined) {
     if (this._state.showTokenEditor || this._state.showCharacterTokenEditor) {
       return;
@@ -351,12 +367,22 @@ export class MapUi {
   }
 
   imageDeletionClose() {
-    this.changeState({
-      ...this._state,
-      showTokenImageDeletion: false,
-      showTokenEditor: true, // hopefully the rest of its settings will be preserved :)
-      tokenImageToDelete: undefined
-    });
+    // Restore the editor that was previously open:
+    const newState = {
+      ...this._state, showImageDeletion: false, imageToDelete: undefined
+    };
+
+    switch (this._state.editorToRestoreAfterDeletion) {
+      case 'mapImage':
+        newState.showMapImageEditor = true;
+        break;
+
+      case 'token':
+        newState.showTokenEditor = true;
+        break;
+    }
+
+    this.changeState(newState);
   }
 
   keyDown(e: KeyboardEvent) {
@@ -491,14 +517,7 @@ export class MapUi {
       id: id
     }]);
     this.modalClose();
-  }
-
-  mapImageEditorDeleteImage(image: IImage | undefined) {
-    if (image === undefined) {
-      return;
-    }
-
-    // TODO #135 implement this
+    this._stateMachine?.clearSelection();
   }
 
   mapImageEditorSave(properties: IMapImageProperties) {
@@ -647,19 +666,6 @@ export class MapUi {
     }
 
     this.modalClose();
-  }
-
-  tokenEditorDeleteImage(image: IImage | undefined) {
-    if (image === undefined) {
-      return;
-    }
-
-    this.changeState({
-      ...this._state,
-      showTokenEditor: false, // will be put back when the image deletion modal is closed
-      showTokenImageDeletion: true,
-      tokenImageToDelete: image
-    });
   }
 
   tokenEditorSave(properties: ITokenProperties) {

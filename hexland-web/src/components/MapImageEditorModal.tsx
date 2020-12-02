@@ -1,5 +1,6 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
+import ImageCollectionItem from './ImageCollectionItem';
 import { ImagePickerForm } from './ImagePickerModal';
 import { ProfileContext } from './ProfileContextProvider';
 import { IImage, IMapImageProperties, MapImageRotation } from '../data/image';
@@ -30,32 +31,51 @@ function MapImageEditorModal(
     [profile]
   );
 
+  const [image, setImage] = useState<IImage | undefined>(undefined);
   const [rotation, setRotation] = useState<MapImageRotation>("0");
 
+  // The active image is the image shown in the carousel, as distinct from the one chosen
+  // for the map image
   const [activeImage, setActiveImage] = useState<IImage | undefined>(undefined);
   const [imageCount, setImageCount] = useState(0);
-  const activeImagePath = useMemo(() => activeImage?.path, [activeImage]);
-  const saveDisabled = useMemo(() => activeImagePath === undefined, [activeImagePath]);
+  const saveDisabled = useMemo(() => image === undefined, [image]);
 
   // Initialise the active image to the one in the map image record if we have one
   useEffect(() => {
     if (show) {
-      setActiveImage(mapImage?.image);
+      setImage(mapImage?.image);
       setRotation(mapImage?.rotation ?? "0");
+      setActiveImage(mapImage?.image);
     }
-  }, [mapImage, show]);
+  }, [mapImage, setActiveImage, setImage, setRotation, show]);
 
+  const currentImage = useMemo(() => {
+    if (image === undefined) {
+      return <p>No image selected.</p>;
+    }
+
+    return <React.Fragment>
+      Current image&nbsp;
+      <ImageCollectionItem image={image} />
+    </React.Fragment>;
+  }, [image]);
+
+  const useImageDisabled = useMemo(() => activeImage === undefined, [activeImage]);
+  const handleUseImage = useCallback(() => {
+    setImage(activeImage);
+  }, [activeImage, setImage]);
+  
   const doHandleSave = useCallback(() => {
-    if (activeImage === undefined) {
+    if (image === undefined) {
       return;
     }
 
     handleSave({
       id: mapImage === undefined ? uuidv4() : mapImage.id,
-      image: activeImage,
+      image: image,
       rotation: rotation
     });
-  }, [activeImage, handleSave, mapImage, rotation]);
+  }, [handleSave, image, mapImage, rotation]);
 
   const doHandleDelete = useCallback(() => {
     if (mapImage === undefined) {
@@ -79,21 +99,27 @@ function MapImageEditorModal(
         <Modal.Title>Map image ({imageCount}/{maxImages})</Modal.Title>
       </Modal.Header>
       <Modal.Body>
+        {currentImage}
         <ImagePickerForm show={show} setActiveImage={setActiveImage} setImageCount={setImageCount}
           handleDelete={doHandleDeleteImage} />
-          <Form>
-        <Form.Group>
-          <Form.Label htmlFor="mapImageRotation">Rotation</Form.Label>
-          <Form.Control id="mapImageRotation" as="select" value={rotation}
-            onChange={e => setRotation(e.target.value as MapImageRotation)}
-          >
-            <option>0</option>
-            <option>90</option>
-            <option>180</option>
-            <option>270</option>
-          </Form.Control>
-        </Form.Group>
-          </Form>
+        <Form>
+          <Form.Group>
+            <Form.Label htmlFor="mapImageRotation">Rotation</Form.Label>
+            <Form.Control id="mapImageRotation" as="select" value={rotation}
+              onChange={e => setRotation(e.target.value as MapImageRotation)}
+            >
+              <option>0</option>
+              <option>90</option>
+              <option>180</option>
+              <option>270</option>
+            </Form.Control>
+          </Form.Group>
+        </Form>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+          <Button variant="primary" onClick={handleUseImage} disabled={useImageDisabled}>
+            Use image
+          </Button>
+        </div>
       </Modal.Body>
       <Modal.Footer>
         <Button variant="danger" onClick={doHandleDelete}>Delete</Button>

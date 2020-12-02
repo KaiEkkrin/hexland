@@ -194,13 +194,13 @@ function Map() {
   );
 
   const handleTokenImageDelete = useCallback(
-    (i: IImage | undefined) => ui?.tokenEditorDeleteImage(i),
+    (i: IImage | undefined) => ui?.tokenEditorDeleteImage(i, 'token'),
     [ui]
   );
 
   const handleImageDeletionSave = useCallback(() => {
     ui?.imageDeletionClose();
-    const imageToDelete = uiState.tokenImageToDelete;
+    const imageToDelete = uiState.imageToDelete;
     if (imageToDelete === undefined || functionsService === undefined) {
       return;
     }
@@ -219,7 +219,7 @@ function Map() {
 
   const handleMapImageEditorDelete = useCallback((id: string) => ui?.mapImageEditorDelete(id), [ui]);
   const handleMapImageEditorDeleteImage = useCallback(
-    (image: IImage | undefined) => ui?.mapImageEditorDeleteImage(image),
+    (image: IImage | undefined) => ui?.tokenEditorDeleteImage(image, 'mapImage'),
     [ui]
   );
   const handleMapImageEditorSave = useCallback(
@@ -406,7 +406,7 @@ function Map() {
           players={players} handleClose={handleModalClose}
           handleDelete={handleTokenEditorDelete}
           handleSave={handleTokenEditorSave} />
-        <ImageDeletionModal show={uiState.showTokenImageDeletion} image={uiState.tokenImageToDelete}
+        <ImageDeletionModal show={uiState.showImageDeletion} image={uiState.imageToDelete}
           handleClose={() => ui?.imageDeletionClose()} handleDelete={handleImageDeletionSave} />
         <TokenDeletionModal show={uiState.showTokenDeletion} tokens={uiState.tokensToDelete}
           handleClose={handleModalClose} handleDelete={handleTokenDeletion} />
