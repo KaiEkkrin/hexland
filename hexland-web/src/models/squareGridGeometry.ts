@@ -90,7 +90,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     return this.createTopLeft(target, target);
   }
 
-  protected getVertexRadius(alpha: number) {
+  getVertexRadius(alpha: number) {
     return this._squareSize * alpha;
   }
 

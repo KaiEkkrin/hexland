@@ -62,6 +62,7 @@ export class PaletteColouredFeatureObject<K extends GridCoord, F extends IFeatur
 
     this._material = new THREE.ShaderMaterial({
       blending: colourParameters.blending ?? THREE.NoBlending,
+      side: THREE.DoubleSide,
       transparent: colourParameters.transparent ?? false,
       vertexShader: instanceColouredShader.vertexShader,
       fragmentShader: instanceColouredShader.fragmentShader

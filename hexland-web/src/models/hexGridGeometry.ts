@@ -112,7 +112,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     return vertex.vertex === 0 ? this.createLeft(target, target) : this.createTopLeft(target, target);
   }
 
-  protected getVertexRadius(alpha: number) {
+  getVertexRadius(alpha: number) {
     return this._xOffLeft * alpha;
   }
 

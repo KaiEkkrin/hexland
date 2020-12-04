@@ -261,7 +261,7 @@ export abstract class BaseGeometry {
     // We push the centre, followed by the rim start point rotated `vertexRimCount`
     // times around the rim, doing everything at the origin to make the rotation
     // easier:
-    let origin = new THREE.Vector3(0, 0, 0);
+    const origin = new THREE.Vector3(0, 0, 0);
     vertices.push(origin);
 
     const rimStart = new THREE.Vector3(-radius, 0, 0);
@@ -271,7 +271,7 @@ export abstract class BaseGeometry {
     }
 
     // Now we translate everything
-    let vertex = createGridVertex(tile, new THREE.Vector2(x, y), this.tileDim, v);
+    const vertex = createGridVertex(tile, new THREE.Vector2(x, y), this.tileDim, v);
     const centre = this.createVertexCentre(new THREE.Vector3(), vertex, z);
     for (let i = iStart; i < vertices.length; ++i) {
       vertices[i].add(centre);
@@ -345,8 +345,8 @@ export abstract class BaseGeometry {
   abstract createSolidVertices(tile: THREE.Vector2, alpha: number, z: number): Iterable<THREE.Vector3>;
 
   createSolidVertexVertices(tile: THREE.Vector2, alpha: number, z: number, maxVertex?: number | undefined): THREE.Vector3[] {
-    let radius = this.getVertexRadius(alpha);
-    let vertices: THREE.Vector3[] = [];
+    const radius = this.getVertexRadius(alpha);
+    const vertices: THREE.Vector3[] = [];
     maxVertex = Math.min(maxVertex ?? this.maxVertex, this.maxVertex);
     for (let y = 0; y < this.tileDim; ++y) {
       for (let x = 0; x < this.tileDim; ++x) {
