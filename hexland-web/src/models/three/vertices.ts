@@ -25,7 +25,7 @@ export function createTokenFillVertexGeometry(gridGeometry: IGridGeometry, alpha
 
 export function createVertexGeometry(gridGeometry: IGridGeometry, alpha: number, z: number, maxVertex?: number | undefined) {
   const vertices = [...gridGeometry.createSolidVertexVertices(new THREE.Vector2(0, 0), alpha, z, maxVertex)];
-  const indices = [...gridGeometry.createSolidVertexIndices()];
+  const indices = [...gridGeometry.createSolidVertexIndices(maxVertex)];
   return () => {
     const geometry = new THREE.InstancedBufferGeometry();
     geometry.setFromPoints(vertices);

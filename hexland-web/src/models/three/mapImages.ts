@@ -315,7 +315,7 @@ export class MapControlPoints extends Drawn implements IMapControlPointDictionar
 
     const single = gridGeometry.toSingle();
     const vertices = [...single.createSolidVertexVertices(new THREE.Vector2(0, 0), alpha, z, 1)];
-    const indices = [...single.createSolidVertexIndices()];
+    const indices = [...single.createSolidVertexIndices(1)];
     this._bufferGeometry = new THREE.BufferGeometry();
     this._bufferGeometry.setFromPoints(vertices);
     this._bufferGeometry.setIndex(indices);
