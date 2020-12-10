@@ -7,6 +7,8 @@ import { DataService } from '../services/dataService';
 import { FunctionsService } from '../services/functions';
 import { MockWebStorage } from '../services/mockWebStorage';
 import { Storage } from '../services/storage';
+import { IStorage } from '../services/interfaces';
+import { ExpiringStringCache } from '../services/expiringStringCache';
 
 export const UserContext = React.createContext<IUserContext>({
   user: undefined,
@@ -15,6 +17,15 @@ export const UserContext = React.createContext<IUserContext>({
 export const SignInMethodsContext = React.createContext<ISignInMethodsContext>({
   signInMethods: []
 });
+
+function createResolveImageUrl(storageService: IStorage | undefined): ((path: string) => Promise<string>) | undefined {
+  if (storageService === undefined) {
+    return undefined;
+  }
+
+  const imageUrlCache = new ExpiringStringCache(1000 * 60 * 10); // the URL has a token; 10 minutes should be okay
+  return (path: string) => imageUrlCache.resolve(path, p => storageService.ref(p).getDownloadURL());
+}
 
 // This provides the user context.
 function UserContextProvider(props: IContextProviderProps) {
@@ -42,7 +53,8 @@ function UserContextProvider(props: IContextProviderProps) {
         dataService: (db === undefined || timestampProvider === undefined || u === null || u === undefined) ?
           undefined : new DataService(db, timestampProvider),
         functionsService: functionsService,
-        storageService: storageService
+        storageService: storageService,
+        resolveImageUrl: createResolveImageUrl(storageService)
       });
     }, e => console.error("Authentication state error: ", e));
   }, [auth, db, functions, storage, timestampProvider]);

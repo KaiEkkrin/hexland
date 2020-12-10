@@ -3,7 +3,7 @@ import { IMap, MapType } from "../data/map";
 import { getUserPolicy } from "../data/policy";
 import { IProfile } from "../data/profile";
 import { getTokenGeometry } from "../data/tokenGeometry";
-import { IDataService, IFunctionsService, ISpriteManager, IStorage } from "../services/interfaces";
+import { IDataService, IFunctionsService, ISpriteManager } from "../services/interfaces";
 
 import { standardColours } from "./featureColour";
 import { HexGridGeometry } from "./hexGridGeometry";
@@ -25,7 +25,7 @@ export class MapLifecycleManager {
   private readonly _dataService: IDataService;
   private readonly _functionsService: IFunctionsService;
   private readonly _logError: (message: string, e: any) => void;
-  private readonly _storage: IStorage;
+  private readonly _resolveImageUrl: (path: string) => Promise<string>;
   private readonly _uid: string;
 
   // We maintain a map state machine for each geometry:
@@ -35,19 +35,19 @@ export class MapLifecycleManager {
     dataService: IDataService,
     functionsService: IFunctionsService,
     logError: (message: string, e: any) => void,
-    storage: IStorage,
+    resolveImageUrl: (path: string) => Promise<string>,
     uid: string
   ) {
     this._dataService = dataService;
     this._functionsService = functionsService;
     this._logError = logError;
-    this._storage = storage;
+    this._resolveImageUrl = resolveImageUrl;
     this._uid = uid;
   }
 
   get dataService() { return this._dataService; }
   get functionsService() { return this._functionsService; }
-  get storage() { return this._storage; }
+  get resolveImageUrl() { return this._resolveImageUrl; }
   get uid() { return this._uid; }
 
   // Gets a map state machine
@@ -73,7 +73,7 @@ export class MapLifecycleManager {
       userPolicy,
       this._logError,
       spriteManager,
-      this._storage
+      this._resolveImageUrl
     );
     this._stateMachines.set(map.record.ty, newStateMachine);
     return newStateMachine;

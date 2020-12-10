@@ -16,17 +16,17 @@ interface IImageCardProps {
 
 function ImageCardContent({ altName, imagePath, children }: IImageCardProps) {
   const { logError } = useContext(AnalyticsContext);
-  const { storageService } = useContext(UserContext);
+  const { resolveImageUrl } = useContext(UserContext);
   const [url, setUrl] = useState<string | undefined>(undefined);
 
   // Resolve the image URL, if any
   useEffect(() => {
-    if (!storageService || !imagePath || imagePath.length === 0) {
+    if (!resolveImageUrl || !imagePath || imagePath.length === 0) {
       setUrl(undefined);
       return;
     }
 
-    const sub = from(storageService.ref(imagePath).getDownloadURL()).subscribe(
+    const sub = from(resolveImageUrl(imagePath)).subscribe(
       u => {
         console.log(`got download URL for image ${imagePath} : ${u}`);
         setUrl(String(u));
@@ -34,7 +34,7 @@ function ImageCardContent({ altName, imagePath, children }: IImageCardProps) {
       e => logError("Failed to get download URL for image " + imagePath, e)
     );
     return () => sub.unsubscribe();
-  }, [imagePath, logError, setUrl, storageService]);
+  }, [imagePath, logError, setUrl, resolveImageUrl]);
 
   const contents = useMemo(
     () => (url) ? (<React.Fragment>

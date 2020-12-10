@@ -26,7 +26,7 @@ export const MapContext = React.createContext<IMapContext>({
 
 function MapContextProvider(props: IContextProviderProps) {
   const { analytics, logError, logEvent } = useContext(AnalyticsContext);
-  const { dataService, functionsService, storageService, user } = useContext(UserContext);
+  const { dataService, functionsService, resolveImageUrl, user } = useContext(UserContext);
   const { profile } = useContext(ProfileContext);
   const { toasts } = useContext(StatusContext);
   const { spriteManager } = useContext(AdventureContext);
@@ -45,13 +45,13 @@ function MapContextProvider(props: IContextProviderProps) {
 
   useEffect(() => {
     const uid = user?.uid;
-    if (!dataService || !functionsService || !storageService || !uid) {
+    if (!dataService || !functionsService || !resolveImageUrl || !uid) {
       setLcm(undefined);
       return;
     }
 
-    setLcm(new MapLifecycleManager(dataService, functionsService, logError, storageService, uid));
-  }, [dataService, functionsService, logError, storageService, user]);
+    setLcm(new MapLifecycleManager(dataService, functionsService, logError, resolveImageUrl, uid));
+  }, [dataService, functionsService, logError, resolveImageUrl, user]);
 
   // Watch the map when it changes.
   // We'll try not to depend on `dataService` in here to avoid repeated calls

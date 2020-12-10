@@ -14,6 +14,7 @@ import * as THREE from 'three';
 export class ImageResizer {
   private readonly _gridGeometry: IGridGeometry;
   private readonly _images: IIdDictionary<IMapImage>; // only read this
+  private readonly _imageHighlights: IIdDictionary<IMapImage>; // write to this during drag only
   private readonly _highlights: IMapControlPointDictionary; // we manage this
   private readonly _selection: IMapControlPointDictionary; // and this
 
@@ -26,11 +27,13 @@ export class ImageResizer {
   constructor(
     gridGeometry: IGridGeometry,
     images: IIdDictionary<IMapImage>,
+    imageHighlights: IIdDictionary<IMapImage>,
     highlights: IMapControlPointDictionary,
     selection: IMapControlPointDictionary,
   ) {
     this._gridGeometry = gridGeometry;
     this._images = images;
+    this._imageHighlights = imageHighlights;
     this._highlights = highlights;
     this._selection = selection;
   }
@@ -52,6 +55,10 @@ export class ImageResizer {
   get inDrag() { return this._dragging !== undefined; }
 
   dragCancel() {
+    if (this._dragging !== undefined) {
+      this._imageHighlights.remove(this._dragging.id);
+    }
+
     this._highlights.clear();
     this._dragging = undefined;
   }
@@ -120,6 +127,7 @@ export class ImageResizer {
 
     const anchor = getAnchor(this._dragMode);
     const currently = this._highlights.get(this._dragging);
+    const currentImageHighlight = this._imageHighlights.get(this._dragging.id);
     console.log(`moving: ${anchorString(currently?.anchor)} -> ${anchorString(anchor)}`);
     if (currently !== undefined && (anchor === undefined || anchorsEqual(currently.anchor, anchor))) {
       // No change.
@@ -130,6 +138,10 @@ export class ImageResizer {
       this._highlights.remove(currently);
     }
 
+    if (currentImageHighlight !== undefined) {
+      this._imageHighlights.remove(currentImageHighlight.id);
+    }
+
     if (anchor !== undefined) {
       console.log(`adding highlight at ${anchorString(anchor)}`);
       const image = this._images.get(this._dragging.id);
@@ -137,6 +149,17 @@ export class ImageResizer {
       this._highlights.add({
         ...this._dragging, anchor: anchor, invalid: this.areValidAnchorPositions(anchor, otherAnchor) === false
       });
+
+      if (image !== undefined && otherAnchor !== undefined) {
+        const updatedImageHighlight: IMapImage = {
+          id: image.id,
+          image: image.image,
+          rotation: image.rotation,
+          start: this._dragging.which === 'start' ? anchor : otherAnchor,
+          end: this._dragging.which === 'end' ? anchor : otherAnchor
+        };
+        this._imageHighlights.add(updatedImageHighlight);
+      }
     }
 
     return true;

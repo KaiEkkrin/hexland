@@ -20,6 +20,7 @@ export interface IFirebaseContext {
   storage?: firebase.storage.Storage | undefined;
   timestampProvider?: (() => firebase.firestore.FieldValue) | undefined;
   usingLocalEmulators?: boolean | undefined;
+
   // Creates an Analytics provider
   createAnalytics?: (() => IAnalytics) | undefined;
 }
@@ -31,6 +32,9 @@ export interface IUserContext {
   dataService?: IDataService | undefined;
   functionsService?: IFunctionsService | undefined;
   storageService?: IStorage | undefined;
+
+  // Resolves an image download URL, with expiry caching
+  resolveImageUrl?: ((path: string) => Promise<string>) | undefined;
 }
 
 export interface IProfileContext {

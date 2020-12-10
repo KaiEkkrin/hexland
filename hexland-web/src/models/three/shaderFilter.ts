@@ -14,8 +14,8 @@ export class ShaderFilter {
   private readonly _bufferGeometry: THREE.BufferGeometry;
   private readonly _material: THREE.ShaderMaterial;
   private readonly _mesh: THREE.Mesh;
+  private readonly _uniforms: any;
 
-  private _uniforms: any;
   private _isDisposed = false;
 
   constructor(z: number, shaderParameters?: THREE.ShaderMaterialParameters) {

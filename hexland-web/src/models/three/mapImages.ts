@@ -1,15 +1,16 @@
+import { vertexString } from "../../data/coord";
 import { IdDictionary, IIdDictionary } from "../../data/identified";
 import { Anchor, IMapControlPoint, IMapControlPointDictionary, IMapControlPointIdentifier, IMapImage } from "../../data/image";
 import { ICacheLease } from "../../services/interfaces";
 import { Drawn } from "../drawn";
 import { IGridGeometry } from "../gridGeometry";
+import { InstanceCountedMesh } from "./instancedFeatureObject";
 import { RedrawFlag } from "../redrawFlag";
+import { IShader } from "./shaderFilter";
 import { TextureCache } from "./textureCache";
 
 import { Subscription } from 'rxjs';
 import * as THREE from 'three';
-import { vertexString } from "../../data/coord";
-import { InstanceCountedMesh } from "./instancedFeatureObject";
 
 // Internally, we file these objects, additionally containing the material
 // and mesh so that we can manage cleanup
@@ -18,14 +19,61 @@ type MapImage = IMapImage & {
 };
 
 type MeshRecord = {
-  material: THREE.MeshBasicMaterial;
+  material: THREE.ShaderMaterial;
   mesh: THREE.Mesh;
   lease: ICacheLease<THREE.Texture>;
 };
 
+// This shader allows us to paint map images with a tint defined by a transform and scale,
+// allowing us to blend a selection image over the top of the drawn ones.  This should help the user
+// align grids in the images with ours
+const mapImageShader: IShader = {
+  uniforms: {
+    "colourScale": { type: 'v4', value: null },
+    "colourTrans": { type: 'v4', value: null },
+    "imageTex": { value: null }
+  },
+  vertexShader: /* uses the Three.js built-in `uv` attribute */ `
+    varying vec2 texUv;
+    void main() {
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      texUv = uv;
+    }
+  `,
+  fragmentShader: `
+    uniform vec4 colourScale;
+    uniform vec4 colourTrans;
+    uniform sampler2D imageTex;
+    varying vec2 texUv;
+    void main() {
+      vec4 texSample = texture2D(imageTex, texUv);
+      gl_FragColor = texSample * colourScale + colourTrans;
+    }
+  `
+};
+
+const mapImageColourScale = new THREE.Vector4(1, 1, 1, 1);
+const mapImageColourTrans = new THREE.Vector4(0, 0, 0, 0);
+const selectionColourScale = new THREE.Vector4(0.5, 0.5, 0.5, 0.1);
+const selectionColourTrans = new THREE.Vector4(0.5, 0.5, 0.5, 0.5);
 const zAxis = new THREE.Vector3(0, 0, 1);
 
-function createSelectionMaterial() {
+function createMapImageMaterial(isSelection: boolean, texture: THREE.Texture) {
+  const uniforms = THREE.UniformsUtils.clone(mapImageShader.uniforms);
+  uniforms['colourScale'].value = isSelection ? selectionColourScale : mapImageColourScale;
+  uniforms['colourTrans'].value = isSelection ? selectionColourTrans : mapImageColourTrans;
+  uniforms['imageTex'].value = texture;
+
+  return new THREE.ShaderMaterial({
+    blending: THREE.NormalBlending,
+    side: THREE.DoubleSide,
+    transparent: true,
+    ...mapImageShader,
+    uniforms: uniforms
+  });
+}
+
+function createHighlightMaterial() {
   return new THREE.MeshBasicMaterial({
     blending: THREE.AdditiveBlending,
     color: 0x606060,
@@ -34,7 +82,7 @@ function createSelectionMaterial() {
   });
 }
 
-function createInvalidSelectionMaterial() {
+function createInvalidHighlightMaterial() {
   return new THREE.MeshBasicMaterial({
     blending: THREE.AdditiveBlending,
     color: 0x600000,
@@ -74,6 +122,7 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
   private readonly _scene: THREE.Scene; // we don't own this
   private readonly _values = new Map<string, MapImage>();
   private readonly _meshes = new Map<string, MeshRecord>(); // id -> mesh added to scene
+  private readonly _isSelection: boolean;
 
   private _textureCache: TextureCache; // we don't own this either
 
@@ -82,7 +131,8 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
     redrawFlag: RedrawFlag,
     scene: THREE.Scene,
     textureCache: TextureCache,
-    z: number
+    z: number,
+    isSelection: boolean
   ) {
     super(geometry, redrawFlag);
 
@@ -107,22 +157,19 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
     ]), 2));
 
     this._scene = scene;
+    this._isSelection = isSelection;
     this._textureCache = textureCache;
   }
 
-  private addMesh(f: IMapImage, lease: ICacheLease<THREE.Texture>) {
+  private addMesh(f: IMapImage, lease: ICacheLease<THREE.Texture>, startTime: number) {
+    const addTime = performance.now();
+    console.log(`resolved map image texture in ${addTime - startTime} millis`);
     if (this._meshes.get(f.id) !== undefined) {
       lease.release();
       return;
     }
 
-    const material = new THREE.MeshBasicMaterial({
-      blending: THREE.NormalBlending,
-      map: lease.value,
-      side: THREE.DoubleSide,
-      transparent: true
-    });
-
+    const material = createMapImageMaterial(this._isSelection, lease.value);
     const geomIndex = f.rotation === '90' ? 1 : f.rotation === '180' ? 2 : f.rotation === '270' ? 3 : 0;
     const mesh = new THREE.Mesh(this._bufferGeometry[geomIndex], material);
     positionMesh(this.geometry, mesh, f);
@@ -130,6 +177,7 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
     this._scene.add(mesh);
     this._meshes.set(f.id, { lease: lease, material: material, mesh: mesh });
     this.setNeedsRedraw();
+    console.log(`created map image material in ${performance.now() - addTime} millis`);
   }
 
   [Symbol.iterator](): Iterator<IMapImage> {
@@ -142,8 +190,10 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
     }
 
     // Resolve the texture.  When we have, add the relevant mesh:
+    // TODO #194 remove performance logging
+    const startTime = performance.now();
     const sub = this._textureCache.resolveImage(f.image).subscribe(
-      l => this.addMesh(f, l)
+      l => this.addMesh(f, l, startTime)
     );
     this._values.set(f.id, { ...f, sub: sub });
     return true;
@@ -208,89 +258,6 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
   }
 }
 
-type SelectedMapImage = IMapImage & {
-  mesh: THREE.Mesh;
-};
-
-// This really simple wrapper contains the map image selection.
-// We don't bother with instancing for now; it's unlikely many map images will
-// be selected at once (I hope.)
-export class MapImageSelection extends Drawn implements IIdDictionary<IMapImage> {
-  private readonly _bufferGeometry: THREE.BufferGeometry;
-  private readonly _material: THREE.Material; // this is common
-  private readonly _scene: THREE.Scene; // we don't own this
-  private readonly _values = new Map<string, SelectedMapImage>();
-
-  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, scene: THREE.Scene, z: number) {
-    super(geometry, redrawFlag);
-    this._bufferGeometry = createSquareBufferGeometry(z);
-
-    this._material = createSelectionMaterial();
-    this._scene = scene;
-  }
-
-  [Symbol.iterator](): Iterator<IMapImage> {
-    return this.iterate();
-  }
-
-  add(f: IMapImage) {
-    if (this._values.has(f.id)) {
-      return false;
-    }
-
-    // Create and add a mesh representing this image selected
-    const mesh = new THREE.Mesh(this._bufferGeometry, this._material);
-    positionMesh(this.geometry, mesh, f);
-    this._scene.add(mesh);
-    this._values.set(f.id, { ...f, mesh: mesh });
-    this.setNeedsRedraw();
-    return true;
-  }
-
-  clear() {
-    // Removing everything individually lets us also remove objects from the scene
-    const toRemove = [...this.iterate()];
-    toRemove.forEach(f => this.remove(f.id));
-  }
-
-  clone(): IIdDictionary<IMapImage> {
-    return new IdDictionary<IMapImage>(this._values);
-  }
-
-  forEach(fn: (f: IMapImage) => void) {
-    this._values.forEach(fn);
-  }
-
-  get(k: string): IMapImage | undefined {
-    return this._values.get(k);
-  }
-
-  *iterate() {
-    for (const v of this._values) {
-      yield v[1];
-    }
-  }
-
-  remove(k: string): IMapImage | undefined {
-    const value = this._values.get(k);
-    if (value !== undefined) {
-      console.log(`removing selection ${k}`);
-      this._scene.remove(value.mesh);
-      this.setNeedsRedraw();
-      this._values.delete(k);
-      return value;
-    }
-
-    return undefined;
-  }
-
-  dispose() {
-    this.clear(); // will also cleanup leases, materials etc.
-    this._bufferGeometry.dispose();
-    this._material.dispose();
-  }
-}
-
 // The image control points are drawn like selected vertices at the "start" and "end" positions.
 // Because the geometry is instanced, we implement something similar to the InstancedFeatureObject;
 // for now, we don't support expand beyond the initial maxInstances, because it's super unlikely
@@ -320,8 +287,8 @@ export class MapControlPoints extends Drawn implements IMapControlPointDictionar
     this._bufferGeometry.setFromPoints(vertices);
     this._bufferGeometry.setIndex(indices);
 
-    this._material = createSelectionMaterial();
-    this._invalidMaterial = createInvalidSelectionMaterial();
+    this._material = createHighlightMaterial();
+    this._invalidMaterial = createInvalidHighlightMaterial();
     this._mesh = new InstanceCountedMesh(
       maxInstances ?? 100,
       maxInstances => new THREE.InstancedMesh(this._bufferGeometry, this._material, maxInstances)

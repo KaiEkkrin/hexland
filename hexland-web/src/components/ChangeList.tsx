@@ -13,6 +13,12 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "1.1.1",
+    changes: [
+      "Make the map image selection a translucent copy of the image for easier alignment"
+    ]
+  },
+  {
     version: "1.1.0",
     changes: [
       "Support adding background images to maps"

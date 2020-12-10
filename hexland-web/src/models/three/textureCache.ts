@@ -1,6 +1,6 @@
 import { ITokenProperties } from '../../data/feature';
 import { IImage } from '../../data/image';
-import { ICacheLease, ISpriteManager, ISpritesheetEntry, IStorage } from '../../services/interfaces';
+import { ICacheLease, ISpriteManager, ISpritesheetEntry } from '../../services/interfaces';
 import { ICacheItem, ObjectCache } from '../../services/objectCache';
 
 import { from, Observable } from 'rxjs';
@@ -11,16 +11,16 @@ const textureLoader = new THREE.TextureLoader();
 
 export class TextureCache {
   private readonly _spriteManager: ISpriteManager;
-  private readonly _storage: IStorage;
+  private readonly _resolveImageUrl: (path: string) => Promise<string>;
   private readonly _textureCache: ObjectCache<THREE.Texture>;
 
   constructor(
     spriteManager: ISpriteManager,
-    storage: IStorage,
+    resolveImageUrl: (path: string) => Promise<string>,
     logError: (message: string, e: any) => void
   ) {
     this._spriteManager = spriteManager;
-    this._storage = storage;
+    this._resolveImageUrl = resolveImageUrl;
     this._textureCache = new ObjectCache(logError);
     this.resolveTexture = this.resolveTexture.bind(this);
   }
@@ -29,8 +29,9 @@ export class TextureCache {
     // Load the texture, waiting for it to be fully available before returning
     // (I get visual glitches if I don't)
     return await new Promise((resolve, reject) => {
+      const startTime = performance.now();
       textureLoader.load(url, t => {
-        console.log(`texture loaded from ${url}`);
+        console.log(`texture loaded from ${url} in ${performance.now() - startTime} millis`);
         resolve({
           value: t,
           cleanup: () => {
@@ -55,7 +56,18 @@ export class TextureCache {
   }
 
   resolveImage(image: IImage): Observable<ICacheLease<THREE.Texture>> {
-    return from(this._storage.ref(image.path).getDownloadURL()).pipe(switchMap(
+    // TODO #194 remove this after dismissing suspicion that getDownloadURL() might be slow
+    // ...Okay, I've confirmed it: this is slow and I need to cache the URLs, which I am fairly
+    // sure will be unchanging (at least for some time -- consider a 10 minute cache or something?
+    // There is a token string in the URL parameter)
+    const resolveDownloadUrl = async () => {
+      const now = performance.now();
+      const url = await this._resolveImageUrl(image.path);
+      console.log(`resolved image ${image.name} url as ${url} in ${performance.now() - now} millis`);
+      return url;
+    };
+    //return from(this._storage.ref(image.path).getDownloadURL()).pipe(switchMap(
+    return from(resolveDownloadUrl()).pipe(switchMap(
       u => from(this._textureCache.resolve(u, this.resolveTexture))
     ));
   }

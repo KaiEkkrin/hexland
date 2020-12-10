@@ -2,7 +2,7 @@ import { IPlayer } from "../data/adventure";
 import { ICharacter } from "../data/character";
 import { ITokenProperties } from "../data/feature";
 import { getSpritePathFromId, ISprite, ISpritesheet } from "../data/sprite";
-import { IDataAndReference, IDataService, ISpriteManager, ISpritesheetEntry, IStorage } from "./interfaces";
+import { IDataAndReference, IDataService, ISpriteManager, ISpritesheetEntry } from "./interfaces";
 
 import { combineLatest, from, Observable } from 'rxjs';
 import { concatMap, map, shareReplay, switchMap } from 'rxjs/operators';
@@ -36,7 +36,7 @@ export class SpriteManager implements ISpriteManager {
 
   constructor(
     dataService: IDataService,
-    storage: IStorage,
+    resolveImageUrl: (path: string) => Promise<string>,
     adventureId: string,
     players: Observable<IPlayer[]> // must be a hot observable that will replay the latest
   ) {
@@ -54,7 +54,7 @@ export class SpriteManager implements ISpriteManager {
     // We assume we'll want all download URLs at some point, and resolve them as
     // they come in:
     async function createEntry(s: IDataAndReference<ISpritesheet>) {
-      const url = await storage.ref(getSpritePathFromId(s.id)).getDownloadURL();
+      const url = await resolveImageUrl(getSpritePathFromId(s.id));
       return { sheet: s.data, url: url };
     }
 

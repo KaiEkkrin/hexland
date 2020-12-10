@@ -23,7 +23,7 @@ import { ITokenGeometry } from '../data/tokenGeometry';
 import { Tokens } from '../data/tokens';
 import { TokensWithObservableText } from '../data/tokenTexts';
 
-import { IDataService, ISpriteManager, IStorage } from '../services/interfaces';
+import { IDataService, ISpriteManager } from '../services/interfaces';
 import { createDrawing } from './three/drawing';
 
 import fluent from 'fluent-iterable';
@@ -156,7 +156,7 @@ export class MapStateMachine {
     userPolicy: IUserPolicy | undefined,
     logError: (message: string, e: any) => void,
     spriteManager: ISpriteManager,
-    storage: IStorage
+    resolveImageUrl: (path: string) => Promise<string>
   ) {
     this._dataService = dataService;
     this._map = map;
@@ -176,7 +176,8 @@ export class MapStateMachine {
     this._gridGeometry = gridGeometry;
     this._tokenGeometry = tokenGeometry;
     this._drawing = createDrawing(
-      this._gridGeometry, this._tokenGeometry, colours, this.seeEverything, logError, spriteManager, storage
+      this._gridGeometry, this._tokenGeometry, colours, this.seeEverything, logError, spriteManager,
+      resolveImageUrl
     );
 
     this._mapColouring = new MapColouring(this._gridGeometry);
@@ -225,6 +226,7 @@ export class MapStateMachine {
 
     this._imageResizer = new ImageResizer(
       this._gridGeometry, this._drawing.images,
+      this._drawing.imageSelectionDrag,
       this._drawing.imageControlPointSelection,
       this._drawing.imageControlPointHighlights
     );

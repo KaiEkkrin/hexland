@@ -6,7 +6,7 @@ import { FeatureColour } from '../featureColour';
 import { IGridGeometry } from '../gridGeometry';
 import { IDrawing } from '../interfaces';
 import { RedrawFlag } from '../redrawFlag';
-import { ISpriteManager, IStorage } from '../../services/interfaces';
+import { ISpriteManager } from '../../services/interfaces';
 
 import { Areas, createPaletteColouredAreaObject, createAreas, createSelectionColouredAreaObject } from './areas';
 import { Grid } from './grid';
@@ -14,7 +14,7 @@ import { GridFilter } from './gridFilter';
 import { LoS } from './los';
 import { createLoSFilter, ILoSPreRenderParameters, LoSFilter } from './losFilter';
 import { MapColourVisualisation } from './mapColourVisualisation';
-import { MapControlPoints, MapImages, MapImageSelection } from './mapImages';
+import { MapControlPoints, MapImages } from './mapImages';
 import { OutlinedRectangle } from './overlayRectangle';
 import { TextFilter } from './textFilter';
 import { TextureCache } from './textureCache';
@@ -53,7 +53,7 @@ const vertexHighlightAlpha = 0.35;
 export class DrawingOrtho implements IDrawing {
   private readonly _gridGeometry: IGridGeometry;
   private readonly _logError: (message: string, e: any) => void;
-  private readonly _storage: IStorage;
+  private readonly _resolveImageUrl: (path: string) => Promise<string>;
 
   private readonly _camera: THREE.OrthographicCamera;
   private readonly _losCamera: THREE.OrthographicCamera;
@@ -85,8 +85,8 @@ export class DrawingOrtho implements IDrawing {
   private readonly _tokens: TokenDrawing;
   private readonly _walls: Walls;
   private readonly _images: MapImages;
-  private readonly _imageSelection: MapImageSelection;
-  private readonly _imageSelectionDrag: MapImageSelection;
+  private readonly _imageSelection: MapImages;
+  private readonly _imageSelectionDrag: MapImages;
   private readonly _imageControlPointSelection: MapControlPoints;
   private readonly _mapColourVisualisation: MapColourVisualisation;
 
@@ -116,12 +116,12 @@ export class DrawingOrtho implements IDrawing {
     seeEverything: boolean,
     logError: (message: string, e: any) => void,
     spriteManager: ISpriteManager,
-    storage: IStorage
+    resolveImageUrl: (path: string) => Promise<string>
   ) {
     this._renderer = renderer;
     this._gridGeometry = gridGeometry;
     this._logError = logError;
-    this._storage = storage;
+    this._resolveImageUrl = resolveImageUrl;
 
     // We need these to initialise things, but they'll be updated dynamically
     const renderWidth = Math.max(1, Math.floor(window.innerWidth));
@@ -277,7 +277,7 @@ export class DrawingOrtho implements IDrawing {
 
     // The tokens
     this._spriteManager = spriteManager;
-    this._textureCache = new TextureCache(spriteManager, storage, logError);
+    this._textureCache = new TextureCache(spriteManager, resolveImageUrl, logError);
     const uvTransform = createLargeTokenUvTransform(gridGeometry, tokenGeometry, tokenSpriteAlpha);
     this._tokens = new TokenDrawing(
       gridGeometry, this._textureCache, uvTransform, this._needsRedraw, this._textMaterial, {
@@ -300,19 +300,19 @@ export class DrawingOrtho implements IDrawing {
 
     // The underlay images.
     this._images = new MapImages(
-      this._gridGeometry, this._needsRedraw, this._imageScene, this._textureCache, imageZ
+      this._gridGeometry, this._needsRedraw, this._imageScene, this._textureCache, imageZ, false
     );
 
-    this._imageSelection = new MapImageSelection(
-      this._gridGeometry, this._needsRedraw, this._filterScene, selectionZ
+    this._imageSelection = new MapImages(
+      this._gridGeometry, this._needsRedraw, this._filterScene, this._textureCache, selectionZ, true
     );
 
-    this._imageSelectionDrag = new MapImageSelection(
-      this._gridGeometry, this._needsRedraw, this._filterScene, selectionZ
+    this._imageSelectionDrag = new MapImages(
+      this._gridGeometry, this._needsRedraw, this._filterScene, this._textureCache, highlightZ, true
     );
 
     this._imageControlPointSelection = new MapControlPoints(
-      this._gridGeometry, this._needsRedraw, this._filterScene, vertexHighlightAlpha, selectionZ
+      this._gridGeometry, this._needsRedraw, this._filterScene, vertexHighlightAlpha, highlightZ
     );
 
     // The map colour visualisation (added on request instead of the areas)
@@ -561,7 +561,7 @@ export class DrawingOrtho implements IDrawing {
 
     const oldTextureCache = this._textureCache;
     this._spriteManager = spriteManager;
-    this._textureCache = new TextureCache(spriteManager, this._storage, this._logError);
+    this._textureCache = new TextureCache(spriteManager, this._resolveImageUrl, this._logError);
     this._tokens.setTextureCache(this._textureCache);
     this._images.setTextureCache(this._textureCache);
     oldTextureCache.dispose();

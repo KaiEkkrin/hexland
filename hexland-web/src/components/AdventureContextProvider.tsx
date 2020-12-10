@@ -24,7 +24,7 @@ export const AdventureContext = React.createContext<IAdventureContext>({
 });
 
 function AdventureContextProvider(props: IContextProviderProps) {
-  const { dataService, storageService, user } = useContext(UserContext);
+  const { dataService, resolveImageUrl, user } = useContext(UserContext);
   const { analytics, logError } = useContext(AnalyticsContext);
   const { toasts } = useContext(StatusContext);
 
@@ -106,7 +106,7 @@ function AdventureContextProvider(props: IContextProviderProps) {
     const uid = user?.uid;
     if (
       dataService === undefined ||
-      storageService === undefined ||
+      resolveImageUrl === undefined ||
       adventure === undefined ||
       uid === undefined
     ) {
@@ -137,12 +137,12 @@ function AdventureContextProvider(props: IContextProviderProps) {
     const playerSub = playerObs.subscribe(setPlayers);
 
     console.log('creating sprite manager');
-    setSpriteManager(new SpriteManager(dataService, storageService, adventure.id, playerObs));
+    setSpriteManager(new SpriteManager(dataService, resolveImageUrl, adventure.id, playerObs));
     return () => {
       playerSub.unsubscribe();
       unsub?.();
     }
-  }, [adventure, dataService, logError, setPlayers, setSpriteManager, storageService, user]);
+  }, [adventure, dataService, logError, setPlayers, setSpriteManager, resolveImageUrl, user]);
 
   const adventureContext: IAdventureContext = useMemo(
     () => ({
