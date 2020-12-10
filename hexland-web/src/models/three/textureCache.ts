@@ -56,18 +56,7 @@ export class TextureCache {
   }
 
   resolveImage(image: IImage): Observable<ICacheLease<THREE.Texture>> {
-    // TODO #194 remove this after dismissing suspicion that getDownloadURL() might be slow
-    // ...Okay, I've confirmed it: this is slow and I need to cache the URLs, which I am fairly
-    // sure will be unchanging (at least for some time -- consider a 10 minute cache or something?
-    // There is a token string in the URL parameter)
-    const resolveDownloadUrl = async () => {
-      const now = performance.now();
-      const url = await this._resolveImageUrl(image.path);
-      console.log(`resolved image ${image.name} url as ${url} in ${performance.now() - now} millis`);
-      return url;
-    };
-    //return from(this._storage.ref(image.path).getDownloadURL()).pipe(switchMap(
-    return from(resolveDownloadUrl()).pipe(switchMap(
+    return from(this._resolveImageUrl(image.path)).pipe(switchMap(
       u => from(this._textureCache.resolve(u, this.resolveTexture))
     ));
   }

@@ -17,7 +17,8 @@ export class ExpiringStringCache {
 
     const newEntry = fetch(id);
     this._cache.set(id, newEntry);
-    newEntry.then(() => this._waitExpire()).then(() => this._cache.delete(id));
+    newEntry.then(() => this._waitExpire()).then(() => this._cache.delete(id))
+      .catch(() => this._cache.delete(id));
     return newEntry;
   }
 }

@@ -54,8 +54,8 @@ const mapImageShader: IShader = {
 
 const mapImageColourScale = new THREE.Vector4(1, 1, 1, 1);
 const mapImageColourTrans = new THREE.Vector4(0, 0, 0, 0);
-const selectionColourScale = new THREE.Vector4(0.5, 0.5, 0.5, 0.1);
-const selectionColourTrans = new THREE.Vector4(0.5, 0.5, 0.5, 0.5);
+const selectionColourScale = new THREE.Vector4(0.8, 0.8, 0.8, 0.1);
+const selectionColourTrans = new THREE.Vector4(0.2, 0.2, 0.2, 0.5);
 const zAxis = new THREE.Vector3(0, 0, 1);
 
 function createMapImageMaterial(isSelection: boolean, texture: THREE.Texture) {
@@ -161,9 +161,7 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
     this._textureCache = textureCache;
   }
 
-  private addMesh(f: IMapImage, lease: ICacheLease<THREE.Texture>, startTime: number) {
-    const addTime = performance.now();
-    console.log(`resolved map image texture in ${addTime - startTime} millis`);
+  private addMesh(f: IMapImage, lease: ICacheLease<THREE.Texture>) {
     if (this._meshes.get(f.id) !== undefined) {
       lease.release();
       return;
@@ -177,7 +175,6 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
     this._scene.add(mesh);
     this._meshes.set(f.id, { lease: lease, material: material, mesh: mesh });
     this.setNeedsRedraw();
-    console.log(`created map image material in ${performance.now() - addTime} millis`);
   }
 
   [Symbol.iterator](): Iterator<IMapImage> {
@@ -190,10 +187,8 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
     }
 
     // Resolve the texture.  When we have, add the relevant mesh:
-    // TODO #194 remove performance logging
-    const startTime = performance.now();
     const sub = this._textureCache.resolveImage(f.image).subscribe(
-      l => this.addMesh(f, l, startTime)
+      l => this.addMesh(f, l)
     );
     this._values.set(f.id, { ...f, sub: sub });
     return true;

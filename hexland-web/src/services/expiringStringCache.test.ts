@@ -1,6 +1,5 @@
 import { ExpiringStringCache } from './expiringStringCache';
 
-// TODO #194 Gracefully handle errors from the fetch function?
 test('Entries are cached successfully', async () => {
   // We map string -> 'fetched_{string}'
   const fetch = jest.fn<Promise<string>, [string]>(id => new Promise((resolve) => resolve(`fetched_${id}`)));
@@ -39,4 +38,39 @@ test('Entries are cached successfully', async () => {
   expect(twoEntry).toBe('fetched_two');
   expect(fetch).toHaveBeenLastCalledWith('two');
   expect(fetch).toHaveBeenCalledTimes(4);
+});
+
+test('Failed entries do not stay in the cache', async () => {
+  // Here's a canned failure
+  const failingFetch = jest.fn<Promise<string>, [string]>(
+    id => new Promise((resolve, reject) => reject('blah'))
+  );
+
+  // We map string -> 'fetched_{string}'
+  const successfulFetch = jest.fn<Promise<string>, [string]>(id => new Promise((resolve) => resolve(`fetched_${id}`)));
+
+  // We won't expire anything until this subject trips
+  const cache = new ExpiringStringCache(1000);
+
+  // This should cause a fetch, and a failure
+  try {
+    await cache.resolve('one', failingFetch);
+    fail('Error did not propagate');
+  } catch {
+    expect(failingFetch).toHaveBeenCalledTimes(1);
+  }
+
+  // If I wait a bit and try again, it should re-fetch because of the failure
+  // despite the timeout
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  let oneEntry = await cache.resolve('one', successfulFetch);
+  expect(oneEntry).toBe('fetched_one');
+  expect(successfulFetch).toHaveBeenLastCalledWith('one');
+  expect(successfulFetch).toHaveBeenCalledTimes(1);
+
+  // ...and the caching mechanism should still be working
+  oneEntry = await cache.resolve('one', successfulFetch);
+  expect(oneEntry).toBe('fetched_one');
+  expect(successfulFetch).toHaveBeenCalledTimes(1);
 });
