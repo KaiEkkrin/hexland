@@ -909,11 +909,11 @@ test('Images can be added and removed', () => {
 
   const chs1 = [
     createImageAdd({
-      image: { name: 'image1', path: '/image1.png' }, id: 'a',
+      image: { name: 'image1', path: '/image1.png' }, id: 'a', rotation: '0',
       start: createVertexAnchor(0, 0, 1), end: createVertexAnchor(1, 1, 1)
     }),
     createImageAdd({
-      image: { name: 'image2', path: '/image2.png' }, id: 'b',
+      image: { name: 'image2', path: '/image2.png' }, id: 'b', rotation: '0',
       start: createPixelAnchor(0, 0), end: createPixelAnchor(100, 100)
     })
   ];
@@ -933,7 +933,7 @@ test('Images can be added and removed', () => {
   // ...but we can move an existing image, and remove one that *is* there
   const chs3 = [
     createImageAdd({
-      image: { name: 'image1', path: './image1.png' }, id: 'a',
+      image: { name: 'image1', path: './image1.png' }, id: 'a', rotation: '0',
       start: createVertexAnchor(1, 1, 1), end: createVertexAnchor(3, 3, 0)
     }),
     createImageRemove('a'),
@@ -1029,11 +1029,11 @@ test('A non-owner cannot add and remove images', () => {
 
   const chs1 = [
     createImageAdd({
-      image: { name: 'image1', path: '/image1.png' }, id: 'a',
+      image: { name: 'image1', path: '/image1.png' }, id: 'a', rotation: '0',
       start: createVertexAnchor(0, 0, 1), end: createVertexAnchor(1, 1, 1)
     }),
     createImageAdd({
-      image: { name: 'image2', path: '/image2.png' }, id: 'b',
+      image: { name: 'image2', path: '/image2.png' }, id: 'b', rotation: '0',
       start: createPixelAnchor(0, 0), end: createPixelAnchor(100, 100)
     })
   ];
@@ -1251,11 +1251,11 @@ test('In FFA mode, a non-owner can add and remove images', () => {
 
   const chs1 = [
     createImageAdd({
-      image: { name: 'image1', path: '/image1.png' }, id: 'a',
+      image: { name: 'image1', path: '/image1.png' }, id: 'a', rotation: '0',
       start: createVertexAnchor(0, 0, 1), end: createVertexAnchor(1, 1, 1)
     }),
     createImageAdd({
-      image: { name: 'image2', path: '/image2.png' }, id: 'b',
+      image: { name: 'image2', path: '/image2.png' }, id: 'b', rotation: '0',
       start: createPixelAnchor(0, 0), end: createPixelAnchor(100, 100)
     })
   ];
