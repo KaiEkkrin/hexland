@@ -467,7 +467,7 @@ export class Grid extends Drawn {
     }
   }
 
-  getGridCoordAt(cp: THREE.Vector3): GridCoord | undefined {
+  getGridCoordAt(cp: THREE.Vector3): GridCoord & { isTokenFace: boolean } | undefined {
     return this._faceCoordTargetReader.sample(
       cp.x, cp.y,
       (buf, offset) => this.geometry.decodeCoordSample(buf, offset, this._tileOrigin)

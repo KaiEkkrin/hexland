@@ -1042,7 +1042,7 @@ export class MapStateMachine {
 
   getToken(cp: THREE.Vector3): ITokenProperties | undefined {
     const position = this._drawing.getGridCoordAt(cp);
-    if (position === undefined) {
+    if (position === undefined || !position.isTokenFace) { // TODO #118 lookup outline tokens elsewhere
       return undefined;
     }
 
@@ -1263,7 +1263,8 @@ export class MapStateMachine {
       return true;
     } else { // object layer
       const token = this._tokens.at(position);
-      if (token === undefined || !this.canSelectToken(token)) {
+      // TODO #118 if !position.isTokenFace select from outline tokens instead
+      if (!position.isTokenFace || token === undefined || !this.canSelectToken(token)) {
         return false;
       }
 
@@ -1303,7 +1304,8 @@ export class MapStateMachine {
         // Always add the token at this position
         // (This is needed if the drag rectangle is very small)
         const token = this._tokens.at(position);
-        if (token !== undefined && this.canSelectToken(token)) {
+        // TODO #118 Use outline tokens if position.isTokenFace is false
+        if (position.isTokenFace && token !== undefined && this.canSelectToken(token)) {
           this._selection.add(token);
         }
       }
@@ -1335,6 +1337,7 @@ export class MapStateMachine {
       }
     } else {
       const position = this._drawing.getGridCoordAt(cp);
+      // TODO #118 deal with outline selection too
       if (position && this._selection.at(position) !== undefined) {
         this.tokenMoveDragStart(position);
         return;

@@ -100,7 +100,7 @@ export interface IGridGeometry {
 
   // Decodes the given sample from a coord texture (these must be 4 values
   // starting from the offset) into a grid coord.
-  decodeCoordSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): GridCoord | undefined;
+  decodeCoordSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): GridCoord & { isTokenFace: boolean } | undefined;
 
   // Decodes the given sample from a vertex texture (these must be 4 values
   // starting from the offset) into a grid coord.
@@ -283,11 +283,11 @@ export abstract class BaseGeometry {
     return new THREE.Vector2(absValue % this._tileDim, Math.floor(absValue / this._tileDim));
   }
 
-  private fromPackedXYEdge(sample: Uint8Array, offset: number): (number | THREE.Vector2 | undefined)[] {
+  private fromPackedXYEdge(sample: Uint8Array, offset: number) {
     let unpacked = this.fromPackedXYAbs(sample, offset);
     const signAndEdgeValue = Math.floor(sample[offset + 1] * 16 * this._maxEdge / 255.0);
     if (signAndEdgeValue === 0) {
-      return [undefined, undefined];
+      return {};
     }
 
     if ((signAndEdgeValue % 2) === 1) {
@@ -300,7 +300,7 @@ export abstract class BaseGeometry {
 
     const token = Math.floor((signAndEdgeValue / 4) % 2);
     const edge = Math.floor(signAndEdgeValue / 8) % this._maxEdge;
-    return [unpacked, token, edge];
+    return { unpacked: unpacked, token: token, edge: edge };
   }
 
   createFaceAttributes() {
@@ -464,18 +464,21 @@ export abstract class BaseGeometry {
     return vertices;
   }
 
-  decodeCoordSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): GridCoord | undefined {
-    const tile = this.fromPackedXYEdge(sample, offset)[0];
+  decodeCoordSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): GridCoord & { isTokenFace: boolean } | undefined {
+    const { unpacked, token } = this.fromPackedXYEdge(sample, offset);
     const face = this.fromPackedXYAbs(sample, offset + 2);
-    return tile instanceof THREE.Vector2 ? createGridCoord(tile.add(tileOrigin), face, this.tileDim) : undefined;
+    return unpacked instanceof THREE.Vector2 && token !== undefined ? {
+      ...createGridCoord(unpacked.add(tileOrigin), face, this.tileDim),
+      isTokenFace: token > 0
+    } : undefined;
   }
 
   decodeVertexSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): GridVertex | undefined {
-    const unpacked = this.fromPackedXYEdge(sample, offset);
-    const [tile, vertex] = [unpacked[0], unpacked[2]];
+    const { unpacked, edge } = this.fromPackedXYEdge(sample, offset);
     let face = this.fromPackedXYAbs(sample, offset + 2);
-    return tile instanceof THREE.Vector2 ? createGridVertex(tile.add(tileOrigin), face, this.tileDim, vertex as number)
-      : undefined;
+    return unpacked instanceof THREE.Vector2 && edge !== undefined ?
+      createGridVertex(unpacked.add(tileOrigin), face, this.tileDim, edge) :
+      undefined;
   }
 
   populateShaderUniforms(

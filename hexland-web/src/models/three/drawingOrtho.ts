@@ -411,7 +411,7 @@ export class DrawingOrtho implements IDrawing {
     return this._showLoS ? (this._los.checkLoS(cp) ?? false) : true;
   }
 
-  getGridCoordAt(cp: THREE.Vector3): GridCoord | undefined {
+  getGridCoordAt(cp: THREE.Vector3): GridCoord & { isTokenFace: boolean } | undefined {
     return this._grid.getGridCoordAt(cp);
   }
 
