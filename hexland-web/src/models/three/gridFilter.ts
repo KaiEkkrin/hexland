@@ -28,7 +28,8 @@ const gridShader = {
     "  vec4 left = texture2D(tex, texUv - vec2(step.x, 0.0));",
     "  vec4 right = texture2D(tex, texUv + vec2(step.x, 0.0));",
     "  vec4 below = texture2D(tex, texUv + vec2(0.0, step.y));",
-    "  if (above != here || left != here || right != here || below != here) {",
+    // We test only the z values (the faces) to avoid drawing lines around token faces too
+    "  if (above.z != here.z || left.z != here.z || right.z != here.z || below.z != here.z) {",
     "    gl_FragColor = lineColour;",
     "  } else {",
     "    gl_FragColor = gapColour;",

@@ -285,7 +285,7 @@ export abstract class BaseGeometry {
 
   private fromPackedXYEdge(sample: Uint8Array, offset: number): (number | THREE.Vector2 | undefined)[] {
     let unpacked = this.fromPackedXYAbs(sample, offset);
-    const signAndEdgeValue = Math.floor(sample[offset + 1] * 8 * this._maxEdge / 255.0);
+    const signAndEdgeValue = Math.floor(sample[offset + 1] * 16 * this._maxEdge / 255.0);
     if (signAndEdgeValue === 0) {
       return [undefined, undefined];
     }
@@ -298,8 +298,9 @@ export abstract class BaseGeometry {
       unpacked.y = -unpacked.y;
     }
 
-    let edge = Math.floor(signAndEdgeValue / 4) % this._maxEdge;
-    return [unpacked, edge];
+    const token = Math.floor((signAndEdgeValue / 4) % 2);
+    const edge = Math.floor(signAndEdgeValue / 8) % this._maxEdge;
+    return [unpacked, token, edge];
   }
 
   createFaceAttributes() {
@@ -397,10 +398,10 @@ export abstract class BaseGeometry {
       "  return vec2(mod(absValue, tileDim), floor(absValue / tileDim));",
       "}",
 
-      // ignores the edge value packed along with the sign
+      // ignores the token and edge values packed along with the sign for now
       "bool fromPackedXYSign(const in vec2 s, out vec2 unpacked) {",
       "  unpacked = fromPackedXYAbs(s.x);",
-      "  float signAndEdgeValue = floor(s.y * 8.0 * maxEdge);",
+      "  float signAndEdgeValue = floor(s.y * 16.0 * maxEdge);",
       "  if (signAndEdgeValue <= 0.0) {",
       "    return false;",
       "  }",
@@ -464,13 +465,14 @@ export abstract class BaseGeometry {
   }
 
   decodeCoordSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): GridCoord | undefined {
-    let tile = this.fromPackedXYEdge(sample, offset)[0];
-    let face = this.fromPackedXYAbs(sample, offset + 2);
+    const tile = this.fromPackedXYEdge(sample, offset)[0];
+    const face = this.fromPackedXYAbs(sample, offset + 2);
     return tile instanceof THREE.Vector2 ? createGridCoord(tile.add(tileOrigin), face, this.tileDim) : undefined;
   }
 
   decodeVertexSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): GridVertex | undefined {
-    let [tile, vertex] = this.fromPackedXYEdge(sample, offset);
+    const unpacked = this.fromPackedXYEdge(sample, offset);
+    const [tile, vertex] = [unpacked[0], unpacked[2]];
     let face = this.fromPackedXYAbs(sample, offset + 2);
     return tile instanceof THREE.Vector2 ? createGridVertex(tile.add(tileOrigin), face, this.tileDim, vertex as number)
       : undefined;

@@ -45,7 +45,7 @@ const edgeAlpha = 0.5;
 const vertexAlpha = 0.5;
 const tokenAlpha = 0.7;
 const tokenSpriteAlpha = 0.6;
-const selectionAlpha = 0.9;
+const selectionAlpha = 0.8;
 const areaAlpha = 1.0;
 const vertexHighlightAlpha = 0.35;
 
@@ -161,6 +161,7 @@ export class DrawingOrtho implements IDrawing {
       this._gridNeedsRedraw,
       gridZ,
       losZ,
+      selectionAlpha,
       vertexAlpha,
       renderWidth,
       renderHeight

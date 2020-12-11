@@ -23,18 +23,21 @@ const epsilon = "epsilon";
 const maxEdge = "maxEdge";
 const tileDim = "tileDim";
 const tileOrigin = "tileOrigin";
+const token = "token";
 const gridColouredShader = {
   uniforms: {
     epsilon: { type: 'f', value: null },
     maxEdge: { type: 'f', value: null },
     tileDim: { type: 'f', value: null },
     tileOrigin: { type: 'v2', value: null },
+    token: { type: 'f', value: null },
   },
   vertexShader: [
     "uniform float epsilon;",
     "uniform float maxEdge;",
     "uniform float tileDim;",
     "uniform vec2 tileOrigin;",
+    "uniform float token;", // 1 to set the token flag, else 0
     "attribute vec3 face;", // per-vertex; z is the edge or vertex number
     "attribute vec2 tile;", // per-instance
     "varying vec3 vertexColour;", // packed colour
@@ -47,10 +50,11 @@ const gridColouredShader = {
     "  float packedValue = (",
     "    (c.x < 0.0 ? 1.0 : 0.0) +",
     "    (c.y < 0.0 ? 2.0 : 0.0) +",
-    "    4.0 * edge +",
-    "    4.0 * maxEdge",
+    "    4.0 * token +",
+    "    8.0 * edge +",
+    "    8.0 * maxEdge",
     "  );",
-    "  return epsilon + packedValue / (8.0 * maxEdge);",
+    "  return epsilon + packedValue / (16.0 * maxEdge);",
     "}",
 
     "void main() {",
@@ -76,6 +80,7 @@ class GridColouredFeatureObject<K extends GridCoord, F extends IFeature<K>> exte
   private readonly _tileAttr: THREE.InstancedBufferAttribute;
   private readonly _instanceTiles: Float32Array;
   private readonly _tileOrigin: THREE.Vector2;
+  private readonly _isToken: boolean;
 
   private _uniforms: any = null;
   private _material: THREE.ShaderMaterial | undefined; // created when required
@@ -86,12 +91,14 @@ class GridColouredFeatureObject<K extends GridCoord, F extends IFeature<K>> exte
     gridGeometry: IGridGeometry,
     maxInstances: number,
     createGeometry: () => THREE.InstancedBufferGeometry,
-    tileOrigin: THREE.Vector2
+    tileOrigin: THREE.Vector2,
+    isToken: boolean
   ) {
     super(toIndex, transformTo, maxInstances);
     this._gridGeometry = gridGeometry;
     this._geometry = createGeometry();
     this._tileOrigin = tileOrigin;
+    this._isToken = isToken;
 
     this._instanceTiles = new Float32Array(maxInstances * 2);
     this._tileAttr = new THREE.InstancedBufferAttribute(this._instanceTiles, 2);
@@ -127,6 +134,7 @@ class GridColouredFeatureObject<K extends GridCoord, F extends IFeature<K>> exte
     uniforms[maxEdge].value = this._gridGeometry.maxEdge;
     uniforms[tileDim].value = this._gridGeometry.tileDim;
     uniforms[tileOrigin].value = this._tileOrigin;
+    uniforms[token].value = this._isToken ? 1.0 : 0.0;
 
     const material = new THREE.ShaderMaterial({
       uniforms: uniforms,
@@ -181,14 +189,21 @@ function createGridVertexGeometry(gridGeometry: IGridGeometry, alpha: number, z:
   }
 }
 
-function createGridColouredAreaObject(gridGeometry: IGridGeometry, z: number, tileOrigin: THREE.Vector2) {
+function createGridColouredAreaObject(
+  gridGeometry: IGridGeometry,
+  alpha: number,
+  z: number,
+  tileOrigin: THREE.Vector2,
+  isToken: boolean
+) {
   return (maxInstances: number) => new GridColouredFeatureObject<GridCoord, IFeature<GridCoord>>(
     coordString,
     (o, p) => gridGeometry.transformToCoord(o, p),
     gridGeometry,
     maxInstances,
-    createGridAreaGeometry(gridGeometry, 1.0, z),
-    tileOrigin
+    createGridAreaGeometry(gridGeometry, alpha, z),
+    tileOrigin,
+    isToken
   );
 }
 
@@ -199,7 +214,8 @@ function createGridColouredVertexObject(gridGeometry: IGridGeometry, alpha: numb
     gridGeometry,
     maxInstances,
     createGridVertexGeometry(gridGeometry, alpha, z),
-    tileOrigin
+    tileOrigin,
+    false
   );
 }
 
@@ -207,6 +223,7 @@ export class Grid extends Drawn {
   private readonly _textureClearColour = new THREE.Color(0, 0, 0);
 
   private readonly _faces: Areas;
+  private readonly _tokenFaces: Areas;
   private readonly _vertices: Vertices;
 
   private readonly _tileOrigin = new THREE.Vector2(0, 0);
@@ -229,6 +246,7 @@ export class Grid extends Drawn {
     redrawFlag: RedrawFlag,
     gridZ: number,
     losZ: number,
+    tokenAlpha: number,
     vertexAlpha: number,
     renderWidth: number,
     renderHeight: number
@@ -257,10 +275,18 @@ export class Grid extends Drawn {
     this._faces = createAreas(
       geometry,
       redrawFlag,
-      createGridColouredAreaObject(geometry, gridZ, this._tileOrigin),
+      createGridColouredAreaObject(geometry, 1.0, gridZ, this._tileOrigin, false),
       100
     );
     this._faces.addToScene(this._faceCoordScene);
+
+    this._tokenFaces = createAreas(
+      geometry,
+      redrawFlag,
+      createGridColouredAreaObject(geometry, tokenAlpha, gridZ + 0.01, this._tileOrigin, true),
+      100
+    );
+    this._tokenFaces.addToScene(this._faceCoordScene);
 
     this._vertices = createVertices(
       geometry,
@@ -290,13 +316,17 @@ export class Grid extends Drawn {
     let count = 0;
     for (let t = bounds.minT; t <= bounds.maxT; ++t) {
       for (let s = bounds.minS; s <= bounds.maxS; ++s) {
-        let position = { x: s * this.geometry.tileDim, y: t * this.geometry.tileDim };
+        const position = { x: s * this.geometry.tileDim, y: t * this.geometry.tileDim };
         if (this._faces.get(position) === undefined) {
           this._faces.add({ position: position, colour: 0 });
           ++count;
         }
 
-        let vertexPosition = { x: position.x, y: position.y, vertex: 0 };
+        if (this._tokenFaces.get(position) === undefined) {
+          this._tokenFaces.add({ position: position, colour: 0 });
+        }
+
+        const vertexPosition = { x: position.x, y: position.y, vertex: 0 };
         if (this._vertices.get(vertexPosition) === undefined) {
           this._vertices.add({ position: vertexPosition, colour: 0 });
         }
@@ -351,7 +381,7 @@ export class Grid extends Drawn {
     this._temp.clear();
     for (let t = bounds.minT; t <= bounds.maxT; ++t) {
       for (let s = bounds.minS; s <= bounds.maxS; ++s) {
-        let position = { x: s * this.geometry.tileDim, y: t * this.geometry.tileDim };
+        const position = { x: s * this.geometry.tileDim, y: t * this.geometry.tileDim };
         this._temp.add({ position: position, colour: 0 });
       }
     }
@@ -359,7 +389,7 @@ export class Grid extends Drawn {
     // Remove everything outside the range.  Assume the faces and vertices are matching
     // (they should be!)
     const toDelete: GridCoord[] = [];
-    for (let face of this._faces) {
+    for (const face of this._faces) {
       if (this._temp.get(face.position) === undefined) {
         toDelete.push(face.position);
       }
@@ -367,6 +397,7 @@ export class Grid extends Drawn {
 
     toDelete.forEach(face => {
       this._faces.remove(face);
+      this._tokenFaces.remove(face);
       this._vertices.remove({ x: face.x, y: face.y, vertex: 0 });
       this.setNeedsRedraw();
     });
@@ -383,7 +414,7 @@ export class Grid extends Drawn {
     // maximise the limited amount of precision available to us in the
     // texture colours:
     let [tileCount, tileXSum, tileYSum] = [0, 0, 0];
-    for (let t of this._faces) {
+    for (const t of this._faces) {
       ++tileCount;
       tileXSum += Math.floor(t.position.x / this.geometry.tileDim);
       tileYSum += Math.floor(t.position.y / this.geometry.tileDim);
@@ -476,6 +507,7 @@ export class Grid extends Drawn {
       this._vertexCoordRenderTarget.dispose();
 
       this._faces.dispose();
+      this._tokenFaces.dispose();
       this._vertices.dispose();
       this._isDisposed = true;
     }
