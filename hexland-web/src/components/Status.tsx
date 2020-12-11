@@ -77,7 +77,9 @@ function Status() {
         </Card.Header>
         <Card.Body className="App-status-card-body small">
           <h5>Contact</h5>
-          <p><a href="https://twitter.com/m00sewitter" target="_blank" rel="noopener noreferrer">Twitter</a> | <a href="mailto:contact@wallandshadow.io">Email contact@wallandshadow.io</a></p>
+          <p>Feedback welcomed at <a href="https://twitter.com/m00sewitter" target="_blank" rel="noopener noreferrer">Twitter</a> | <a href="mailto:contact@wallandshadow.io">Email contact@wallandshadow.io</a></p>
+          <h5>License</h5>
+          <p>The source code to Wall &amp; Shadow is <a href="https://github.com/KaiEkkrin/hexland">available on GitHub</a> under the terms of the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, version 2.0</a>.</p>
           <h5>Acknowledgments</h5>
           <p>Wall &amp; Shadow would not have been possible without the help, patience and feedback of my Saturday D&amp;D group -- thank you!</p>
           <p>This web application is also enabled by the following npm packages</p>

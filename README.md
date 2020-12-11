@@ -1,6 +1,6 @@
 # Hexland
 
-This project contains the source code for [Wall & Shadow](https://wallandshadow.io).
+This project contains the source code for [Wall & Shadow](https://wallandshadow.io).  It is available under the terms of the [Apache License, version 2.0](http://www.apache.org/licenses/LICENSE-2.0) -- see the LICENSE file.  Versions of the source code prior to the creation of the LICENSE file (made when the repository was private) are covered by that license too.
 
 ## Building it
 
