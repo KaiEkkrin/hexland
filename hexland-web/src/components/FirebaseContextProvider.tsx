@@ -16,7 +16,7 @@ export const FirebaseContext = React.createContext<IFirebaseContext>({});
 
 async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => void) {
   // Get app config and use it to create the Firebase app
-  const response = await fetch('/__/firebase/init.json');
+  const response = await fetch('/__/firebase/init.json?v=2');
   const app = firebase.initializeApp(await response.json());
   const auth = app.auth();
   const db = app.firestore();
