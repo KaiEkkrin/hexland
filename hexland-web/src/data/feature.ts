@@ -86,7 +86,8 @@ export const defaultWall: IFeature<GridEdge> = {
 // This one is used only internally, derived from the token, and never added as part
 // of a change.
 export interface ITokenText extends IFeature<GridVertex> {
-  atVertex: boolean
+  atVertex: boolean,
+  colour: number,
   size: number,
   text: string,
 }

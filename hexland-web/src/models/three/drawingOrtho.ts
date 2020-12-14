@@ -15,6 +15,7 @@ import { LoS } from './los';
 import { createLoSFilter, ILoSPreRenderParameters, LoSFilter } from './losFilter';
 import { MapColourVisualisation } from './mapColourVisualisation';
 import { MapControlPoints, MapImages } from './mapImages';
+import { OutlineSelectionTokenDrawing, OutlineTokenDrawing } from './outlineTokenDrawing';
 import { OutlinedRectangle } from './overlayRectangle';
 import { TextFilter } from './textFilter';
 import { TextureCache } from './textureCache';
@@ -39,12 +40,14 @@ const highlightZ = 0.1;
 const vertexHighlightZ = 0.2;
 const textZ = -0.24; // in front of the token sprite but below the LoS
 const invalidSelectionZ = 0.6;
+const outlineZOffset = 0.01;
 
 const wallAlpha = 0.15;
 const edgeAlpha = 0.5;
 const vertexAlpha = 0.5;
 const tokenAlpha = 0.7;
 const tokenSpriteAlpha = 0.6;
+const outlineTokenAlpha = 0.8;
 const selectionAlpha = 0.8;
 const areaAlpha = 1.0;
 const vertexHighlightAlpha = 0.35;
@@ -66,6 +69,7 @@ export class DrawingOrtho implements IDrawing {
   private readonly _mapScene: THREE.Scene;
   private readonly _fixedFilterScene: THREE.Scene;
   private readonly _filterScene: THREE.Scene;
+  private readonly _fixedHighlightScene: THREE.Scene;
   private readonly _overlayScene: THREE.Scene;
 
   private readonly _grid: Grid; // TODO #160 remove the LoS part of this, replaced with LoSFilter.
@@ -83,14 +87,16 @@ export class DrawingOrtho implements IDrawing {
   private readonly _selectionDrag: ITokenDrawing; // a copy of the selection shown only while dragging it
   private readonly _selectionDragRed: ITokenDrawing; // likewise, but shown if the selection couldn't be dropped there
   private readonly _tokens: TokenDrawing;
+  private readonly _outlineSelection: OutlineSelectionTokenDrawing;
+  private readonly _outlineSelectionDrag: OutlineSelectionTokenDrawing;
+  private readonly _outlineSelectionDragRed: OutlineSelectionTokenDrawing;
+  private readonly _outlineTokens: OutlineTokenDrawing;
   private readonly _walls: Walls;
   private readonly _images: MapImages;
   private readonly _imageSelection: MapImages;
   private readonly _imageSelectionDrag: MapImages;
   private readonly _imageControlPointSelection: MapControlPoints;
   private readonly _mapColourVisualisation: MapColourVisualisation;
-
-  private readonly _textMaterial: THREE.MeshBasicMaterial;
 
   private readonly _outlinedRectangle: OutlinedRectangle;
 
@@ -144,12 +150,13 @@ export class DrawingOrtho implements IDrawing {
     this._needsRedraw = new RedrawFlag();
 
     // These scenes need to be drawn in sequence to get the blending right and allow us
-    // to draw the map itself, then overlay fixed features (the grid), then overlay LoS
+    // to draw the map itself, then overlay fixed features (the grid), then tokens, then overlay LoS
     // to allow it to hide the grid, and overlay the UI overlay (drag rectangle).
     this._imageScene = new THREE.Scene();
     this._mapScene = new THREE.Scene();
     this._fixedFilterScene = new THREE.Scene();
     this._filterScene = new THREE.Scene();
+    this._fixedHighlightScene = new THREE.Scene();
     this._overlayScene = new THREE.Scene();
 
     this._canvasClearColour = new THREE.Color(0.1, 0.1, 0.1);
@@ -173,19 +180,6 @@ export class DrawingOrtho implements IDrawing {
     // top thing in the fixed filter
     this._gridFilter = new GridFilter(this._grid.faceCoordRenderTarget.texture, gridZ);
     this._gridFilter.addToScene(this._fixedFilterScene);
-
-    this._textFilter = new TextFilter(textZ, new THREE.Vector4(1, 1, 1, 1));
-    this._textFilter.addToScene(this._fixedFilterScene);
-
-    this._losFilter = createLoSFilter(gridGeometry, losZ);
-
-    // Don't start with LoS if we should see everything.
-    // The state machine will call showLoSPositions() to update this after changes come in.
-    if (!seeEverything) {
-      this._losFilter.addToScene(this._fixedFilterScene);
-    }
-
-    this._textMaterial = new THREE.MeshBasicMaterial({ color: 0, side: THREE.DoubleSide });
 
     const darkColourParameters = {
       palette: colours.map(c => c.dark),
@@ -281,13 +275,44 @@ export class DrawingOrtho implements IDrawing {
     this._textureCache = new TextureCache(spriteManager, resolveImageUrl, logError);
     const uvTransform = createLargeTokenUvTransform(gridGeometry, tokenGeometry, tokenSpriteAlpha);
     this._tokens = new TokenDrawing(
-      gridGeometry, this._textureCache, uvTransform, this._needsRedraw, this._textMaterial, {
+      gridGeometry, this._textureCache, uvTransform, this._needsRedraw, new THREE.Color(0, 0, 0), {
         alpha: tokenAlpha,
         spriteAlpha: tokenSpriteAlpha,
         z: tokenZ,
         spriteZ: tokenSpriteZ,
         textZ: textZ
       }, lightColourParameters, this._mapScene, renderWidth, renderHeight
+    );
+
+    this._outlineTokens = new OutlineTokenDrawing(
+      gridGeometry, this._needsRedraw,
+      createPaletteColouredAreaObject(gridGeometry, outlineTokenAlpha, tokenZ + outlineZOffset, lightColourParameters),
+      createPaletteColouredWallObject(
+        createTokenFillEdgeGeometry(gridGeometry, outlineTokenAlpha, tokenZ + outlineZOffset),
+        gridGeometry, lightColourParameters
+      ),
+      createPaletteColouredVertexObject(
+        createTokenFillVertexGeometry(gridGeometry, outlineTokenAlpha, tokenZ + outlineZOffset),
+        gridGeometry, lightColourParameters
+      ),
+      renderWidth, renderHeight, this._fixedFilterScene, [new THREE.Color(0.4, 0.5, 0.6)],
+      tokenZ + outlineZOffset
+    )
+
+    // The outline selection
+    this._outlineSelection = new OutlineSelectionTokenDrawing(
+      gridGeometry, this._needsRedraw, createSelectedAreaObject, createSelectedWallObject, createSelectedVertexObject,
+      renderWidth, renderHeight, this._fixedHighlightScene, selectionZ + outlineZOffset, 100, THREE.AdditiveBlending
+    );
+
+    this._outlineSelectionDrag = new OutlineSelectionTokenDrawing(
+      gridGeometry, this._needsRedraw, createSelectedAreaObject, createSelectedWallObject, createSelectedVertexObject,
+      renderWidth, renderHeight, this._fixedHighlightScene, selectionZ + outlineZOffset, 100, THREE.AdditiveBlending
+    );
+
+    this._outlineSelectionDragRed = new OutlineSelectionTokenDrawing(
+      gridGeometry, this._needsRedraw, createSelectedRedAreaObject, createSelectedRedWallObject, createSelectedRedVertexObject,
+      renderWidth, renderHeight, this._fixedHighlightScene, selectionZ + outlineZOffset, 100
     );
 
     // The walls
@@ -316,6 +341,18 @@ export class DrawingOrtho implements IDrawing {
       this._gridGeometry, this._needsRedraw, this._filterScene, vertexHighlightAlpha, highlightZ
     );
 
+    // The rest of the fixed filter (added after the outline tokens, which are also rendered here)
+    this._textFilter = new TextFilter(textZ, new THREE.Vector4(1, 1, 1, 1));
+    this._textFilter.addToScene(this._fixedFilterScene);
+
+    this._losFilter = createLoSFilter(gridGeometry, losZ);
+
+    // Don't start with LoS if we should see everything.
+    // The state machine will call showLoSPositions() to update this after changes come in.
+    if (!seeEverything) {
+      this._losFilter.addToScene(this._fixedFilterScene);
+    }
+
     // The map colour visualisation (added on request instead of the areas)
     this._mapColourVisualisation = new MapColourVisualisation(
       this._gridGeometry, this._needsRedraw, areaAlpha, areaZ
@@ -336,8 +373,8 @@ export class DrawingOrtho implements IDrawing {
   }
 
   get areas() { return this._areas; }
-  get tokens() { return this._tokens; }
-  get tokenTexts() { return this._tokens; }
+  get tokens() { return this._outlineTokens; }
+  get tokenTexts() { return this._outlineTokens; }
   get walls() { return this._walls; }
   get images() { return this._images; }
 
@@ -346,9 +383,9 @@ export class DrawingOrtho implements IDrawing {
   get highlightedWalls() { return this._highlightedWalls; }
   get imageControlPointHighlights() { return this._imageControlPointHighlights; }
 
-  get selection() { return this._selection; }
-  get selectionDrag() { return this._selectionDrag; }
-  get selectionDragRed() { return this._selectionDragRed; }
+  get selection() { return this._outlineSelection; }
+  get selectionDrag() { return this._outlineSelectionDrag; }
+  get selectionDragRed() { return this._outlineSelectionDragRed; }
   get imageSelection() { return this._imageSelection; }
   get imageSelectionDrag() { return this._imageSelectionDrag; }
   get imageControlPointSelection() { return this._imageControlPointSelection; }
@@ -386,8 +423,13 @@ export class DrawingOrtho implements IDrawing {
         this._losFilter.preRender(this._losParameters, this._losCamera);
       }
 
-      this._tokens.texts.render(this._renderer, this._camera);
-      this._textFilter.preRender(this._tokens.texts.target);
+      this._tokens.render(this._renderer, this._camera);
+      this._textFilter.preRender(this._tokens.textTarget);
+
+      this._outlineTokens.render(this._camera, this._renderer);
+      this._outlineSelection.render(this._camera, this._renderer);
+      this._outlineSelectionDrag.render(this._camera, this._renderer);
+      this._outlineSelectionDragRed.render(this._camera, this._renderer);
 
       this._renderer.setRenderTarget(null);
       this._renderer.setClearColor(this._canvasClearColour);
@@ -397,6 +439,13 @@ export class DrawingOrtho implements IDrawing {
       this._renderer.render(this._mapScene, this._camera);
       this._renderer.render(this._fixedFilterScene, this._fixedCamera);
       this._renderer.render(this._filterScene, this._camera);
+      if (
+        this._outlineSelection.doRender ||
+        this._outlineSelectionDrag.doRender ||
+        this._outlineSelectionDragRed.doRender
+      ) {
+        this._renderer.render(this._fixedHighlightScene, this._fixedCamera);
+      }
       this._renderer.render(this._overlayScene, this._overlayCamera);
 
       if (this._showLoS === true) {
@@ -461,7 +510,11 @@ export class DrawingOrtho implements IDrawing {
 
     this._renderer.setSize(width, height, false);
     this._grid.resize(width, height);
-    this._tokens.texts.resize(width, height);
+    this._tokens.resize(width, height);
+    this._outlineTokens.resize(width, height);
+    this._outlineSelection.resize(width, height);
+    this._outlineSelectionDrag.resize(width, height);
+    this._outlineSelectionDragRed.resize(width, height);
 
     this._camera.left = translation.x + width / -scaling.x;
     this._camera.right = translation.x + width / scaling.x;
@@ -597,14 +650,24 @@ export class DrawingOrtho implements IDrawing {
     this._selectionDragRed.dispose();
     this._imageControlPointSelection.dispose();
     this._tokens.dispose();
+    this._outlineSelection.dispose();
+    this._outlineSelectionDrag.dispose();
+    this._outlineSelectionDragRed.dispose();
+    this._outlineTokens.dispose();
     this._walls.dispose();
     this._los.dispose();
     this._mapColourVisualisation.dispose();
 
     this._outlinedRectangle.dispose();
 
-    this._textMaterial.dispose();
     this._textureCache.dispose();
+
+    this._imageScene.dispose();
+    this._mapScene.dispose();
+    this._fixedFilterScene.dispose();
+    this._filterScene.dispose();
+    this._fixedHighlightScene.dispose();
+    this._overlayScene.dispose();
 
     // do *not* dispose the renderer, it'll be re-used for the next drawing context
 

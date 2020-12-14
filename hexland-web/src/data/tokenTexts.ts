@@ -59,7 +59,7 @@ export class BaseTokenDrawingWithText<
   ) {
     return {
       position: position,
-      colour: 0,
+      colour: token.colour,
       size: Number(token.size[0]),
       text: character?.text ?? token.text,
       atVertex: atVertex

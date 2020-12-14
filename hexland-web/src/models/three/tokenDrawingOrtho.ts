@@ -18,9 +18,9 @@ import { ITokenUvTransform } from "./uv";
 import { createPaletteColouredVertexObject, createSpriteVertexObject, createTokenFillVertexGeometry } from "./vertices";
 import { createPaletteColouredWallObject, createSpriteEdgeObject, createTokenFillEdgeGeometry } from "./walls";
 
+import fluent from "fluent-iterable";
 import { Subscription } from 'rxjs';
 import * as THREE from 'three';
-import fluent from "fluent-iterable";
 
 export interface ITokenDrawingParameters {
   alpha: number;
@@ -149,18 +149,23 @@ class TokenFeatures<K extends GridCoord, F extends (IFeature<K> & ITokenProperti
 }
 
 // A handy wrapper for the various thingies that go into token drawing.
+// Includes managing a texture that we render the token texts into, to allow us
+// to use the text filter to apply it to the screen.
 export class TokenDrawing extends BaseTokenDrawingWithText<
   TokenFeatures<GridCoord, ITokenFace>,
   TokenFeatures<GridEdge, ITokenFillEdge>,
   TokenFeatures<GridVertex, ITokenFillVertex>,
   TokenTexts
 > {
+  private readonly _textScene: THREE.Scene;
+  private readonly _textTarget: THREE.WebGLRenderTarget;
+
   constructor(
     gridGeometry: IGridGeometry,
     textureCache: TextureCache,
     uvTransform: ITokenUvTransform,
     needsRedraw: RedrawFlag,
-    textMaterial: THREE.MeshBasicMaterial,
+    textColour: THREE.Color,
     drawingParameters: ITokenDrawingParameters,
     colourParameters: IColourParameters,
     scene: THREE.Scene,
@@ -190,12 +195,36 @@ export class TokenDrawing extends BaseTokenDrawingWithText<
         createSpriteVertexObject(gridGeometry, needsRedraw, textureCache, uvTransform, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
         textureCache
       ),
-      new TokenTexts(gridGeometry, needsRedraw, textMaterial, width, height, drawingParameters.textZ)
+      new TokenTexts(gridGeometry, needsRedraw, [textColour], drawingParameters.textZ)
     );
 
     this.faces.addToScene(scene);
     this.fillEdges.addToScene(scene);
     this.fillVertices.addToScene(scene);
+
+    this._textScene = new THREE.Scene();
+    this._textTarget = new THREE.WebGLRenderTarget(width, height, {
+      depthBuffer: false,
+      minFilter: THREE.NearestFilter,
+      magFilter: THREE.NearestFilter,
+      wrapS: THREE.ClampToEdgeWrapping,
+      wrapT: THREE.ClampToEdgeWrapping
+    });
+    this.texts.addToScene(this._textScene);
+  }
+
+  get textTarget() { return this._textTarget; }
+
+  render(renderer: THREE.WebGLRenderer, camera: THREE.Camera) {
+    renderer.setRenderTarget(this._textTarget);
+    renderer.setClearColor(0xffffff, 0); // clear to transparent
+    renderer.clear();
+    renderer.render(this._textScene, camera);
+    renderer.setRenderTarget(null);
+  }
+
+  resize(width: number, height: number) {
+    this._textTarget.setSize(width, height);
   }
 
   setTextureCache(textureCache: TextureCache) {
@@ -210,6 +239,9 @@ export class TokenDrawing extends BaseTokenDrawingWithText<
     this.fillEdges.dispose();
     this.fillVertices.dispose();
     this.texts.dispose();
+
+    this._textScene.dispose();
+    this._textTarget.dispose();
   }
 }
 

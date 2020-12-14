@@ -7,8 +7,10 @@ import { RedrawFlag } from '../redrawFlag';
 import textCreator from './textCreator';
 
 import * as THREE from 'three';
+import fluent from 'fluent-iterable';
 
 interface ITokenTextWithMesh extends ITokenText {
+  material: THREE.Material;
   mesh: THREE.Mesh;
 }
 
@@ -23,9 +25,7 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
   // We cache text geometries here to avoid repeated re-creation
   private readonly _geometries = new Map<string, THREE.ShapeBufferGeometry>();
 
-  private readonly _material: THREE.Material;
-  private readonly _scene: THREE.Scene;
-  private readonly _target: THREE.WebGLRenderTarget;
+  private readonly _colours: THREE.Color[];
   private readonly _z: number;
 
   // excessive allocation of these is expensive
@@ -35,31 +35,26 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
   private readonly _targetPosition = new THREE.Vector3();
   private readonly _transform = new THREE.Matrix4();
 
-  private _isDisposed = false;
+  private _scene: THREE.Scene | undefined = undefined;
 
   constructor(
     gridGeometry: IGridGeometry,
     redrawFlag: RedrawFlag,
-    material: THREE.Material,
-    width: number,
-    height: number,
+    colours: THREE.Color[], // indexed by colour; out-of-range mapped to 0
     z: number
   ) {
     super(gridGeometry, redrawFlag);
-    this._material = material;
-    this._scene = new THREE.Scene();
-    this._target = new THREE.WebGLRenderTarget(width, height, {
-      depthBuffer: false,
-      minFilter: THREE.NearestFilter,
-      magFilter: THREE.NearestFilter,
-      wrapS: THREE.ClampToEdgeWrapping,
-      wrapT: THREE.ClampToEdgeWrapping
-    });
+    this._colours = colours;
     this._z = z;
   }
 
-  private createMesh(f: ITokenText, geometry: THREE.ShapeBufferGeometry, bb: THREE.Box3): THREE.Mesh {
-    const mesh = new THREE.Mesh(geometry, this._material);
+  private createMesh(f: ITokenText, geometry: THREE.ShapeBufferGeometry, bb: THREE.Box3) {
+    const colourIndex = Math.max(0, Math.min(this._colours.length - 1, f.colour));
+    console.log(`token ${f.text}, colour ${f.colour}: using colour ${this._colours[colourIndex].getHexString()}`);
+
+    // TODO #118 WTF IS UP WITH THE COLOURS ?!?!?!
+    const material = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(geometry, material);
 
     const offset = this._scratchVector1.copy(bb.max).sub(bb.min).multiply(offsetMultiplicand);
     const targetPosition = (f.atVertex ? this.geometry.createVertexCentre(
@@ -70,10 +65,10 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
 
     const targetSize = 0.15 * Math.pow(f.size, 0.5);
     const transform = this._transform.makeTranslation(targetPosition.x, targetPosition.y, targetPosition.z)
-      .multiply(this._scratchMatrix1.makeScale(targetSize, targetSize, targetSize))
+      .multiply(this._scratchMatrix1.makeScale(targetSize, targetSize, 1))
       .multiply(this._scratchMatrix2.makeTranslation(offset.x, offset.y, 0));
     mesh.applyMatrix4(transform);
-    return mesh;
+    return { material: material, mesh: mesh };
   }
 
   private getGeometry(text: string): THREE.ShapeBufferGeometry | undefined {
@@ -90,18 +85,22 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
     return geometry;
   }
 
-  get target() { return this._target; }
+  addToScene(scene: THREE.Scene) {
+    if (this._scene !== undefined) {
+      return;
+    }
 
-  render(renderer: THREE.WebGLRenderer, camera: THREE.Camera) {
-    renderer.setRenderTarget(this._target);
-    renderer.setClearColor(0xffffff, 0); // clear to transparent
-    renderer.clear();
-    renderer.render(this._scene, camera);
-    renderer.setRenderTarget(null);
+    this._scene = scene;
+    this._dict.forEach(f => scene.add(f.mesh));
   }
 
-  resize(width: number, height: number) {
-    this._target.setSize(width, height);
+  removeFromScene(scene: THREE.Scene) {
+    if (this._scene === undefined) {
+      return;
+    }
+
+    this._dict.forEach(f => scene.remove(f.mesh));
+    this._scene = undefined;
   }
 
   // DICTIONARY IMPLEMENTATION
@@ -116,20 +115,20 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
       return false;
     }
 
-    const mesh = this.createMesh(f, geometry, geometry.boundingBox);
-    if (this._dict.add({ ...f, mesh: mesh }) === false) {
+    const { material, mesh } = this.createMesh(f, geometry, geometry.boundingBox);
+    if (this._dict.add({ ...f, material: material, mesh: mesh }) === false) {
+      material.dispose();
       return false;
     }
 
-    this._scene.add(mesh);
+    this._scene?.add(mesh);
     this.setNeedsRedraw();
     return true;
   }
 
   clear() {
-    this._dict.forEach(t => this._scene.remove(t.mesh));
-    this._dict.clear();
-    this.setNeedsRedraw();
+    const toRemove = [...fluent(this._dict.iterate())];
+    toRemove.forEach(f => this.remove(f.position));
   }
 
   clone() {
@@ -155,16 +154,13 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
       return undefined;
     }
 
-    this._scene.remove(removed.mesh);
+    this._scene?.remove(removed.mesh);
+    removed.material.dispose();
     this.setNeedsRedraw();
     return removed;
   }
 
   dispose() {
-    if (this._isDisposed === false) {
-      this._scene.dispose();
-      this._target.dispose();
-      this._isDisposed = true;
-    }
+    this.clear();
   }
 }
