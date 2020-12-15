@@ -10,7 +10,6 @@ import * as THREE from 'three';
 import fluent from 'fluent-iterable';
 
 interface ITokenTextWithMesh extends ITokenText {
-  material: THREE.Material;
   mesh: THREE.Mesh;
 }
 
@@ -25,7 +24,7 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
   // We cache text geometries here to avoid repeated re-creation
   private readonly _geometries = new Map<string, THREE.ShapeBufferGeometry>();
 
-  private readonly _colours: THREE.Color[];
+  private readonly _material: THREE.MeshBasicMaterial; // we don't own this
   private readonly _z: number;
 
   // excessive allocation of these is expensive
@@ -40,21 +39,16 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
   constructor(
     gridGeometry: IGridGeometry,
     redrawFlag: RedrawFlag,
-    colours: THREE.Color[], // indexed by colour; out-of-range mapped to 0
+    material: THREE.MeshBasicMaterial,
     z: number
   ) {
     super(gridGeometry, redrawFlag);
-    this._colours = colours;
+    this._material = material;
     this._z = z;
   }
 
   private createMesh(f: ITokenText, geometry: THREE.ShapeBufferGeometry, bb: THREE.Box3) {
-    const colourIndex = Math.max(0, Math.min(this._colours.length - 1, f.colour));
-    console.log(`token ${f.text}, colour ${f.colour}: using colour ${this._colours[colourIndex].getHexString()}`);
-
-    // TODO #118 WTF IS UP WITH THE COLOURS ?!?!?!
-    const material = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
-    const mesh = new THREE.Mesh(geometry, material);
+    const mesh = new THREE.Mesh(geometry, this._material);
 
     const offset = this._scratchVector1.copy(bb.max).sub(bb.min).multiply(offsetMultiplicand);
     const targetPosition = (f.atVertex ? this.geometry.createVertexCentre(
@@ -68,7 +62,7 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
       .multiply(this._scratchMatrix1.makeScale(targetSize, targetSize, 1))
       .multiply(this._scratchMatrix2.makeTranslation(offset.x, offset.y, 0));
     mesh.applyMatrix4(transform);
-    return { material: material, mesh: mesh };
+    return mesh;
   }
 
   private getGeometry(text: string): THREE.ShapeBufferGeometry | undefined {
@@ -115,9 +109,8 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
       return false;
     }
 
-    const { material, mesh } = this.createMesh(f, geometry, geometry.boundingBox);
-    if (this._dict.add({ ...f, material: material, mesh: mesh }) === false) {
-      material.dispose();
+    const mesh = this.createMesh(f, geometry, geometry.boundingBox);
+    if (this._dict.add({ ...f, mesh: mesh }) === false) {
       return false;
     }
 
@@ -155,7 +148,6 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
     }
 
     this._scene?.remove(removed.mesh);
-    removed.material.dispose();
     this.setNeedsRedraw();
     return removed;
   }

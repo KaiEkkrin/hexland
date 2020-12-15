@@ -73,6 +73,10 @@ class OutlineFeatures<K extends GridCoord, F extends IFeature<K>> extends Instan
 }
 
 // This filter does the edge detection and draws the outlines to the canvas.
+// We pass through the solid-black colour directly -- this is the colour of token text;
+// we want to make sure the exact font render appears in black so that the text is readable.
+// It will be outlined by the token colour, because the text is drawn on top of the (filled) token in
+// the outline texture -- this should make it readable against other backgrounds.
 // TODO #118 Here is the place to put a thing that makes the lines dashed, if I decide I want
 // to have that :)
 const outlineFilterShader: IShader = {
@@ -104,19 +108,15 @@ const outlineFilterShader: IShader = {
       vec4 minTally = vec4(1.0, 1.0, 1.0, 1.0);
       vec4 maxTally = vec4(0.0, 0.0, 0.0, 0.0);
 
-      contribute(texUv + vec2(-step.x, -step.y), minTally, maxTally);
       contribute(texUv + vec2(-step.x, 0), minTally, maxTally);
-      contribute(texUv + vec2(-step.x, step.y), minTally, maxTally);
-
       contribute(texUv + vec2(0, -step.y), minTally, maxTally);
       vec4 here = contribute(texUv, minTally, maxTally);
       contribute(texUv + vec2(0, step.y), minTally, maxTally);
-
-      contribute(texUv + vec2(step.x, -step.y), minTally, maxTally);
       contribute(texUv + vec2(step.x, 0), minTally, maxTally);
-      contribute(texUv + vec2(step.x, step.y), minTally, maxTally);
 
-      if (minTally != maxTally) {
+      if (here == vec4(0.0, 0.0, 0.0, 1.0)) {
+        gl_FragColor = here;
+      } else if (minTally != maxTally) {
         gl_FragColor = maxTally;
       } else {
         gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
@@ -231,7 +231,7 @@ export class OutlineTokenDrawing extends BaseTokenDrawingWithText<
     renderWidth: number,
     renderHeight: number,
     scene: THREE.Scene,
-    textColours: THREE.Color[],
+    textMaterial: THREE.MeshBasicMaterial,
     z: number,
     maxInstances?: number | undefined,
     blending?: THREE.Blending | undefined
@@ -247,7 +247,7 @@ export class OutlineTokenDrawing extends BaseTokenDrawingWithText<
       new InstancedFeatures<GridVertex, ITokenFillVertex>(
         gridGeometry, needsRedraw, vertexString, createVertexObject, maxInstances
       ),
-      new TokenTexts(gridGeometry, needsRedraw, textColours, z + 0.01)
+      new TokenTexts(gridGeometry, needsRedraw, textMaterial, z + 0.01)
     );
 
     this._outlineTexture = new OutlineTokenTexture(renderWidth, renderHeight, scene, z, blending);

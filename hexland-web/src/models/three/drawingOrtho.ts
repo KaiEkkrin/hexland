@@ -65,6 +65,8 @@ export class DrawingOrtho implements IDrawing {
   private readonly _renderer: THREE.WebGLRenderer; // this is a singleton, we don't own it
   private readonly _canvasClearColour: THREE.Color;
 
+  private readonly _textMaterial: THREE.MeshBasicMaterial;
+
   private readonly _imageScene: THREE.Scene;
   private readonly _mapScene: THREE.Scene;
   private readonly _fixedFilterScene: THREE.Scene;
@@ -161,6 +163,7 @@ export class DrawingOrtho implements IDrawing {
 
     this._canvasClearColour = new THREE.Color(0.1, 0.1, 0.1);
     this._renderer.autoClear = false;
+    this._textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
 
     // Texture of face co-ordinates within the tile.
     this._grid = new Grid(
@@ -275,7 +278,7 @@ export class DrawingOrtho implements IDrawing {
     this._textureCache = new TextureCache(spriteManager, resolveImageUrl, logError);
     const uvTransform = createLargeTokenUvTransform(gridGeometry, tokenGeometry, tokenSpriteAlpha);
     this._tokens = new TokenDrawing(
-      gridGeometry, this._textureCache, uvTransform, this._needsRedraw, new THREE.Color(0, 0, 0), {
+      gridGeometry, this._textureCache, uvTransform, this._needsRedraw, this._textMaterial, {
         alpha: tokenAlpha,
         spriteAlpha: tokenSpriteAlpha,
         z: tokenZ,
@@ -295,7 +298,7 @@ export class DrawingOrtho implements IDrawing {
         createTokenFillVertexGeometry(gridGeometry, outlineTokenAlpha, tokenZ + outlineZOffset),
         gridGeometry, lightColourParameters
       ),
-      renderWidth, renderHeight, this._fixedFilterScene, [new THREE.Color(0.4, 0.5, 0.6)],
+      renderWidth, renderHeight, this._fixedFilterScene, this._textMaterial,
       tokenZ + outlineZOffset
     )
 
@@ -661,6 +664,7 @@ export class DrawingOrtho implements IDrawing {
     this._outlinedRectangle.dispose();
 
     this._textureCache.dispose();
+    this._textMaterial.dispose();
 
     this._imageScene.dispose();
     this._mapScene.dispose();

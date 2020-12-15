@@ -165,7 +165,7 @@ export class TokenDrawing extends BaseTokenDrawingWithText<
     textureCache: TextureCache,
     uvTransform: ITokenUvTransform,
     needsRedraw: RedrawFlag,
-    textColour: THREE.Color,
+    textMaterial: THREE.MeshBasicMaterial,
     drawingParameters: ITokenDrawingParameters,
     colourParameters: IColourParameters,
     scene: THREE.Scene,
@@ -195,7 +195,7 @@ export class TokenDrawing extends BaseTokenDrawingWithText<
         createSpriteVertexObject(gridGeometry, needsRedraw, textureCache, uvTransform, drawingParameters.spriteAlpha, drawingParameters.spriteZ),
         textureCache
       ),
-      new TokenTexts(gridGeometry, needsRedraw, [textColour], drawingParameters.textZ)
+      new TokenTexts(gridGeometry, needsRedraw, textMaterial, drawingParameters.textZ)
     );
 
     this.faces.addToScene(scene);
