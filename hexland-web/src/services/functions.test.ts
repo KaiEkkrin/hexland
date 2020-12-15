@@ -232,7 +232,8 @@ describe('test functions', () => {
         note: 'token one',
         noteVisibleToPlayers: true,
         characterId: "",
-        sprites: []
+        sprites: [],
+        outline: true
       }
     };
   }
@@ -739,9 +740,11 @@ describe('test functions', () => {
 
     // Watch changes, mocking up the handlers:
     const tokens = new Tokens(getTokenGeometry(MapType.Square), new SimpleTokenDrawing());
+    const outlineTokens = new Tokens(getTokenGeometry(MapType.Square), new SimpleTokenDrawing());
     const changeTracker = new SimpleChangeTracker(
       new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString),
       tokens,
+      outlineTokens,
       new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString),
       new FeatureDictionary<GridCoord, IAnnotation>(coordString),
       new IdDictionary<IMapImage>(),
@@ -783,7 +786,8 @@ describe('test functions', () => {
           note: '',
           noteVisibleToPlayers: false,
           characterId: "",
-          sprites: []
+          sprites: [],
+          outline: false
         }
       };
       const addOnePromise = changesSeen.pipe(first()).toPromise();

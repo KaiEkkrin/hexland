@@ -153,7 +153,7 @@ export class SimpleChangeTracker implements IChangeTracker {
 
   wallAdd(feature: IFeature<GridEdge>) {
     // Stop us from overwriting a token with a wall
-    if (this._tokens.hasFillEdge(feature.position)) {
+    if (this._tokens.hasFillEdge(feature.position) || this._outlineTokens.hasFillEdge(feature.position)) {
       return false;
     }
 

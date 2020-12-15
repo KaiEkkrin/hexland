@@ -357,554 +357,573 @@ test('A double-remove wall operation is also cancelled', () => {
 
 // == TOKENS ==
 
-// Repeat the superposition test
-test('Tokens cannot be added on top of each other', () => {
-  let map = createTestMap(false);
-  let tracker = createChangeTracker(map.ty);
-  let chs: Change[] = [{
-    ty: ChangeType.Add,
-    cat: ChangeCategory.Token,
-    feature: {
-      ...defaultTokenProperties,
+// We'll do many of these tests separately for both regular and outline tokens,
+// which should behave the same (although not interact).
+for (const isOutline of [false, true]) {
+  // Repeat the superposition test
+  test(`Tokens cannot be added on top of each other (outline=${isOutline})`, () => {
+    let map = createTestMap(false);
+    let tracker = createChangeTracker(map.ty);
+    let chs: Change[] = [{
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Token,
+      feature: {
+        ...defaultTokenProperties,
+        position: { x: 1, y: 2 },
+        colour: 3,
+        text: "a",
+        id: "a",
+        outline: isOutline
+      }
+    }];
+
+    let ok = trackChanges(map, tracker, chs, ownerUid);
+    expect(ok).toBeTruthy();
+
+    let chs2: Change[] = [{
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Token,
+      feature: {
+        ...defaultTokenProperties,
+        position: { x: 0, y: 2 },
+        colour: 3,
+        text: "b",
+        id: "b",
+        size: "1",
+        outline: isOutline
+      }
+    }, {
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Token,
+      feature: {
+        ...defaultTokenProperties,
+        position: { x: 1, y: 2 },
+        colour: 4,
+        text: "c",
+        id: "c",
+        size: "1",
+        outline: isOutline
+      }
+    }];
+
+    ok = trackChanges(map, tracker, chs2, ownerUid);
+    expect(ok).toBeFalsy();
+
+    // After that operation, we should still have the token added the first time
+    // but not the other area added the second time -- the whole second operation
+    // should have been cancelled
+    let chs3: Change[] = [{
+      ty: ChangeType.Remove,
+      cat: ChangeCategory.Token,
       position: { x: 1, y: 2 },
-      colour: 3,
-      text: "a",
-      id: "a",
-    }
-  }];
+      tokenId: "a"
+    }];
 
-  let ok = trackChanges(map, tracker, chs, ownerUid);
-  expect(ok).toBeTruthy();
+    ok = trackChanges(map, tracker, chs3, ownerUid);
+    expect(ok).toBeTruthy();
 
-  let chs2: Change[] = [{
-    ty: ChangeType.Add,
-    cat: ChangeCategory.Token,
-    feature: {
-      ...defaultTokenProperties,
+    let chs4: Change[] = [{
+      ty: ChangeType.Remove,
+      cat: ChangeCategory.Token,
       position: { x: 0, y: 2 },
-      colour: 3,
-      text: "b",
-      id: "b",
-      size: "1"
-    }
-  }, {
-    ty: ChangeType.Add,
-    cat: ChangeCategory.Token,
-    feature: {
-      ...defaultTokenProperties,
-      position: { x: 1, y: 2 },
-      colour: 4,
-      text: "c",
-      id: "c",
-      size: "1"
-    }
-  }];
+      tokenId: "b"
+    }];
 
-  ok = trackChanges(map, tracker, chs2, ownerUid);
-  expect(ok).toBeFalsy();
+    ok = trackChanges(map, tracker, chs4, ownerUid);
+    expect(ok).toBeFalsy();
+  });
 
-  // After that operation, we should still have the token added the first time
-  // but not the other area added the second time -- the whole second operation
-  // should have been cancelled
-  let chs3: Change[] = [{
-    ty: ChangeType.Remove,
-    cat: ChangeCategory.Token,
-    position: { x: 1, y: 2 },
-    tokenId: "a"
-  }];
+  test(`A token can be moved around (isOutline=${isOutline})`, () => {
+    let map = createTestMap(false);
+    let tracker = createChangeTracker(map.ty);
+    let chs: Change[] = [{
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Token,
+      feature: {
+        ...defaultTokenProperties,
+        position: { x: 1, y: 2 },
+        colour: 3,
+        text: "a",
+        id: "a",
+        size: "1",
+        outline: isOutline
+      }
+    }];
 
-  ok = trackChanges(map, tracker, chs3, ownerUid);
-  expect(ok).toBeTruthy();
+    let ok = trackChanges(map, tracker, chs, ownerUid);
+    expect(ok).toBeTruthy();
 
-  let chs4: Change[] = [{
-    ty: ChangeType.Remove,
-    cat: ChangeCategory.Token,
-    position: { x: 0, y: 2 },
-    tokenId: "b"
-  }];
+    let chs2: Change[] = [{
+      ty: ChangeType.Move,
+      cat: ChangeCategory.Token,
+      newPosition: { x: 2, y: 2 },
+      oldPosition: { x: 1, y: 2 },
+      tokenId: "a"
+    }];
 
-  ok = trackChanges(map, tracker, chs4, ownerUid);
-  expect(ok).toBeFalsy();
-});
+    ok = trackChanges(map, tracker, chs2, ownerUid);
+    expect(ok).toBeTruthy();
 
-test('A token can be moved around', () => {
-  let map = createTestMap(false);
-  let tracker = createChangeTracker(map.ty);
-  let chs: Change[] = [{
-    ty: ChangeType.Add,
-    cat: ChangeCategory.Token,
-    feature: {
-      ...defaultTokenProperties,
-      position: { x: 1, y: 2 },
-      colour: 3,
-      text: "a",
-      id: "a",
-      size: "1"
-    }
-  }];
+    let chs3: Change[] = [{
+      ty: ChangeType.Move,
+      cat: ChangeCategory.Token,
+      newPosition: { x: 1, y: 2 },
+      oldPosition: { x: 2, y: 2 },
+      tokenId: "a"
+    }];
 
-  let ok = trackChanges(map, tracker, chs, ownerUid);
-  expect(ok).toBeTruthy();
+    ok = trackChanges(map, tracker, chs3, ownerUid);
+    expect(ok).toBeTruthy();
 
-  let chs2: Change[] = [{
-    ty: ChangeType.Move,
-    cat: ChangeCategory.Token,
-    newPosition: { x: 2, y: 2 },
-    oldPosition: { x: 1, y: 2 },
-    tokenId: "a"
-  }];
+    // A redundant move from its current position back to the same position
+    // should be fine
+    let chs4: Change[] = [{
+      ty: ChangeType.Move,
+      cat: ChangeCategory.Token,
+      newPosition: { x: 1, y: 2 },
+      oldPosition: { x: 1, y: 2 },
+      tokenId: "a"
+    }];
 
-  ok = trackChanges(map, tracker, chs2, ownerUid);
-  expect(ok).toBeTruthy();
+    ok = trackChanges(map, tracker, chs4, ownerUid);
+    expect(ok).toBeTruthy();
 
-  let chs3: Change[] = [{
-    ty: ChangeType.Move,
-    cat: ChangeCategory.Token,
-    newPosition: { x: 1, y: 2 },
-    oldPosition: { x: 2, y: 2 },
-    tokenId: "a"
-  }];
+    // We shouldn't be able to move it from a non-existent position, though
+    let chs5: Change[] = [{
+      ty: ChangeType.Move,
+      cat: ChangeCategory.Token,
+      newPosition: { x: 3, y: 2 },
+      oldPosition: { x: 2, y: 2 },
+      tokenId: "a"
+    }];
 
-  ok = trackChanges(map, tracker, chs3, ownerUid);
-  expect(ok).toBeTruthy();
+    ok = trackChanges(map, tracker, chs5, ownerUid);
+    expect(ok).toBeFalsy();
+  });
 
-  // A redundant move from its current position back to the same position
-  // should be fine
-  let chs4: Change[] = [{
-    ty: ChangeType.Move,
-    cat: ChangeCategory.Token,
-    newPosition: { x: 1, y: 2 },
-    oldPosition: { x: 1, y: 2 },
-    tokenId: "a"
-  }];
+  test(`Multiple tokens can be moved together (isOutline=${isOutline})`, () => {
+    let map = createTestMap(false);
+    let tracker = createChangeTracker(map.ty);
+    let chs: Change[] = [{
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Token,
+      feature: {
+        ...defaultTokenProperties,
+        position: { x: 1, y: 2 },
+        colour: 3,
+        text: "a",
+        id: "a",
+        size: "1",
+        outline: isOutline
+      }
+    }, {
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Token,
+      feature: {
+        ...defaultTokenProperties,
+        position: { x: 1, y: 3 },
+        colour: 1,
+        text: "b",
+        id: "b",
+        size: "1",
+        outline: isOutline
+      }
+    }, {
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Token,
+      feature: {
+        ...defaultTokenProperties,
+        position: { x: 2, y: 2 },
+        colour: 2,
+        text: "c",
+        id: "c",
+        size: "1",
+        outline: isOutline
+      }
+    }];
 
-  ok = trackChanges(map, tracker, chs4, ownerUid);
-  expect(ok).toBeTruthy();
+    let ok = trackChanges(map, tracker, chs, ownerUid);
+    expect(ok).toBeTruthy();
 
-  // We shouldn't be able to move it from a non-existent position, though
-  let chs5: Change[] = [{
-    ty: ChangeType.Move,
-    cat: ChangeCategory.Token,
-    newPosition: { x: 3, y: 2 },
-    oldPosition: { x: 2, y: 2 },
-    tokenId: "a"
-  }];
+    // I should not be able to move the two row-aligned tokens diagonally left-down one, because
+    // token "b" is in the way:
+    let chs2: Change[] = [{
+      ty: ChangeType.Move,
+      cat: ChangeCategory.Token,
+      newPosition: { x: 0, y: 3 },
+      oldPosition: { x: 1, y: 2 },
+      tokenId: "a"
+    }, {
+      ty: ChangeType.Move,
+      cat: ChangeCategory.Token,
+      newPosition: { x: 1, y: 3 },
+      oldPosition: { x: 2, y: 2 },
+      tokenId: "c"
+    }];
 
-  ok = trackChanges(map, tracker, chs5, ownerUid);
-  expect(ok).toBeFalsy();
-});
+    ok = trackChanges(map, tracker, chs2, ownerUid);
+    expect(ok).toBeFalsy();
 
-test('Multiple tokens can be moved together', () => {
-  let map = createTestMap(false);
-  let tracker = createChangeTracker(map.ty);
-  let chs: Change[] = [{
-    ty: ChangeType.Add,
-    cat: ChangeCategory.Token,
-    feature: {
-      ...defaultTokenProperties,
-      position: { x: 1, y: 2 },
-      colour: 3,
-      text: "a",
-      id: "a",
-      size: "1"
-    }
-  }, {
-    ty: ChangeType.Add,
-    cat: ChangeCategory.Token,
-    feature: {
-      ...defaultTokenProperties,
-      position: { x: 1, y: 3 },
-      colour: 1,
-      text: "b",
-      id: "b",
-      size: "1"
-    }
-  }, {
-    ty: ChangeType.Add,
-    cat: ChangeCategory.Token,
-    feature: {
-      ...defaultTokenProperties,
-      position: { x: 2, y: 2 },
-      colour: 2,
-      text: "c",
-      id: "c",
-      size: "1"
-    }
-  }];
+    // I should be able to move the two row-aligned tokens left one, so that
+    // "c" occupies the position "a" previously had, with no problems:
+    let chs3: Change[] = [{
+      ty: ChangeType.Move,
+      cat: ChangeCategory.Token,
+      newPosition: { x: 0, y: 2 },
+      oldPosition: { x: 1, y: 2 },
+      tokenId: "a"
+    }, {
+      ty: ChangeType.Move,
+      cat: ChangeCategory.Token,
+      newPosition: { x: 1, y: 2 },
+      oldPosition: { x: 2, y: 2 },
+      tokenId: "c"
+    }];
 
-  let ok = trackChanges(map, tracker, chs, ownerUid);
-  expect(ok).toBeTruthy();
+    ok = trackChanges(map, tracker, chs3, ownerUid);
+    expect(ok).toBeTruthy();
+  });
 
-  // I should not be able to move the two row-aligned tokens diagonally left-down one, because
-  // token "b" is in the way:
-  let chs2: Change[] = [{
-    ty: ChangeType.Move,
-    cat: ChangeCategory.Token,
-    newPosition: { x: 0, y: 3 },
-    oldPosition: { x: 1, y: 2 },
-    tokenId: "a"
-  }, {
-    ty: ChangeType.Move,
-    cat: ChangeCategory.Token,
-    newPosition: { x: 1, y: 3 },
-    oldPosition: { x: 2, y: 2 },
-    tokenId: "c"
-  }];
+  test(`Multiple tokens can be moved together (in the other order) (isOutline=${isOutline})`, () => {
+    let map = createTestMap(false);
+    let tracker = createChangeTracker(map.ty);
+    let chs: Change[] = [{
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Token,
+      feature: {
+        ...defaultTokenProperties,
+        position: { x: 1, y: 2 },
+        colour: 3,
+        text: "a",
+        id: "a",
+        size: "1",
+        outline: isOutline
+      }
+    }, {
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Token,
+      feature: {
+        ...defaultTokenProperties,
+        position: { x: 1, y: 3 },
+        colour: 1,
+        text: "b",
+        id: "b",
+        size: "1",
+        outline: isOutline
+      }
+    }, {
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Token,
+      feature: {
+        ...defaultTokenProperties,
+        position: { x: 2, y: 2 },
+        colour: 2,
+        text: "c",
+        id: "c",
+        size: "1",
+        outline: isOutline
+      }
+    }];
 
-  ok = trackChanges(map, tracker, chs2, ownerUid);
-  expect(ok).toBeFalsy();
+    let ok = trackChanges(map, tracker, chs, ownerUid);
+    expect(ok).toBeTruthy();
 
-  // I should be able to move the two row-aligned tokens left one, so that
-  // "c" occupies the position "a" previously had, with no problems:
-  let chs3: Change[] = [{
-    ty: ChangeType.Move,
-    cat: ChangeCategory.Token,
-    newPosition: { x: 0, y: 2 },
-    oldPosition: { x: 1, y: 2 },
-    tokenId: "a"
-  }, {
-    ty: ChangeType.Move,
-    cat: ChangeCategory.Token,
-    newPosition: { x: 1, y: 2 },
-    oldPosition: { x: 2, y: 2 },
-    tokenId: "c"
-  }];
+    // I should not be able to move the two row-aligned tokens diagonally left-down one, because
+    // token "b" is in the way:
+    let chs2: Change[] = [{
+      ty: ChangeType.Move,
+      cat: ChangeCategory.Token,
+      newPosition: { x: 1, y: 3 },
+      oldPosition: { x: 2, y: 2 },
+      tokenId: "c"
+    }, {
+      ty: ChangeType.Move,
+      cat: ChangeCategory.Token,
+      newPosition: { x: 0, y: 3 },
+      oldPosition: { x: 1, y: 2 },
+      tokenId: "a"
+    }];
 
-  ok = trackChanges(map, tracker, chs3, ownerUid);
-  expect(ok).toBeTruthy();
-});
+    ok = trackChanges(map, tracker, chs2, ownerUid);
+    expect(ok).toBeFalsy();
 
-test('Multiple tokens can be moved together (in the other order)', () => {
-  let map = createTestMap(false);
-  let tracker = createChangeTracker(map.ty);
-  let chs: Change[] = [{
-    ty: ChangeType.Add,
-    cat: ChangeCategory.Token,
-    feature: {
-      ...defaultTokenProperties,
-      position: { x: 1, y: 2 },
-      colour: 3,
-      text: "a",
-      id: "a",
-      size: "1"
-    }
-  }, {
-    ty: ChangeType.Add,
-    cat: ChangeCategory.Token,
-    feature: {
-      ...defaultTokenProperties,
-      position: { x: 1, y: 3 },
-      colour: 1,
-      text: "b",
-      id: "b",
-      size: "1"
-    }
-  }, {
-    ty: ChangeType.Add,
-    cat: ChangeCategory.Token,
-    feature: {
-      ...defaultTokenProperties,
-      position: { x: 2, y: 2 },
-      colour: 2,
-      text: "c",
-      id: "c",
-      size: "1"
-    }
-  }];
+    // I should be able to move the two row-aligned tokens left one, so that
+    // "c" occupies the position "a" previously had, with no problems:
+    let chs3: Change[] = [{
+      ty: ChangeType.Move,
+      cat: ChangeCategory.Token,
+      newPosition: { x: 1, y: 2 },
+      oldPosition: { x: 2, y: 2 },
+      tokenId: "c"
+    }, {
+      ty: ChangeType.Move,
+      cat: ChangeCategory.Token,
+      newPosition: { x: 0, y: 2 },
+      oldPosition: { x: 1, y: 2 },
+      tokenId: "a"
+    }];
 
-  let ok = trackChanges(map, tracker, chs, ownerUid);
-  expect(ok).toBeTruthy();
+    ok = trackChanges(map, tracker, chs3, ownerUid);
+    expect(ok).toBeTruthy();
+  });
 
-  // I should not be able to move the two row-aligned tokens diagonally left-down one, because
-  // token "b" is in the way:
-  let chs2: Change[] = [{
-    ty: ChangeType.Move,
-    cat: ChangeCategory.Token,
-    newPosition: { x: 1, y: 3 },
-    oldPosition: { x: 2, y: 2 },
-    tokenId: "c"
-  }, {
-    ty: ChangeType.Move,
-    cat: ChangeCategory.Token,
-    newPosition: { x: 0, y: 3 },
-    oldPosition: { x: 1, y: 2 },
-    tokenId: "a"
-  }];
+  test(`I can move a token and add another one in its place (outline=${isOutline})`, () => {
+    let map = createTestMap(false);
+    let tracker = createChangeTracker(map.ty);
+    let chs: Change[] = [{
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Token,
+      feature: {
+        ...defaultTokenProperties,
+        position: { x: 1, y: 2 },
+        colour: 3,
+        text: "a",
+        id: "a",
+        size: "1",
+        outline: isOutline
+      }
+    }, {
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Token,
+      feature: {
+        ...defaultTokenProperties,
+        position: { x: 1, y: 1 },
+        colour: 2,
+        text: "blocker",
+        id: "b",
+        size: "1",
+        outline: isOutline
+      }
+    }];
 
-  ok = trackChanges(map, tracker, chs2, ownerUid);
-  expect(ok).toBeFalsy();
+    let ok = trackChanges(map, tracker, chs, ownerUid);
+    expect(ok).toBeTruthy();
 
-  // I should be able to move the two row-aligned tokens left one, so that
-  // "c" occupies the position "a" previously had, with no problems:
-  let chs3: Change[] = [{
-    ty: ChangeType.Move,
-    cat: ChangeCategory.Token,
-    newPosition: { x: 1, y: 2 },
-    oldPosition: { x: 2, y: 2 },
-    tokenId: "c"
-  }, {
-    ty: ChangeType.Move,
-    cat: ChangeCategory.Token,
-    newPosition: { x: 0, y: 2 },
-    oldPosition: { x: 1, y: 2 },
-    tokenId: "a"
-  }];
+    // This won't work, because the "blocker" token hasn't moved
+    let chs2: Change[] = [{
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Token,
+      feature: {
+        ...defaultTokenProperties,
+        position: { x: 1, y: 1 },
+        colour: 1,
+        text: "new",
+        id: "n",
+        size: "1",
+        outline: isOutline
+      }
+    }, {
+      ty: ChangeType.Move,
+      cat: ChangeCategory.Token,
+      newPosition: { x: 2, y: 2 },
+      oldPosition: { x: 1, y: 2 },
+      tokenId: "a"
+    }];
 
-  ok = trackChanges(map, tracker, chs3, ownerUid);
-  expect(ok).toBeTruthy();
-});
+    ok = trackChanges(map, tracker, chs2, ownerUid);
+    expect(ok).toBeFalsy();
 
-test('I can move a token and add another one in its place', () => {
-  let map = createTestMap(false);
-  let tracker = createChangeTracker(map.ty);
-  let chs: Change[] = [{
-    ty: ChangeType.Add,
-    cat: ChangeCategory.Token,
-    feature: {
-      ...defaultTokenProperties,
-      position: { x: 1, y: 2 },
-      colour: 3,
-      text: "a",
-      id: "a",
-      size: "1"
-    }
-  }, {
-    ty: ChangeType.Add,
-    cat: ChangeCategory.Token,
-    feature: {
-      ...defaultTokenProperties,
+    // This will work, because the "a" token has moved
+    let chs3: Change[] = [{
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Token,
+      feature: {
+        ...defaultTokenProperties,
+        position: { x: 1, y: 2 },
+        colour: 1,
+        text: "new",
+        id: "n",
+        size: "1",
+        outline: isOutline
+      }
+    }, {
+      ty: ChangeType.Move,
+      cat: ChangeCategory.Token,
+      newPosition: { x: 2, y: 2 },
+      oldPosition: { x: 1, y: 2 },
+      tokenId: "a"
+    }];
+
+    ok = trackChanges(map, tracker, chs3, ownerUid);
+    expect(ok).toBeTruthy();
+
+    // Removing them checks they all appeared as expected
+    let chs4: Change[] = [{
+      ty: ChangeType.Remove,
+      cat: ChangeCategory.Token,
       position: { x: 1, y: 1 },
-      colour: 2,
-      text: "blocker",
-      id: "b",
-      size: "1"
-    }
-  }];
-
-  let ok = trackChanges(map, tracker, chs, ownerUid);
-  expect(ok).toBeTruthy();
-
-  // This won't work, because the "blocker" token hasn't moved
-  let chs2: Change[] = [{
-    ty: ChangeType.Add,
-    cat: ChangeCategory.Token,
-    feature: {
-      ...defaultTokenProperties,
-      position: { x: 1, y: 1 },
-      colour: 1,
-      text: "new",
-      id: "n",
-      size: "1"
-    }
-  }, {
-    ty: ChangeType.Move,
-    cat: ChangeCategory.Token,
-    newPosition: { x: 2, y: 2 },
-    oldPosition: { x: 1, y: 2 },
-    tokenId: "a"
-  }];
-
-  ok = trackChanges(map, tracker, chs2, ownerUid);
-  expect(ok).toBeFalsy();
-
-  // This will work, because the "a" token has moved
-  let chs3: Change[] = [{
-    ty: ChangeType.Add,
-    cat: ChangeCategory.Token,
-    feature: {
-      ...defaultTokenProperties,
+      tokenId: "b"
+    }, {
+      ty: ChangeType.Remove,
+      cat: ChangeCategory.Token,
       position: { x: 1, y: 2 },
-      colour: 1,
-      text: "new",
-      id: "n",
-      size: "1"
-    }
-  }, {
-    ty: ChangeType.Move,
-    cat: ChangeCategory.Token,
-    newPosition: { x: 2, y: 2 },
-    oldPosition: { x: 1, y: 2 },
-    tokenId: "a"
-  }];
+      tokenId: "n"
+    }, {
+      ty: ChangeType.Remove,
+      cat: ChangeCategory.Token,
+      position: { x: 2, y: 2 },
+      tokenId: "a"
+    }];
 
-  ok = trackChanges(map, tracker, chs3, ownerUid);
-  expect(ok).toBeTruthy();
+    ok = trackChanges(map, tracker, chs4, ownerUid);
+    expect(ok).toBeTruthy();
+  });
 
-  // Removing them checks they all appeared as expected
-  let chs4: Change[] = [{
-    ty: ChangeType.Remove,
-    cat: ChangeCategory.Token,
-    position: { x: 1, y: 1 },
-    tokenId: "b"
-  }, {
-    ty: ChangeType.Remove,
-    cat: ChangeCategory.Token,
-    position: { x: 1, y: 2 },
-    tokenId: "n"
-  }, {
-    ty: ChangeType.Remove,
-    cat: ChangeCategory.Token,
-    position: { x: 2, y: 2 },
-    tokenId: "a"
-  }];
+  test(`Walls cannot be created inside tokens (isOutline=${isOutline})`, () => {
+    const map = createTestMap(false);
+    const tracker = createChangeTracker(map.ty);
 
-  ok = trackChanges(map, tracker, chs4, ownerUid);
-  expect(ok).toBeTruthy();
-});
+    const chs1 = [
+      createTokenAdd({
+        ...defaultTokenProperties,
+        position: { x: 0, y: 0 },
+        colour: 0,
+        id: 'a',
+        size: '2 (left)',
+        text: 'A',
+        outline: isOutline
+      })
+    ];
 
-test('Walls cannot be created inside tokens', () => {
-  const map = createTestMap(false);
-  const tracker = createChangeTracker(map.ty);
+    let ok = trackChanges(map, tracker, chs1, ownerUid);
+    expect(ok).toBeTruthy();
 
-  const chs1 = [
-    createTokenAdd({
-      ...defaultTokenProperties,
-      position: { x: 0, y: 0 },
-      colour: 0,
-      id: 'a',
-      size: '2 (left)',
-      text: 'A',
-    })
-  ];
+    // We can't create this wall...
+    const chs2 = [
+      createWallAdd({
+        position: { x: -1, y: 1, edge: 1 },
+        colour: 0
+      })
+    ];
 
-  let ok = trackChanges(map, tracker, chs1, ownerUid);
-  expect(ok).toBeTruthy();
+    ok = trackChanges(map, tracker, chs2, ownerUid);
+    expect(ok).toBeFalsy();
 
-  // We can't create this wall...
-  const chs2 = [
-    createWallAdd({
-      position: { x: -1, y: 1, edge: 1 },
-      colour: 0
-    })
-  ];
+    // ...but we can create this one
+    const chs3 = [
+      createWallAdd({
+        position: { x: -1, y: 1, edge: 0 },
+        colour: 0
+      })
+    ];
 
-  ok = trackChanges(map, tracker, chs2, ownerUid);
-  expect(ok).toBeFalsy();
+    ok = trackChanges(map, tracker, chs3, ownerUid);
+    expect(ok).toBeTruthy();
 
-  // ...but we can create this one
-  const chs3 = [
-    createWallAdd({
-      position: { x: -1, y: 1, edge: 0 },
-      colour: 0
-    })
-  ];
+    // If we move the token away, we can create the one we tried earlier
+    const chs4 = [
+      createTokenMove(
+        { x: 0, y: 0 },
+        { x: 0, y: 1 },
+        'a'
+      ),
+      ...chs2
+    ];
 
-  ok = trackChanges(map, tracker, chs3, ownerUid);
-  expect(ok).toBeTruthy();
+    ok = trackChanges(map, tracker, chs4, ownerUid);
+    expect(ok).toBeTruthy();
+  });
 
-  // If we move the token away, we can create the one we tried earlier
-  const chs4 = [
-    createTokenMove(
-      { x: 0, y: 0 },
-      { x: 0, y: 1 },
-      'a'
-    ),
-    ...chs2
-  ];
+  test(`Tokens cannot be created inside walls (outline=${isOutline})`, () => {
+    const map = createTestMap(false);
+    const tracker = createChangeTracker(map.ty);
 
-  ok = trackChanges(map, tracker, chs4, ownerUid);
-  expect(ok).toBeTruthy();
-});
+    const chs1 = [
+      createWallAdd({
+        position: { x: -1, y: 1, edge: 1 },
+        colour: 0
+      })
+    ];
 
-test('Tokens cannot be created inside walls', () => {
-  const map = createTestMap(false);
-  const tracker = createChangeTracker(map.ty);
+    let ok = trackChanges(map, tracker, chs1, ownerUid);
+    expect(ok).toBeTruthy();
 
-  const chs1 = [
-    createWallAdd({
-      position: { x: -1, y: 1, edge: 1 },
-      colour: 0
-    })
-  ];
+    // This would create a token that is inside that wall
+    const chs2 = [
+      createTokenAdd({
+        position: { x: 0, y: 0 },
+        colour: 0,
+        id: 'a',
+        note: '',
+        noteVisibleToPlayers: false,
+        players: [],
+        size: '2 (left)',
+        text: 'A',
+        characterId: "",
+        sprites: [],
+        outline: isOutline
+      })
+    ];
 
-  let ok = trackChanges(map, tracker, chs1, ownerUid);
-  expect(ok).toBeTruthy();
+    ok = trackChanges(map, tracker, chs2, ownerUid);
+    expect(ok).toBeFalsy();
 
-  // This would create a token that is inside that wall
-  const chs2 = [
-    createTokenAdd({
-      position: { x: 0, y: 0 },
-      colour: 0,
-      id: 'a',
-      note: '',
-      noteVisibleToPlayers: false,
-      players: [],
-      size: '2 (left)',
-      text: 'A',
-      characterId: "",
-      sprites: [],
-      outline: false
-    })
-  ];
+    // If we move the wall somewhere else that change will work
+    const chs3 = [
+      createWallAdd({
+        position: { x: -1, y: 1, edge: 0 },
+        colour: 0
+      }),
+      createWallRemove({ x: -1, y: 1, edge: 1 }),
+      ...chs2
+    ];
 
-  ok = trackChanges(map, tracker, chs2, ownerUid);
-  expect(ok).toBeFalsy();
+    ok = trackChanges(map, tracker, chs3, ownerUid);
+    expect(ok).toBeTruthy();
+  });
 
-  // If we move the wall somewhere else that change will work
-  const chs3 = [
-    createWallAdd({
-      position: { x: -1, y: 1, edge: 0 },
-      colour: 0
-    }),
-    createWallRemove({ x: -1, y: 1, edge: 1 }),
-    ...chs2
-  ];
+  test(`Tokens cannot be moved into walls (outline=${isOutline})`, () => {
+    const map = createTestMap(false);
+    const tracker = createChangeTracker(map.ty);
 
-  ok = trackChanges(map, tracker, chs3, ownerUid);
-  expect(ok).toBeTruthy();
-});
+    const chs1 = [
+      createWallAdd({
+        position: { x: -1, y: 1, edge: 1 },
+        colour: 0
+      }),
+      createTokenAdd({
+        position: { x: 0, y: 1 },
+        colour: 0,
+        id: 'a',
+        note: '',
+        noteVisibleToPlayers: false,
+        players: [],
+        size: '2 (left)',
+        text: 'A',
+        characterId: "",
+        sprites: [],
+        outline: isOutline
+      })
+    ];
 
-test('Tokens cannot be moved into walls', () => {
-  const map = createTestMap(false);
-  const tracker = createChangeTracker(map.ty);
+    let ok = trackChanges(map, tracker, chs1, ownerUid);
+    expect(ok).toBeTruthy();
 
-  const chs1 = [
-    createWallAdd({
-      position: { x: -1, y: 1, edge: 1 },
-      colour: 0
-    }),
-    createTokenAdd({
-      position: { x: 0, y: 1 },
-      colour: 0,
-      id: 'a',
-      note: '',
-      noteVisibleToPlayers: false,
-      players: [],
-      size: '2 (left)',
-      text: 'A',
-      characterId: "",
-      sprites: [],
-      outline: false
-    })
-  ];
+    const chs2 = [
+      createTokenMove(
+        { x: 0, y: 1 },
+        { x: 0, y: 0 },
+        'a'
+      )
+    ];
 
-  let ok = trackChanges(map, tracker, chs1, ownerUid);
-  expect(ok).toBeTruthy();
+    ok = trackChanges(map, tracker, chs2, ownerUid);
+    expect(ok).toBeFalsy();
 
-  const chs2 = [
-    createTokenMove(
-      { x: 0, y: 1 },
-      { x: 0, y: 0 },
-      'a'
-    )
-  ];
+    // Move that wall away and it is okay
+    const chs3 = [
+      createWallAdd({
+        position: { x: -1, y: 1, edge: 0 },
+        colour: 0
+      }),
+      createWallRemove({ x: -1, y: 1, edge: 1 }),
+      ...chs2
+    ];
 
-  ok = trackChanges(map, tracker, chs2, ownerUid);
-  expect(ok).toBeFalsy();
-
-  // Move that wall away and it is okay
-  const chs3 = [
-    createWallAdd({
-      position: { x: -1, y: 1, edge: 0 },
-      colour: 0
-    }),
-    createWallRemove({ x: -1, y: 1, edge: 1 }),
-    ...chs2
-  ];
-
-  ok = trackChanges(map, tracker, chs3, ownerUid);
-  expect(ok).toBeTruthy();
-});
+    ok = trackChanges(map, tracker, chs3, ownerUid);
+    expect(ok).toBeTruthy();
+  });
+}
 
 // TODO #118 Add tests for outline tokens (e.g. coexisting with regular ones) here
 
