@@ -15,6 +15,8 @@ export interface IDrawing {
   areas: IFeatureDictionary<GridCoord, IFeature<GridCoord>>;
   tokens: ITokenDrawing;
   tokenTexts: ITokenTextDrawing;
+  outlineTokens: ITokenDrawing;
+  outlineTokenTexts: ITokenTextDrawing;
   walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>;
   images: IIdDictionary<IMapImage>;
 
@@ -26,6 +28,11 @@ export interface IDrawing {
   selection: ITokenDrawing;
   selectionDrag: ITokenDrawing;
   selectionDragRed: ITokenDrawing;
+
+  outlineSelection: ITokenDrawing;
+  outlineSelectionDrag: ITokenDrawing;
+  outlineSelectionDragRed: ITokenDrawing;
+
   imageSelection: IIdDictionary<IMapImage>;
   imageSelectionDrag: IIdDictionary<IMapImage>;
   imageControlPointSelection: IMapControlPointDictionary;

@@ -305,9 +305,11 @@ async function tryConsolidateMapChanges(
   // CPU time (especially valuable if this is going to be called in a Firebase Function.)
   const ownerPolicy = getUserPolicy(ownerProfile.level);
   const tokenDict = new Tokens(getTokenGeometry(m.ty), new SimpleTokenDrawing());
+  const outlineTokenDict = new Tokens(getTokenGeometry(m.ty), new SimpleTokenDrawing());
   const tracker = new SimpleChangeTracker(
     new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString),
     tokenDict,
+    outlineTokenDict,
     new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString),
     new FeatureDictionary<GridCoord, IAnnotation>(coordString),
     new IdDictionary<IMapImage>(),

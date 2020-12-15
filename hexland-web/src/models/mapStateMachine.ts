@@ -93,7 +93,12 @@ export class MapStateMachine {
   private readonly _selection: ITokenDictionary;
   private readonly _selectionDrag: ITokenDictionary;
   private readonly _selectionDragRed: ITokenDictionary;
+  private readonly _outlineSelection: ITokenDictionary;
+  private readonly _outlineSelectionDrag: ITokenDictionary;
+  private readonly _outlineSelectionDragRed: ITokenDictionary;
+
   private readonly _tokens: TokensWithObservableText;
+  private readonly _outlineTokens: TokensWithObservableText;
 
   private readonly _dragRectangle: IDragRectangle;
   private readonly _faceHighlighter: FaceHighlighter;
@@ -195,10 +200,18 @@ export class MapStateMachine {
     this._selection = new Tokens(tokenGeometry, this._drawing.selection);
     this._selectionDrag = new Tokens(tokenGeometry, this._drawing.selectionDrag);
     this._selectionDragRed = new Tokens(tokenGeometry, this._drawing.selectionDragRed);
+    this._outlineSelection = new Tokens(tokenGeometry, this._drawing.outlineSelection);
+    this._outlineSelectionDrag = new Tokens(tokenGeometry, this._drawing.outlineSelectionDrag);
+    this._outlineSelectionDragRed = new Tokens(tokenGeometry, this._drawing.outlineSelectionDragRed);
     this._tokens = new TokensWithObservableText(
       tokenGeometry, this._drawing.tokens, this._drawing.tokenTexts,
       t => spriteManager.lookupCharacter(t)
       // TODO #119 Provide a way to separately mark which face gets the text written on...?
+    );
+
+    this._outlineTokens = new TokensWithObservableText(
+      tokenGeometry, this._drawing.outlineTokens, this._drawing.outlineTokenTexts,
+      t => spriteManager.lookupCharacter(t)
     );
 
     this._faceHighlighter = new FaceHighlighter(
@@ -289,18 +302,23 @@ export class MapStateMachine {
     // It's safe for us to use our current areas, walls and map colouring because those won't
     // change, but we need to clone our tokens into a scratch dictionary.
     const changes: Change[] = [];
-    for (const s of this._selection) {
-      const tokenHere = this._tokens.get(s.position);
-      if (tokenHere === undefined) {
-        continue;
-      }
+    const pushTokenMoves = (tokens: ITokenDictionary, selection: ITokenDictionary) => {
+      for (const s of selection) {
+        const tokenHere = tokens.get(s.position);
+        if (tokenHere === undefined) {
+          continue;
+        }
 
-      changes.push(createTokenMove(s.position, coordAdd(s.position, delta), tokenHere.id));
+        changes.push(createTokenMove(s.position, coordAdd(s.position, delta), tokenHere.id));
+      }
     }
 
+    pushTokenMoves(this._tokens, this._selection);
+    pushTokenMoves(this._outlineTokens, this._outlineSelection);
+
     const changeTracker = new MapChangeTracker(
-      this._drawing.areas, this._tokens.clone(), this._drawing.walls, this._notes, this._drawing.images,
-      this._userPolicy, this._mapColouring
+      this._drawing.areas, this._tokens.clone(), this._outlineTokens.clone(), this._drawing.walls,
+      this._notes, this._drawing.images, this._userPolicy, this._mapColouring
     );
     return trackChanges(this._map.record, changeTracker, changes, this._uid);
   }
@@ -310,7 +328,7 @@ export class MapStateMachine {
     // that it would adopts, or, if the token doesn't exist already, whether we can place a new
     // token of the given size.
     // We'll try all possible positions that would retain some of the old token's position.
-    const existingToken = this._tokens.get(token.position);
+    const existingToken = this.findToken(token.position, token.id);
     if (newSize === existingToken?.size) {
       return token.position;
     }
@@ -318,8 +336,8 @@ export class MapStateMachine {
     // I only need to clone the tokens for this experimental change tracker because the other
     // things definitely won't change
     const changeTracker = new MapChangeTracker(
-      this._drawing.areas, this._tokens.clone(), this._drawing.walls, this._notes, this._drawing.images,
-      this._userPolicy, this._mapColouring
+      this._drawing.areas, this._tokens.clone(), this._outlineTokens.clone(), this._drawing.walls,
+      this._notes, this._drawing.images, this._userPolicy, this._mapColouring
     );
 
     const removeToken = existingToken === undefined ? [] : [createTokenRemove(token.position, token.id)];
@@ -340,20 +358,26 @@ export class MapStateMachine {
   private cleanUpSelection() {
     // This function makes sure that the selection doesn't contain anything we
     // couldn't have selected -- call this after changes are applied.
-    const selectedTokenIds = [...fluent(this._selection).map(s => s.id)];
-    this._selection.clear();
-    for (const id of selectedTokenIds) {
-      const token = this._tokens.ofId(id);
-      if (token !== undefined) {
-        this._selection.add(token);
+    const doCleanup = (tokens: ITokenDictionary, selection: ITokenDictionary) => {
+      const selectedTokenIds = [...fluent(selection).map(s => s.id)];
+      selection.clear();
+      for (const id of selectedTokenIds) {
+        const token = tokens.ofId(id);
+        if (token !== undefined) {
+          selection.add(token);
+        }
       }
-    }
+    };
+
+    doCleanup(this._tokens, this._selection);
+    doCleanup(this._outlineTokens, this._outlineSelection);
   }
 
   private createChangeTracker(): MapChangeTracker {
     return new MapChangeTracker(
       this._drawing.areas,
       this._tokens,
+      this._outlineTokens,
       this._drawing.walls,
       this._notes,
       this._drawing.images,
@@ -383,7 +407,8 @@ export class MapStateMachine {
       yield n;
     }
 
-    for (const t of this._tokens) {
+    // TODO #118 different annotation positions for outline tokens maybe?
+    for (const t of fluent(this._tokens).concat(this._outlineTokens)) {
       if (t.note?.length > 0) {
         yield {
           id: "Token " + t.text + " " + coordString(t.position),
@@ -394,6 +419,19 @@ export class MapStateMachine {
         };
       }
     }
+  }
+
+  private findToken(position: GridCoord, id: string | undefined): IToken | undefined {
+    for (const dict of [this._tokens, this._outlineTokens]) {
+      const token = dict.get(position);
+      if (id === undefined && token !== undefined) {
+        return token;
+      } else if (token?.id === id) {
+        return token;
+      }
+    }
+
+    return undefined;
   }
 
   private getAnchor(cp: THREE.Vector3, mode: 'vertex' | 'pixel'): Anchor | undefined {
@@ -643,7 +681,7 @@ export class MapStateMachine {
 
   private onPanningEnded() {
     let chs: Change[] = [];
-    if (fluent(this._selection).any()) {
+    if (fluent(this._selection).concat(this._outlineSelection).any()) {
       const position = this._drawing.getGridCoordAt(panningPosition);
       if (position !== undefined) {
         this.tokenMoveDragEnd(position, chs);
@@ -659,7 +697,7 @@ export class MapStateMachine {
       return undefined;
     }
 
-    if (fluent(this._selection).any()) {
+    if (fluent(this._selection).concat(this._outlineSelection).any()) {
       // Start moving this selection along with the panning:
       const position = this._drawing.getGridCoordAt(panningPosition);
       if (position !== undefined) {
@@ -689,20 +727,25 @@ export class MapStateMachine {
   }
 
   private selectTokensInDragRectangle() {
-    this._selection.clear();
     const inDragRectangle = this._dragRectangle.createFilter();
-    for (const token of this._tokens) {
-      if (this.canSelectToken(token) === false) {
-        continue;
-      }
+    const doSelectTokens = (tokens: ITokenDictionary, selection: ITokenDictionary) => {
+      selection.clear();
+      for (const token of tokens) {
+        if (this.canSelectToken(token) === false) {
+          continue;
+        }
 
-      // TODO Possible optimisation here rejecting tokens that are definitely too far away
-      for (const facePosition of this._tokenGeometry.enumerateFacePositions(token)) {
-        if (inDragRectangle(facePosition)) {
-          this._selection.add({ ...token, position: token.position });
+        // TODO Possible optimisation here rejecting tokens that are definitely too far away
+        for (const facePosition of this._tokenGeometry.enumerateFacePositions(token)) {
+          if (inDragRectangle(facePosition)) {
+            selection.add({ ...token, position: token.position });
+          }
         }
       }
-    }
+    };
+
+    doSelectTokens(this._tokens, this._selection);
+    doSelectTokens(this._outlineTokens, this._outlineSelection);
   }
 
   private setSelectedImage(image: IMapImage | undefined) {
@@ -734,29 +777,34 @@ export class MapStateMachine {
   }
 
   private tokenMoveDragEnd(position: GridCoord, chs: Change[]) {
-    this._selectionDrag.clear();
-    this._selectionDragRed.clear();
     const delta = this.getTokenMoveDelta(position);
-    if (delta !== undefined && this.canDropSelectionAt(position)) {
-      // Create commands that move all the tokens.
-      if (!coordsEqual(delta, { x: 0, y: 0 })) {
-        for (const token of this._selection) {
-          chs.push(createTokenMove(token.position, coordAdd(token.position, delta), token.id));
+    const doMoveDragEnd = (selection: ITokenDictionary, selectionDrag: ITokenDictionary, selectionDragRed: ITokenDictionary) => {
+      selectionDrag.clear();
+      selectionDragRed.clear();
+      if (delta !== undefined && this.canDropSelectionAt(position)) {
+        // Create commands that move all the tokens.
+        if (!coordsEqual(delta, { x: 0, y: 0 })) {
+          for (const token of selection) {
+            chs.push(createTokenMove(token.position, coordAdd(token.position, delta), token.id));
+          }
         }
-      }
 
-      // Move the selection to the target positions.  (Even if they haven't moved, we need
-      // to do this in order to activate the correct LoS for these tokens if different ones
-      // were previously selected.)
-      // Careful, we need to remove all old positions before adding the new ones, otherwise
-      // we can end up not re-selecting some of the tokens
-      const removed = [...fluent(this._selection).map(t => this._selection.remove(t.position))];
-      removed.forEach(f => {
-        if (f !== undefined) {
-          this._selection.add({ ...f, position: coordAdd(f.position, delta) });
-        }
-      });
-    }
+        // Move the selection to the target positions.  (Even if they haven't moved, we need
+        // to do this in order to activate the correct LoS for these tokens if different ones
+        // were previously selected.)
+        // Careful, we need to remove all old positions before adding the new ones, otherwise
+        // we can end up not re-selecting some of the tokens
+        const removed = [...fluent(selection).map(t => selection.remove(t.position))];
+        removed.forEach(f => {
+          if (f !== undefined) {
+            selection.add({ ...f, position: coordAdd(f.position, delta) });
+          }
+        });
+      }
+    };
+
+    doMoveDragEnd(this._selection, this._selectionDrag, this._selectionDragRed);
+    doMoveDragEnd(this._outlineSelection, this._outlineSelectionDrag, this._outlineSelectionDragRed);
 
     this._tokenMoveDragStart = undefined;
     this._tokenMoveJog = undefined;
@@ -767,9 +815,14 @@ export class MapStateMachine {
     this._tokenMoveDragStart = position;
     this._tokenMoveJog = { x: 0, y: 0 };
     this._tokenMoveDragSelectionPosition = position;
+
     this._selectionDrag.clear();
     this._selectionDragRed.clear();
     this._selection.forEach(f => this._selectionDrag.add(f));
+
+    this._outlineSelectionDrag.clear();
+    this._outlineSelectionDragRed.clear();
+    this._outlineSelection.forEach(f => this._outlineSelectionDrag.add(f));
   }
 
   private tokenMoveDragTo(position: GridCoord | undefined) {
@@ -791,14 +844,19 @@ export class MapStateMachine {
       return;
     }
 
-    const selectionDrag = this.canDropSelectionAt(position) ? this._selectionDrag : this._selectionDragRed;
-    this._selectionDrag.clear();
-    this._selectionDragRed.clear();
-    this._selection.forEach(f => {
-      const dragged = { ...f, position: coordAdd(f.position, delta) };
-      // console.log(coordString(f.position) + " -> " + coordString(dragged.position));
-      selectionDrag.add(dragged);
-    });
+    const doMoveDragTo = (selection: ITokenDictionary, selectionDrag: ITokenDictionary, selectionDragRed: ITokenDictionary) => {
+      const drag = this.canDropSelectionAt(position) ? selectionDrag : selectionDragRed;
+      selectionDrag.clear();
+      selectionDragRed.clear();
+      selection.forEach(f => {
+        const dragged = { ...f, position: coordAdd(f.position, delta) };
+        // console.log(coordString(f.position) + " -> " + coordString(dragged.position));
+        drag.add(dragged);
+      });
+    };
+
+    doMoveDragTo(this._selection, this._selectionDrag, this._selectionDragRed);
+    doMoveDragTo(this._outlineSelection, this._outlineSelectionDrag, this._outlineSelectionDragRed);
 
     this._tokenMoveDragSelectionPosition = position;
   }
@@ -836,7 +894,7 @@ export class MapStateMachine {
   private updateTokens(state: MapState): MapState {
     return {
       ...state,
-      tokens: [...fluent(this._tokens).map(t => ({
+      tokens: [...fluent(this._tokens).concat(this._outlineTokens).map(t => ({
         ...t, selectable: this.canSelectToken(t)
       }))]
     };
@@ -845,8 +903,8 @@ export class MapStateMachine {
   private validateWallChanges(changes: Change[]): boolean {
     // I need to clone the walls for this one.  The map colouring won't be relevant.
     const changeTracker = new MapChangeTracker(
-      this._drawing.areas, this._tokens, this._drawing.walls.clone(), this._notes, this._drawing.images,
-      this._userPolicy, undefined
+      this._drawing.areas, this._tokens, this._outlineTokens, this._drawing.walls.clone(), this._notes,
+      this._drawing.images, this._userPolicy, undefined
     );
     return trackChanges(this._map.record, changeTracker, changes, this._uid);
   }
@@ -915,10 +973,13 @@ export class MapStateMachine {
   }
 
   clearSelection() {
-    const wasAnyTokenSelected = fluent(this._selection).any();
+    const wasAnyTokenSelected = fluent(this._selection).concat(this._outlineSelection).any();
     this._selection.clear();
     this._selectionDrag.clear();
     this._selectionDragRed.clear();
+    this._outlineSelection.clear();
+    this._outlineSelectionDrag.clear();
+    this._outlineSelectionDragRed.clear();
     this._dragRectangle.reset();
     this.setSelectedImage(undefined);
 
@@ -955,6 +1016,7 @@ export class MapStateMachine {
 
     this._drawing.areas.clear();
     this._tokens.clear();
+    this._outlineTokens.clear();
     this._drawing.walls.clear();
     this._notes.clear();
     this._notesNeedUpdate.setNeedsRedraw();
@@ -1011,7 +1073,7 @@ export class MapStateMachine {
   }
 
   *getSelectedTokens(): Iterable<ITokenProperties> {
-    for (const s of this._selection) {
+    for (const s of fluent(this._selection).concat(this._outlineSelection)) {
       yield s;
     }
   }
@@ -1042,11 +1104,11 @@ export class MapStateMachine {
 
   getToken(cp: THREE.Vector3): ITokenProperties | undefined {
     const position = this._drawing.getGridCoordAt(cp);
-    if (position === undefined || !position.isTokenFace) { // TODO #118 lookup outline tokens elsewhere
+    if (position === undefined) {
       return undefined;
     }
 
-    return this._tokens.at(position);
+    return position.isTokenFace ? this._tokens.at(position) : this._outlineTokens.at(position);
   }
 
   // Designed to work in tandem with the panning commands, if we have tokens selected,
@@ -1187,7 +1249,8 @@ export class MapStateMachine {
     this._cameraScaling.set(zoomDefault, zoomDefault, 1);
     this._drawing.resize(this._cameraTranslation, this._cameraRotation, this._cameraScaling);
 
-    let centreOn = tokenId === undefined ? undefined : this._tokens.ofId(tokenId)?.position;
+    let centreOn = tokenId === undefined ? undefined :
+      this._tokens.ofId(tokenId)?.position ?? this._outlineTokens.ofId(tokenId)?.position;
 
     // If we have LoS positions, it would be more helpful to centre on the first of
     // those than on the grid origin:
@@ -1262,16 +1325,16 @@ export class MapStateMachine {
       this.imageMoveDragStart(cp, shiftKey);
       return true;
     } else { // object layer
-      const token = this._tokens.at(position);
-      // TODO #118 if !position.isTokenFace select from outline tokens instead
-      if (!position.isTokenFace || token === undefined || !this.canSelectToken(token)) {
+      const token = position.isTokenFace ? this._tokens.at(position) : this._outlineTokens.at(position);
+      if (token === undefined || !this.canSelectToken(token)) {
         return false;
       }
 
-      const selected = this._selection.at(token.position);
+      const selection = position.isTokenFace ? this._selection : this._outlineSelection;
+      const selected = selection.at(token.position);
       if (selected === undefined) {
         this.clearSelection();
-        this._selection.add(token);
+        selection.add(token);
         this.buildLoS();
       }
 
@@ -1303,10 +1366,9 @@ export class MapStateMachine {
       } else { // object layer
         // Always add the token at this position
         // (This is needed if the drag rectangle is very small)
-        const token = this._tokens.at(position);
-        // TODO #118 Use outline tokens if position.isTokenFace is false
-        if (position.isTokenFace && token !== undefined && this.canSelectToken(token)) {
-          this._selection.add(token);
+        const token = (position.isTokenFace ? this._tokens : this._outlineTokens).at(position);
+        if (token !== undefined && this.canSelectToken(token)) {
+          (position.isTokenFace ? this._selection : this._outlineSelection).add(token);
         }
       }
 
@@ -1337,8 +1399,10 @@ export class MapStateMachine {
       }
     } else {
       const position = this._drawing.getGridCoordAt(cp);
-      // TODO #118 deal with outline selection too
-      if (position && this._selection.at(position) !== undefined) {
+      if (
+        position !== undefined &&
+        (position.isTokenFace ? this._selection : this._outlineSelection).at(position) !== undefined
+      ) {
         this.tokenMoveDragStart(position);
         return;
       }
@@ -1422,7 +1486,7 @@ export class MapStateMachine {
   setToken(cp: THREE.Vector3, properties: ITokenProperties | undefined) {
     const position = this._drawing.getGridCoordAt(cp);
     if (position !== undefined) {
-      const token = this._tokens.at(position);
+      const token = this.findToken(position, properties?.id);
       if (token !== undefined && properties !== undefined) {
         return this.setTokenProperties(token, properties);
       } else if (token !== undefined) {
@@ -1436,7 +1500,7 @@ export class MapStateMachine {
   }
 
   setTokenById(tokenId: string, properties: ITokenProperties | undefined) {
-    const token = this._tokens.ofId(tokenId);
+    const token = this._tokens.ofId(tokenId) ?? this._outlineTokens.ofId(tokenId);
     if (token !== undefined && properties !== undefined) {
       return this.setTokenProperties(token, properties);
     } else if (token !== undefined) {

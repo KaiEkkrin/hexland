@@ -72,6 +72,7 @@ function TokenEditorModal(
   const [note, setNote] = useState("");
   const [noteVisibleToPlayers, setNoteVisibleToPlayers] = useState(true);
   const [sprites, setSprites] = useState<ISprite[]>([]);
+  const [outline, setOutline] = useState(false);
 
   const [imageTabTitle, setImageTabTitle] = useState("Image");
 
@@ -86,15 +87,20 @@ function TokenEditorModal(
       setNote(token?.note ?? "");
       setNoteVisibleToPlayers(token?.noteVisibleToPlayers ?? false);
       setSprites(token?.sprites ?? []);
+      setOutline(token?.outline ?? false);
     }
   }, [
     selectedColour, show, token,
-    setText, setColour, setSize, setPlayerIds, setNote, setNoteVisibleToPlayers, setSprites
+    setText, setColour, setSize, setPlayerIds, setNote, setNoteVisibleToPlayers, setOutline, setSprites,
   ]);
 
   const handleVtoPChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setNoteVisibleToPlayers(e.currentTarget.checked);
   }, [setNoteVisibleToPlayers]);
+
+  const handleOutlineChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setOutline(e.currentTarget.checked);
+  }, [setOutline]);
   
   // Save
 
@@ -116,9 +122,10 @@ function TokenEditorModal(
       note: note,
       noteVisibleToPlayers: noteVisibleToPlayers,
       characterId: "",
-      sprites: sprites
+      sprites: sprites,
+      outline: outline
     });
-  }, [colour, note, noteVisibleToPlayers, playerIds, handleSave, token, size, text, sprites]);
+  }, [colour, note, noteVisibleToPlayers, playerIds, handleSave, token, size, text, sprites, outline]);
 
   return (
     <Modal show={show} onHide={handleClose}>
@@ -163,9 +170,16 @@ function TokenEditorModal(
                 <TokenPlayerSelection id="tokenPlayerSelect" players={players}
                   tokenPlayerIds={playerIds} setTokenPlayerIds={setPlayerIds} />
               </Form.Group>
+              <Form.Group>
+                <Form.Check type="checkbox" label="Outline token" checked={outline}
+                  onChange={handleOutlineChange} />
+                <Form.Text className="text-muted">
+                  Outline tokens can exist in the same space as regular tokens, and cannot show an image.
+                </Form.Text>
+              </Form.Group>
             </Form>
           </Tab>
-          <Tab eventKey="image" title={imageTabTitle}>
+          <Tab eventKey="image" title={imageTabTitle} disabled={outline}>
             <TokenImageEditor adventureId={adventureId} altText={text} colour={colour} show={show}
               busySettingImage={busySettingImage} setBusySettingImage={setBusySettingImage}
               setImageTabTitle={setImageTabTitle}

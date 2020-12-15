@@ -38,6 +38,7 @@ export interface IChangeTracker {
 export class SimpleChangeTracker implements IChangeTracker {
   private readonly _areas: IFeatureDictionary<GridCoord, IFeature<GridCoord>>;
   private readonly _tokens: ITokenDictionary;
+  private readonly _outlineTokens: ITokenDictionary;
   private readonly _walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>;
   private readonly _notes: IFeatureDictionary<GridCoord, IAnnotation>;
   private readonly _images: IIdDictionary<IMapImage>;
@@ -48,6 +49,7 @@ export class SimpleChangeTracker implements IChangeTracker {
   constructor(
     areas: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
     tokens: ITokenDictionary,
+    outlineTokens: ITokenDictionary,
     walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
     notes: IFeatureDictionary<GridCoord, IAnnotation>,
     images: IIdDictionary<IMapImage>,
@@ -55,6 +57,7 @@ export class SimpleChangeTracker implements IChangeTracker {
   ) {
     this._areas = areas;
     this._tokens = tokens;
+    this._outlineTokens = outlineTokens;
     this._walls = walls;
     this._notes = notes;
     this._images = images;
@@ -100,6 +103,7 @@ export class SimpleChangeTracker implements IChangeTracker {
   clear() {
     this._areas.clear();
     this._tokens.clear();
+    this._outlineTokens.clear();
     this._walls.clear();
     this._notes.clear();
     this._images.clear();
@@ -107,25 +111,44 @@ export class SimpleChangeTracker implements IChangeTracker {
   }
 
   tokenAdd(map: IMap, user: string, feature: IToken, oldPosition: GridCoord | undefined) {
+    // Identify the right dictionary
+    const dict = feature.outline ? this._outlineTokens : this._tokens;
+
     // Check for conflicts with walls
-    for (const edge of this._tokens.enumerateFillEdgePositions(feature)) {
+    for (const edge of dict.enumerateFillEdgePositions(feature)) {
       if (this._walls.get(edge) !== undefined) {
         return false;
       }
     }
 
-    return this.policyAdd(() => this._tokens.add(feature), () => this._tokens.remove(feature.position));
+    return this.policyAdd(() => dict.add(feature), () => dict.remove(feature.position));
   }
 
   tokenRemove(map: IMap, user: string, position: GridCoord, tokenId: string | undefined) {
-    const removed = this.policyRemove(() => this._tokens.remove(position));
-    if (removed !== undefined && removed.id !== tokenId) {
-      // Oops, ID mismatch, put it back!
-      this.policyAdd(() => this._tokens.add(removed), () => this._tokens.remove(position));
+    // We'll remove either the matching regular token or the matching outline token.
+    // We require only one token to be removed this way, and complain if two were
+    // (shouldn't happen, because only old software didn't fill out the token id?)
+    const doRemove = (dict: ITokenDictionary) => {
+      const removed = this.policyRemove(() => dict.remove(position));
+      if (removed !== undefined && removed.id !== tokenId) {
+        // Oops, ID mismatch, put it back!
+        this.policyAdd(() => dict.add(removed), () => dict.remove(position));
+        return undefined;
+      }
+
+      return removed;
+    };
+
+    const tokenRemoved = doRemove(this._tokens);
+    const outlineTokenRemoved = doRemove(this._outlineTokens);
+    if (tokenRemoved !== undefined && outlineTokenRemoved !== undefined) {
+      // Confusion -- put them both back and complain
+      this.policyAdd(() => this._tokens.add(tokenRemoved), () => this._tokens.remove(position));
+      this.policyAdd(() => this._outlineTokens.add(outlineTokenRemoved), () => this._outlineTokens.remove(position));
       return undefined;
     }
 
-    return removed;
+    return tokenRemoved ?? outlineTokenRemoved;
   }
 
   wallAdd(feature: IFeature<GridEdge>) {
@@ -167,9 +190,7 @@ export class SimpleChangeTracker implements IChangeTracker {
 
   getConsolidated(): Change[] {
     const all: Change[] = [];
-    this._areas.forEach(f => all.push(createAreaAdd(f)));
-    
-    this._tokens.forEach(f => {
+    const pushTokenAdd = (f: IToken) => {
       // `undefined` isn't supported in Firestore, so correct any token without
       // an id now
       if (f.id === undefined) {
@@ -177,8 +198,11 @@ export class SimpleChangeTracker implements IChangeTracker {
       }
 
       return all.push(createTokenAdd(f));
-    });
+    };
 
+    this._areas.forEach(f => all.push(createAreaAdd(f)));
+    this._tokens.forEach(pushTokenAdd);
+    this._outlineTokens.forEach(pushTokenAdd);
     this._walls.forEach(f => all.push(createWallAdd(f)));
     this._notes.forEach(f => all.push(createNoteAdd(f)));
     this._images.forEach(f => all.push(createImageAdd(f)));

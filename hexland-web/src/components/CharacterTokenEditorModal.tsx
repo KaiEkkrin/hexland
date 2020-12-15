@@ -65,7 +65,8 @@ function CharacterTokenEditorModal(
       note: note,
       noteVisibleToPlayers: noteVisibleToPlayers,
       characterId: characterId,
-      sprites: []
+      sprites: [],
+      outline: false
     });
   }, [characterId, colour, note, noteVisibleToPlayers, handleSave, players, token, size]);
 

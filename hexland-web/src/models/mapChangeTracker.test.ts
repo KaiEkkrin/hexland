@@ -57,13 +57,14 @@ function buildWallsOfThreeHexes(changeTracker: IChangeTracker) {
 test('Unprivileged users cannot move other users\' tokens', () => {
   const areas = new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString);
   const tokens = new Tokens(getTokenGeometry(MapType.Hex), new SimpleTokenDrawing());
+  const outlineTokens = new Tokens(getTokenGeometry(MapType.Hex), new SimpleTokenDrawing());
   const walls = new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString);
   const notes = new FeatureDictionary<GridCoord, IAnnotation>(coordString);
   const images = new IdDictionary<IMapImage>();
 
   const handleChangesApplied = jest.fn();
   const handleChangesAborted = jest.fn();
-  let changeTracker = new MapChangeTracker(areas, tokens, walls, notes, images, undefined, undefined,
+  let changeTracker = new MapChangeTracker(areas, tokens, outlineTokens, walls, notes, images, undefined, undefined,
     handleChangesApplied, handleChangesAborted);
 
   // The walls should be irrelevant here :)
@@ -162,6 +163,7 @@ test('Unprivileged users cannot move other users\' tokens', () => {
 test('Unprivileged tokens cannot escape from bounded areas', () => {
   const areas = new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString);
   const tokens = new Tokens(getTokenGeometry(MapType.Hex), new SimpleTokenDrawing());
+  const outlineTokens = new Tokens(getTokenGeometry(MapType.Hex), new SimpleTokenDrawing());
   const walls = new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString);
   const notes = new FeatureDictionary<GridCoord, IAnnotation>(coordString);
   const images = new IdDictionary<IMapImage>();
@@ -169,7 +171,7 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
 
   const handleChangesApplied = jest.fn();
   const handleChangesAborted = jest.fn();
-  let changeTracker = new MapChangeTracker(areas, tokens, walls, notes, images, undefined, colouring,
+  let changeTracker = new MapChangeTracker(areas, tokens, outlineTokens, walls, notes, images, undefined, colouring,
     handleChangesApplied, handleChangesAborted);
 
   let ok = buildWallsOfThreeHexes(changeTracker);

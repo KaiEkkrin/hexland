@@ -27,6 +27,7 @@ export interface ITokenProperties {
   noteVisibleToPlayers: boolean; // as you'd expect
   characterId: string; // empty if this isn't a character token
   sprites: ISprite[]; // should be only 0 or 1, but this format makes it easy for Firestore
+  outline: boolean;
 }
 
 export const defaultTokenProperties: ITokenProperties = {
@@ -38,7 +39,8 @@ export const defaultTokenProperties: ITokenProperties = {
   note: "",
   noteVisibleToPlayers: false,
   characterId: "",
-  sprites: []
+  sprites: [],
+  outline: false
 };
 
 export function flipToken(token: ITokenProperties): ITokenProperties | undefined {

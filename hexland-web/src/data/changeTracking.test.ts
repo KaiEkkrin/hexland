@@ -14,6 +14,7 @@ function createChangeTracker(ty: MapType, userPolicy?: IUserPolicy | undefined) 
   return new SimpleChangeTracker(
     new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString),
     new Tokens(getTokenGeometry(ty), new SimpleTokenDrawing()),
+    new Tokens(getTokenGeometry(ty), new SimpleTokenDrawing()),
     new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString),
     new FeatureDictionary<GridCoord, IAnnotation>(coordString),
     new IdDictionary<IMapImage>(),
@@ -831,7 +832,8 @@ test('Tokens cannot be created inside walls', () => {
       size: '2 (left)',
       text: 'A',
       characterId: "",
-      sprites: []
+      sprites: [],
+      outline: false
     })
   ];
 
@@ -871,7 +873,8 @@ test('Tokens cannot be moved into walls', () => {
       size: '2 (left)',
       text: 'A',
       characterId: "",
-      sprites: []
+      sprites: [],
+      outline: false
     })
   ];
 
@@ -902,6 +905,8 @@ test('Tokens cannot be moved into walls', () => {
   ok = trackChanges(map, tracker, chs3, ownerUid);
   expect(ok).toBeTruthy();
 });
+
+// TODO #118 Add tests for outline tokens (e.g. coexisting with regular ones) here
 
 test('Images can be added and removed', () => {
   const map = createTestMap(false);

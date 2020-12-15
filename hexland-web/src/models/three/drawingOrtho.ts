@@ -376,8 +376,10 @@ export class DrawingOrtho implements IDrawing {
   }
 
   get areas() { return this._areas; }
-  get tokens() { return this._outlineTokens; }
-  get tokenTexts() { return this._outlineTokens; }
+  get tokens() { return this._tokens; }
+  get tokenTexts() { return this._tokens; }
+  get outlineTokens() { return this._outlineTokens; }
+  get outlineTokenTexts() { return this._outlineTokens; }
   get walls() { return this._walls; }
   get images() { return this._images; }
 
@@ -386,9 +388,14 @@ export class DrawingOrtho implements IDrawing {
   get highlightedWalls() { return this._highlightedWalls; }
   get imageControlPointHighlights() { return this._imageControlPointHighlights; }
 
-  get selection() { return this._outlineSelection; }
-  get selectionDrag() { return this._outlineSelectionDrag; }
-  get selectionDragRed() { return this._outlineSelectionDragRed; }
+  get selection() { return this._selection; }
+  get selectionDrag() { return this._selectionDrag; }
+  get selectionDragRed() { return this._selectionDragRed; }
+
+  get outlineSelection() { return this._outlineSelection; }
+  get outlineSelectionDrag() { return this._outlineSelectionDrag; }
+  get outlineSelectionDragRed() { return this._outlineSelectionDragRed; }
+
   get imageSelection() { return this._imageSelection; }
   get imageSelectionDrag() { return this._imageSelectionDrag; }
   get imageControlPointSelection() { return this._imageControlPointSelection; }
