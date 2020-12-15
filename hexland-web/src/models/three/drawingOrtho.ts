@@ -38,8 +38,9 @@ const losQ = 0.2;
 const selectionZ = 0.05;
 const highlightZ = 0.1;
 const vertexHighlightZ = 0.2;
-const textZ = -0.24; // in front of the token sprite but below the LoS
+const textZ = -0.23; // in front of the token sprite but below the LoS
 const invalidSelectionZ = 0.6;
+const outlineTokenZ = -0.24; // needs to be above regular token sprites to be clearly visible
 const outlineZOffset = 0.01;
 
 const wallAlpha = 0.15;
@@ -289,17 +290,17 @@ export class DrawingOrtho implements IDrawing {
 
     this._outlineTokens = new OutlineTokenDrawing(
       gridGeometry, this._needsRedraw,
-      createPaletteColouredAreaObject(gridGeometry, outlineTokenAlpha, tokenZ + outlineZOffset, lightColourParameters),
+      createPaletteColouredAreaObject(gridGeometry, outlineTokenAlpha, outlineTokenZ, lightColourParameters),
       createPaletteColouredWallObject(
-        createTokenFillEdgeGeometry(gridGeometry, outlineTokenAlpha, tokenZ + outlineZOffset),
+        createTokenFillEdgeGeometry(gridGeometry, outlineTokenAlpha, outlineTokenZ),
         gridGeometry, lightColourParameters
       ),
       createPaletteColouredVertexObject(
-        createTokenFillVertexGeometry(gridGeometry, outlineTokenAlpha, tokenZ + outlineZOffset),
+        createTokenFillVertexGeometry(gridGeometry, outlineTokenAlpha, outlineTokenZ),
         gridGeometry, lightColourParameters
       ),
       renderWidth, renderHeight, this._fixedFilterScene, this._textMaterial,
-      tokenZ + outlineZOffset
+      outlineTokenZ
     )
 
     // The outline selection

@@ -13,6 +13,12 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "1.2.0",
+    changes: [
+      "Support outline tokens that can overlap with regular ones"
+    ]
+  },
+  {
     version: "1.1.1",
     changes: [
       "Make the map image selection a translucent copy of the image for easier alignment"
