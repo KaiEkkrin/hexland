@@ -31,6 +31,7 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
   private readonly _scratchMatrix1 = new THREE.Matrix4();
   private readonly _scratchMatrix2 = new THREE.Matrix4();
   private readonly _scratchVector1 = new THREE.Vector3();
+  private readonly _scratchVector2 = new THREE.Vector3();
   private readonly _targetPosition = new THREE.Vector3();
   private readonly _transform = new THREE.Matrix4();
 
@@ -50,7 +51,9 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
   private createMesh(f: ITokenText, geometry: THREE.ShapeBufferGeometry, bb: THREE.Box3) {
     const mesh = new THREE.Mesh(geometry, this._material);
 
-    const offset = this._scratchVector1.copy(bb.max).sub(bb.min).multiply(offsetMultiplicand);
+    const thisOffsetMul = this._scratchVector2.copy(offsetMultiplicand);
+    thisOffsetMul.y += f.yOffset;
+    const offset = this._scratchVector1.copy(bb.max).sub(bb.min).multiply(thisOffsetMul);
     const targetPosition = (f.atVertex ? this.geometry.createVertexCentre(
       this._targetPosition, f.position, this._z
     ) : this.geometry.createCoordCentre(

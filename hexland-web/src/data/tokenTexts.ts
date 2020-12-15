@@ -57,10 +57,14 @@ export class BaseTokenDrawingWithText<
     position: GridVertex,
     atVertex: boolean
   ) {
+    // For outline tokens, we always draw the text in the smallest size and we offset it
+    // so that it's both closer to the actual line of the outline, and dodges other
+    // token texts:
     return {
       position: position,
       colour: token.colour,
-      size: Number(token.size[0]),
+      size: token.outline ? 1 : Number(token.size[0]),
+      yOffset: token.outline ? 1.5 : 0,
       text: character?.text ?? token.text,
       atVertex: atVertex
     };

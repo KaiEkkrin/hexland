@@ -209,11 +209,31 @@ const hexTokenGeometry: ITokenGeometry = {
   },
   
   getTextPosition(token: IToken): GridVertex {
-    return { ...token.position, vertex: token.size.indexOf('l') >= 0 ? 0 : 1 };
+    if (token.outline) {
+      switch (token.size[0]) {
+        case '1': return { ...token.position, vertex: 0 };
+        case '2':
+          if (token.size.indexOf('l') >= 0) {
+            return { x: token.position.x - 1, y: token.position.y + 1, vertex: 0 };
+          } else {
+            return { ...token.position, vertex: 0 };
+          }
+
+        case '3': return { x: token.position.x, y: token.position.y + 1, vertex: 0 };
+        default: // 4
+          if (token.size.indexOf('l') >= 0) {
+            return { x: token.position.x - 1, y: token.position.y + 2, vertex: 0 };
+          } else {
+            return { x: token.position.x, y: token.position.y + 1, vertex: 0 };
+          }
+      }
+    } else {
+      return { ...token.position, vertex: token.size.indexOf('l') >= 0 ? 0 : 1 };
+    }
   },
 
   getTextAtVertex(token: IToken): boolean {
-    return token.size[0] === '2' || token.size[0] === '4';
+    return !token.outline && (token.size[0] === '2' || token.size[0] === '4');
   },
 
   getTokenSizes(): TokenSize[] {
@@ -315,11 +335,18 @@ const squareTokenGeometry: ITokenGeometry = {
   },
   
   getTextPosition(token: IToken): GridVertex {
-    return { ...token.position, vertex: 0 };
+    if (token.outline) {
+      switch (token.size) {
+        case '1': case '2': return { ...token.position, vertex: 0 };
+        default: return { x: token.position.x, y: token.position.y + 1, vertex: 0 };
+      }
+    } else {
+      return { ...token.position, vertex: 0 };
+    }
   },
 
   getTextAtVertex(token: IToken): boolean {
-    return token.size[0] === '2' || token.size[0] === '4';
+    return !token.outline && (token.size[0] === '2' || token.size[0] === '4');
   },
 
   getTokenSizes(): TokenSize[] {

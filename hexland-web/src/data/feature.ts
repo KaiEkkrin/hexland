@@ -91,6 +91,7 @@ export interface ITokenText extends IFeature<GridVertex> {
   atVertex: boolean,
   colour: number,
   size: number,
+  yOffset: number, // in multiples of the bounding box
   text: string,
 }
 
