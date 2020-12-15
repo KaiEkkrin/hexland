@@ -925,7 +925,125 @@ for (const isOutline of [false, true]) {
   });
 }
 
-// TODO #118 Add tests for outline tokens (e.g. coexisting with regular ones) here
+test(`Regular and outline tokens can exist atop each other`, () => {
+  const map = createTestMap(false);
+  const tracker = createChangeTracker(map.ty);
+  const chs: Change[] = [];
+  for (const x of [1, 2]) {
+    for (const isOutline of [false, true]) {
+      chs.push({
+        ty: ChangeType.Add,
+        cat: ChangeCategory.Token,
+        feature: {
+          ...defaultTokenProperties,
+          position: { x: x, y: 0 },
+          colour: 1,
+          text: "a",
+          id: `a_${x}_${isOutline}`,
+          size: "1",
+          outline: isOutline
+        }
+      });
+    }
+  }
+
+  let ok = trackChanges(map, tracker, chs, ownerUid);
+  expect(ok).toBeTruthy();
+
+  // Move the outline tokens along one step, then move the regular tokens
+  // along one to match
+  for (const isOutline of [true, false]) {
+    const chs2: Change[] = [1, 2].map(x => ({
+      ty: ChangeType.Move,
+      cat: ChangeCategory.Token,
+      newPosition: { x: x + 1, y: 0 },
+      oldPosition: { x: x, y: 0 },
+      tokenId: `a_${x}_${isOutline}`
+    }));
+
+    ok = trackChanges(map, tracker, chs2, ownerUid);
+    expect(ok).toBeTruthy();
+  }
+});
+
+test(`The outline flag can be changed only iff it would not conflict`, () => {
+  const map = createTestMap(false);
+  const tracker = createChangeTracker(map.ty);
+  const chs: Change[] = [];
+  for (const x of [1, 2]) {
+    for (const isOutline of [false, true]) {
+      chs.push({
+        ty: ChangeType.Add,
+        cat: ChangeCategory.Token,
+        feature: {
+          ...defaultTokenProperties,
+          position: { x: x, y: 0 },
+          colour: 1,
+          text: "a",
+          id: `a_${x}_${isOutline}`,
+          size: "1",
+          outline: isOutline
+        }
+      });
+    }
+  }
+
+  let ok = trackChanges(map, tracker, chs, ownerUid);
+  expect(ok).toBeTruthy();
+
+  const toggleOutline: (x: number, isOutline: boolean, id: string) => Change[] = (x: number, isOutline: boolean, id: string) => [{
+    ty: ChangeType.Remove,
+    cat: ChangeCategory.Token,
+    position: { x: x, y: 0 },
+    tokenId: id
+  }, {
+    ty: ChangeType.Add,
+    cat: ChangeCategory.Token,
+    feature: {
+      ...defaultTokenProperties,
+      position: { x: x, y: 0 },
+      colour: 1,
+      text: "a",
+      id: id,
+      size: "1",
+      outline: !isOutline
+    }
+  }];
+
+  // We can't swap the regular token on the right to outline until we move it
+  ok = trackChanges(map, tracker, toggleOutline(2, false, 'a_2_false'), ownerUid);
+  expect(ok).toBeFalsy();
+
+  const chs2: Change[] = [{
+    ty: ChangeType.Move,
+    cat: ChangeCategory.Token,
+    oldPosition: { x: 2, y: 0 },
+    newPosition: { x: 3, y: 0 },
+    tokenId: 'a_2_false'
+  }];
+  ok = trackChanges(map, tracker, chs2, ownerUid);
+  expect(ok).toBeTruthy();
+
+  ok = trackChanges(map, tracker, toggleOutline(3, false, 'a_2_false'), ownerUid);
+  expect(ok).toBeTruthy();
+
+  // Similarly, we can't swap the outline token on the left to regular until we move it
+  ok = trackChanges(map, tracker, toggleOutline(1, true, 'a_1_true'), ownerUid);
+  expect(ok).toBeFalsy();
+
+  const chs3: Change[] = [{
+    ty: ChangeType.Move,
+    cat: ChangeCategory.Token,
+    oldPosition: { x: 1, y: 0 },
+    newPosition: { x: 0, y: 0 },
+    tokenId: 'a_1_true'
+  }];
+  ok = trackChanges(map, tracker, chs3, ownerUid);
+  expect(ok).toBeTruthy();
+
+  ok = trackChanges(map, tracker, toggleOutline(0, true, 'a_1_true'), ownerUid);
+  expect(ok).toBeTruthy();
+});
 
 test('Images can be added and removed', () => {
   const map = createTestMap(false);
