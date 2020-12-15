@@ -489,8 +489,10 @@ export class MapStateMachine {
   private getLoSPositions() {
     // These are the positions we should be projecting line-of-sight from.
     // For large tokens, we project a separate LoS from every face and merge them together
-    let myTokens = Array.from(this._drawing.tokens.faces).filter(t => this.canSelectToken(t));
-    let selectedFaces = myTokens.filter(t => this._drawing.selection.faces.get(t.position) !== undefined);
+    const myTokens = Array.from(fluent(this._drawing.tokens.faces).concat(this._drawing.outlineTokens.faces))
+      .filter(t => this.canSelectToken(t));
+    const selectedFaces = myTokens.filter(t =>
+      (t.outline ? this._drawing.outlineSelection : this._drawing.selection).faces.get(t.position) !== undefined);
     if (selectedFaces.length === 0) {
       if (this.seeEverything) {
         // Render no LoS at all
