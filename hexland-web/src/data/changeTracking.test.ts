@@ -1,7 +1,7 @@
 import { Change, ChangeType, ChangeCategory, TokenMove, TokenRemove, createTokenAdd, createWallAdd, createTokenMove, createWallRemove, createImageAdd, createImageRemove } from './change';
 import { trackChanges, SimpleChangeTracker } from './changeTracking';
 import { GridCoord, coordString, edgeString, GridEdge } from './coord';
-import { defaultTokenProperties, FeatureDictionary, IFeature } from './feature';
+import { defaultTokenProperties, FeatureDictionary, IFeature, TokenSize } from './feature';
 import { IMap, MapType } from './map';
 import { IAnnotation } from './annotation';
 import { IdDictionary } from './identified';
@@ -23,13 +23,13 @@ function createChangeTracker(ty: MapType, userPolicy?: IUserPolicy | undefined) 
 }
 
 const ownerUid = "ownerUid";
-function createTestMap(ffa: boolean): IMap {
+function createTestMap(ffa: boolean, ty?: MapType | undefined): IMap {
   return {
     adventureName: "Test Adventure",
     name: "Test map",
     description: "Sphinx of black quartz, judge my vow",
     owner: ownerUid,
-    ty: MapType.Hex,
+    ty: ty ?? MapType.Hex,
     ffa: ffa,
     imagePath: ""
   };
@@ -1044,6 +1044,60 @@ test(`The outline flag can be changed only iff it would not conflict`, () => {
   ok = trackChanges(map, tracker, toggleOutline(0, true, 'a_1_true'), ownerUid);
   expect(ok).toBeTruthy();
 });
+
+// I seem to have hit a bug where we can't toggle the outline flag on large tokens:
+for (const { ty, size } of [
+  ...(['1', '2', '3', '4'].map(sz => ({ ty: MapType.Square, size: sz }))),
+  ...(['1', '2 (left)', '2 (right)', '3', '4 (left)', '4 (right)'].map(sz => ({ ty: MapType.Hex, size: sz })))
+]) {
+  test(`${ty}: We can toggle the outline flag of a token of size ${size}`, () => {
+    const map = createTestMap(false, ty);
+    const tracker = createChangeTracker(ty);
+    const chs: Change[] = [{
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Token,
+      feature: {
+        ...defaultTokenProperties,
+        position: { x: 0, y: 0 },
+        colour: 1,
+        text: 'a',
+        id: 'a',
+        size: size as TokenSize,
+        outline: false
+      }
+    }];
+
+    let ok = trackChanges(map, tracker, chs, ownerUid);
+    expect(ok).toBeTruthy();
+
+    const toggle: (outline: boolean) => Change[] = (outline: boolean) => [{
+      ty: ChangeType.Remove,
+      cat: ChangeCategory.Token,
+      position: { x: 0, y: 0 },
+      tokenId: 'a'
+    }, {
+      ty: ChangeType.Add,
+      cat: ChangeCategory.Token,
+      feature: {
+        ...defaultTokenProperties,
+        position: { x: 0, y: 0 },
+        colour: 1,
+        text: 'a',
+        id: 'a',
+        size: size as TokenSize,
+        outline: outline
+      }
+    }];
+
+    const chs2 = toggle(true);
+    ok = trackChanges(map, tracker, chs2, ownerUid);
+    expect(ok).toBeTruthy();
+
+    const chs3 = toggle(false);
+    ok = trackChanges(map, tracker, chs3, ownerUid);
+    expect(ok).toBeTruthy();
+  });
+}
 
 test('Images can be added and removed', () => {
   const map = createTestMap(false);

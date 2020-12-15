@@ -1486,7 +1486,8 @@ export class MapStateMachine {
   setToken(cp: THREE.Vector3, properties: ITokenProperties | undefined) {
     const position = this._drawing.getGridCoordAt(cp);
     if (position !== undefined) {
-      const token = this.findToken(position, properties?.id);
+      const token = properties === undefined ? this.findToken(position, undefined) :
+        this._tokens.ofId(properties.id) ?? this._outlineTokens.ofId(properties.id);
       if (token !== undefined && properties !== undefined) {
         return this.setTokenProperties(token, properties);
       } else if (token !== undefined) {
