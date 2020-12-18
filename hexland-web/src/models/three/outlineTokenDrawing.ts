@@ -211,7 +211,6 @@ export class OutlineTokenTexture {
   }
 }
 
-// TODO #118 Add the text to this; after the basic thing seems okay.
 // The outline token drawing will manage drawing its features to a texture and then drawing
 // that texture into the final scene (only when there are any features to draw.)
 export class OutlineTokenDrawing extends BaseTokenDrawingWithText<

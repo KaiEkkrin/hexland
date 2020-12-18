@@ -22,7 +22,7 @@
     "crypto-js": "^4.0.0",
     "dayjs": "^1.8.36",
     "firebase": "^8.0.0",
-    "firebase-functions": "^3.11.0",
+    "firebase-functions": "^3.13.0",
     "fluent-iterable": "^0.1.6",
     "react": "^16.13.1",
     "react-bootstrap": "^1.2.2",
