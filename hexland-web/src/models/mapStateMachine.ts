@@ -1041,16 +1041,6 @@ export class MapStateMachine {
     }); // provides a state update
   }
 
-  // For editing
-  getNote(cp: THREE.Vector3): IAnnotation | undefined {
-    let position = this._drawing.getGridCoordAt(cp);
-    if (position === undefined) {
-      return undefined;
-    }
-
-    return this._notes.get(position);
-  }
-
   faceDragEnd(cp: THREE.Vector3, colour: number): Change[] {
     this.panMarginReset();
     let result = this._faceHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour);
@@ -1071,12 +1061,6 @@ export class MapStateMachine {
       return this.setTokenById(token.id, flipped);
     } else {
       return undefined;
-    }
-  }
-
-  *getSelectedTokens(): Iterable<ITokenProperties> {
-    for (const s of fluent(this._selection).concat(this._outlineSelection)) {
-      yield s;
     }
   }
 
@@ -1104,13 +1088,48 @@ export class MapStateMachine {
     return undefined;
   }
 
-  getToken(cp: THREE.Vector3): ITokenProperties | undefined {
-    const position = this._drawing.getGridCoordAt(cp);
+  // For editing
+  getNote(cp: THREE.Vector3): IAnnotation | undefined {
+    let position = this._drawing.getGridCoordAt(cp);
     if (position === undefined) {
       return undefined;
     }
 
-    return position.isTokenFace ? this._tokens.at(position) : this._outlineTokens.at(position);
+    return this._notes.get(position);
+  }
+
+  *getSelectedTokens(): Iterable<ITokenProperties> {
+    for (const s of fluent(this._selection).concat(this._outlineSelection)) {
+      yield s;
+    }
+  }
+
+  getToken(cp: THREE.Vector3 | string): ITokenProperties | undefined {
+    if (cp instanceof THREE.Vector3) {
+      const position = this._drawing.getGridCoordAt(cp);
+      if (position === undefined) {
+        return undefined;
+      }
+
+      return position.isTokenFace ? this._tokens.at(position) : this._outlineTokens.at(position);
+    }
+
+    return this._tokens.ofId(cp) ?? this._outlineTokens.ofId(cp);
+  }
+
+  *getTokens(cp: THREE.Vector3): Iterable<ITokenProperties> {
+    const position = this._drawing.getGridCoordAt(cp);
+    if (position !== undefined) {
+      const regularToken = this._tokens.at(position);
+      if (regularToken !== undefined) {
+        yield regularToken;
+      }
+
+      const outlineToken = this._outlineTokens.at(position);
+      if (outlineToken !== undefined) {
+        yield outlineToken;
+      }
+    }
   }
 
   // Designed to work in tandem with the panning commands, if we have tokens selected,

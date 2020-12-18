@@ -35,7 +35,7 @@ export type MapUiState = {
   contextMenuY: number;
   contextMenuPageRight: number;
   contextMenuPageBottom: number;
-  contextMenuToken?: ITokenProperties | undefined;
+  contextMenuTokens: ITokenProperties[];
   contextMenuNote?: IAnnotation | undefined;
   contextMenuImage?: IMapImageProperties | undefined;
 
@@ -52,6 +52,7 @@ export type MapUiState = {
 
   tokenToEdit?: ITokenProperties | undefined;
   tokenToEditPosition?: THREE.Vector3 | undefined;
+  otherTokens: ITokenProperties[];
   noteToEdit?: IAnnotation | undefined;
   noteToEditPosition?: THREE.Vector3 | undefined;
   tokensToDelete: ITokenProperties[];
@@ -72,6 +73,7 @@ export function createDefaultUiState(): MapUiState {
     showContextMenu: false,
     contextMenuX: 0,
     contextMenuY: 0,
+    contextMenuTokens: [],
     contextMenuPageRight: 0,
     contextMenuPageBottom: 0,
     mouseDown: false,
@@ -82,6 +84,7 @@ export function createDefaultUiState(): MapUiState {
     showTokenDeletion: false,
     showImageDeletion: false,
     showMapImageEditor: false,
+    otherTokens: [],
     tokensToDelete: [],
   };
 }
@@ -171,6 +174,8 @@ export class MapUi {
         case EditMode.CharacterToken:
           newState.tokenToEdit = this._stateMachine?.getToken(cp);
           newState.tokenToEditPosition = cp;
+          newState.otherTokens = Array.from(this._stateMachine?.getTokens(cp) ?? [])
+            .filter(t => t.id !== newState.tokenToEdit?.id);
 
           // Try to be clever about contextually editing the token in the right way
           const { showCharacterTokenEditor, showTokenEditor } = this.decideHowToEditToken(newState.tokenToEdit);
@@ -274,6 +279,14 @@ export class MapUi {
   contextMenu(e: MouseEvent, bounds: DOMRect) {
     const cp = this._getClientPosition(e.clientX, e.clientY);
     console.log(`from ${e.clientX}, ${e.clientY} : got cp ${cp?.toArray()}`);
+    const getTokens = () => {
+      if (cp === undefined || this._stateMachine === undefined) {
+        return [];
+      }
+
+      return Array.from(this._stateMachine.getTokens(cp));
+    };
+
     this.changeState({
       ...this._state,
       showContextMenu: true,
@@ -281,7 +294,7 @@ export class MapUi {
       contextMenuY: e.clientY,
       contextMenuPageRight: bounds.right,
       contextMenuPageBottom: bounds.bottom,
-      contextMenuToken: cp ? this._stateMachine?.getToken(cp) : undefined,
+      contextMenuTokens: getTokens(),
       contextMenuNote: cp ? this._stateMachine?.getNote(cp) : undefined,
       contextMenuImage: cp ? this._stateMachine?.getImage(cp) : undefined
     });
@@ -340,23 +353,24 @@ export class MapUi {
     });
   }
 
-  editToken(defaultToCharacter?: boolean | undefined) {
-    if (this._state.showTokenEditor || this._state.showCharacterTokenEditor) {
+  editToken(id: string | undefined, defaultToCharacter?: boolean | undefined) {
+    if (this._state.showTokenEditor || this._state.showCharacterTokenEditor || !this._stateMachine) {
       return;
     }
 
+    const token = id ? this._stateMachine.getToken(id) : undefined;
     const cp = this._getClientPosition(this._state.contextMenuX, this._state.contextMenuY);
-    if (!cp) {
+    if (cp === undefined) {
       return;
     }
 
-    console.log(`from menu position ${this._state.contextMenuX}, ${this._state.contextMenuY} : got token position ${cp}`);
-    const token = this._stateMachine?.getToken(cp);
+    const otherTokens = Array.from(this._stateMachine.getTokens(cp)).filter(t => t.id !== token?.id);
     this.changeState({
       ...this._state,
       ...this.decideHowToEditToken(token, defaultToCharacter),
       tokenToEdit: token,
-      tokenToEditPosition: cp
+      tokenToEditPosition: this._getClientPosition(this._state.contextMenuX, this._state.contextMenuY),
+      otherTokens: otherTokens
     });
   }
 

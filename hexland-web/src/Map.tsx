@@ -251,8 +251,8 @@ function Map() {
 
   const editImageFromMenu = useCallback(() => ui?.editImage(), [ui]);
   const editNoteFromMenu = useCallback(() => ui?.editNote(), [ui]);
-  const editTokenFromMenu = useCallback(() => ui?.editToken(), [ui]);
-  const editCharacterTokenFromMenu = useCallback(() => ui?.editToken(true), [ui]);
+  const editTokenFromMenu = useCallback(id => ui?.editToken(id), [ui]);
+  const editCharacterTokenFromMenu = useCallback((id) => ui?.editToken(id, true), [ui]);
 
   const flipTokenFromMenu = useCallback(() => {
     console.log("called flipToken with x " + uiState.contextMenuX + ", y " + uiState.contextMenuY);
@@ -395,7 +395,7 @@ function Map() {
           handleClose={() => ui?.modalClose()} handleSave={handleMapEditorSave} />
         <TokenEditorModal selectedColour={uiState.selectedColour} show={uiState.showTokenEditor}
           adventureId={adventure?.id ?? ""}
-          sizes={tokenSizes} token={uiState.tokenToEdit}
+          sizes={tokenSizes} token={uiState.tokenToEdit} otherTokens={uiState.otherTokens}
           players={players} handleClose={handleModalClose}
           handleDelete={handleTokenEditorDelete}
           handleImageDelete={handleTokenImageDelete}
@@ -425,7 +425,7 @@ function Map() {
           y={uiState.contextMenuY}
           pageRight={uiState.contextMenuPageRight}
           pageBottom={uiState.contextMenuPageBottom}
-          token={uiState.contextMenuToken}
+          tokens={uiState.contextMenuTokens}
           note={uiState.contextMenuNote}
           image={uiState.contextMenuImage}
           editToken={editTokenFromMenu}

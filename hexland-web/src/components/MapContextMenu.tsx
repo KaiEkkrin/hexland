@@ -9,7 +9,7 @@ import Card from 'react-bootstrap/Card';
 import ListGroup from 'react-bootstrap/ListGroup';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faMapMarker, faSquare, faDrawPolygon, faVectorSquare, faArrowsAltH, faUser, faImage } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faMapMarker, faSquare, faDrawPolygon, faVectorSquare, faArrowsAltH, faImage, faUser } from '@fortawesome/free-solid-svg-icons';
 
 interface IMapContextMenuItemProps {
   visible?: boolean | undefined;
@@ -25,6 +25,29 @@ function MapContextMenuItem(props: IMapContextMenuItemProps) {
   );
 }
 
+interface IEditTokenMenuItemProps {
+  token: ITokenProperties;
+  editToken: (id: string | undefined) => void;
+}
+
+function EditTokenMenuItem({ token, editToken }: IEditTokenMenuItemProps) {
+  const icon = useMemo(() => token.characterId.length > 0 ? faUser : faPlus, [token.characterId]);
+  return <MapContextMenuItem onClick={() => editToken(token.id)}>
+    <FontAwesomeIcon className="mr-1" icon={icon} color="white" />Edit token {token.text}
+  </MapContextMenuItem>;
+}
+
+interface IFlipTokenMenuItemProps {
+  token: ITokenProperties;
+  flipToken: (id: string) => void;
+}
+
+function FlipTokenMenuItem({ token, flipToken }: IFlipTokenMenuItemProps) {
+  return <MapContextMenuItem onClick={() => flipToken(token.id)}>
+    <FontAwesomeIcon className="mr-1" icon={faArrowsAltH} color="white" />Flip token {token.text}
+  </MapContextMenuItem>;
+}
+
 interface IMapContextMenuProps {
   // True if shown, else false.
   show: boolean;
@@ -37,12 +60,12 @@ interface IMapContextMenuProps {
   pageBottom: number;
 
   // What was here in the map (if anything)
-  token: ITokenProperties | undefined;
+  tokens: ITokenProperties[];
   note: IAnnotation | undefined;
   image: IMapImageProperties | undefined;
-  editToken: () => void;
-  editCharacterToken: () => void;
-  flipToken: () => void;
+  editToken: (id: string | undefined) => void;
+  editCharacterToken: (id: string | undefined) => void;
+  flipToken: (id: string) => void;
   editNote: () => void;
   editImage: () => void;
 
@@ -52,13 +75,10 @@ interface IMapContextMenuProps {
 
 // We replace the context menu with this when the map is seen.
 function MapContextMenu(
-  { show, hide, x, y, pageRight, pageBottom, token, note, image,
+  { show, hide, x, y, pageRight, pageBottom, tokens, note, image,
     editToken, editCharacterToken, flipToken, editNote, editImage, setEditMode }: IMapContextMenuProps
 ) {
   const hidden = useMemo(() => !show, [show]);
-  const tokenLabel = useMemo(() => token === undefined ? "Add token" : "Edit token " + token.text, [token]);
-  const showAddCharacterToken = useMemo(() => token === undefined, [token]);
-  const showFlipTokenLabel = useMemo(() => token !== undefined && token.size.length > 1, [token]);
   const noteLabel = useMemo(() => note === undefined ? "Add note" : "Edit note", [note]);
   const imageLabel = useMemo(() => image === undefined ? "Add image" : "Edit image", [image]);
 
@@ -68,20 +88,55 @@ function MapContextMenu(
   const top = useMemo(() => y > pageBottom / 2 ? undefined : y, [y, pageBottom]);
   const bottom = useMemo(() => y > pageBottom / 2 ? pageBottom - y : undefined, [y, pageBottom]);
 
-  const handleTokenClick = useCallback(() => {
-    editToken();
+  const handleTokenClick = useCallback((id: string | undefined) => {
+    editToken(id);
     hide();
   }, [editToken, hide]);
 
-  const handleCharacterTokenClick = useCallback(() => {
-    editCharacterToken();
+  const handleCharacterTokenClick = useCallback((id: string | undefined) => {
+    editCharacterToken(id);
     hide();
   }, [editCharacterToken, hide]);
 
-  const handleFlipTokenClick = useCallback(() => {
-    flipToken();
+  const handleFlipTokenClick = useCallback((id: string) => {
+    flipToken(id);
     hide();
   }, [flipToken, hide]);
+
+  const editTokenItems = useMemo(() => {
+    const items: React.ReactNode[] = [];
+    for (const token of tokens) {
+      const handleFn = token.characterId.length > 0 ? handleCharacterTokenClick : handleTokenClick;
+      items.push(<EditTokenMenuItem token={token} editToken={handleFn} />);
+    }
+
+    // With less than 2 tokens (implicitly, the max of one regular, one outline),
+    // we can add another one
+    if (tokens.length < 2) {
+      items.push(<MapContextMenuItem onClick={() => handleTokenClick(undefined)}>
+        <FontAwesomeIcon className="mr-1" icon={faPlus} color="white" />Add token
+      </MapContextMenuItem>);
+    }
+
+    // If there isn't a regular token there already, we can add a character token
+    // (always regular)
+    if (tokens.find(t => t.outline === false) === undefined) {
+      items.push(<MapContextMenuItem onClick={() => handleCharacterTokenClick(undefined)}>
+        <FontAwesomeIcon className="mr-1" icon={faUser} color="white" />Add character token
+      </MapContextMenuItem>);
+    }
+
+    return <React.Fragment>{items}</React.Fragment>;
+  }, [handleCharacterTokenClick, handleTokenClick, tokens]);
+
+  const flipTokenItems = useMemo(() => {
+    const items: React.ReactNode[] = [];
+    for (const token of tokens) {
+      items.push(<FlipTokenMenuItem token={token} flipToken={handleFlipTokenClick} />);
+    }
+
+    return <React.Fragment>{items}</React.Fragment>;
+  }, [handleFlipTokenClick, tokens]);
 
   const handleNoteClick = useCallback(() => {
     editNote();
@@ -118,17 +173,8 @@ function MapContextMenu(
       zIndex: 2002
     }}>
       <ListGroup variant="flush">
-        <MapContextMenuItem onClick={handleTokenClick}>
-          <FontAwesomeIcon className="mr-1" icon={faPlus} color="white" />{tokenLabel}
-        </MapContextMenuItem>
-        {showAddCharacterToken ? (
-          <MapContextMenuItem onClick={handleCharacterTokenClick}>
-            <FontAwesomeIcon className="mr-1" icon={faUser} color="white" />Add character token
-          </MapContextMenuItem>
-        ) : null}
-        <MapContextMenuItem onClick={handleFlipTokenClick} visible={showFlipTokenLabel}>
-          <FontAwesomeIcon className="mr-1" icon={faArrowsAltH} color="white" />Flip token
-        </MapContextMenuItem>
+        {editTokenItems}
+        {flipTokenItems}
         <MapContextMenuItem onClick={handleNoteClick}>
           <FontAwesomeIcon className="mr-1" icon={faMapMarker} color="white" />{noteLabel}
         </MapContextMenuItem>

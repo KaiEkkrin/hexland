@@ -16,6 +16,7 @@ import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 
 import { v4 as uuidv4 } from 'uuid';
+import fluent from 'fluent-iterable';
 
 interface ITokenSizeSelectionProps {
   size: TokenSize;
@@ -52,6 +53,7 @@ interface ITokenEditorModalProps {
   sizes: TokenSize[] | undefined;
   show: boolean;
   token: ITokenProperties | undefined;
+  otherTokens: ITokenProperties[];
   players: IPlayer[];
   handleClose: () => void;
   handleDelete: () => void;
@@ -62,7 +64,7 @@ interface ITokenEditorModalProps {
 // This modal is only for editing tokens that aren't attached to a character.
 // For that (and never the twain shall meet), see CharacterTokenEditorModal.
 function TokenEditorModal(
-  { adventureId, selectedColour, sizes, show, token, players,
+  { adventureId, selectedColour, sizes, show, token, otherTokens, players,
     handleClose, handleDelete, handleImageDelete, handleSave }: ITokenEditorModalProps
 ) {
   const [text, setText] = useState("");
@@ -78,6 +80,12 @@ function TokenEditorModal(
 
   // Properties
 
+  const possibleOutlineValues = useMemo(
+    () => [false, true].filter(v => otherTokens.find(t => t.outline === v) === undefined),
+    [otherTokens]
+  );
+
+  const outlineDisabled = useMemo(() => possibleOutlineValues.length < 2, [possibleOutlineValues]);
   useEffect(() => {
     if (show) {
       setText(token?.text ?? "");
@@ -87,10 +95,10 @@ function TokenEditorModal(
       setNote(token?.note ?? "");
       setNoteVisibleToPlayers(token?.noteVisibleToPlayers ?? false);
       setSprites(token?.sprites ?? []);
-      setOutline(token?.outline ?? false);
+      setOutline(token?.outline ?? fluent(possibleOutlineValues).first() ?? false);
     }
   }, [
-    selectedColour, show, token,
+    possibleOutlineValues, selectedColour, show, token,
     setText, setColour, setSize, setPlayerIds, setNote, setNoteVisibleToPlayers, setOutline, setSprites,
   ]);
 
@@ -171,7 +179,7 @@ function TokenEditorModal(
                   tokenPlayerIds={playerIds} setTokenPlayerIds={setPlayerIds} />
               </Form.Group>
               <Form.Group>
-                <Form.Check type="checkbox" label="Outline token" checked={outline}
+                <Form.Check type="checkbox" label="Outline token" checked={outline} disabled={outlineDisabled}
                   onChange={handleOutlineChange} />
                 <Form.Text className="text-muted">
                   Outline tokens can exist in the same space as regular tokens, and cannot show an image.
