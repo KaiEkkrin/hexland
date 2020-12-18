@@ -172,7 +172,7 @@ export class DrawingOrtho implements IDrawing {
       this._gridNeedsRedraw,
       gridZ,
       losZ,
-      selectionAlpha,
+      tokenAlpha,
       vertexAlpha,
       renderWidth,
       renderHeight

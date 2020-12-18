@@ -5,7 +5,7 @@ import TokenImageEditor from './TokenImageEditor';
 import TokenPlayerSelection from './TokenPlayerSelection';
 
 import { IPlayer } from '../data/adventure';
-import { ITokenProperties, TokenSize } from '../data/feature';
+import { defaultTokenProperties, ITokenProperties, TokenSize } from '../data/feature';
 import { IImage } from '../data/image';
 import { ISprite } from '../data/sprite';
 
@@ -16,7 +16,6 @@ import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 
 import { v4 as uuidv4 } from 'uuid';
-import fluent from 'fluent-iterable';
 
 interface ITokenSizeSelectionProps {
   size: TokenSize;
@@ -53,8 +52,8 @@ interface ITokenEditorModalProps {
   sizes: TokenSize[] | undefined;
   show: boolean;
   token: ITokenProperties | undefined;
-  otherTokens: ITokenProperties[];
   players: IPlayer[];
+  canSave: (properties: ITokenProperties) => boolean;
   handleClose: () => void;
   handleDelete: () => void;
   handleImageDelete: (image: IImage | undefined) => void;
@@ -64,8 +63,8 @@ interface ITokenEditorModalProps {
 // This modal is only for editing tokens that aren't attached to a character.
 // For that (and never the twain shall meet), see CharacterTokenEditorModal.
 function TokenEditorModal(
-  { adventureId, selectedColour, sizes, show, token, otherTokens, players,
-    handleClose, handleDelete, handleImageDelete, handleSave }: ITokenEditorModalProps
+  { adventureId, selectedColour, sizes, show, token, players,
+    canSave, handleClose, handleDelete, handleImageDelete, handleSave }: ITokenEditorModalProps
 ) {
   const [text, setText] = useState("");
   const [colour, setColour] = useState(0);
@@ -80,12 +79,42 @@ function TokenEditorModal(
 
   // Properties
 
-  const possibleOutlineValues = useMemo(
-    () => [false, true].filter(v => otherTokens.find(t => t.outline === v) === undefined),
-    [otherTokens]
-  );
+  const newToken = useMemo(() => ({
+    colour: colour,
+    // If this was a new token, make a new id for it
+    id: token === undefined ? uuidv4() : token.id,
+    text: text,
+    players: playerIds,
+    size: size,
+    note: note,
+    noteVisibleToPlayers: noteVisibleToPlayers,
+    characterId: "",
+    sprites: sprites,
+    outline: outline
+  }), [colour, token, text, playerIds, size, note, noteVisibleToPlayers, sprites, outline]);
 
-  const outlineDisabled = useMemo(() => possibleOutlineValues.length < 2, [possibleOutlineValues]);
+  // For now, we're only going to use `canSave` to test whether we can toggle the outline flag.
+  // In theory we could use it for other stuff and tie its result to whether or not Save is enabled
+  // but I think that could be very muddling, and we'll never prevent all possible token save failures
+  // because of the chance someone else alters it while the dialog is open.
+  const possibleOutlineValues = useMemo(() => {
+    const values = new Set<boolean>();
+    if (token !== undefined) {
+      values.add(token.outline);
+    }
+
+    if (token?.outline !== false && canSave({ ...newToken, outline: false })) {
+      values.add(false);
+    }
+
+    if (token?.outline !== true && canSave({ ...newToken, outline: true })) {
+      values.add(true);
+    }
+
+    return values;
+  }, [canSave, token, newToken]);
+
+  const outlineDisabled = useMemo(() => possibleOutlineValues.size < 2, [possibleOutlineValues]);
   useEffect(() => {
     if (show) {
       setText(token?.text ?? "");
@@ -95,10 +124,10 @@ function TokenEditorModal(
       setNote(token?.note ?? "");
       setNoteVisibleToPlayers(token?.noteVisibleToPlayers ?? false);
       setSprites(token?.sprites ?? []);
-      setOutline(token?.outline ?? fluent(possibleOutlineValues).first() ?? false);
+      setOutline(token?.outline ?? !canSave({ ...defaultTokenProperties, outline: false }));
     }
   }, [
-    possibleOutlineValues, selectedColour, show, token,
+    selectedColour, show, token, canSave,
     setText, setColour, setSize, setPlayerIds, setNote, setNoteVisibleToPlayers, setOutline, setSprites,
   ]);
 
@@ -119,22 +148,7 @@ function TokenEditorModal(
     [busySettingImage, sprites, text]
   );
 
-  const doHandleSave = useCallback(() => {
-    handleSave({
-      colour: colour,
-      // If this was a new token, make a new id for it
-      id: token === undefined ? uuidv4() : token.id,
-      text: text,
-      players: playerIds,
-      size: size,
-      note: note,
-      noteVisibleToPlayers: noteVisibleToPlayers,
-      characterId: "",
-      sprites: sprites,
-      outline: outline
-    });
-  }, [colour, note, noteVisibleToPlayers, playerIds, handleSave, token, size, text, sprites, outline]);
-
+  const doHandleSave = useCallback(() => handleSave(newToken), [handleSave, newToken]);
   return (
     <Modal show={show} onHide={handleClose}>
       <Modal.Header closeButton>

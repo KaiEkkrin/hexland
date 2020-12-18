@@ -961,6 +961,24 @@ export class MapStateMachine {
     await this._dataService.addChanges(this._map.adventureId, this._uid, this._map.id, changes);
   }
 
+  canSetToken(cp: THREE.Vector3, properties: ITokenProperties | undefined) {
+    try {
+      const changes = this.setToken(cp, properties);
+      if (changes.length === 0) {
+        return true;
+      }
+
+      // We know these changes will only affect tokens so we don't need to clone the rest
+      const changeTracker = new MapChangeTracker(
+        this._drawing.areas, this._tokens.clone(), this._outlineTokens.clone(), this._drawing.walls,
+        this._notes, this._drawing.images, this._userPolicy, this._mapColouring
+      );
+      return trackChanges(this._map.record, changeTracker, changes, this._uid);
+    } catch {
+      return false;
+    }
+  }
+
   clearHighlights(colour: number) {
     this._faceHighlighter.dragCancel(undefined, colour);
     this._wallHighlighter.dragCancel(undefined, colour);

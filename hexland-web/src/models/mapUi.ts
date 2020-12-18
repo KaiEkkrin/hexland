@@ -52,7 +52,6 @@ export type MapUiState = {
 
   tokenToEdit?: ITokenProperties | undefined;
   tokenToEditPosition?: THREE.Vector3 | undefined;
-  otherTokens: ITokenProperties[];
   noteToEdit?: IAnnotation | undefined;
   noteToEditPosition?: THREE.Vector3 | undefined;
   tokensToDelete: ITokenProperties[];
@@ -84,7 +83,6 @@ export function createDefaultUiState(): MapUiState {
     showTokenDeletion: false,
     showImageDeletion: false,
     showMapImageEditor: false,
-    otherTokens: [],
     tokensToDelete: [],
   };
 }
@@ -174,8 +172,6 @@ export class MapUi {
         case EditMode.CharacterToken:
           newState.tokenToEdit = this._stateMachine?.getToken(cp);
           newState.tokenToEditPosition = cp;
-          newState.otherTokens = Array.from(this._stateMachine?.getTokens(cp) ?? [])
-            .filter(t => t.id !== newState.tokenToEdit?.id);
 
           // Try to be clever about contextually editing the token in the right way
           const { showCharacterTokenEditor, showTokenEditor } = this.decideHowToEditToken(newState.tokenToEdit);
@@ -364,13 +360,11 @@ export class MapUi {
       return;
     }
 
-    const otherTokens = Array.from(this._stateMachine.getTokens(cp)).filter(t => t.id !== token?.id);
     this.changeState({
       ...this._state,
       ...this.decideHowToEditToken(token, defaultToCharacter),
       tokenToEdit: token,
       tokenToEditPosition: this._getClientPosition(this._state.contextMenuX, this._state.contextMenuY),
-      otherTokens: otherTokens
     });
   }
 
@@ -668,6 +662,14 @@ export class MapUi {
     this.addChanges(changes);
     this._stateMachine?.clearSelection();
     this.modalClose();
+  }
+
+  tokenEditorCanSave(properties: ITokenProperties) {
+    if (this._state.tokenToEditPosition !== undefined) {
+      return this._stateMachine?.canSetToken(this._state.tokenToEditPosition, properties);
+    }
+
+    return false;
   }
 
   tokenEditorDelete() {

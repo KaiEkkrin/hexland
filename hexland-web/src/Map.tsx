@@ -187,6 +187,10 @@ function Map() {
   }, [logError, map, ui, dataService, functionsService]);
 
   const handleModalClose = useCallback(() => ui?.modalClose(), [ui]);
+  const handleTokenEditorCanSave = useCallback(
+    (properties: ITokenProperties) => ui?.tokenEditorCanSave(properties) ?? false,
+    [ui]
+  );
   const handleTokenEditorDelete = useCallback(() => ui?.tokenEditorDelete(), [ui]);
   const handleTokenEditorSave = useCallback(
     (properties: ITokenProperties) => ui?.tokenEditorSave(properties),
@@ -395,8 +399,9 @@ function Map() {
           handleClose={() => ui?.modalClose()} handleSave={handleMapEditorSave} />
         <TokenEditorModal selectedColour={uiState.selectedColour} show={uiState.showTokenEditor}
           adventureId={adventure?.id ?? ""}
-          sizes={tokenSizes} token={uiState.tokenToEdit} otherTokens={uiState.otherTokens}
+          sizes={tokenSizes} token={uiState.tokenToEdit}
           players={players} handleClose={handleModalClose}
+          canSave={handleTokenEditorCanSave}
           handleDelete={handleTokenEditorDelete}
           handleImageDelete={handleTokenImageDelete}
           handleSave={handleTokenEditorSave} />
