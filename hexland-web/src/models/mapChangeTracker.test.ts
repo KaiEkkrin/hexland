@@ -4,7 +4,7 @@ import { MapChangeTracker } from './mapChangeTracker';
 import { ChangeType, ChangeCategory, TokenAdd, TokenMove, WallRemove, WallAdd } from '../data/change';
 import { trackChanges, IChangeTracker } from '../data/changeTracking';
 import { GridEdge, GridCoord, coordString, edgeString } from '../data/coord';
-import { FeatureDictionary, IFeature } from '../data/feature';
+import { FeatureDictionary, IFeature, PlayerArea } from '../data/feature';
 import { IdDictionary } from '../data/identified';
 import { IMapImage } from '../data/image';
 import { MapType } from '../data/map';
@@ -56,6 +56,7 @@ function buildWallsOfThreeHexes(changeTracker: IChangeTracker) {
 
 test('Unprivileged users cannot move other users\' tokens', () => {
   const areas = new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString);
+  const playerAreas = new FeatureDictionary<GridCoord, PlayerArea>(coordString);
   const tokens = new Tokens(getTokenGeometry(MapType.Hex), new SimpleTokenDrawing());
   const outlineTokens = new Tokens(getTokenGeometry(MapType.Hex), new SimpleTokenDrawing());
   const walls = new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString);
@@ -64,8 +65,10 @@ test('Unprivileged users cannot move other users\' tokens', () => {
 
   const handleChangesApplied = jest.fn();
   const handleChangesAborted = jest.fn();
-  let changeTracker = new MapChangeTracker(areas, tokens, outlineTokens, walls, notes, images, undefined, undefined,
-    handleChangesApplied, handleChangesAborted);
+  const changeTracker = new MapChangeTracker(
+    areas, playerAreas, tokens, outlineTokens, walls, notes, images, undefined, undefined,
+    handleChangesApplied, handleChangesAborted
+  );
 
   // The walls should be irrelevant here :)
   let ok = buildWallsOfThreeHexes(changeTracker);
@@ -162,6 +165,7 @@ test('Unprivileged users cannot move other users\' tokens', () => {
 
 test('Unprivileged tokens cannot escape from bounded areas', () => {
   const areas = new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString);
+  const playerAreas = new FeatureDictionary<GridCoord, PlayerArea>(coordString);
   const tokens = new Tokens(getTokenGeometry(MapType.Hex), new SimpleTokenDrawing());
   const outlineTokens = new Tokens(getTokenGeometry(MapType.Hex), new SimpleTokenDrawing());
   const walls = new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString);
@@ -171,8 +175,10 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
 
   const handleChangesApplied = jest.fn();
   const handleChangesAborted = jest.fn();
-  let changeTracker = new MapChangeTracker(areas, tokens, outlineTokens, walls, notes, images, undefined, colouring,
-    handleChangesApplied, handleChangesAborted);
+  let changeTracker = new MapChangeTracker(
+    areas, playerAreas, tokens, outlineTokens, walls, notes, images, undefined, colouring,
+    handleChangesApplied, handleChangesAborted
+  );
 
   let ok = buildWallsOfThreeHexes(changeTracker);
   expect(ok).toBeTruthy();

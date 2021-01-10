@@ -2,7 +2,7 @@ import { MapColouring } from "./colouring";
 import { IAnnotation } from "../data/annotation";
 import { SimpleChangeTracker } from "../data/changeTracking";
 import { GridCoord, GridEdge } from "../data/coord";
-import { IFeatureDictionary, IFeature, IToken, ITokenDictionary } from "../data/feature";
+import { IFeatureDictionary, IFeature, IToken, ITokenDictionary, IPlayerAreaDictionary } from "../data/feature";
 import { IIdDictionary } from "../data/identified";
 import { IMapImage } from "../data/image";
 import { IMap } from "../data/map";
@@ -20,6 +20,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
 
   constructor(
     areas: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
+    playerAreas: IPlayerAreaDictionary,
     tokens: ITokenDictionary,
     outlineTokens: ITokenDictionary,
     walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
@@ -30,7 +31,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
     handleChangesApplied?: ((haveTokensChanged: boolean, objectCount: number) => void) | undefined,
     handleChangesAborted?: (() => void) | undefined
   ) {
-    super(areas, tokens, outlineTokens, walls, notes, images, userPolicy);
+    super(areas, playerAreas, tokens, outlineTokens, walls, notes, images, userPolicy);
     this._colouring = colouring;
     this._handleChangesApplied = handleChangesApplied;
     this._handleChangesAborted = handleChangesAborted;

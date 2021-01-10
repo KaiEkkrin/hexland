@@ -1,7 +1,7 @@
 import { Change, ChangeType, ChangeCategory, TokenMove, TokenRemove, createTokenAdd, createWallAdd, createTokenMove, createWallRemove, createImageAdd, createImageRemove } from './change';
 import { trackChanges, SimpleChangeTracker } from './changeTracking';
 import { GridCoord, coordString, edgeString, GridEdge } from './coord';
-import { defaultTokenProperties, FeatureDictionary, IFeature, TokenSize } from './feature';
+import { defaultTokenProperties, FeatureDictionary, IFeature, PlayerArea, TokenSize } from './feature';
 import { IMap, MapType } from './map';
 import { IAnnotation } from './annotation';
 import { IdDictionary } from './identified';
@@ -13,6 +13,7 @@ import { SimpleTokenDrawing, Tokens } from './tokens';
 function createChangeTracker(ty: MapType, userPolicy?: IUserPolicy | undefined) {
   return new SimpleChangeTracker(
     new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString),
+    new FeatureDictionary<GridCoord, PlayerArea>(coordString),
     new Tokens(getTokenGeometry(ty), new SimpleTokenDrawing()),
     new Tokens(getTokenGeometry(ty), new SimpleTokenDrawing()),
     new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString),
@@ -1621,3 +1622,5 @@ test('Policy blocks us from adding too many objects', () => {
   expect(ok).toBeTruthy();
   expect(tracker.objectCount).toBe(3);
 });
+
+// TODO #197 Add player area tests including ffa/non-ffa

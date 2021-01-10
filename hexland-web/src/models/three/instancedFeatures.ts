@@ -63,7 +63,7 @@ export class InstancedFeatures<K extends GridCoord, F extends IFeature<K>> exten
 
   removeFromScene() {
     if (this._scene !== undefined) {
-      let scene = this._scene;
+      const scene = this._scene;
       this._featureObjects.forEach(c => c.removeFromScene(scene));
       this._scene = undefined;
       this.setNeedsRedraw();
@@ -75,7 +75,7 @@ export class InstancedFeatures<K extends GridCoord, F extends IFeature<K>> exten
   }
 
   add(f: F): boolean {
-    let done = this._features.add(f);
+    const done = this._features.add(f);
     if (done === false) {
       // This position is already occupied.
       return false;
@@ -123,12 +123,12 @@ export class InstancedFeatures<K extends GridCoord, F extends IFeature<K>> exten
   }
 
   remove(oldPosition: K): F | undefined {
-    let feature = this._features.remove(oldPosition);
+    const feature = this._features.remove(oldPosition);
     if (feature === undefined) {
       return undefined;
     }
 
-    for (let c of this._featureObjects) {
+    for (const c of this._featureObjects) {
       if (c.remove(feature)) {
         break;
       }

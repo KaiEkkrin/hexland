@@ -1,6 +1,6 @@
 import { MapColouring } from "./colouring";
 import { GridCoord, GridEdge, GridVertex } from "../data/coord";
-import { IFeature, IFeatureDictionary } from "../data/feature";
+import { IFeature, IFeatureDictionary, IPlayerAreaDictionary } from "../data/feature";
 import { IIdDictionary } from "../data/identified";
 import { IMapControlPointDictionary, IMapImage } from "../data/image";
 import { ITokenDrawing } from "../data/tokens";
@@ -13,6 +13,7 @@ import { ISpriteManager } from "../services/interfaces";
 // editing these should update the drawing upon the next animation frame.
 export interface IDrawing {
   areas: IFeatureDictionary<GridCoord, IFeature<GridCoord>>;
+  playerAreas: IPlayerAreaDictionary;
   tokens: ITokenDrawing;
   tokenTexts: ITokenTextDrawing;
   outlineTokens: ITokenDrawing;

@@ -17,6 +17,7 @@ import { MapColourVisualisation } from './mapColourVisualisation';
 import { MapControlPoints, MapImages } from './mapImages';
 import { OutlineSelectionTokenDrawing, OutlineTokenDrawing } from './outlineTokenDrawing';
 import { OutlinedRectangle } from './overlayRectangle';
+import { StripedAreas } from './paletteStripedFeatureObject';
 import { TextFilter } from './textFilter';
 import { TextureCache } from './textureCache';
 import { SelectionDrawing, TokenDrawing } from './tokenDrawingOrtho';
@@ -29,6 +30,7 @@ import * as THREE from 'three';
 // Our Z values are in the range -1..1 so that they're the same in the shaders
 const imageZ = -0.9;
 const areaZ = -0.5;
+const playerAreaZ = -0.49;
 const tokenZ = -0.3;
 const wallZ = -0.45;
 const tokenSpriteZ = -0.25;
@@ -80,6 +82,7 @@ export class DrawingOrtho implements IDrawing {
   private readonly _losFilter: LoSFilter;
   private readonly _textFilter: TextFilter;
   private readonly _areas: Areas;
+  private readonly _playerAreas: StripedAreas;
   private readonly _highlightedAreas: Areas;
   private readonly _highlightedVertices: Vertices;
   private readonly _highlightedWalls: Walls;
@@ -215,6 +218,12 @@ export class DrawingOrtho implements IDrawing {
       createPaletteColouredAreaObject(this._gridGeometry, areaAlpha, areaZ, darkColourParameters)
     );
     this._areas.addToScene(this._mapScene);
+
+    // The player areas
+    this._playerAreas = new StripedAreas(
+      this._gridGeometry, this._needsRedraw, renderWidth, renderHeight, this._fixedFilterScene,
+      { ...darkColourParameters, alpha: 0.5, patternSize: 40, z: playerAreaZ }
+    );
 
     // The highlighted areas
     // (TODO does this need to be a different feature set from the selection?)
@@ -377,6 +386,7 @@ export class DrawingOrtho implements IDrawing {
   }
 
   get areas() { return this._areas; }
+  get playerAreas() { return this._playerAreas; }
   get tokens() { return this._tokens; }
   get tokenTexts() { return this._tokens; }
   get outlineTokens() { return this._outlineTokens; }
@@ -434,6 +444,7 @@ export class DrawingOrtho implements IDrawing {
         this._losFilter.preRender(this._losParameters, this._losCamera);
       }
 
+      this._playerAreas.render(this._camera, this._renderer);
       this._tokens.render(this._renderer, this._camera);
       this._textFilter.preRender(this._tokens.textTarget);
 
@@ -446,9 +457,12 @@ export class DrawingOrtho implements IDrawing {
       this._renderer.setClearColor(this._canvasClearColour);
       this._renderer.clear();
 
+      // TODO #197 I think the player areas are going to end up shading the tokens at this point.
+      // I should try to rationalise what gets rendered where -- perhaps going so far as to render
+      // everything into back buffers and only compose them together with filters to create the
+      // main result (?)
       this._renderer.render(this._imageScene, this._camera);
       this._renderer.render(this._mapScene, this._camera);
-      this._renderer.render(this._fixedFilterScene, this._fixedCamera);
       this._renderer.render(this._filterScene, this._camera);
       if (
         this._outlineSelection.doRender ||
@@ -521,6 +535,7 @@ export class DrawingOrtho implements IDrawing {
 
     this._renderer.setSize(width, height, false);
     this._grid.resize(width, height);
+    this._playerAreas.resize(width, height);
     this._tokens.resize(width, height);
     this._outlineTokens.resize(width, height);
     this._outlineSelection.resize(width, height);
@@ -649,6 +664,7 @@ export class DrawingOrtho implements IDrawing {
     this._losFilter.dispose();
     this._textFilter.dispose();
     this._areas.dispose();
+    this._playerAreas.dispose();
     this._walls.dispose();
     this._images.dispose();
     this._imageSelection.dispose();

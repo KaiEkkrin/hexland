@@ -14,6 +14,14 @@ export interface IIdFeature<K> extends IFeature<K> {
   id: string;
 }
 
+// Features with stripes (used for distinguishing player areas) will include this too
+export type Striped = {
+  stripe: number;
+};
+
+export type PlayerArea = IFeature<GridCoord> & Striped;
+export interface IPlayerAreaDictionary extends IFeatureDictionary<GridCoord, PlayerArea> {}
+
 // A token has some extra properties:
 // (Remember to keep `parseTokenSize` below in sync with this definition if it changes)
 export type TokenSize = "1" | "2" | "2 (left)" | "2 (right)" | "3" | "4" | "4 (left)" | "4 (right)";

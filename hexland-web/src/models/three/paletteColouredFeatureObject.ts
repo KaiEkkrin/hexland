@@ -1,24 +1,26 @@
 import { GridCoord } from '../../data/coord';
 import { IFeature } from '../../data/feature';
 import { InstancedFeatureObject } from './instancedFeatureObject';
+import { IShader } from './shaderFilter';
 
 import * as THREE from 'three';
 
-const instanceColouredShader = {
-  vertexShader: [
-    "attribute vec3 instanceColour;",
-    "varying vec3 vertexColour;",
-    "void main() {",
-    "  vertexColour = instanceColour;",
-    "  gl_Position = projectionMatrix * viewMatrix * instanceMatrix * vec4(position, 1.0);",
-    "}"
-  ].join("\n"),
-  fragmentShader: [
-    "varying vec3 vertexColour;",
-    "void main() {",
-    "  gl_FragColor = vec4(vertexColour, 1.0);",
-    "}"
-  ].join("\n")
+const instanceColouredShader: IShader = {
+  uniforms: {},
+  vertexShader: `
+    attribute vec3 instanceColour;
+    varying vec3 vertexColour;
+    void main() {
+      vertexColour = instanceColour;
+      gl_Position = projectionMatrix * viewMatrix * instanceMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    varying vec3 vertexColour;
+    void main() {
+      gl_FragColor = vec4(vertexColour, 1.0);
+    }
+  `
 };
 
 export interface IColourParameters {
@@ -36,10 +38,15 @@ export class PaletteColouredFeatureObject<K extends GridCoord, F extends IFeatur
   private readonly _geometry: THREE.InstancedBufferGeometry;
   private readonly _colours: number[]; // not instanced, but lets us change the palette
   private readonly _instanceColours: Float32Array;
+  private readonly _uniforms: any; // used by subclasses only
   private readonly _material: THREE.ShaderMaterial;
 
   private _palette: THREE.Color[];
   private _defaultColour: THREE.Color;
+
+  // Helps us extend this (for the striped feature object.)
+  get geometry() { return this._geometry; }
+  get uniforms() { return this._uniforms; }
 
   // The constructor will add the colour attribute to the geometry automatically.
   constructor(
@@ -47,7 +54,8 @@ export class PaletteColouredFeatureObject<K extends GridCoord, F extends IFeatur
     transformTo: (m: THREE.Matrix4, position: K) => THREE.Matrix4,
     maxInstances: number,
     createGeometry: () => THREE.InstancedBufferGeometry,
-    colourParameters: IColourParameters
+    colourParameters: IColourParameters,
+    shader?: IShader | undefined // for subclassing only
   ) {
     super(toIndex, transformTo, maxInstances);
     this._geometry = createGeometry();
@@ -60,12 +68,14 @@ export class PaletteColouredFeatureObject<K extends GridCoord, F extends IFeatur
     this._colourAttr.setUsage(THREE.DynamicDrawUsage);
     this._geometry.setAttribute('instanceColour', this._colourAttr);
 
+    this._uniforms = THREE.UniformsUtils.clone(shader?.uniforms ?? instanceColouredShader.uniforms);
     this._material = new THREE.ShaderMaterial({
       blending: colourParameters.blending ?? THREE.NoBlending,
       side: THREE.DoubleSide,
       transparent: colourParameters.transparent ?? false,
-      vertexShader: instanceColouredShader.vertexShader,
-      fragmentShader: instanceColouredShader.fragmentShader
+      vertexShader: (shader ?? instanceColouredShader).vertexShader,
+      fragmentShader: (shader ?? instanceColouredShader).fragmentShader,
+      uniforms: this._uniforms
     });
   }
 
