@@ -317,7 +317,8 @@ export class MapStateMachine {
     pushTokenMoves(this._outlineTokens, this._outlineSelection);
 
     const changeTracker = new MapChangeTracker(
-      this._drawing.areas, this._tokens.clone(), this._outlineTokens.clone(), this._drawing.walls,
+      this._drawing.areas, this._tokens.clone(),
+      this._outlineTokens.clone(), this._drawing.walls,
       this._notes, this._drawing.images, this._userPolicy, this._mapColouring
     );
     return trackChanges(this._map.record, changeTracker, changes, this._uid);
@@ -336,7 +337,8 @@ export class MapStateMachine {
     // I only need to clone the tokens for this experimental change tracker because the other
     // things definitely won't change
     const changeTracker = new MapChangeTracker(
-      this._drawing.areas, this._tokens.clone(), this._outlineTokens.clone(), this._drawing.walls,
+      this._drawing.areas, this._tokens.clone(),
+      this._outlineTokens.clone(), this._drawing.walls,
       this._notes, this._drawing.images, this._userPolicy, this._mapColouring
     );
 
@@ -905,8 +907,8 @@ export class MapStateMachine {
   private validateWallChanges(changes: Change[]): boolean {
     // I need to clone the walls for this one.  The map colouring won't be relevant.
     const changeTracker = new MapChangeTracker(
-      this._drawing.areas, this._tokens, this._outlineTokens, this._drawing.walls.clone(), this._notes,
-      this._drawing.images, this._userPolicy, undefined
+      this._drawing.areas, this._tokens, this._outlineTokens,
+      this._drawing.walls.clone(), this._notes, this._drawing.images, this._userPolicy, undefined
     );
     return trackChanges(this._map.record, changeTracker, changes, this._uid);
   }
@@ -970,8 +972,8 @@ export class MapStateMachine {
 
       // We know these changes will only affect tokens so we don't need to clone the rest
       const changeTracker = new MapChangeTracker(
-        this._drawing.areas, this._tokens.clone(), this._outlineTokens.clone(), this._drawing.walls,
-        this._notes, this._drawing.images, this._userPolicy, this._mapColouring
+        this._drawing.areas, this._tokens.clone(), this._outlineTokens.clone(),
+        this._drawing.walls, this._notes, this._drawing.images, this._userPolicy, this._mapColouring
       );
       return trackChanges(this._map.record, changeTracker, changes, this._uid);
     } catch {

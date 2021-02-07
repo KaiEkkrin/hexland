@@ -19,8 +19,8 @@ export type Striped = {
   stripe: number;
 };
 
-export type PlayerArea = IFeature<GridCoord> & Striped;
-export interface IPlayerAreaDictionary extends IFeatureDictionary<GridCoord, PlayerArea> {}
+export type StripedArea = IFeature<GridCoord> & Striped;
+export interface IAreaDictionary extends IFeatureDictionary<GridCoord, StripedArea> {}
 
 // A token has some extra properties:
 // (Remember to keep `parseTokenSize` below in sync with this definition if it changes)
@@ -76,9 +76,10 @@ export function parseTokenSize(s: string): TokenSize {
 
 export interface IToken extends IIdFeature<GridCoord>, ITokenProperties {}
 
-export const defaultArea: IFeature<GridCoord> = {
+export const defaultArea: StripedArea = {
   position: defaultGridCoord,
-  colour: 0
+  colour: 0,
+  stripe: 0
 };
 
 export const defaultToken: IToken = {

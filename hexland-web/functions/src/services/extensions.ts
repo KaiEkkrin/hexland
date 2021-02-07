@@ -3,7 +3,7 @@ import { IAnnotation } from '../data/annotation';
 import { Change, Changes } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
 import { GridCoord, GridEdge, coordString, edgeString } from '../data/coord';
-import { FeatureDictionary, IFeature, ITokenDictionary, PlayerArea } from '../data/feature';
+import { FeatureDictionary, IFeature, ITokenDictionary, StripedArea } from '../data/feature';
 import { IdDictionary } from '../data/identified';
 import { IMapImage } from '../data/image';
 import { IInvite } from '../data/invite';
@@ -307,8 +307,7 @@ async function tryConsolidateMapChanges(
   const tokenDict = new Tokens(getTokenGeometry(m.ty), new SimpleTokenDrawing());
   const outlineTokenDict = new Tokens(getTokenGeometry(m.ty), new SimpleTokenDrawing());
   const tracker = new SimpleChangeTracker(
-    new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString),
-    new FeatureDictionary<GridCoord, PlayerArea>(coordString),
+    new FeatureDictionary<GridCoord, StripedArea>(coordString),
     tokenDict,
     outlineTokenDict,
     new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString),

@@ -3,7 +3,7 @@ import { IAnnotation, defaultAnnotation } from '../data/annotation';
 import { Change, Changes, ChangeType, ChangeCategory, TokenAdd, TokenMove, TokenRemove, AreaAdd, AreaRemove, NoteAdd, NoteRemove, WallAdd, WallRemove, ImageAdd, ImageRemove, defaultChange } from '../data/change';
 import { ICharacter, maxCharacters } from '../data/character';
 import { GridCoord, defaultGridCoord, GridEdge, defaultGridEdge, coordString, defaultGridVertex } from '../data/coord';
-import { IToken, defaultToken, IFeature, defaultArea, defaultWall, IFeatureDictionary, IIdFeature, FeatureDictionary, parseTokenSize } from '../data/feature';
+import { IToken, defaultToken, IFeature, defaultArea, defaultWall, IFeatureDictionary, IIdFeature, FeatureDictionary, parseTokenSize, StripedArea } from '../data/feature';
 import { Anchor, defaultAnchor, defaultMapImage, IImage, IImages, IMapImage, NoAnchor, PixelAnchor, VertexAnchor } from '../data/image';
 import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
@@ -337,7 +337,7 @@ const annotationConverter = new RecursingConverter<IAnnotation>(defaultAnnotatio
   },
 });
 
-const areaConverter = new RecursingConverter<IFeature<GridCoord>>(defaultArea, {
+const areaConverter = new RecursingConverter<StripedArea>(defaultArea, {
   "position": (conv, raw) => {
     conv.position = gridCoordConverter.convert(raw);
     return conv;

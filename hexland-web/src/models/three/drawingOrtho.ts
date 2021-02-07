@@ -81,8 +81,7 @@ export class DrawingOrtho implements IDrawing {
   private readonly _gridFilter: GridFilter;
   private readonly _losFilter: LoSFilter;
   private readonly _textFilter: TextFilter;
-  private readonly _areas: Areas;
-  private readonly _playerAreas: StripedAreas;
+  private readonly _areas: StripedAreas;
   private readonly _highlightedAreas: Areas;
   private readonly _highlightedVertices: Vertices;
   private readonly _highlightedWalls: Walls;
@@ -169,6 +168,30 @@ export class DrawingOrtho implements IDrawing {
     this._renderer.autoClear = false;
     this._textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
 
+    const darkColourParameters = {
+      palette: colours.map(c => c.dark),
+      blending: THREE.AdditiveBlending,
+      transparent: true
+    };
+    const lightColourParameters = { palette: colours.map(c => c.light) };
+
+    const invalidSelectionColourParameters = {
+      palette: [new THREE.Color(0xa00000)]
+    };
+
+    // So that the alpha blending works correctly, we add things to the fixed filter
+    // in back-to-front order.
+    // Because the LoS can be added or removed after the fact it should always be the
+    // top thing in the fixed filter.  Therefore the correct order currently is
+    // - areas
+    // - grid
+    // - LoS
+    this._areas = new StripedAreas(
+      this._gridGeometry, this._needsRedraw, renderWidth, renderHeight,
+      { ...darkColourParameters, alpha: 0.5, patternSize: 20, z: playerAreaZ }
+    );
+    this._areas.addToScene(this._fixedFilterScene); // TODO #197 Fix the interaction with the map colour visualisation
+
     // Texture of face co-ordinates within the tile.
     this._grid = new Grid(
       this._gridGeometry,
@@ -181,23 +204,8 @@ export class DrawingOrtho implements IDrawing {
       renderHeight
     );
 
-    // So that the alpha blending works correctly, we add things to the fixed filter
-    // in back-to-front order.
-    // Because the LoS can be added or removed after the fact it should always be the
-    // top thing in the fixed filter
     this._gridFilter = new GridFilter(this._grid.faceCoordRenderTarget.texture, gridZ);
     this._gridFilter.addToScene(this._fixedFilterScene);
-
-    const darkColourParameters = {
-      palette: colours.map(c => c.dark),
-      blending: THREE.AdditiveBlending,
-      transparent: true
-    };
-    const lightColourParameters = { palette: colours.map(c => c.light) };
-
-    const invalidSelectionColourParameters = {
-      palette: [new THREE.Color(0xa00000)]
-    };
 
     // The LoS
     this._los = new LoS(
@@ -211,19 +219,6 @@ export class DrawingOrtho implements IDrawing {
       losTarget: this._los.target,
       tileOrigin: this._grid.tileOrigin
     };
-
-    // The filled areas
-    this._areas = createAreas(
-      this._gridGeometry, this._needsRedraw,
-      createPaletteColouredAreaObject(this._gridGeometry, areaAlpha, areaZ, darkColourParameters)
-    );
-    this._areas.addToScene(this._mapScene);
-
-    // The player areas
-    this._playerAreas = new StripedAreas(
-      this._gridGeometry, this._needsRedraw, renderWidth, renderHeight, this._fixedFilterScene,
-      { ...darkColourParameters, alpha: 0.5, patternSize: 40, z: playerAreaZ }
-    );
 
     // The highlighted areas
     // (TODO does this need to be a different feature set from the selection?)
@@ -386,7 +381,6 @@ export class DrawingOrtho implements IDrawing {
   }
 
   get areas() { return this._areas; }
-  get playerAreas() { return this._playerAreas; }
   get tokens() { return this._tokens; }
   get tokenTexts() { return this._tokens; }
   get outlineTokens() { return this._outlineTokens; }
@@ -444,7 +438,7 @@ export class DrawingOrtho implements IDrawing {
         this._losFilter.preRender(this._losParameters, this._losCamera);
       }
 
-      this._playerAreas.render(this._camera, this._renderer);
+      this._areas.render(this._camera, this._renderer);
       this._tokens.render(this._renderer, this._camera);
       this._textFilter.preRender(this._tokens.textTarget);
 
@@ -463,6 +457,7 @@ export class DrawingOrtho implements IDrawing {
       // main result (?)
       this._renderer.render(this._imageScene, this._camera);
       this._renderer.render(this._mapScene, this._camera);
+      this._renderer.render(this._fixedFilterScene, this._fixedCamera);
       this._renderer.render(this._filterScene, this._camera);
       if (
         this._outlineSelection.doRender ||
@@ -535,7 +530,7 @@ export class DrawingOrtho implements IDrawing {
 
     this._renderer.setSize(width, height, false);
     this._grid.resize(width, height);
-    this._playerAreas.resize(width, height);
+    this._areas.resize(width, height);
     this._tokens.resize(width, height);
     this._outlineTokens.resize(width, height);
     this._outlineSelection.resize(width, height);
@@ -664,7 +659,6 @@ export class DrawingOrtho implements IDrawing {
     this._losFilter.dispose();
     this._textFilter.dispose();
     this._areas.dispose();
-    this._playerAreas.dispose();
     this._walls.dispose();
     this._images.dispose();
     this._imageSelection.dispose();

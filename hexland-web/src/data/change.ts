@@ -1,6 +1,6 @@
 import { IAnnotation } from "./annotation";
 import { GridCoord, GridEdge } from "./coord";
-import { IFeature, IToken, PlayerArea } from "./feature";
+import { IFeature, IToken, StripedArea } from "./feature";
 import { IMapImage } from "./image";
 import { Timestamp } from './types';
 
@@ -17,7 +17,7 @@ export type Changes = {
 
 // This represents any change made to the map.
 export type Change =
-  AreaAdd | AreaRemove | PlayerAreaAdd | PlayerAreaRemove | TokenAdd | TokenMove | TokenRemove |
+  AreaAdd | AreaRemove | TokenAdd | TokenMove | TokenRemove |
   WallAdd | WallRemove | NoteAdd | NoteRemove | ImageAdd | ImageRemove | NoChange;
 
 export enum ChangeType {
@@ -33,30 +33,17 @@ export enum ChangeCategory {
   Wall = 3,
   Note = 4,
   Image = 5,
-  PlayerArea = 6
 }
 
 export type AreaAdd = {
   ty: ChangeType.Add;
   cat: ChangeCategory.Area;
-  feature: IFeature<GridCoord>;
+  feature: StripedArea;
 };
 
 export type AreaRemove = {
   ty: ChangeType.Remove;
   cat: ChangeCategory.Area;
-  position: GridCoord;
-};
-
-export type PlayerAreaAdd = {
-  ty: ChangeType.Add;
-  cat: ChangeCategory.PlayerArea;
-  feature: PlayerArea;
-};
-
-export type PlayerAreaRemove = {
-  ty: ChangeType.Remove;
-  cat: ChangeCategory.PlayerArea;
   position: GridCoord;
 };
 
@@ -124,7 +111,7 @@ export type NoChange = {
 
 export const defaultChange: NoChange = { ty: ChangeType.Add, cat: ChangeCategory.Undefined };
 
-export function createAreaAdd(feature: IFeature<GridCoord>): AreaAdd {
+export function createAreaAdd(feature: StripedArea): AreaAdd {
   return {
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
@@ -136,22 +123,6 @@ export function createAreaRemove(position: GridCoord): AreaRemove {
   return {
     ty: ChangeType.Remove,
     cat: ChangeCategory.Area,
-    position: position
-  };
-}
-
-export function createPlayerAreaAdd(feature: PlayerArea): PlayerAreaAdd {
-  return {
-    ty: ChangeType.Add,
-    cat: ChangeCategory.PlayerArea,
-    feature: feature
-  };
-}
-
-export function createPlayerAreaRemove(position: GridCoord): PlayerAreaRemove {
-  return {
-    ty: ChangeType.Remove,
-    cat: ChangeCategory.PlayerArea,
     position: position
   };
 }

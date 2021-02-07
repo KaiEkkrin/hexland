@@ -1,5 +1,5 @@
 import { coordString, GridCoord } from '../../data/coord';
-import { IFeature, IPlayerAreaDictionary, PlayerArea, Striped } from '../../data/feature';
+import { IFeature, IAreaDictionary, StripedArea, Striped } from '../../data/feature';
 import { IGridGeometry } from '../gridGeometry';
 import { RedrawFlag } from '../redrawFlag';
 import { createAreaGeometry } from './areas';
@@ -21,19 +21,22 @@ const instanceStripedShader = {
   },
   vertexShader: `
     attribute vec3 instanceColour;
+    attribute vec2 patternContrib;
+    varying vec2 vPatternContrib;
     varying vec3 vertexColour;
     void main() {
+      vPatternContrib = patternContrib;
       vertexColour = instanceColour;
       gl_Position = projectionMatrix * viewMatrix * instanceMatrix * vec4(position, 1.0);
     }
   `,
   fragmentShader: `
-    attribute vec2 patternContrib;
+    varying vec2 vPatternContrib;
     varying vec3 vertexColour;
     uniform float patternSize;
     void main() {
-      float pat = gl_FragCoord.x * patternContrib.x + gl_FragCoord.y * patternContrib.y;
-      gl_FragColor = fmod(pat, patternSize) < 0.0 ?
+      float pat = gl_FragCoord.x * vPatternContrib.x + gl_FragCoord.y * vPatternContrib.y;
+      gl_FragColor = mod(pat, patternSize) < patternSize * 0.5 ?
         vec4(vertexColour, 1.0) : vec4(0.0, 0.0, 0.0, 0.0);
     }
   `
@@ -74,17 +77,22 @@ export class PaletteStripedFeatureObject<K extends GridCoord, F extends IFeature
 
     // TODO #197 Will I need to multiply these by factors of the viewport resolution?
     switch (f.stripe) {
-      case 0: // horizontal
+      case 0: // none
+        this._patternContrib[2 * instanceIndex] = 0;
+        this._patternContrib[2 * instanceIndex + 1] = 0;
+        break;
+
+      case 1: // horizontal
         this._patternContrib[2 * instanceIndex] = 0;
         this._patternContrib[2 * instanceIndex + 1] = 1;
         break;
 
-      case 1: // diagonal A
+      case 2: // diagonal A
         this._patternContrib[2 * instanceIndex] = 1;
         this._patternContrib[2 * instanceIndex + 1] = 1;
         break;
 
-      case 2: // vertical
+      case 3: // vertical
         this._patternContrib[2 * instanceIndex] = 1;
         this._patternContrib[2 * instanceIndex + 1] = 0;
         break;
@@ -154,11 +162,11 @@ export class AreaFilter extends ShaderFilter {
 
 // This dictionary maintains a render target for the stripiness (above) and adds the
 // filter to the given scene.
-export class StripedAreas implements IPlayerAreaDictionary {
+export class StripedAreas implements IAreaDictionary {
   private readonly _clearColour = new THREE.Color(0, 0, 0);
 
   // The features go here
-  private readonly _features: InstancedFeatures<GridCoord, PlayerArea>;
+  private readonly _features: InstancedFeatures<GridCoord, StripedArea>;
 
   // We maintain our own scene for rendering into the texture
   private readonly _featureScene: THREE.Scene;
@@ -166,17 +174,17 @@ export class StripedAreas implements IPlayerAreaDictionary {
   private readonly _areaFilter: AreaFilter;
 
   private _doRender = false; // we set this to true if there's anything to show :)
+  private _filterScene: THREE.Scene | undefined = undefined;
 
   constructor(
     geometry: IGridGeometry,
     redrawFlag: RedrawFlag,
     renderWidth: number,
     renderHeight: number,
-    scene: THREE.Scene,
     stripedParameters: IStripedParameters,
     maxInstances?: number | undefined
   ) {
-    this._features = new InstancedFeatures<GridCoord, PlayerArea>(
+    this._features = new InstancedFeatures<GridCoord, StripedArea>(
       geometry,
       redrawFlag,
       coordString,
@@ -201,7 +209,26 @@ export class StripedAreas implements IPlayerAreaDictionary {
     this._features.addToScene(this._featureScene);
 
     this._areaFilter = new AreaFilter(stripedParameters.z, stripedParameters.alpha);
-    this._areaFilter.addToScene(scene);
+  }
+
+  addToScene(scene: THREE.Scene): boolean {
+    if (this._filterScene === undefined) {
+      this._areaFilter.addToScene(scene);
+      this._filterScene = scene;
+      return true;
+    }
+
+    return false;
+  }
+
+  removeFromScene(): boolean {
+    if (this._filterScene !== undefined) {
+      this._areaFilter.removeFromScene(this._filterScene);
+      this._filterScene = undefined;
+      return true;
+    }
+
+    return false;
   }
 
   // Renders the areas to the texture (if need be.)
@@ -267,6 +294,7 @@ export class StripedAreas implements IPlayerAreaDictionary {
   }
 
   dispose() {
+    this.removeFromScene();
     this._areaFilter.dispose();
     this._features.dispose();
     this._featureScene.dispose();

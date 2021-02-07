@@ -1,7 +1,7 @@
 import { Change, ChangeType, ChangeCategory, TokenMove, TokenRemove, createTokenAdd, createWallAdd, createTokenMove, createWallRemove, createImageAdd, createImageRemove } from './change';
 import { trackChanges, SimpleChangeTracker } from './changeTracking';
 import { GridCoord, coordString, edgeString, GridEdge } from './coord';
-import { defaultTokenProperties, FeatureDictionary, IFeature, PlayerArea, TokenSize } from './feature';
+import { defaultTokenProperties, FeatureDictionary, IFeature, StripedArea, TokenSize } from './feature';
 import { IMap, MapType } from './map';
 import { IAnnotation } from './annotation';
 import { IdDictionary } from './identified';
@@ -12,8 +12,7 @@ import { SimpleTokenDrawing, Tokens } from './tokens';
 
 function createChangeTracker(ty: MapType, userPolicy?: IUserPolicy | undefined) {
   return new SimpleChangeTracker(
-    new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString),
-    new FeatureDictionary<GridCoord, PlayerArea>(coordString),
+    new FeatureDictionary<GridCoord, StripedArea>(coordString),
     new Tokens(getTokenGeometry(ty), new SimpleTokenDrawing()),
     new Tokens(getTokenGeometry(ty), new SimpleTokenDrawing()),
     new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString),
@@ -46,7 +45,8 @@ test('One area can be added and removed', () => {
     cat: ChangeCategory.Area,
     feature: {
       position: { x: 1, y: 2 },
-      colour: 3
+      colour: 3,
+      stripe: 0
     }
   }];
 
@@ -77,21 +77,24 @@ test('Multiple areas can be added and removed', () => {
     cat: ChangeCategory.Area,
     feature: {
       position: { x: 1, y: 2 },
-      colour: 1
+      colour: 1,
+      stripe: 0
     }
   }, {
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
     feature: {
       position: { x: 1, y: 4 },
-      colour: 2
+      colour: 2,
+      stripe: 0
     }
   }, {
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
     feature: {
       position: { x: 2, y: 4 },
-      colour: 3
+      colour: 3,
+      stripe: 0
     }
   }];
 
@@ -122,7 +125,8 @@ test('Areas cannot be added on top of each other', () => {
     cat: ChangeCategory.Area,
     feature: {
       position: { x: 1, y: 2 },
-      colour: 3
+      colour: 3,
+      stripe: 0
     }
   }];
 
@@ -135,14 +139,16 @@ test('Areas cannot be added on top of each other', () => {
     cat: ChangeCategory.Area,
     feature: {
       position: { x: 0, y: 2 },
-      colour: 3
+      colour: 3,
+      stripe: 0
     }
   }, {
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
     feature: {
       position: { x: 1, y: 2 },
-      colour: 4
+      colour: 4,
+      stripe: 0
     }
   }];
 
@@ -181,21 +187,24 @@ test('A double-remove area operation is also cancelled', () => {
     cat: ChangeCategory.Area,
     feature: {
       position: { x: 1, y: 2 },
-      colour: 1
+      colour: 1,
+      stripe: 0
     }
   }, {
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
     feature: {
       position: { x: 1, y: 4 },
-      colour: 2
+      colour: 2,
+      stripe: 0
     }
   }, {
     ty: ChangeType.Add,
     cat: ChangeCategory.Area,
     feature: {
       position: { x: 2, y: 4 },
-      colour: 3
+      colour: 3,
+      stripe: 0
     }
   }];
 
@@ -1158,7 +1167,8 @@ test('A non-owner cannot add and remove areas', () => {
     cat: ChangeCategory.Area,
     feature: {
       position: { x: 1, y: 2 },
-      colour: 3
+      colour: 3,
+      stripe: 0
     }
   }];
 
@@ -1182,6 +1192,50 @@ test('A non-owner cannot add and remove areas', () => {
 
   // ...but not twice
   ok = trackChanges(map, tracker, chs2, ownerUid);
+  expect(ok).toBeFalsy();
+});
+
+test('A non-owner *can* add and remove areas with stripe > 0', () => {
+  // TODO #197 Test multiple stripings across the same area (requires me to
+  // move the stripe into the key)
+  let map = createTestMap(false);
+  let tracker = createChangeTracker(map.ty);
+  let chs: Change[] = [{
+    ty: ChangeType.Add,
+    cat: ChangeCategory.Area,
+    feature: {
+      position: { x: 1, y: 2 },
+      colour: 3,
+      stripe: 1
+    }
+  }, {
+    ty: ChangeType.Add,
+    cat: ChangeCategory.Area,
+    feature: {
+      position: { x: 2, y: 2 },
+      colour: 3,
+      stripe: 2
+    }
+  }];
+
+  let ok = trackChanges(map, tracker, chs, uid1);
+  expect(ok).toBeTruthy();
+
+  let chs2: Change[] = [{
+    ty: ChangeType.Remove,
+    cat: ChangeCategory.Area,
+    position: { x: 1, y: 2 }
+  }, {
+    ty: ChangeType.Remove,
+    cat: ChangeCategory.Area,
+    position: { x: 2, y: 2 }
+  }];
+
+  ok = trackChanges(map, tracker, chs2, uid1);
+  expect(ok).toBeTruthy();
+
+  // ...but not twice
+  ok = trackChanges(map, tracker, chs2, uid1);
   expect(ok).toBeFalsy();
 });
 
@@ -1392,7 +1446,8 @@ test('In FFA mode, a non-owner can create areas', () => {
     cat: ChangeCategory.Area,
     feature: {
       position: { x: 1, y: 2 },
-      colour: 3
+      colour: 3,
+      stripe: 0
     }
   }];
 
@@ -1554,7 +1609,8 @@ test('Policy blocks us from adding too many objects', () => {
     cat: ChangeCategory.Area,
     feature: {
       position: { x: 0, y: 0 },
-      colour: 2
+      colour: 2,
+      stripe: 0
     }
   }, {
     ty: ChangeType.Add,

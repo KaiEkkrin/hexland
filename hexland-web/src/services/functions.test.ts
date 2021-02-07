@@ -8,7 +8,7 @@ import { IAnnotation } from '../data/annotation';
 import { ChangeCategory, ChangeType, Changes, TokenAdd, TokenMove, WallAdd } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
 import { coordString, edgeString, GridCoord, GridEdge } from '../data/coord';
-import { FeatureDictionary, IFeature, PlayerArea } from '../data/feature';
+import { FeatureDictionary, IFeature, StripedArea } from '../data/feature';
 import { IMap, MapType } from '../data/map';
 import * as Policy from '../data/policy';
 import { getTokenGeometry } from '../data/tokenGeometry';
@@ -742,8 +742,7 @@ describe('test functions', () => {
     const tokens = new Tokens(getTokenGeometry(MapType.Square), new SimpleTokenDrawing());
     const outlineTokens = new Tokens(getTokenGeometry(MapType.Square), new SimpleTokenDrawing());
     const changeTracker = new SimpleChangeTracker(
-      new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString),
-      new FeatureDictionary<GridCoord, PlayerArea>(coordString),
+      new FeatureDictionary<GridCoord, StripedArea>(coordString),
       tokens,
       outlineTokens,
       new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString),

@@ -1,7 +1,7 @@
 import { IAnnotation } from "./annotation";
-import { Change, ChangeCategory, ChangeType, AreaAdd, AreaRemove, TokenAdd, WallAdd, WallRemove, TokenRemove, TokenMove, NoteAdd, NoteRemove, createAreaAdd, createWallAdd, createNoteAdd, createTokenAdd, ImageAdd, ImageRemove, createImageAdd, createPlayerAreaAdd, PlayerAreaAdd, PlayerAreaRemove } from "./change";
+import { Change, ChangeCategory, ChangeType, AreaAdd, AreaRemove, TokenAdd, WallAdd, WallRemove, TokenRemove, TokenMove, NoteAdd, NoteRemove, createAreaAdd, createWallAdd, createNoteAdd, createTokenAdd, ImageAdd, ImageRemove, createImageAdd } from "./change";
 import { GridCoord, GridEdge } from "./coord";
-import { IFeature, IToken, IFeatureDictionary, ITokenDictionary, IPlayerAreaDictionary, PlayerArea } from "./feature";
+import { IFeature, IToken, IFeatureDictionary, ITokenDictionary, IAreaDictionary, StripedArea } from "./feature";
 import { IMapImage } from "./image";
 import { IMap } from "./map";
 import { IUserPolicy } from "./policy";
@@ -13,10 +13,8 @@ import { IIdDictionary } from "./identified";
 export interface IChangeTracker {
   objectCount: number;
 
-  areaAdd: (feature: IFeature<GridCoord>) => boolean;
-  areaRemove: (position: GridCoord) => IFeature<GridCoord> | undefined;
-  playerAreaAdd: (feature: PlayerArea) => boolean;
-  playerAreaRemove: (position: GridCoord) => PlayerArea | undefined;
+  areaAdd: (feature: StripedArea) => boolean;
+  areaRemove: (position: GridCoord) => StripedArea | undefined;
   tokenAdd: (map: IMap, user: string, feature: IToken, oldPosition: GridCoord | undefined) => boolean;
   tokenRemove: (map: IMap, user: string, position: GridCoord, tokenId: string | undefined) => IToken | undefined;
   wallAdd: (feature: IFeature<GridEdge>) => boolean;
@@ -38,8 +36,7 @@ export interface IChangeTracker {
 
 // A simple implementation for testing, etc.
 export class SimpleChangeTracker implements IChangeTracker {
-  private readonly _areas: IFeatureDictionary<GridCoord, IFeature<GridCoord>>;
-  private readonly _playerAreas: IPlayerAreaDictionary;
+  private readonly _areas: IAreaDictionary;
   private readonly _tokens: ITokenDictionary;
   private readonly _outlineTokens: ITokenDictionary;
   private readonly _walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>;
@@ -50,8 +47,7 @@ export class SimpleChangeTracker implements IChangeTracker {
   private _objectCount = 0;
 
   constructor(
-    areas: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
-    playerAreas: IPlayerAreaDictionary,
+    areas: IAreaDictionary,
     tokens: ITokenDictionary,
     outlineTokens: ITokenDictionary,
     walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
@@ -60,7 +56,6 @@ export class SimpleChangeTracker implements IChangeTracker {
     userPolicy: IUserPolicy | undefined
   ) {
     this._areas = areas;
-    this._playerAreas = playerAreas;
     this._tokens = tokens;
     this._outlineTokens = outlineTokens;
     this._walls = walls;
@@ -97,7 +92,7 @@ export class SimpleChangeTracker implements IChangeTracker {
 
   get objectCount() { return this._objectCount; }
 
-  areaAdd(feature: IFeature<GridCoord>) {
+  areaAdd(feature: StripedArea) {
     return this.policyAdd(() => this._areas.add(feature), () => this._areas.remove(feature.position));
   }
 
@@ -105,17 +100,8 @@ export class SimpleChangeTracker implements IChangeTracker {
     return this.policyRemove(() => this._areas.remove(position));
   }
 
-  playerAreaAdd(feature: PlayerArea) {
-    return this.policyAdd(() => this._playerAreas.add(feature), () => this._playerAreas.remove(feature.position));
-  }
-
-  playerAreaRemove(position: GridCoord) {
-    return this.policyRemove(() => this._playerAreas.remove(position));
-  }
-
   clear() {
     this._areas.clear();
-    this._playerAreas.clear();
     this._tokens.clear();
     this._outlineTokens.clear();
     this._walls.clear();
@@ -215,7 +201,6 @@ export class SimpleChangeTracker implements IChangeTracker {
     };
 
     this._areas.forEach(f => all.push(createAreaAdd(f)));
-    this._playerAreas.forEach(f => all.push(createPlayerAreaAdd(f)));
     this._tokens.forEach(pushTokenAdd);
     this._outlineTokens.forEach(pushTokenAdd);
     this._walls.forEach(f => all.push(createWallAdd(f)));
@@ -314,8 +299,7 @@ function canDoAnything(map: IMap, user: string) {
 // I want to quickly detect any out-of-sync situations...)
 function trackChange(map: IMap, tracker: IChangeTracker, ch: Change, user: string): IChangeApplication | undefined {
   switch (ch.cat) {
-    case ChangeCategory.Area: return canDoAnything(map, user) ? trackAreaChange(tracker, ch) : undefined;
-    case ChangeCategory.PlayerArea: return trackPlayerAreaChange(tracker, ch);
+    case ChangeCategory.Area: return trackAreaChange(map, tracker, ch, user);
     case ChangeCategory.Token: return trackTokenChange(map, tracker, ch, user);
     case ChangeCategory.Wall: return canDoAnything(map, user) ? trackWallChange(tracker, ch) : undefined;
     case ChangeCategory.Note: return canDoAnything(map, user) ? trackNoteChange(tracker, ch) : undefined;
@@ -324,10 +308,15 @@ function trackChange(map: IMap, tracker: IChangeTracker, ch: Change, user: strin
   }
 }
 
-function trackAreaChange(tracker: IChangeTracker, ch: AreaAdd | AreaRemove): IChangeApplication | undefined {
+function trackAreaChange(map: IMap, tracker: IChangeTracker, ch: AreaAdd | AreaRemove, user: string): IChangeApplication | undefined {
+  const canChangeThisArea = (a: StripedArea) => {
+    // Area 0 is reserved for map owners:
+    return a.stripe > 0 || canDoAnything(map, user);
+  };
+
   switch (ch.ty) {
     case ChangeType.Add:
-      return {
+      return canChangeThisArea(ch.feature) ? {
         revert: () => undefined,
         continue: function () {
           const added = tracker.areaAdd(ch.feature);
@@ -337,44 +326,25 @@ function trackAreaChange(tracker: IChangeTracker, ch: AreaAdd | AreaRemove): ICh
             }
           } : undefined;
         }
-      };
+      } : undefined;
 
     case ChangeType.Remove:
       const removed = tracker.areaRemove(ch.position);
-      return removed === undefined ? undefined : {
+      if (removed === undefined) {
+        return undefined;
+      }
+
+      if (!canChangeThisArea(removed)) {
+        tracker.areaAdd(removed);
+        return undefined;
+      }
+
+      return {
         revert: function () {
           if (removed !== undefined) { tracker.areaAdd(removed); }
         },
         continue: function () { return doNothing; }
-      }
-
-    default: return undefined;
-  }
-}
-
-function trackPlayerAreaChange(tracker: IChangeTracker, ch: PlayerAreaAdd | PlayerAreaRemove): IChangeApplication | undefined {
-  switch (ch.ty) {
-    case ChangeType.Add:
-      return {
-        revert: () => undefined,
-        continue: function () {
-          const added = tracker.playerAreaAdd(ch.feature);
-          return added ? {
-            revert: function () {
-              tracker.playerAreaRemove(ch.feature.position);
-            }
-          } : undefined;
-        }
       };
-
-    case ChangeType.Remove:
-      const removed = tracker.playerAreaRemove(ch.position);
-      return removed === undefined ? undefined : {
-        revert: function () {
-          if (removed !== undefined) { tracker.playerAreaAdd(removed); }
-        },
-        continue: function () { return doNothing; }
-      }
 
     default: return undefined;
   }

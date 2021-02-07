@@ -202,8 +202,9 @@ export class FaceHighlighter extends DragHighlighter<GridCoord, IFeature<GridCoo
     return a === undefined ? "undefined" : coordString(a);
   }
 
+  // TODO #197 Use the selected stripe.
   protected createFeatureAdd(position: GridCoord, colour: number): AreaAdd {
-    return createAreaAdd({ position: position, colour: colour });
+    return createAreaAdd({ position: position, colour: colour, stripe: 4 });
   }
 
   protected createFeatureRemove(position: GridCoord): AreaRemove {
