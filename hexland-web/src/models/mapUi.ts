@@ -29,6 +29,7 @@ export type MapUiState = {
   isDraggingView: boolean;
   keysDown: KeysDown;
   selectedColour: number;
+  selectedStripe: number;
 
   showContextMenu: boolean;
   contextMenuX: number;
@@ -69,6 +70,7 @@ export function createDefaultUiState(): MapUiState {
     isDraggingView: false,
     keysDown: {},
     selectedColour: 0,
+    selectedStripe: 1, // TODO #197 make it default to 0 if you're the map owner
     showContextMenu: false,
     contextMenuX: 0,
     contextMenuY: 0,
@@ -186,6 +188,7 @@ export class MapUi {
           break;
 
         case EditMode.Area:
+          // TODO #197 Pass the selected stripe into this (the drag highlighter will need extendable parameters)
           changes = this._stateMachine?.faceDragEnd(cp, this._state.selectedColour);
           break;
 
@@ -637,6 +640,12 @@ export class MapUi {
   setSelectedColour(colour: number) {
     if (colour !== this._state.selectedColour) {
       this.changeState({ ...this._state, selectedColour: colour });
+    }
+  }
+
+  setSelectedStripe(stripe: number) {
+    if (stripe !== this._state.selectedStripe) {
+      this.changeState({ ...this._state, selectedStripe: stripe });
     }
   }
 

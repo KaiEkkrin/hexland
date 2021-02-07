@@ -168,11 +168,7 @@ export class DrawingOrtho implements IDrawing {
     this._renderer.autoClear = false;
     this._textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
 
-    const darkColourParameters = {
-      palette: colours.map(c => c.dark),
-      blending: THREE.AdditiveBlending,
-      transparent: true
-    };
+    const darkColourParameters = { palette: colours.map(c => c.dark) };
     const lightColourParameters = { palette: colours.map(c => c.light) };
 
     const invalidSelectionColourParameters = {
@@ -188,7 +184,7 @@ export class DrawingOrtho implements IDrawing {
     // - LoS
     this._areas = new StripedAreas(
       this._gridGeometry, this._needsRedraw, renderWidth, renderHeight,
-      { ...darkColourParameters, alpha: 0.5, patternSize: 20, z: playerAreaZ }
+      { ...darkColourParameters, alpha: 0.5, patternSize: 10, z: playerAreaZ }
     );
     this._areas.addToScene(this._fixedFilterScene); // TODO #197 Fix the interaction with the map colour visualisation
 

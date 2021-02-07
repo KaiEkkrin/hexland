@@ -11,7 +11,7 @@ import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import ToggleButton from 'react-bootstrap/ToggleButton';
 import Tooltip from 'react-bootstrap/Tooltip';
 
-import { faDotCircle, faDrawPolygon, faMousePointer, faPlus, faSquare, IconDefinition, faCog, faSuitcase, faMapMarker, faVectorSquare, faSearchPlus, faSearchMinus, faUser, faImage, faImages, faCubes } from '@fortawesome/free-solid-svg-icons';
+import { faDotCircle, faDrawPolygon, faMousePointer, faPlus, faSquare, faCog, faSuitcase, faMapMarker, faVectorSquare, faSearchPlus, faSearchMinus, faUser, faImage, faImages, faCubes } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 export enum EditMode {
@@ -33,24 +33,34 @@ export enum MapColourVisualisationMode {
 // We make the children the tooltip contents, to allow for convenient formatting
 interface IModeButtonProps<T> {
   value: T; // the value of this button
-  icon: IconDefinition;
+  icon: React.ReactNode;
   children: React.ReactNode;
   mode: T; // the currently selected mode
   setMode(value: T): void;
 }
 
-function ModeButton<T>(props: IModeButtonProps<T>) {
+function ModeButton<T>({ value, icon, children, mode, setMode }: IModeButtonProps<T>) {
   return (
     <OverlayTrigger placement="right" overlay={
-      <Tooltip id={props.value + "-tooltip"}>{props.children}</Tooltip>
+      <Tooltip id={value + "-tooltip"}>{children}</Tooltip>
     }>
-      <ToggleButton type="radio" variant="dark" value={props.value}
-        checked={props.mode === props.value}
-        onChange={e => props.setMode(props.value)}>
-        <FontAwesomeIcon icon={props.icon} color="white" />
+      <ToggleButton type="radio" variant="dark" value={value}
+        checked={mode === value}
+        onChange={e => setMode(value)}>
+        {icon}
       </ToggleButton>
     </OverlayTrigger>
   );
+}
+
+function AreaIcon({ colour, stripe }: { colour: 'black' | 'white', stripe: number }) {
+  if (stripe === 0) {
+    return (<FontAwesomeIcon icon={faSquare} color={colour} />);
+  } else {
+    return (<svg width="16" height="16" viewBox="0 0 16 16">
+      <image xlinkHref={`/square_${stripe}_${colour}.svg`} height="16px" width="16px" />
+    </svg>);
+  }
 }
 
 interface IMapControlsProps {
@@ -60,6 +70,8 @@ interface IMapControlsProps {
   setEditMode(value: EditMode): void;
   selectedColour: number;
   setSelectedColour(value: number): void;
+  selectedStripe: number;
+  setSelectedStripe(value: number): void;
 
   zoomInDisabled: boolean;
   zoomOutDisabled: boolean;
@@ -75,17 +87,23 @@ interface IMapControlsProps {
   setShowAnnotationFlags(flags: ShowAnnotationFlags): void;
 }
 
-function MapControls(props: IMapControlsProps) {
+function MapControls({
+  layer, setLayer, editMode, setEditMode, selectedColour, setSelectedColour, selectedStripe, setSelectedStripe,
+  zoomInDisabled, zoomOutDisabled, zoomIn, zoomOut, resetView,
+  mapColourVisualisationMode, setMapColourVisualisationMode, canDoAnything, isOwner, openMapEditor, setShowAnnotationFlags
+}: IMapControlsProps) {
   const layerButtons = useMemo(() => {
-    if (props.canDoAnything) {
+    if (canDoAnything) {
       return [
-        <ModeButton key={Layer.Image} value={Layer.Image} icon={faImages}
-          mode={props.layer} setMode={props.setLayer}
+        <ModeButton key={Layer.Image} value={Layer.Image}
+          icon={<FontAwesomeIcon icon={faImages} color="white" />}
+          mode={layer} setMode={setLayer}
         >
           Image layer
         </ModeButton>,
-        <ModeButton key={Layer.Object} value={Layer.Object} icon={faCubes}
-          mode={props.layer} setMode={props.setLayer}
+        <ModeButton key={Layer.Object} value={Layer.Object}
+          icon={<FontAwesomeIcon icon={faCubes} color="white" />}
+          mode={layer} setMode={setLayer}
         >
           Object layer
         </ModeButton>
@@ -93,55 +111,63 @@ function MapControls(props: IMapControlsProps) {
     } else {
       return [];
     }
-  }, [props.canDoAnything, props.layer, props.setLayer]);
+  }, [canDoAnything, layer, setLayer]);
 
   const modeButtons = useMemo(() => {
     const buttons = [
-      <ModeButton key={EditMode.Select} value={EditMode.Select} icon={faMousePointer}
-        mode={props.editMode} setMode={props.setEditMode}
+      <ModeButton key={EditMode.Select} value={EditMode.Select}
+        icon={<FontAwesomeIcon icon={faMousePointer} color="white" />}
+        mode={editMode} setMode={setEditMode}
       >
         <u>S</u>elect and move tokens
       </ModeButton>
     ];
 
-    if (props.canDoAnything) {
-      if (props.layer === Layer.Image) {
+    if (canDoAnything) {
+      if (layer === Layer.Image) {
         buttons.push(
-          <ModeButton key={EditMode.Image} value={EditMode.Image} icon={faImage}
-            mode={props.editMode} setMode={props.setEditMode}
+          <ModeButton key={EditMode.Image} value={EditMode.Image}
+            icon={<FontAwesomeIcon icon={faImage} color="white" />}
+            mode={editMode} setMode={setEditMode}
           >
             Add and edit <u>i</u>mages
         </ModeButton>
         );
       } else {
         buttons.push(...[
-          <ModeButton key={EditMode.Token} value={EditMode.Token} icon={faPlus}
-            mode={props.editMode} setMode={props.setEditMode}
+          <ModeButton key={EditMode.Token} value={EditMode.Token}
+            icon={<FontAwesomeIcon icon={faPlus} color="white" />}
+            mode={editMode} setMode={setEditMode}
           >
             Add and edit <u>t</u>okens
         </ModeButton>,
-          <ModeButton key={EditMode.CharacterToken} value={EditMode.CharacterToken} icon={faUser}
-            mode={props.editMode} setMode={props.setEditMode}
+          <ModeButton key={EditMode.CharacterToken} value={EditMode.CharacterToken}
+            icon={<FontAwesomeIcon icon={faUser} color="white" />}
+            mode={editMode} setMode={setEditMode}
           >
             Add and edit <u>c</u>haracter tokens
         </ModeButton>,
-          <ModeButton key={EditMode.Notes} value={EditMode.Notes} icon={faMapMarker}
-            mode={props.editMode} setMode={props.setEditMode}
+          <ModeButton key={EditMode.Notes} value={EditMode.Notes}
+            icon={<FontAwesomeIcon icon={faMapMarker} color="white" />}
+            mode={editMode} setMode={setEditMode}
           >
             Add and edit map <u>n</u>otes
         </ModeButton>,
-          <ModeButton key={EditMode.Area} value={EditMode.Area} icon={faSquare}
-            mode={props.editMode} setMode={props.setEditMode}
+          <ModeButton key={EditMode.Area} value={EditMode.Area}
+            icon={<AreaIcon colour="white" stripe={selectedStripe} />}
+            mode={editMode} setMode={setEditMode}
           >
             Paint <u>a</u>reas.  Shift-drag to paint rectangular areas.
         </ModeButton>,
-          <ModeButton key={EditMode.Wall} value={EditMode.Wall} icon={faDrawPolygon}
-            mode={props.editMode} setMode={props.setEditMode}
+          <ModeButton key={EditMode.Wall} value={EditMode.Wall}
+            icon={<FontAwesomeIcon icon={faDrawPolygon} color="white" />}
+            mode={editMode} setMode={setEditMode}
           >
             Paint <u>w</u>alls.  Shift-drag to paint rectangles of walls.
         </ModeButton>,
-          <ModeButton key={EditMode.Room} value={EditMode.Room} icon={faVectorSquare}
-            mode={props.editMode} setMode={props.setEditMode}
+          <ModeButton key={EditMode.Room} value={EditMode.Room}
+            icon={<FontAwesomeIcon icon={faVectorSquare} color="white" />}
+            mode={editMode} setMode={setEditMode}
           >
             Paint the union of <u>r</u>ooms.  Shift-drag to paint the difference of rooms.
         </ModeButton>,
@@ -150,12 +176,19 @@ function MapControls(props: IMapControlsProps) {
     }
 
     return buttons;
-  }, [props.canDoAnything, props.editMode, props.layer, props.setEditMode]);
+  }, [canDoAnything, editMode, layer, selectedStripe, setEditMode]);
 
-  const hideExtraControls = useMemo(() => !props.canDoAnything, [props.canDoAnything]);
-  const isNotOwner = useMemo(() => !props.isOwner, [props.isOwner]);
+  const stripeMenuItems = useMemo(
+    () => (canDoAnything ? [0, 1, 2, 3, 4] : [1, 2, 3, 4]).map(s => (
+      <Dropdown.Item onClick={() => setSelectedStripe(s)}>
+        <AreaIcon colour="black" stripe={s} />
+      </Dropdown.Item>
+    )),
+    [canDoAnything, setSelectedStripe]
+  );
 
-  const { resetView } = props;
+  const hideExtraControls = useMemo(() => !canDoAnything, [canDoAnything]);
+  const isNotOwner = useMemo(() => !isOwner, [isOwner]);
   const handleResetView = useCallback(() => resetView(), [resetView]);
 
   return (
@@ -166,14 +199,14 @@ function MapControls(props: IMapControlsProps) {
         <OverlayTrigger placement="right" overlay={
           <Tooltip id="zoomin-tooltip">Zoom in</Tooltip>
         }>
-          <Button variant="dark" onClick={props.zoomIn} disabled={props.zoomInDisabled}>
+          <Button variant="dark" onClick={zoomIn} disabled={zoomInDisabled}>
             <FontAwesomeIcon icon={faSearchPlus} color="white" />
           </Button>
         </OverlayTrigger>
         <OverlayTrigger placement="right" overlay={
           <Tooltip id="zoomin-tooltip">Zoom out</Tooltip>
         }>
-          <Button variant="dark" onClick={props.zoomOut} disabled={props.zoomOutDisabled}>
+          <Button variant="dark" onClick={zoomOut} disabled={zoomOutDisabled}>
             <FontAwesomeIcon icon={faSearchMinus} color="white" />
           </Button>
         </OverlayTrigger>
@@ -189,10 +222,18 @@ function MapControls(props: IMapControlsProps) {
             <FontAwesomeIcon icon={faMapMarker} color="white" />
           </Dropdown.Toggle>
           <Dropdown.Menu>
-          <Dropdown.Item onClick={() => props.setShowAnnotationFlags(ShowAnnotationFlags.None)}>No notes visible</Dropdown.Item>
-          <Dropdown.Item onClick={() => props.setShowAnnotationFlags(ShowAnnotationFlags.MapNotes)}>Map notes only</Dropdown.Item>
-          <Dropdown.Item onClick={() => props.setShowAnnotationFlags(ShowAnnotationFlags.TokenNotes)}>Token notes only</Dropdown.Item>
-          <Dropdown.Item onClick={() => props.setShowAnnotationFlags(ShowAnnotationFlags.All)}>All notes visible</Dropdown.Item>
+            <Dropdown.Item onClick={() => setShowAnnotationFlags(ShowAnnotationFlags.None)}>No notes visible</Dropdown.Item>
+            <Dropdown.Item onClick={() => setShowAnnotationFlags(ShowAnnotationFlags.MapNotes)}>Map notes only</Dropdown.Item>
+            <Dropdown.Item onClick={() => setShowAnnotationFlags(ShowAnnotationFlags.TokenNotes)}>Token notes only</Dropdown.Item>
+            <Dropdown.Item onClick={() => setShowAnnotationFlags(ShowAnnotationFlags.All)}>All notes visible</Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown>
+        <Dropdown as={ButtonGroup} drop="right">
+          <Dropdown.Toggle variant="dark">
+            <AreaIcon colour="white" stripe={selectedStripe} />
+          </Dropdown.Toggle>
+          <Dropdown.Menu>
+            {stripeMenuItems}
           </Dropdown.Menu>
         </Dropdown>
       </ButtonGroup>
@@ -200,21 +241,23 @@ function MapControls(props: IMapControlsProps) {
         hidden={hideExtraControls}
         includeNegative={true}
         isVertical={true}
-        selectedColour={props.selectedColour}
-        setSelectedColour={props.setSelectedColour} />
+        selectedColour={selectedColour}
+        setSelectedColour={setSelectedColour} />
       <ButtonGroup className="Map-control" hidden={hideExtraControls} toggle vertical>
-        <ModeButton value={MapColourVisualisationMode.Areas} icon={faSquare}
-          mode={props.mapColourVisualisationMode} setMode={props.setMapColourVisualisationMode}
+        <ModeButton value={MapColourVisualisationMode.Areas}
+          icon={<FontAwesomeIcon icon={faSquare} color="white" />}
+          mode={mapColourVisualisationMode} setMode={setMapColourVisualisationMode}
         >Show painted area colours</ModeButton>
-        <ModeButton value={MapColourVisualisationMode.Connectivity} icon={faSuitcase}
-          mode={props.mapColourVisualisationMode} setMode={props.setMapColourVisualisationMode}
+        <ModeButton value={MapColourVisualisationMode.Connectivity}
+          icon={<FontAwesomeIcon icon={faSuitcase} color="white" />}
+          mode={mapColourVisualisationMode} setMode={setMapColourVisualisationMode}
         >Show each room in a different colour</ModeButton>
       </ButtonGroup>
       <ButtonGroup className="Map-control" hidden={isNotOwner} vertical>
         <OverlayTrigger placement="right" overlay={
           <Tooltip id="map-editor-tooltip">Open map settings</Tooltip>
         }>
-          <Button variant="dark" onClick={() => props.openMapEditor()}>
+          <Button variant="dark" onClick={() => openMapEditor()}>
             <FontAwesomeIcon icon={faCog} color="white" />
           </Button>
         </OverlayTrigger>

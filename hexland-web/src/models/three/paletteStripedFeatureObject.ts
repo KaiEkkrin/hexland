@@ -11,18 +11,13 @@ import fluent from 'fluent-iterable';
 import * as THREE from 'three';
 
 // This is like the paletteColouredFeatureObject but implements a stripey pattern.
-// To stack correctly with other things (especially other areas) the striped feature
-// objects should be rendered to a texture which is then painted on translucently
-// after the areas have been done...
-
+// `patternContrib` is made up of (x component, y component, size).
 const instanceStripedShader = {
-  uniforms: {
-    "patternSize": { type: 'f', value: null }
-  },
+  uniforms: {},
   vertexShader: `
     attribute vec3 instanceColour;
-    attribute vec2 patternContrib;
-    varying vec2 vPatternContrib;
+    attribute vec3 patternContrib;
+    varying vec3 vPatternContrib;
     varying vec3 vertexColour;
     void main() {
       vPatternContrib = patternContrib;
@@ -31,12 +26,11 @@ const instanceStripedShader = {
     }
   `,
   fragmentShader: `
-    varying vec2 vPatternContrib;
+    varying vec3 vPatternContrib;
     varying vec3 vertexColour;
-    uniform float patternSize;
     void main() {
       float pat = gl_FragCoord.x * vPatternContrib.x + gl_FragCoord.y * vPatternContrib.y;
-      gl_FragColor = mod(pat, patternSize) < patternSize * 0.5 ?
+      gl_FragColor = mod(pat, 2.0 * vPatternContrib.z) < vPatternContrib.z ?
         vec4(vertexColour, 1.0) : vec4(0.0, 0.0, 0.0, 0.0);
     }
   `
@@ -51,6 +45,7 @@ export interface IStripedParameters extends IColourParameters {
 export class PaletteStripedFeatureObject<K extends GridCoord, F extends IFeature<K> & Striped> extends PaletteColouredFeatureObject<K, F> {
   private readonly _patternContrib: Float32Array;
   private readonly _patternContribAttr: THREE.InstancedBufferAttribute;
+  private readonly _patternSizeBase: number;
 
   constructor(
     toIndex: (k: K) => string,
@@ -61,12 +56,11 @@ export class PaletteStripedFeatureObject<K extends GridCoord, F extends IFeature
   ) {
     super(toIndex, transformTo, maxInstances, createGeometry, stripedParameters, instanceStripedShader);
     
-    this._patternContrib = new Float32Array(maxInstances * 2);
-    this._patternContribAttr = new THREE.InstancedBufferAttribute(this._patternContrib, 2);
+    this._patternContrib = new Float32Array(maxInstances * 3);
+    this._patternContribAttr = new THREE.InstancedBufferAttribute(this._patternContrib, 3);
     this._patternContribAttr.setUsage(THREE.DynamicDrawUsage);
     this.geometry.setAttribute('patternContrib', this._patternContribAttr);
-
-    this.uniforms['patternSize'].value = stripedParameters.patternSize;
+    this._patternSizeBase = stripedParameters.patternSize;
   }
 
   protected addFeature(f: F) {
@@ -75,34 +69,32 @@ export class PaletteStripedFeatureObject<K extends GridCoord, F extends IFeature
       return undefined;
     }
 
-    // TODO #197 Will I need to multiply these by factors of the viewport resolution?
+    let x: number, y: number, sz: number;
     switch (f.stripe) {
       case 0: // none
-        this._patternContrib[2 * instanceIndex] = 0;
-        this._patternContrib[2 * instanceIndex + 1] = 0;
+        [x, y, sz] = [0, 0, this._patternSizeBase];
         break;
 
       case 1: // horizontal
-        this._patternContrib[2 * instanceIndex] = 0;
-        this._patternContrib[2 * instanceIndex + 1] = 1;
+        [x, y, sz] = [0, 1, this._patternSizeBase];
         break;
 
       case 2: // diagonal A
-        this._patternContrib[2 * instanceIndex] = 1;
-        this._patternContrib[2 * instanceIndex + 1] = 1;
+        [x, y, sz] = [1, 1, this._patternSizeBase * Math.SQRT2];
         break;
 
       case 3: // vertical
-        this._patternContrib[2 * instanceIndex] = 1;
-        this._patternContrib[2 * instanceIndex + 1] = 0;
+        [x, y, sz] = [1, 0, this._patternSizeBase];
         break;
 
       default: // diagonal B
-        this._patternContrib[2 * instanceIndex] = 1;
-        this._patternContrib[2 * instanceIndex + 1] = -1;
+        [x, y, sz] = [1, -1, this._patternSizeBase * Math.SQRT2];
         break;
     }
 
+    this._patternContrib[3 * instanceIndex] = x;
+    this._patternContrib[3 * instanceIndex + 1] = y;
+    this._patternContrib[3 * instanceIndex + 2] = sz;
     this._patternContribAttr.needsUpdate = true;
     return instanceIndex;
   }

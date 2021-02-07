@@ -372,6 +372,8 @@ function Map() {
             setEditMode={m => ui?.setEditMode(m)}
             selectedColour={uiState.selectedColour}
             setSelectedColour={c => ui?.setSelectedColour(c)}
+            selectedStripe={uiState.selectedStripe}
+            setSelectedStripe={s => ui?.setSelectedStripe(s)}
             resetView={resetView}
             zoomIn={zoomIn} zoomOut={zoomOut}
             zoomInDisabled={zoomInDisabled} zoomOutDisabled={zoomOutDisabled}
