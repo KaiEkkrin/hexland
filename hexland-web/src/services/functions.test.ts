@@ -743,6 +743,7 @@ describe('test functions', () => {
     const outlineTokens = new Tokens(getTokenGeometry(MapType.Square), new SimpleTokenDrawing());
     const changeTracker = new SimpleChangeTracker(
       new FeatureDictionary<GridCoord, StripedArea>(coordString),
+      new FeatureDictionary<GridCoord, StripedArea>(coordString),
       tokens,
       outlineTokens,
       new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString),

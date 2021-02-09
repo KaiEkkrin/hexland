@@ -76,7 +76,7 @@ export function parseTokenSize(s: string): TokenSize {
 
 export interface IToken extends IIdFeature<GridCoord>, ITokenProperties {}
 
-export const defaultArea: StripedArea = {
+export const defaultStripedArea: StripedArea = {
   position: defaultGridCoord,
   colour: 0,
   stripe: 0

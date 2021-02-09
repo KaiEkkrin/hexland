@@ -56,6 +56,7 @@ function buildWallsOfThreeHexes(changeTracker: IChangeTracker) {
 
 test('Unprivileged users cannot move other users\' tokens', () => {
   const areas = new FeatureDictionary<GridCoord, StripedArea>(coordString);
+  const playerAreas = new FeatureDictionary<GridCoord, StripedArea>(coordString);
   const tokens = new Tokens(getTokenGeometry(MapType.Hex), new SimpleTokenDrawing());
   const outlineTokens = new Tokens(getTokenGeometry(MapType.Hex), new SimpleTokenDrawing());
   const walls = new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString);
@@ -65,7 +66,7 @@ test('Unprivileged users cannot move other users\' tokens', () => {
   const handleChangesApplied = jest.fn();
   const handleChangesAborted = jest.fn();
   const changeTracker = new MapChangeTracker(
-    areas, tokens, outlineTokens, walls, notes, images, undefined, undefined,
+    areas, playerAreas, tokens, outlineTokens, walls, notes, images, undefined, undefined,
     handleChangesApplied, handleChangesAborted
   );
 
@@ -164,6 +165,7 @@ test('Unprivileged users cannot move other users\' tokens', () => {
 
 test('Unprivileged tokens cannot escape from bounded areas', () => {
   const areas = new FeatureDictionary<GridCoord, StripedArea>(coordString);
+  const playerAreas = new FeatureDictionary<GridCoord, StripedArea>(coordString);
   const tokens = new Tokens(getTokenGeometry(MapType.Hex), new SimpleTokenDrawing());
   const outlineTokens = new Tokens(getTokenGeometry(MapType.Hex), new SimpleTokenDrawing());
   const walls = new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString);
@@ -174,7 +176,7 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
   const handleChangesApplied = jest.fn();
   const handleChangesAborted = jest.fn();
   let changeTracker = new MapChangeTracker(
-    areas, tokens, outlineTokens, walls, notes, images, undefined, colouring,
+    areas, playerAreas, tokens, outlineTokens, walls, notes, images, undefined, colouring,
     handleChangesApplied, handleChangesAborted
   );
 

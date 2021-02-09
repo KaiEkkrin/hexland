@@ -13,6 +13,7 @@ import { SimpleTokenDrawing, Tokens } from './tokens';
 function createChangeTracker(ty: MapType, userPolicy?: IUserPolicy | undefined) {
   return new SimpleChangeTracker(
     new FeatureDictionary<GridCoord, StripedArea>(coordString),
+    new FeatureDictionary<GridCoord, StripedArea>(coordString),
     new Tokens(getTokenGeometry(ty), new SimpleTokenDrawing()),
     new Tokens(getTokenGeometry(ty), new SimpleTokenDrawing()),
     new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString),
@@ -1195,14 +1196,14 @@ test('A non-owner cannot add and remove areas', () => {
   expect(ok).toBeFalsy();
 });
 
-test('A non-owner *can* add and remove areas with stripe > 0', () => {
+test('A non-owner *can* add and remove player areas', () => {
   // TODO #197 Test multiple stripings across the same area (requires me to
   // move the stripe into the key)
   let map = createTestMap(false);
   let tracker = createChangeTracker(map.ty);
   let chs: Change[] = [{
     ty: ChangeType.Add,
-    cat: ChangeCategory.Area,
+    cat: ChangeCategory.PlayerArea,
     feature: {
       position: { x: 1, y: 2 },
       colour: 3,
@@ -1210,7 +1211,7 @@ test('A non-owner *can* add and remove areas with stripe > 0', () => {
     }
   }, {
     ty: ChangeType.Add,
-    cat: ChangeCategory.Area,
+    cat: ChangeCategory.PlayerArea,
     feature: {
       position: { x: 2, y: 2 },
       colour: 3,
@@ -1223,11 +1224,11 @@ test('A non-owner *can* add and remove areas with stripe > 0', () => {
 
   let chs2: Change[] = [{
     ty: ChangeType.Remove,
-    cat: ChangeCategory.Area,
+    cat: ChangeCategory.PlayerArea,
     position: { x: 1, y: 2 }
   }, {
     ty: ChangeType.Remove,
-    cat: ChangeCategory.Area,
+    cat: ChangeCategory.PlayerArea,
     position: { x: 2, y: 2 }
   }];
 

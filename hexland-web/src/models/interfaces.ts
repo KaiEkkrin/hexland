@@ -13,6 +13,7 @@ import { ISpriteManager } from "../services/interfaces";
 // editing these should update the drawing upon the next animation frame.
 export interface IDrawing {
   areas: IAreaDictionary;
+  playerAreas: IAreaDictionary;
   tokens: ITokenDrawing;
   tokenTexts: ITokenTextDrawing;
   outlineTokens: ITokenDrawing;

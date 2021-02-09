@@ -17,7 +17,7 @@ export type Changes = {
 
 // This represents any change made to the map.
 export type Change =
-  AreaAdd | AreaRemove | TokenAdd | TokenMove | TokenRemove |
+  AreaAdd | AreaRemove | PlayerAreaAdd | PlayerAreaRemove | TokenAdd | TokenMove | TokenRemove |
   WallAdd | WallRemove | NoteAdd | NoteRemove | ImageAdd | ImageRemove | NoChange;
 
 export enum ChangeType {
@@ -33,6 +33,7 @@ export enum ChangeCategory {
   Wall = 3,
   Note = 4,
   Image = 5,
+  PlayerArea = 6
 }
 
 export type AreaAdd = {
@@ -44,6 +45,18 @@ export type AreaAdd = {
 export type AreaRemove = {
   ty: ChangeType.Remove;
   cat: ChangeCategory.Area;
+  position: GridCoord;
+};
+
+export type PlayerAreaAdd = {
+  ty: ChangeType.Add;
+  cat: ChangeCategory.PlayerArea;
+  feature: StripedArea;
+};
+
+export type PlayerAreaRemove = {
+  ty: ChangeType.Remove;
+  cat: ChangeCategory.PlayerArea;
   position: GridCoord;
 };
 
@@ -123,6 +136,22 @@ export function createAreaRemove(position: GridCoord): AreaRemove {
   return {
     ty: ChangeType.Remove,
     cat: ChangeCategory.Area,
+    position: position
+  };
+}
+
+export function createPlayerAreaAdd(feature: StripedArea): PlayerAreaAdd {
+  return {
+    ty: ChangeType.Add,
+    cat: ChangeCategory.PlayerArea,
+    feature: feature
+  };
+}
+
+export function createPlayerAreaRemove(position: GridCoord): PlayerAreaRemove {
+  return {
+    ty: ChangeType.Remove,
+    cat: ChangeCategory.PlayerArea,
     position: position
   };
 }

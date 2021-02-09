@@ -1,9 +1,9 @@
 import { IAdventure, IMapSummary, IPlayer } from '../data/adventure';
 import { IAnnotation, defaultAnnotation } from '../data/annotation';
-import { Change, Changes, ChangeType, ChangeCategory, TokenAdd, TokenMove, TokenRemove, AreaAdd, AreaRemove, NoteAdd, NoteRemove, WallAdd, WallRemove, ImageAdd, ImageRemove, defaultChange } from '../data/change';
+import { Change, Changes, ChangeType, ChangeCategory, TokenAdd, TokenMove, TokenRemove, AreaAdd, AreaRemove, NoteAdd, NoteRemove, WallAdd, WallRemove, ImageAdd, ImageRemove, defaultChange, PlayerAreaAdd, PlayerAreaRemove } from '../data/change';
 import { ICharacter, maxCharacters } from '../data/character';
 import { GridCoord, defaultGridCoord, GridEdge, defaultGridEdge, coordString, defaultGridVertex } from '../data/coord';
-import { IToken, defaultToken, IFeature, defaultArea, defaultWall, IFeatureDictionary, IIdFeature, FeatureDictionary, parseTokenSize, StripedArea } from '../data/feature';
+import { IToken, defaultToken, IFeature, defaultStripedArea, defaultWall, IFeatureDictionary, IIdFeature, FeatureDictionary, parseTokenSize, StripedArea } from '../data/feature';
 import { Anchor, defaultAnchor, defaultMapImage, IImage, IImages, IMapImage, NoAnchor, PixelAnchor, VertexAnchor } from '../data/image';
 import { IInvite } from '../data/invite';
 import { IMap, MapType } from '../data/map';
@@ -187,6 +187,14 @@ class ChangeConverter extends ShallowConverter<Change> {
     }
   }
 
+  private convertPlayerArea(converted: Change, rawData: any): Change {
+    switch (converted.ty) {
+      case ChangeType.Add: return playerAreaAddConverter.convert(rawData);
+      case ChangeType.Remove: return playerAreaRemoveConverter.convert(rawData);
+      default: return defaultChange;
+    }
+  }
+
   private convertImage(converted: Change, rawData: any): Change {
     switch (converted.ty) {
       case ChangeType.Add: return imageAddConverter.convert(rawData);
@@ -224,6 +232,7 @@ class ChangeConverter extends ShallowConverter<Change> {
     const converted = super.convert(rawData);
     switch (converted.cat) {
       case ChangeCategory.Area: return this.convertArea(converted, rawData);
+      case ChangeCategory.PlayerArea: return this.convertPlayerArea(converted, rawData);
       case ChangeCategory.Image: return this.convertImage(converted, rawData);
       case ChangeCategory.Note: return this.convertNote(converted, rawData);
       case ChangeCategory.Token: return this.convertToken(converted, rawData);
@@ -236,7 +245,7 @@ class ChangeConverter extends ShallowConverter<Change> {
 const areaAddConverter = new RecursingConverter<AreaAdd>({
   ty: ChangeType.Add,
   cat: ChangeCategory.Area,
-  feature: defaultArea
+  feature: defaultStripedArea
 }, {
   "feature": (conv, raw) => {
     conv.feature = areaConverter.convert(raw);
@@ -247,6 +256,28 @@ const areaAddConverter = new RecursingConverter<AreaAdd>({
 const areaRemoveConverter = new RecursingConverter<AreaRemove>({
   ty: ChangeType.Remove,
   cat: ChangeCategory.Area,
+  position: defaultGridCoord
+}, {
+  "position": (conv, raw) => {
+    conv.position = gridCoordConverter.convert(raw);
+    return conv;
+  }
+});
+
+const playerAreaAddConverter = new RecursingConverter<PlayerAreaAdd>({
+  ty: ChangeType.Add,
+  cat: ChangeCategory.PlayerArea,
+  feature: defaultStripedArea
+}, {
+  "feature": (conv, raw) => {
+    conv.feature = areaConverter.convert(raw);
+    return conv;
+  }
+});
+
+const playerAreaRemoveConverter = new RecursingConverter<PlayerAreaRemove>({
+  ty: ChangeType.Remove,
+  cat: ChangeCategory.PlayerArea,
   position: defaultGridCoord
 }, {
   "position": (conv, raw) => {
@@ -337,7 +368,7 @@ const annotationConverter = new RecursingConverter<IAnnotation>(defaultAnnotatio
   },
 });
 
-const areaConverter = new RecursingConverter<StripedArea>(defaultArea, {
+const areaConverter = new RecursingConverter<StripedArea>(defaultStripedArea, {
   "position": (conv, raw) => {
     conv.position = gridCoordConverter.convert(raw);
     return conv;

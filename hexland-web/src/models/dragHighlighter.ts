@@ -202,9 +202,9 @@ export class FaceHighlighter extends DragHighlighter<GridCoord, IFeature<GridCoo
     return a === undefined ? "undefined" : coordString(a);
   }
 
-  // TODO #197 Use the selected stripe.
+  // TODO #197 Use the selected stripe, and apply player areas too, depending on mode.
   protected createFeatureAdd(position: GridCoord, colour: number): AreaAdd {
-    return createAreaAdd({ position: position, colour: colour, stripe: 4 });
+    return createAreaAdd({ position: position, colour: colour, stripe: 2 });
   }
 
   protected createFeatureRemove(position: GridCoord): AreaRemove {

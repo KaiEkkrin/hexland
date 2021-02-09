@@ -308,6 +308,7 @@ async function tryConsolidateMapChanges(
   const outlineTokenDict = new Tokens(getTokenGeometry(m.ty), new SimpleTokenDrawing());
   const tracker = new SimpleChangeTracker(
     new FeatureDictionary<GridCoord, StripedArea>(coordString),
+    new FeatureDictionary<GridCoord, StripedArea>(coordString),
     tokenDict,
     outlineTokenDict,
     new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString),

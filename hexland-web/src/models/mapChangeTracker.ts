@@ -20,6 +20,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
 
   constructor(
     areas: IAreaDictionary,
+    playerAreas: IAreaDictionary,
     tokens: ITokenDictionary,
     outlineTokens: ITokenDictionary,
     walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
@@ -30,7 +31,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
     handleChangesApplied?: ((haveTokensChanged: boolean, objectCount: number) => void) | undefined,
     handleChangesAborted?: (() => void) | undefined
   ) {
-    super(areas, tokens, outlineTokens, walls, notes, images, userPolicy);
+    super(areas, playerAreas, tokens, outlineTokens, walls, notes, images, userPolicy);
     this._colouring = colouring;
     this._handleChangesApplied = handleChangesApplied;
     this._handleChangesAborted = handleChangesAborted;
