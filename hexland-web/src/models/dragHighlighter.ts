@@ -5,6 +5,11 @@ import { IDragRectangle } from "./interfaces";
 
 import fluent from "fluent-iterable";
 
+export type DragProperties = {
+  colour: number;
+  stripe?: number;
+};
+
 // Helps handling a hover highlight with drag to select many and release to commit
 // them into new features.
 // We assume two colours in the highlights: 0 for add, 1 for remove.
@@ -22,7 +27,7 @@ abstract class DragHighlighter<K extends GridCoord, F extends IFeature<K>> {
 
   protected abstract keysEqual(a: K, b: K | undefined): boolean;
   protected abstract keyString(a: K | undefined): string;
-  protected abstract createFeatureAdd(position: K, colour: number): Change | undefined;
+  protected abstract createFeatureAdd(position: K, props: DragProperties): Change | undefined;
   protected abstract createFeatureRemove(position: K): Change | undefined;
   protected abstract createHighlight(position: K, subtract: boolean): F;
 
@@ -42,7 +47,7 @@ abstract class DragHighlighter<K extends GridCoord, F extends IFeature<K>> {
 
   // Pushes the changes into the array (if defined) and returns it, or undefined
   // if the changes are marked as not valid.
-  protected pushFeatureChanges(changes: Change[] | undefined, colour: number, h: IFeature<K>): Change[] | undefined {
+  protected pushFeatureChanges(changes: Change[] | undefined, props: DragProperties, h: IFeature<K>): Change[] | undefined {
     if (this._features.get(h.position) !== undefined) {
       const remove = this.createFeatureRemove(h.position);
       if (remove !== undefined) {
@@ -50,8 +55,8 @@ abstract class DragHighlighter<K extends GridCoord, F extends IFeature<K>> {
       }
     }
 
-    if (colour >= 0 && (h.colour === 0 || h.colour === 2)) {
-      const add = this.createFeatureAdd(h.position, colour);
+    if (props.colour >= 0 && (h.colour === 0 || h.colour === 2)) {
+      const add = this.createFeatureAdd(h.position, props);
       if (add !== undefined) {
         changes?.push(add);
       }
@@ -70,14 +75,14 @@ abstract class DragHighlighter<K extends GridCoord, F extends IFeature<K>> {
     this.clearHighlights();
   }
 
-  createChanges(colour: number, onlyIfValid: boolean): Change[] {
+  createChanges(props: DragProperties, onlyIfValid: boolean): Change[] {
     if (this._inDrag === false) {
       return [];
     }
 
     let changes: Change[] | undefined = [];
     for (const h of this._highlights) {
-      const newChanges = this.pushFeatureChanges(changes, colour, h);
+      const newChanges = this.pushFeatureChanges(changes, props, h);
       if (onlyIfValid) {
         changes = newChanges;
       }
@@ -87,35 +92,35 @@ abstract class DragHighlighter<K extends GridCoord, F extends IFeature<K>> {
     return changes ?? [];
   }
 
-  dragCancel(position: K | undefined, colour: number) {
+  dragCancel(position: K | undefined, props: DragProperties) {
     this._inDrag = false;
-    this.moveHighlight(position, colour);
+    this.moveHighlight(position, props);
   }
 
-  dragStart(position: K | undefined, colour: number) {
-    this.moveHighlight(position, colour);
+  dragStart(position: K | undefined, props: DragProperties) {
+    this.moveHighlight(position, props);
     this._inDrag = true;
   }
 
   // Returns a list of changes that would apply this edit to the map, so that it can be
   // synchronised with other clients.
-  dragEnd(position: K | undefined, colour: number): Change[] {
-    this.moveHighlight(position, colour);
+  dragEnd(position: K | undefined, props: DragProperties): Change[] {
+    this.moveHighlight(position, props);
     if (this._inDrag === false) {
       return [];
     }
 
-    const changes = this.createChanges(colour, true);
+    const changes = this.createChanges(props, true);
     this._inDrag = false;
     this.clearHighlights();
     if (position !== undefined) {
-      this.addHighlightAt(position, colour < 0);
+      this.addHighlightAt(position, props.colour < 0);
     }
     return changes;
   }
 
   // Returns true if something changed, else false.
-  moveHighlight(position: K | undefined, colour: number) {
+  moveHighlight(position: K | undefined, { colour }: DragProperties) {
     let changed = false;
     if (position === undefined) {
       if (this._inDrag !== true) {
@@ -166,7 +171,7 @@ export class EdgeHighlighter extends DragHighlighter<GridEdge, IFeature<GridEdge
     return a === undefined ? "undefined" : edgeString(a);
   }
 
-  protected createFeatureAdd(position: GridEdge, colour: number): WallAdd {
+  protected createFeatureAdd(position: GridEdge, { colour }: DragProperties): WallAdd {
     return createWallAdd({ position: position, colour: colour });
   }
 
@@ -203,8 +208,8 @@ export class FaceHighlighter extends DragHighlighter<GridCoord, IFeature<GridCoo
   }
 
   // TODO #197 Use the selected stripe, and apply player areas too, depending on mode.
-  protected createFeatureAdd(position: GridCoord, colour: number): AreaAdd {
-    return createAreaAdd({ position: position, colour: colour, stripe: 2 });
+  protected createFeatureAdd(position: GridCoord, { colour, stripe }: DragProperties): AreaAdd {
+    return createAreaAdd({ position, colour, stripe: stripe ?? 0 });
   }
 
   protected createFeatureRemove(position: GridCoord): AreaRemove {
@@ -235,19 +240,19 @@ export class FaceHighlighter extends DragHighlighter<GridCoord, IFeature<GridCoo
     this._startPosition = undefined;
   }
 
-  dragCancel(position: GridCoord | undefined, colour: number) {
-    super.dragCancel(position, colour);
+  dragCancel(position: GridCoord | undefined, props: DragProperties) {
+    super.dragCancel(position, props);
     this._startPosition = undefined;
   }
 
-  dragEnd(position: GridCoord | undefined, colour: number) {
-    let result = super.dragEnd(position, colour);
+  dragEnd(position: GridCoord | undefined, props: DragProperties) {
+    let result = super.dragEnd(position, props);
     this._startPosition = undefined;
     return result;
   }
 
-  dragStart(position: GridCoord | undefined, colour: number) {
-    super.dragStart(position, colour);
+  dragStart(position: GridCoord | undefined, props: DragProperties) {
+    super.dragStart(position, props);
     this._startPosition = position;
   }
 }
@@ -262,7 +267,7 @@ export class VertexHighlighter extends DragHighlighter<GridVertex, IFeature<Grid
     return a === undefined ? "undefined" : vertexString(a);
   }
 
-  protected createFeatureAdd(position: GridVertex, colour: number) {
+  protected createFeatureAdd(position: GridVertex, props: DragProperties) {
     return undefined;
   }
 

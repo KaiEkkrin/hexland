@@ -983,10 +983,10 @@ export class MapStateMachine {
   }
 
   clearHighlights(colour: number) {
-    this._faceHighlighter.dragCancel(undefined, colour);
-    this._wallHighlighter.dragCancel(undefined, colour);
-    this._wallRectangleHighlighter.dragCancel(undefined, colour);
-    this._roomHighlighter.dragCancel(undefined, colour);
+    this._faceHighlighter.dragCancel(undefined, { colour });
+    this._wallHighlighter.dragCancel(undefined, { colour });
+    this._wallRectangleHighlighter.dragCancel(undefined, { colour });
+    this._roomHighlighter.dragCancel(undefined, { colour });
     this._faceHighlighter.clear();
     this._wallHighlighter.clear();
     this._wallRectangleHighlighter.clear();
@@ -1062,18 +1062,18 @@ export class MapStateMachine {
     }); // provides a state update
   }
 
-  faceDragEnd(cp: THREE.Vector3, colour: number): Change[] {
+  faceDragEnd(cp: THREE.Vector3, colour: number, stripe: number): Change[] {
     this.panMarginReset();
-    let result = this._faceHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour);
+    let result = this._faceHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), { colour, stripe });
     this._dragRectangle.reset();
     return result;
   }
 
-  faceDragStart(cp: THREE.Vector3, shiftKey: boolean, colour: number) {
+  faceDragStart(cp: THREE.Vector3, shiftKey: boolean, colour: number, stripe: number) {
     if (shiftKey) {
       this._dragRectangle.start(cp);
     }
-    this._faceHighlighter.dragStart(this._drawing.getGridCoordAt(cp), colour);
+    this._faceHighlighter.dragStart(this._drawing.getGridCoordAt(cp), { colour, stripe });
   }
 
   flipToken(token: ITokenProperties): Change[] | undefined {
@@ -1167,13 +1167,13 @@ export class MapStateMachine {
     return true;
   }
 
-  moveFaceHighlightTo(cp: THREE.Vector3, colour: number) {
+  moveFaceHighlightTo(cp: THREE.Vector3, colour: number, stripe: number) {
     if (this._faceHighlighter.inDrag) {
       this.panIfWithinMargin(cp);
     }
 
     this._dragRectangle.moveTo(cp);
-    this._faceHighlighter.moveHighlight(this._drawing.getGridCoordAt(cp), colour);
+    this._faceHighlighter.moveHighlight(this._drawing.getGridCoordAt(cp), { colour, stripe });
   }
 
   moveSelectionTo(cp: THREE.Vector3) {
@@ -1201,7 +1201,7 @@ export class MapStateMachine {
 
     this._dragRectangle.moveTo(cp);
     this._roomHighlighter.difference = shiftKey;
-    this._roomHighlighter.moveHighlight(this._drawing.getGridCoordAt(cp), colour);
+    this._roomHighlighter.moveHighlight(this._drawing.getGridCoordAt(cp), { colour });
   }
 
   moveWallHighlightTo(cp: THREE.Vector3, shiftKey: boolean, colour: number) {
@@ -1219,9 +1219,9 @@ export class MapStateMachine {
         this._wallHighlighter.clear();
       }
 
-      this._wallRectangleHighlighter.moveHighlight(this._drawing.getGridCoordAt(cp), colour);
+      this._wallRectangleHighlighter.moveHighlight(this._drawing.getGridCoordAt(cp), { colour });
     } else {
-      this._wallHighlighter.moveHighlight(this._drawing.getGridVertexAt(cp), colour);
+      this._wallHighlighter.moveHighlight(this._drawing.getGridVertexAt(cp), { colour });
       if (!this._wallHighlighter.inDrag) {
         this._wallRectangleHighlighter.clear();
       }
@@ -1328,7 +1328,7 @@ export class MapStateMachine {
   roomDragEnd(cp: THREE.Vector3, shiftKey: boolean, colour: number): Change[] {
     this.panMarginReset();
     this._roomHighlighter.difference = shiftKey;
-    let result = this._roomHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour);
+    let result = this._roomHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), { colour });
     this._dragRectangle.reset();
     return result;
   }
@@ -1336,7 +1336,7 @@ export class MapStateMachine {
   roomDragStart(cp: THREE.Vector3, shiftKey: boolean, colour: number) {
     this._dragRectangle.start(cp);
     this._roomHighlighter.difference = shiftKey;
-    this._roomHighlighter.dragStart(this._drawing.getGridCoordAt(cp), colour);
+    this._roomHighlighter.dragStart(this._drawing.getGridCoordAt(cp), { colour });
   }
 
   // Selects the token or image at the client position, if there is one,
@@ -1556,8 +1556,8 @@ export class MapStateMachine {
   wallDragEnd(cp: THREE.Vector3, colour: number): Change[] {
     this.panMarginReset();
     let result = this._dragRectangle.isEnabled() ?
-      this._wallRectangleHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), colour) :
-      this._wallHighlighter.dragEnd(this._drawing.getGridVertexAt(cp), colour);
+      this._wallRectangleHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), { colour }) :
+      this._wallHighlighter.dragEnd(this._drawing.getGridVertexAt(cp), { colour });
     this._dragRectangle.reset();
     return result;
   }
@@ -1565,9 +1565,9 @@ export class MapStateMachine {
   wallDragStart(cp: THREE.Vector3, shiftKey: boolean, colour: number) {
     if (shiftKey) {
       this._dragRectangle.start(cp);
-      this._wallRectangleHighlighter.dragStart(this._drawing.getGridCoordAt(cp), colour);
+      this._wallRectangleHighlighter.dragStart(this._drawing.getGridCoordAt(cp), { colour });
     } else {
-      this._wallHighlighter.dragStart(this._drawing.getGridVertexAt(cp), colour);
+      this._wallHighlighter.dragStart(this._drawing.getGridVertexAt(cp), { colour });
     }
   }
 

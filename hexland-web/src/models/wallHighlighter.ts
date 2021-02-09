@@ -2,7 +2,7 @@ import { Change } from "../data/change";
 import { GridVertex, GridEdge, verticesEqual, GridCoord, coordsEqual, vertexString } from "../data/coord";
 import { FeatureDictionary, IFeature, IFeatureDictionary } from "../data/feature";
 import { MapColouring } from "./colouring";
-import { EdgeHighlighter, FaceHighlighter, VertexHighlighter } from "./dragHighlighter";
+import { DragProperties, EdgeHighlighter, FaceHighlighter, VertexHighlighter } from "./dragHighlighter";
 import { IGridGeometry } from "./gridGeometry";
 import { IDragRectangle } from "./interfaces";
 
@@ -148,27 +148,27 @@ export class WallHighlighter {
     this._vertexHighlighter.clear();
   }
   
-  dragCancel(position: GridVertex | undefined, colour: number) {
-    this._edgeHighlighter.dragCancel(undefined, colour);
-    this.moveHighlight(position, colour);
+  dragCancel(position: GridVertex | undefined, props: DragProperties) {
+    this._edgeHighlighter.dragCancel(undefined, props);
+    this.moveHighlight(position, props);
   }
 
-  dragStart(position: GridVertex | undefined, colour: number) {
-    this.moveHighlight(position, colour);
-    this._edgeHighlighter.dragStart(undefined, colour);
+  dragStart(position: GridVertex | undefined, props: DragProperties) {
+    this.moveHighlight(position, props);
+    this._edgeHighlighter.dragStart(undefined, props);
   }
 
-  dragEnd(position: GridVertex | undefined, colour: number): Change[] {
-    this.moveHighlight(position, colour);
+  dragEnd(position: GridVertex | undefined, props: DragProperties): Change[] {
+    this.moveHighlight(position, props);
     if (this._edgeHighlighter.inDrag === false) {
       return [];
     }
 
-    return this._edgeHighlighter.dragEnd(undefined, colour);
+    return this._edgeHighlighter.dragEnd(undefined, props);
   }
 
-  moveHighlight(position: GridVertex | undefined, colour: number) {
-    this._vertexHighlighter.moveHighlight(position, colour);
+  moveHighlight(position: GridVertex | undefined, props: DragProperties) {
+    this._vertexHighlighter.moveHighlight(position, props);
     if (position !== undefined) {
       if (
         this._edgeHighlighter.inDrag === true &&
@@ -176,10 +176,10 @@ export class WallHighlighter {
         !verticesEqual(position, this._lastHoverPosition)
       ) {
         for (const wall of drawWallBetween(this._geometry, this._lastHoverPosition, position)) {
-          this._edgeHighlighter.moveHighlight(wall, colour);
+          this._edgeHighlighter.moveHighlight(wall, props);
         }
 
-        const valid = this._validate(this._edgeHighlighter.createChanges(colour, false));
+        const valid = this._validate(this._edgeHighlighter.createChanges(props, false));
         this._edgeHighlighter.setHighlightValidity(valid);
       }
 
@@ -226,8 +226,8 @@ export class WallRectangleHighlighter {
   protected get faceHighlighter() { return this._faceHighlighter; }
   protected get faceHighlights() { return this._faceHighlights; }
 
-  protected drawWall(colour: number) {
-    drawWallAround(this._geometry, this._faceHighlights, e => this._edgeHighlighter.moveHighlight(e, colour));
+  protected drawWall(props: DragProperties) {
+    drawWallAround(this._geometry, this._faceHighlights, e => this._edgeHighlighter.moveHighlight(e, props));
   }
 
   get inDrag() { return this._faceHighlighter.inDrag; }
@@ -237,34 +237,34 @@ export class WallRectangleHighlighter {
     this._faceHighlighter.clear();
   }
 
-  dragCancel(position: GridCoord | undefined, colour: number) {
-    this._edgeHighlighter.dragCancel(undefined, colour);
-    this._faceHighlighter.dragCancel(position, colour);
+  dragCancel(position: GridCoord | undefined, props: DragProperties) {
+    this._edgeHighlighter.dragCancel(undefined, props);
+    this._faceHighlighter.dragCancel(position, props);
   }
 
-  dragEnd(position: GridCoord | undefined, colour: number) {
-    this.moveHighlight(position, colour);
-    this._faceHighlighter.dragCancel(position, colour);
-    return this._edgeHighlighter.dragEnd(undefined, colour);
+  dragEnd(position: GridCoord | undefined, props: DragProperties) {
+    this.moveHighlight(position, props);
+    this._faceHighlighter.dragCancel(position, props);
+    return this._edgeHighlighter.dragEnd(undefined, props);
   }
 
-  dragStart(position: GridCoord | undefined, colour: number) {
-    this._faceHighlighter.dragStart(position, colour);
+  dragStart(position: GridCoord | undefined, props: DragProperties) {
+    this._faceHighlighter.dragStart(position, props);
   }
 
-  moveHighlight(position: GridCoord | undefined, colour: number) {
-    this._faceHighlighter.moveHighlight(position, colour);
+  moveHighlight(position: GridCoord | undefined, props: DragProperties) {
+    this._faceHighlighter.moveHighlight(position, props);
     if (
       this.inDrag && position !== undefined &&
       !coordsEqual(position, this._lastHoverPosition)
     ) {
       // We treat each change in the position as a fresh edge drag:
-      this._edgeHighlighter.dragCancel(undefined, colour);
+      this._edgeHighlighter.dragCancel(undefined, props);
       this._edgeHighlighter.clear();
-      this._edgeHighlighter.dragStart(undefined, colour);
-      this.drawWall(colour);
+      this._edgeHighlighter.dragStart(undefined, props);
+      this.drawWall(props);
 
-      const valid = this._validate(this._edgeHighlighter.createChanges(colour, false));
+      const valid = this._validate(this._edgeHighlighter.createChanges(props, false));
       this._edgeHighlighter.setHighlightValidity(valid);
     }
 
@@ -295,7 +295,7 @@ export class RoomHighlighter extends WallRectangleHighlighter {
     this._colouring = colouring;
   }
 
-  protected drawWall(colour: number) {
+  protected drawWall(props: DragProperties) {
     if (this._firstDragPosition === undefined) {
       return;
     }
@@ -306,8 +306,8 @@ export class RoomHighlighter extends WallRectangleHighlighter {
         this._colouring,
         this._colouring.colourOf(this._firstDragPosition),
         this.faceHighlights,
-        e => this.edgeHighlighter.moveHighlight(e, colour),
-        e => this.edgeHighlighter.moveHighlight(e, -1)
+        e => this.edgeHighlighter.moveHighlight(e, props),
+        e => this.edgeHighlighter.moveHighlight(e, { colour: -1 })
       );
     } else {
       drawWallUnion(
@@ -315,8 +315,8 @@ export class RoomHighlighter extends WallRectangleHighlighter {
         this._colouring,
         this._colouring.getOuterColour(),
         this.faceHighlights,
-        e => this.edgeHighlighter.moveHighlight(e, colour),
-        e => this.edgeHighlighter.moveHighlight(e, -1)
+        e => this.edgeHighlighter.moveHighlight(e, props),
+        e => this.edgeHighlighter.moveHighlight(e, { colour: -1 })
       );
     }
   }
@@ -331,29 +331,29 @@ export class RoomHighlighter extends WallRectangleHighlighter {
   get difference() { return this._difference; }
   set difference(d: boolean) { this._difference = d; }
 
-  dragCancel(position: GridCoord | undefined, colour: number) {
-    super.dragCancel(position, colour);
+  dragCancel(position: GridCoord | undefined, props: DragProperties) {
+    super.dragCancel(position, props);
     this._firstDragPosition = undefined;
   }
 
-  dragEnd(position: GridCoord | undefined, colour: number) {
+  dragEnd(position: GridCoord | undefined, props: DragProperties) {
     // In the room highlighter, we want to paint the room areas too
-    this.moveHighlight(position, colour);
+    this.moveHighlight(position, props);
     this._firstDragPosition = undefined;
-    this.faceHighlighter.dragCancel(position, colour);
-    return this.edgeHighlighter.dragEnd(undefined, colour);
+    this.faceHighlighter.dragCancel(position, props);
+    return this.edgeHighlighter.dragEnd(undefined, props);
   }
 
-  dragStart(position: GridCoord | undefined, colour: number) {
-    super.dragStart(position, colour);
+  dragStart(position: GridCoord | undefined, props: DragProperties) {
+    super.dragStart(position, props);
     this.updateFirstDragPosition(position);
   }
 
-  moveHighlight(position: GridCoord | undefined, colour: number) {
+  moveHighlight(position: GridCoord | undefined, props: DragProperties) {
     if (this.inDrag) {
       this.updateFirstDragPosition(position);
     }
 
-    super.moveHighlight(position, colour);
+    super.moveHighlight(position, props);
   }
 }

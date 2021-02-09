@@ -189,7 +189,7 @@ export class MapUi {
 
         case EditMode.Area:
           // TODO #197 Pass the selected stripe into this (the drag highlighter will need extendable parameters)
-          changes = this._stateMachine?.faceDragEnd(cp, this._state.selectedColour);
+          changes = this._stateMachine?.faceDragEnd(cp, this._state.selectedColour, this._state.selectedStripe);
           break;
 
         case EditMode.Wall:
@@ -223,7 +223,7 @@ export class MapUi {
     } else {
       switch (this._state.editMode) {
         case EditMode.Select: this._stateMachine?.moveSelectionTo(cp); break;
-        case EditMode.Area: this._stateMachine?.moveFaceHighlightTo(cp, this._state.selectedColour); break;
+        case EditMode.Area: this._stateMachine?.moveFaceHighlightTo(cp, this._state.selectedColour, this._state.selectedStripe); break;
         case EditMode.Wall: this._stateMachine?.moveWallHighlightTo(cp, shiftKey, this._state.selectedColour); break;
         case EditMode.Room: this._stateMachine?.moveRoomHighlightTo(cp, shiftKey, this._state.selectedColour); break;
       }
@@ -246,7 +246,7 @@ export class MapUi {
         }
         break;
 
-      case EditMode.Area: this._stateMachine?.faceDragStart(cp, shiftKey, this._state.selectedColour); break;
+      case EditMode.Area: this._stateMachine?.faceDragStart(cp, shiftKey, this._state.selectedColour, this._state.selectedStripe); break;
       case EditMode.Wall: this._stateMachine?.wallDragStart(cp, shiftKey, this._state.selectedColour); break;
       case EditMode.Room: this._stateMachine?.roomDragStart(cp, shiftKey, this._state.selectedColour); break;
     }
