@@ -1,5 +1,5 @@
 import { MapColouring } from './colouring';
-import { FaceHighlighter } from './dragHighlighter';
+import { FaceHighlighter, PlayerFaceHighlighter } from './dragHighlighter';
 import { DragRectangle } from './dragRectangle';
 import { getClientToWorld, getWorldToClient } from './extensions';
 import { FeatureColour } from './featureColour';
@@ -102,6 +102,7 @@ export class MapStateMachine {
 
   private readonly _dragRectangle: IDragRectangle;
   private readonly _faceHighlighter: FaceHighlighter;
+  private readonly _playerFaceHighlighter: PlayerFaceHighlighter;
   private readonly _wallHighlighter: WallHighlighter;
   private readonly _wallRectangleHighlighter: WallRectangleHighlighter;
   private readonly _roomHighlighter: RoomHighlighter;
@@ -216,6 +217,12 @@ export class MapStateMachine {
 
     this._faceHighlighter = new FaceHighlighter(
       this._drawing.areas, this._drawing.highlightedAreas, this._dragRectangle
+    );
+
+    // This shares the highlighted areas with the other face highlighter; we assume
+    // they won't both be active at once...
+    this._playerFaceHighlighter = new PlayerFaceHighlighter(
+      this._drawing.playerAreas, this._drawing.highlightedAreas, this._dragRectangle
     );
 
     this.validateWallChanges = this.validateWallChanges.bind(this);
@@ -984,10 +991,12 @@ export class MapStateMachine {
 
   clearHighlights(colour: number) {
     this._faceHighlighter.dragCancel(undefined, { colour });
+    this._playerFaceHighlighter.dragCancel(undefined, { colour });
     this._wallHighlighter.dragCancel(undefined, { colour });
     this._wallRectangleHighlighter.dragCancel(undefined, { colour });
     this._roomHighlighter.dragCancel(undefined, { colour });
     this._faceHighlighter.clear();
+    this._playerFaceHighlighter.clear();
     this._wallHighlighter.clear();
     this._wallRectangleHighlighter.clear();
     this._roomHighlighter.clear();
@@ -1030,6 +1039,7 @@ export class MapStateMachine {
     // Make sure changes are loaded *after* we do this, otherwise an empty map
     // will be shown!
     this._faceHighlighter.clear();
+    this._playerFaceHighlighter.clear();
     this._wallHighlighter.clear();
     this._wallRectangleHighlighter.clear();
     this._roomHighlighter.clear();
@@ -1062,18 +1072,22 @@ export class MapStateMachine {
     }); // provides a state update
   }
 
-  faceDragEnd(cp: THREE.Vector3, colour: number, stripe: number): Change[] {
+  faceDragEnd(cp: THREE.Vector3, colour: number, stripe: number, isPlayerArea: boolean): Change[] {
     this.panMarginReset();
-    let result = this._faceHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), { colour, stripe });
+    let result = isPlayerArea ?
+      this._playerFaceHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), { colour, stripe }) :
+      this._faceHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), { colour, stripe });
     this._dragRectangle.reset();
     return result;
   }
 
-  faceDragStart(cp: THREE.Vector3, shiftKey: boolean, colour: number, stripe: number) {
+  faceDragStart(cp: THREE.Vector3, shiftKey: boolean, colour: number, stripe: number, isPlayerArea: boolean) {
     if (shiftKey) {
       this._dragRectangle.start(cp);
     }
-    this._faceHighlighter.dragStart(this._drawing.getGridCoordAt(cp), { colour, stripe });
+    isPlayerArea ?
+      this._playerFaceHighlighter.dragStart(this._drawing.getGridCoordAt(cp), { colour, stripe }) :
+      this._faceHighlighter.dragStart(this._drawing.getGridCoordAt(cp), { colour, stripe });
   }
 
   flipToken(token: ITokenProperties): Change[] | undefined {
@@ -1167,13 +1181,14 @@ export class MapStateMachine {
     return true;
   }
 
-  moveFaceHighlightTo(cp: THREE.Vector3, colour: number, stripe: number) {
-    if (this._faceHighlighter.inDrag) {
+  moveFaceHighlightTo(cp: THREE.Vector3, colour: number, stripe: number, isPlayerArea: boolean) {
+    const highlighter = isPlayerArea ? this._playerFaceHighlighter : this._faceHighlighter;
+    if (highlighter.inDrag) {
       this.panIfWithinMargin(cp);
     }
 
     this._dragRectangle.moveTo(cp);
-    this._faceHighlighter.moveHighlight(this._drawing.getGridCoordAt(cp), { colour, stripe });
+    highlighter.moveHighlight(this._drawing.getGridCoordAt(cp), { colour, stripe });
   }
 
   moveSelectionTo(cp: THREE.Vector3) {

@@ -20,6 +20,7 @@ export enum EditMode {
   CharacterToken = "characterToken",
   Notes = "notes",
   Area = "area",
+  PlayerArea = "playerArea",
   Wall = "wall",
   Room = "room",
   Image = "image"
@@ -133,7 +134,7 @@ function MapControls({
             Add and edit <u>i</u>mages
         </ModeButton>
         );
-      } else {
+      } else if (layer === Layer.Object) {
         buttons.push(...[
           <ModeButton key={EditMode.Token} value={EditMode.Token}
             icon={<FontAwesomeIcon icon={faPlus} color="white" />}
@@ -154,11 +155,27 @@ function MapControls({
             Add and edit map <u>n</u>otes
         </ModeButton>,
           <ModeButton key={EditMode.Area} value={EditMode.Area}
+            icon={<FontAwesomeIcon icon={faSquare} color="white" />}
+            mode={editMode} setMode={setEditMode}
+          >
+            Paint solid <u>a</u>reas.  Shift-drag to paint a rectangle.
+        </ModeButton>
+        ]);
+      }
+
+      if (layer === Layer.Object) {
+        buttons.push(
+          <ModeButton key={EditMode.PlayerArea} value={EditMode.PlayerArea}
             icon={<AreaIcon colour="white" stripe={selectedStripe} />}
             mode={editMode} setMode={setEditMode}
           >
-            Paint <u>a</u>reas.  Shift-drag to paint rectangular areas.
-        </ModeButton>,
+            Paint striped <u>a</u>reas.  Shift-drag to paint a rectangle.
+          </ModeButton>
+        );
+      }
+
+      if (canDoAnything && layer === Layer.Object) {
+        buttons.push(...[
           <ModeButton key={EditMode.Wall} value={EditMode.Wall}
             icon={<FontAwesomeIcon icon={faDrawPolygon} color="white" />}
             mode={editMode} setMode={setEditMode}
@@ -238,7 +255,7 @@ function MapControls({
         </Dropdown>
       </ButtonGroup>
       <ColourSelection className="Map-control" id="mapColourSelect"
-        hidden={hideExtraControls}
+        hidden={hideExtraControls && editMode !== EditMode.PlayerArea}
         includeNegative={true}
         isVertical={true}
         selectedColour={selectedColour}

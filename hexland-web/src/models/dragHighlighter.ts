@@ -1,6 +1,6 @@
-import { Change, WallAdd, WallRemove, AreaAdd, AreaRemove, createAreaAdd, createWallAdd, createWallRemove, createAreaRemove } from "../data/change";
+import { Change, WallAdd, WallRemove, createAreaAdd, createWallAdd, createWallRemove, createAreaRemove, createPlayerAreaAdd, createPlayerAreaRemove } from "../data/change";
 import { GridCoord, GridEdge, edgesEqual, coordsEqual, edgeString, coordString, GridVertex, verticesEqual, vertexString } from "../data/coord";
-import { IFeature, IFeatureDictionary } from '../data/feature';
+import { IFeature, IFeatureDictionary, StripedArea } from '../data/feature';
 import { IDragRectangle } from "./interfaces";
 
 import fluent from "fluent-iterable";
@@ -13,14 +13,14 @@ export type DragProperties = {
 // Helps handling a hover highlight with drag to select many and release to commit
 // them into new features.
 // We assume two colours in the highlights: 0 for add, 1 for remove.
-abstract class DragHighlighter<K extends GridCoord, F extends IFeature<K>> {
+abstract class DragHighlighter<K extends GridCoord, F extends IFeature<K>, H extends IFeature<K>> {
   private readonly _features: IFeatureDictionary<K, F>; // inspect, but do not edit directly!
-  private readonly _highlights: IFeatureDictionary<K, F>;
+  private readonly _highlights: IFeatureDictionary<K, H>;
 
   private _inDrag: boolean = false;
   private _lastHoverPosition: K | undefined = undefined;
 
-  constructor(features: IFeatureDictionary<K, F>, highlights: IFeatureDictionary<K, F>) {
+  constructor(features: IFeatureDictionary<K, F>, highlights: IFeatureDictionary<K, H>) {
     this._features = features;
     this._highlights = highlights;
   }
@@ -29,7 +29,7 @@ abstract class DragHighlighter<K extends GridCoord, F extends IFeature<K>> {
   protected abstract keyString(a: K | undefined): string;
   protected abstract createFeatureAdd(position: K, props: DragProperties): Change | undefined;
   protected abstract createFeatureRemove(position: K): Change | undefined;
-  protected abstract createHighlight(position: K, subtract: boolean): F;
+  protected abstract createHighlight(position: K, subtract: boolean): H;
 
   protected addHighlightAt(position: K, subtract: boolean) {
     return this._highlights.add(this.createHighlight(position, subtract));
@@ -162,7 +162,7 @@ abstract class DragHighlighter<K extends GridCoord, F extends IFeature<K>> {
   }
 }
 
-export class EdgeHighlighter extends DragHighlighter<GridEdge, IFeature<GridEdge>> {
+export class EdgeHighlighter extends DragHighlighter<GridEdge, IFeature<GridEdge>, IFeature<GridEdge>> {
   protected keysEqual(a: GridEdge, b: GridEdge | undefined) {
     return edgesEqual(a, b);
   }
@@ -185,13 +185,16 @@ export class EdgeHighlighter extends DragHighlighter<GridEdge, IFeature<GridEdge
 }
 
 // This face highlighter is extended to support rectangle highlighting.
-export class FaceHighlighter extends DragHighlighter<GridCoord, IFeature<GridCoord>> {
+// We can make an intermediate class catering to most of the two modes of it
+abstract class FaceHighlighterBase<F extends IFeature<GridCoord>>
+  extends DragHighlighter<GridCoord, F, IFeature<GridCoord>>
+{
   private readonly _dragRectangle: IDragRectangle;
 
   private _startPosition: GridCoord | undefined;
 
   constructor(
-    features: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
+    features: IFeatureDictionary<GridCoord, F>,
     highlights: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
     dragRectangle: IDragRectangle
   ) {
@@ -205,15 +208,6 @@ export class FaceHighlighter extends DragHighlighter<GridCoord, IFeature<GridCoo
 
   protected keyString(a: GridCoord | undefined) {
     return a === undefined ? "undefined" : coordString(a);
-  }
-
-  // TODO #197 Use the selected stripe, and apply player areas too, depending on mode.
-  protected createFeatureAdd(position: GridCoord, { colour, stripe }: DragProperties): AreaAdd {
-    return createAreaAdd({ position, colour, stripe: stripe ?? 0 });
-  }
-
-  protected createFeatureRemove(position: GridCoord): AreaRemove {
-    return createAreaRemove(position);
   }
 
   protected createHighlight(position: GridCoord, subtract: boolean): IFeature<GridCoord> {
@@ -257,8 +251,44 @@ export class FaceHighlighter extends DragHighlighter<GridCoord, IFeature<GridCoo
   }
 }
 
+export class FaceHighlighter extends FaceHighlighterBase<IFeature<GridCoord>> {
+  constructor(
+    features: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
+    highlights: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
+    dragRectangle: IDragRectangle
+  ) {
+    super(features, highlights, dragRectangle);
+  }
+
+  protected createFeatureAdd(position: GridCoord, { colour, stripe }: DragProperties): Change {
+    return createAreaAdd({ position, colour, stripe: stripe ?? 0 });
+  }
+
+  protected createFeatureRemove(position: GridCoord): Change {
+    return createAreaRemove(position);
+  }
+}
+
+export class PlayerFaceHighlighter extends FaceHighlighterBase<StripedArea> {
+  constructor(
+    features: IFeatureDictionary<GridCoord, StripedArea>,
+    highlights: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
+    dragRectangle: IDragRectangle
+  ) {
+    super(features, highlights, dragRectangle);
+  }
+
+  protected createFeatureAdd(position: GridCoord, { colour, stripe }: DragProperties): Change {
+    return createPlayerAreaAdd({ position, colour, stripe: stripe ?? 0 });
+  }
+
+  protected createFeatureRemove(position: GridCoord): Change {
+    return createPlayerAreaRemove(position);
+  }
+}
+
 // The vertex highlighter doesn't actually support making changes (none are relevant right now)
-export class VertexHighlighter extends DragHighlighter<GridVertex, IFeature<GridVertex>> {
+export class VertexHighlighter extends DragHighlighter<GridVertex, IFeature<GridVertex>, IFeature<GridVertex>> {
   protected keysEqual(a: GridVertex, b: GridVertex | undefined) {
     return verticesEqual(a, b);
   }
