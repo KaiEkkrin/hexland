@@ -1,7 +1,7 @@
 import { IStorage, IStorageReference } from './interfaces';
 
 import * as admin from 'firebase-admin';
-import * as storage from 'firebase-admin/node_modules/@google-cloud/storage';
+import * as storage from '@google-cloud/storage';
 
 // The admin Firebase storage implementation.  This uses the Google Cloud
 // storage API which looks kind of different to the firebase one O.o

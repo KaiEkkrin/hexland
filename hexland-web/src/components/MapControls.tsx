@@ -162,46 +162,46 @@ function MapControls({
         </ModeButton>
         ]);
       }
+    }
 
-      if (layer === Layer.Object) {
-        buttons.push(
-          <ModeButton key={EditMode.PlayerArea} value={EditMode.PlayerArea}
-            icon={<AreaIcon colour="white" stripe={selectedStripe} />}
-            mode={editMode} setMode={setEditMode}
-          >
-            Paint striped <u>a</u>reas.  Shift-drag to paint a rectangle.
+    if (layer === Layer.Object) {
+      buttons.push(
+        <ModeButton key={EditMode.PlayerArea} value={EditMode.PlayerArea}
+          icon={<AreaIcon colour="white" stripe={selectedStripe} />}
+          mode={editMode} setMode={setEditMode}
+        >
+          Paint striped <u>a</u>reas.  Shift-drag to paint a rectangle.
           </ModeButton>
-        );
-      }
+      );
+    }
 
-      if (canDoAnything && layer === Layer.Object) {
-        buttons.push(...[
-          <ModeButton key={EditMode.Wall} value={EditMode.Wall}
-            icon={<FontAwesomeIcon icon={faDrawPolygon} color="white" />}
-            mode={editMode} setMode={setEditMode}
-          >
-            Paint <u>w</u>alls.  Shift-drag to paint rectangles of walls.
+    if (canDoAnything && layer === Layer.Object) {
+      buttons.push(...[
+        <ModeButton key={EditMode.Wall} value={EditMode.Wall}
+          icon={<FontAwesomeIcon icon={faDrawPolygon} color="white" />}
+          mode={editMode} setMode={setEditMode}
+        >
+          Paint <u>w</u>alls.  Shift-drag to paint rectangles of walls.
         </ModeButton>,
-          <ModeButton key={EditMode.Room} value={EditMode.Room}
-            icon={<FontAwesomeIcon icon={faVectorSquare} color="white" />}
-            mode={editMode} setMode={setEditMode}
-          >
-            Paint the union of <u>r</u>ooms.  Shift-drag to paint the difference of rooms.
+        <ModeButton key={EditMode.Room} value={EditMode.Room}
+          icon={<FontAwesomeIcon icon={faVectorSquare} color="white" />}
+          mode={editMode} setMode={setEditMode}
+        >
+          Paint the union of <u>r</u>ooms.  Shift-drag to paint the difference of rooms.
         </ModeButton>,
-        ]);
-      }
+      ]);
     }
 
     return buttons;
   }, [canDoAnything, editMode, layer, selectedStripe, setEditMode]);
 
   const stripeMenuItems = useMemo(
-    () => (canDoAnything ? [0, 1, 2, 3, 4] : [1, 2, 3, 4]).map(s => (
-      <Dropdown.Item onClick={() => setSelectedStripe(s)}>
+    () => ([1, 2, 3, 4]).map(s => (
+      <Dropdown.Item key={s} onClick={() => setSelectedStripe(s)}>
         <AreaIcon colour="black" stripe={s} />
       </Dropdown.Item>
     )),
-    [canDoAnything, setSelectedStripe]
+    [setSelectedStripe]
   );
 
   const hideExtraControls = useMemo(() => !canDoAnything, [canDoAnything]);

@@ -107,13 +107,13 @@ function MapContextMenu(
     const items: React.ReactNode[] = [];
     for (const token of tokens) {
       const handleFn = token.characterId.length > 0 ? handleCharacterTokenClick : handleTokenClick;
-      items.push(<EditTokenMenuItem token={token} editToken={handleFn} />);
+      items.push(<EditTokenMenuItem key={`editToken${token.id}`} token={token} editToken={handleFn} />);
     }
 
     // With less than 2 tokens (implicitly, the max of one regular, one outline),
     // we can add another one
     if (tokens.length < 2) {
-      items.push(<MapContextMenuItem onClick={() => handleTokenClick(undefined)}>
+      items.push(<MapContextMenuItem key="addToken" onClick={() => handleTokenClick(undefined)}>
         <FontAwesomeIcon className="mr-1" icon={faPlus} color="white" />Add token
       </MapContextMenuItem>);
     }
@@ -121,7 +121,7 @@ function MapContextMenu(
     // If there isn't a regular token there already, we can add a character token
     // (always regular)
     if (tokens.find(t => t.outline === false) === undefined) {
-      items.push(<MapContextMenuItem onClick={() => handleCharacterTokenClick(undefined)}>
+      items.push(<MapContextMenuItem key="addCharacterToken" onClick={() => handleCharacterTokenClick(undefined)}>
         <FontAwesomeIcon className="mr-1" icon={faUser} color="white" />Add character token
       </MapContextMenuItem>);
     }
@@ -132,7 +132,7 @@ function MapContextMenu(
   const flipTokenItems = useMemo(() => {
     const items: React.ReactNode[] = [];
     for (const token of tokens) {
-      items.push(<FlipTokenMenuItem token={token} flipToken={handleFlipTokenClick} />);
+      items.push(<FlipTokenMenuItem key={`flipToken${token.id}`} token={token} flipToken={handleFlipTokenClick} />);
     }
 
     return <React.Fragment>{items}</React.Fragment>;

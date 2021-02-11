@@ -13,6 +13,13 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "1.3.0",
+    changes: [
+      "Support player areas, letting players mark areas of the map with stripe patterns",
+      "Update Functions to Node.js 14 runtime"
+    ]
+  },
+  {
     version: "1.2.0",
     changes: [
       "Support outline tokens that can overlap with regular ones"

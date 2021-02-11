@@ -252,14 +252,6 @@ abstract class FaceHighlighterBase<F extends IFeature<GridCoord>>
 }
 
 export class FaceHighlighter extends FaceHighlighterBase<IFeature<GridCoord>> {
-  constructor(
-    features: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
-    highlights: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
-    dragRectangle: IDragRectangle
-  ) {
-    super(features, highlights, dragRectangle);
-  }
-
   protected createFeatureAdd(position: GridCoord, { colour, stripe }: DragProperties): Change {
     return createAreaAdd({ position, colour, stripe: stripe ?? 0 });
   }
@@ -270,14 +262,6 @@ export class FaceHighlighter extends FaceHighlighterBase<IFeature<GridCoord>> {
 }
 
 export class PlayerFaceHighlighter extends FaceHighlighterBase<StripedArea> {
-  constructor(
-    features: IFeatureDictionary<GridCoord, StripedArea>,
-    highlights: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
-    dragRectangle: IDragRectangle
-  ) {
-    super(features, highlights, dragRectangle);
-  }
-
   protected createFeatureAdd(position: GridCoord, { colour, stripe }: DragProperties): Change {
     return createPlayerAreaAdd({ position, colour, stripe: stripe ?? 0 });
   }
