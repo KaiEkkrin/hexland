@@ -515,7 +515,7 @@ export class DrawingOrtho implements IDrawing {
     // For some reason, the camera's projection matrix doesn't include
     // the rotation!
     const rotationMatrix = this._scratchMatrix1.makeRotationFromQuaternion(
-      this._scratchQuaternion.setFromEuler(this._camera.rotation).inverse()
+      this._scratchQuaternion.setFromEuler(this._camera.rotation).invert()
     );
     return target.multiplyMatrices(
       this._camera.projectionMatrix,
@@ -691,13 +691,6 @@ export class DrawingOrtho implements IDrawing {
 
     this._textureCache.dispose();
     this._textMaterial.dispose();
-
-    this._imageScene.dispose();
-    this._mapScene.dispose();
-    this._fixedFilterScene.dispose();
-    this._filterScene.dispose();
-    this._fixedHighlightScene.dispose();
-    this._overlayScene.dispose();
 
     // do *not* dispose the renderer, it'll be re-used for the next drawing context
 

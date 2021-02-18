@@ -71,9 +71,11 @@ describe('test functions', () => {
       return emul[auth.uid];
     }
 
+    // TODO #200 Auth seems busted here, but there is a real auth emulator now. Can we
+    // wire into that?
     const e = initializeTestApp({
       projectId: projectId,
-      auth: auth
+      auth: { ...auth, email: auth.email ?? undefined }
     });
 
     const db = e.firestore();

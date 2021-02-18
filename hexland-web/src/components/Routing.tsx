@@ -1,4 +1,3 @@
-import React from 'react';
 import { IContextProviderProps, IRoutingProps } from './interfaces';
 import { BrowserRouter } from 'react-router-dom';
 

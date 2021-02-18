@@ -45,7 +45,7 @@ function ModeButton<T>({ value, icon, children, mode, setMode }: IModeButtonProp
     <OverlayTrigger placement="right" overlay={
       <Tooltip id={value + "-tooltip"}>{children}</Tooltip>
     }>
-      <ToggleButton type="radio" variant="dark" value={value}
+      <ToggleButton type="radio" variant="dark" value={`${value}`}
         checked={mode === value}
         onChange={e => setMode(value)}>
         {icon}

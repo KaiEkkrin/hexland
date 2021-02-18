@@ -47,7 +47,7 @@ export async function verifyEmail(email: string): Promise<void> {
   const oobLink = await getOobLink(email);
 
   // This just needs to return 200 OK
-  await new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     http.get(oobLink, res => {
       if (res.statusCode !== 200) {
         reject('Verify link returned status: ' + res.statusCode);

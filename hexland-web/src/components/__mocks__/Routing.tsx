@@ -1,4 +1,3 @@
-import React from 'react';
 import { IContextProviderProps, IRoutingProps } from "../interfaces";
 import { MemoryRouter } from "react-router-dom";
 

@@ -289,7 +289,6 @@ export class StripedAreas implements IAreaDictionary {
     this.removeFromScene();
     this._areaFilter.dispose();
     this._features.dispose();
-    this._featureScene.dispose();
     this._featureTarget.dispose();
   }
 }

@@ -239,8 +239,6 @@ export class TokenDrawing extends BaseTokenDrawingWithText<
     this.fillEdges.dispose();
     this.fillVertices.dispose();
     this.texts.dispose();
-
-    this._textScene.dispose();
     this._textTarget.dispose();
   }
 }

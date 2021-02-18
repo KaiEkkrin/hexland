@@ -38,9 +38,11 @@ function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) 
   useEffect(() => {
     const emul = initializeTestApp({
       projectId: projectId,
-      auth: props.user ?? undefined
+      auth: { ...props.user, email: props.user?.email ?? undefined } // weird null/undefined mismatch here
     });
 
+    // TODO #200 Going in through simulated auth now seems busted. Since there's a real auth
+    // emulator now, let's wire into that instead?
     simulatedAuth.setUser(props.user ?? null);
     const functions = emul.functions(region);
     functions.useFunctionsEmulator('http://localhost:5001');
