@@ -138,7 +138,7 @@ export function ImagePickerForm({ show, setActiveImage, setImageCount, handleDel
         <Form.Group>
           <Form.Label htmlFor="uploadButton">Upload a new image</Form.Label>
           <Form.Control id="uploadButton" as="input" type="file" accept="image/*" onChange={handleFileChange} />
-          <Form.Text className="text-muted">The maximum image size is 2MB.</Form.Text>
+          <Form.Text className="text-muted">The maximum image size is 5MB.</Form.Text>
         </Form.Group>
       </Form>
       <ImageStatus {...status} />

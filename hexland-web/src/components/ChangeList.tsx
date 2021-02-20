@@ -13,6 +13,12 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "1.3.1",
+    changes: [
+      "Increase maximum image size to 5MB"
+    ]
+  },
+  {
     version: "1.3.0",
     changes: [
       "Support player areas, letting players mark areas of the map with stripe patterns",
