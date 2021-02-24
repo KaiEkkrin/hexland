@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useContext, useMemo } from 'react';
+import { useCallback, useEffect, useState, useContext, useMemo } from 'react';
 
 import { AnalyticsContext } from './AnalyticsContextProvider';
 import { UserContext } from './UserContextProvider';

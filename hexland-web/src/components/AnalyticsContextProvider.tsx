@@ -26,7 +26,7 @@ function getExMessage(e: any): string {
 // to use it through, etc.
 // The enabled setting is stored not in the user profile but in local storage.
 export function AnalyticsContextProvider({ children, getItem, setItem }: IContextProviderProps & IAnalyticsProps) {
-  const firebaseContext = useContext(FirebaseContext);
+  const { createAnalytics } = useContext(FirebaseContext);
 
   // Resolve our storage functions
   const doGetItem = useCallback(
@@ -83,7 +83,7 @@ export function AnalyticsContextProvider({ children, getItem, setItem }: IContex
     if (enabled === true) {
       // User chose to enable GA
       console.log("Enabling Google Analytics");
-      setAnalytics(firebaseContext.createAnalytics?.());
+      setAnalytics(createAnalytics?.());
       doSetItem(enabledKey, "true");
     } else if (enabled === false) {
       // User chose to disable GA
@@ -96,7 +96,7 @@ export function AnalyticsContextProvider({ children, getItem, setItem }: IContex
       setAnalytics(undefined);
       doSetItem(enabledKey, null);
     }
-  }, [enabled, firebaseContext.createAnalytics, setAnalytics, doSetItem]);
+  }, [enabled, createAnalytics, setAnalytics, doSetItem]);
 
   return (
     <AnalyticsContext.Provider value={analyticsContext}>

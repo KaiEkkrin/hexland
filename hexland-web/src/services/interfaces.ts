@@ -36,8 +36,8 @@ export type IAuthProvider = {};
 export interface IUser {
   displayName: string | null;
   email: string | null;
-  emailMd5: string | null; // MD5 hash of the email address
-  emailVerified: boolean;
+  emailMd5?: string | null; // MD5 hash of the email address
+  emailVerified?: boolean;
   providerId: string;
   uid: string;
 

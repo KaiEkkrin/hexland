@@ -32,7 +32,7 @@ async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => vo
       host: `${hostname}:8080`,
       ssl: false
     });
-    functions.useFunctionsEmulator(`http://${hostname}:5001`);
+    functions.useEmulator(hostname, 5001);
     usingLocalEmulators = true;
     console.log("Running with local emulators");
   } else {

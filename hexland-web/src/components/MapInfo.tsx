@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 
 import { IPlayer } from '../data/adventure';
 import { ITokenProperties } from '../data/feature';

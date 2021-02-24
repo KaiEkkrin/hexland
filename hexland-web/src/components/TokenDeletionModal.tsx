@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { ITokenProperties } from '../data/feature';
 
 import Button from 'react-bootstrap/Button';

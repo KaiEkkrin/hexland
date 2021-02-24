@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { hexColours } from '../models/featureColour';
 
 import ButtonGroup from 'react-bootstrap/ButtonGroup';

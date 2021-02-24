@@ -45,7 +45,7 @@ function FirebaseContextProvider(props: IContextProviderProps & IFirebaseProps) 
     // emulator now, let's wire into that instead?
     simulatedAuth.setUser(props.user ?? null);
     const functions = emul.functions(region);
-    functions.useFunctionsEmulator('http://localhost:5001');
+    functions.useEmulator('localhost', 5001);
     setFirebaseContext({
       auth: simulatedAuth,
       db: emul.firestore(),

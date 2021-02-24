@@ -1,4 +1,4 @@
-import React, { useContext, useReducer, useEffect } from 'react';
+import { useContext, useReducer, useEffect } from 'react';
 import '../App.css';
 import { StatusContext } from './StatusContextProvider';
 import { IToast } from './interfaces';

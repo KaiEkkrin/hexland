@@ -24,36 +24,10 @@ import * as http from 'http';
 import { Subject } from 'rxjs';
 import { filter, first } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
-import md5 from 'crypto-js/md5';
 import { IdDictionary } from '../data/identified';
 import { IMapImage } from '../data/image';
 
 const adminCredentials = require('../../firebase-admin-credentials.json');
-
-export function createTestUser(
-  displayName: string | null,
-  email: string | null,
-  providerId: string,
-  emailVerified?: boolean | undefined,
-): IUser {
-  return {
-    displayName: displayName,
-    email: email,
-    emailMd5: email ? md5(email).toString() : null,
-    emailVerified: emailVerified ?? true,
-    providerId: providerId,
-    uid: uuidv4(),
-    changePassword: jest.fn(),
-    sendEmailVerification: jest.fn(),
-    updateProfile: jest.fn()
-  };
-}
-
-interface IEmul {
-  app: firebase.app.App;
-  db: firebase.firestore.Firestore;
-  functions: firebase.functions.Functions;
-}
 
 interface IChangesEvent {
   changes: Changes;
@@ -63,38 +37,30 @@ interface IChangesEvent {
 describe('test functions', () => {
   // We must use a fixed project ID here, it seems
   const projectId = String(adminCredentials?.project_id ?? 'hexland-test');
+  console.log(`Testing functions using project ID ${projectId}`);
   const region = 'europe-west2';
-  const emul: { [uid: string]: IEmul } = {};
 
-  function initializeEmul(auth: IUser): IEmul {
-    if (auth.uid in emul) {
-      return emul[auth.uid];
+  const emul = initializeTestApp({ projectId, auth: { uid: 'owner' } });
+
+  const auth = emul.auth();
+  auth.useEmulator('http://localhost:9099');
+
+  const db = emul.firestore();
+  const functions = emul.functions(region);
+  functions.useEmulator('localhost', 5001);
+
+  async function createUser(displayName: string, email: string): Promise<firebase.User & IUser> {
+    const credential = await auth.createUserWithEmailAndPassword(email, uuidv4());
+    if (credential.user === null) {
+      throw Error("Null user");
     }
 
-    // TODO #200 Auth seems busted here, but there is a real auth emulator now. Can we
-    // wire into that?
-    const e = initializeTestApp({
-      projectId: projectId,
-      auth: { ...auth, email: auth.email ?? undefined }
-    });
-
-    const db = e.firestore();
-    const functions = e.functions(region);
-    functions.useFunctionsEmulator('http://localhost:5001');
-    emul[auth.uid] = { app: e, db: db, functions: functions };
-    return emul[auth.uid];
+    await credential.user.updateProfile({ displayName });
+    return { ...credential.user, changePassword: () => Promise.reject() };
   }
 
   afterAll(async () => {
-    const toDelete: string[] = [];
-    for (let uid in emul) {
-      toDelete.push(uid);
-    }
-
-    for (let uid of toDelete) {
-      await emul[uid].app.delete();
-      delete emul[uid];
-    }
+    await emul.delete();
 
     // Erk!  We *mustn't* do this, or the emulator goes "stale" and
     // stops responding.  Hopefully, it will clean up properly on restart.
@@ -109,11 +75,23 @@ describe('test functions', () => {
   //   expect(result.data).toBe('Hello from Firebase!');
   // });
 
+  test('create a new profile entry', async () => {
+    const user = await createUser('Owner', 'owner@example.com');
+    const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+    const profile = await ensureProfile(dataService, user, undefined);
+
+    expect(profile?.name).toBe('Owner');
+
+    // If we fetch it, it should not get re-created or updated (changing their Hexland display
+    // name should be a Hexland UI feature, it shouldn't sync with the provider's idea of it)
+    const profile2 = await ensureProfile(dataService, { ...user, displayName: 'fish' }, undefined);
+    expect(profile2?.name).toBe('Owner');
+  });
+
   test('create and edit adventures and maps', async () => {
-    const user = createTestUser('Owner', 'owner@example.com', 'google.com');
-    const emul = initializeEmul(user);
-    const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
-    const functionsService = new FunctionsService(emul.functions);
+    const user = await createUser('Owner', 'owner@example.com');
+    const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+    const functionsService = new FunctionsService(functions);
     let profile = await ensureProfile(dataService, user, undefined);
 
     // There should be no adventures in the profile now
@@ -293,10 +271,9 @@ describe('test functions', () => {
 
   async function testConsolidate(moveCount: number) {
     // make sure my user is set up
-    const user = createTestUser('Owner', 'owner@example.com', 'google.com');
-    const emul = initializeEmul(user);
-    const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
-    const functionsService = new FunctionsService(emul.functions);
+    const user = await createUser('Owner', 'owner@example.com');
+    const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+    const functionsService = new FunctionsService(functions);
     const profile = await ensureProfile(dataService, user, undefined);
     expect(profile?.name).toBe('Owner');
 
@@ -375,10 +352,9 @@ describe('test functions', () => {
   });
 
   test('join and leave an adventure', async () => {
-    const owner = createTestUser('Owner', 'owner@example.com', 'google.com');
-    const emul = initializeEmul(owner);
-    const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
-    const functionsService = new FunctionsService(emul.functions);
+    const owner = await createUser('Owner', 'owner@example.com');
+    const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+    const functionsService = new FunctionsService(functions);
     await ensureProfile(dataService, owner, undefined);
 
     // Add a new adventure
@@ -394,10 +370,9 @@ describe('test functions', () => {
     expect(invite).not.toBeUndefined();
 
     // Get myself a profile as a different user
-    const user = createTestUser('User 1', 'user1@example.com', 'google.com');
-    const userEmul = initializeEmul(user);
-    const userDataService = new DataService(userEmul.db, firebase.firestore.FieldValue.serverTimestamp);
-    const userFunctionsService = new FunctionsService(userEmul.functions);
+    const user = await createUser('User 1', 'user1@example.com');
+    const userDataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+    const userFunctionsService = new FunctionsService(functions);
     let userProfile = await ensureProfile(userDataService, user, undefined);
 
     // If I try to fetch that map without being invited I should get an error
@@ -471,10 +446,9 @@ describe('test functions', () => {
 
   test('change my display name', async () => {
     // As one user, create our profile and an adventure
-    const user1 = createTestUser('User 1', 'user1@example.com', 'google.com');
-    const user1Emul = initializeEmul(user1);
-    const user1DataService = new DataService(user1Emul.db, firebase.firestore.FieldValue.serverTimestamp);
-    const user1FunctionsService = new FunctionsService(user1Emul.functions);
+    const user1 = await createUser('User 1', 'user1@example.com');
+    const user1DataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+    const user1FunctionsService = new FunctionsService(functions);
     let user1Profile = await ensureProfile(user1DataService, user1, undefined);
 
     // Ensure we have our default name (since we'll change it later)
@@ -484,10 +458,9 @@ describe('test functions', () => {
     const a1Id = await user1FunctionsService.createAdventure('Adventure OneA', 'First adventure');
 
     // As another user, also create an adventure
-    const user2 = createTestUser('User 2', 'user2@example.com', 'google.com');
-    const user2Emul = initializeEmul(user2);
-    const user2DataService = new DataService(user2Emul.db, firebase.firestore.FieldValue.serverTimestamp);
-    const user2FunctionsService = new FunctionsService(user2Emul.functions);
+    const user2 = await createUser('User 2', 'user2@example.com');
+    const user2DataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+    const user2FunctionsService = new FunctionsService(functions);
     await ensureProfile(user2DataService, user2, undefined);
 
     const a2Id = await user2FunctionsService.createAdventure('Adventure TwoA', 'Second adventure');
@@ -497,7 +470,8 @@ describe('test functions', () => {
     expect(invite).not.toBeUndefined();
 
     // As user 1, join user 2's adventure (which will make it recent)
-    const user1Functions = new FunctionsService(user1Emul.functions);
+    await auth.updateCurrentUser(user1);
+    const user1Functions = new FunctionsService(functions);
     let joinedId = await user1Functions.joinAdventure(invite ?? "");
     expect(joinedId).toBe(a2Id);
     const a2 = await user1DataService.get(user1DataService.getAdventureRef(a2Id));
@@ -530,6 +504,7 @@ describe('test functions', () => {
     expect(a2Summary?.ownerName).toBe("User 2");
 
     // If user 2 renames their adventure:
+    await auth.updateCurrentUser(user2);
     if (a2 !== undefined) {
       await editAdventure(user2DataService, user2.uid,
         { id: a2Id, ...a2, name: "Renamed Adventure" }
@@ -537,6 +512,7 @@ describe('test functions', () => {
     }
 
     // Then, user 1 should see it has changed in their player record:
+    await auth.updateCurrentUser(user1);
     p2Record = await user1DataService.get(user1DataService.getPlayerRef(a2Id, user1.uid));
     expect(p2Record?.name).toBe("Renamed Adventure"); // this is the adventure name
     expect(p2Record?.ownerName).toBe("User 2"); // this is the owner's name
@@ -563,10 +539,9 @@ describe('test functions', () => {
   });
 
   test('block a user from an adventure', async () => {
-    const owner = createTestUser('Owner', 'owner@example.com', 'google.com');
-    const emul = initializeEmul(owner);
-    const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
-    const functionsService = new FunctionsService(emul.functions);
+    const owner = await createUser('Owner', 'owner@example.com');
+    const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+    const functionsService = new FunctionsService(functions);
     await ensureProfile(dataService, owner, undefined);
 
     // Add a new adventure
@@ -582,10 +557,9 @@ describe('test functions', () => {
     expect(invite).not.toBeUndefined();
 
     // Get myself a profile as a different user
-    const user = createTestUser('User 1', 'user1@example.com', 'google.com');
-    const userEmul = initializeEmul(user);
-    const userDataService = new DataService(userEmul.db, firebase.firestore.FieldValue.serverTimestamp);
-    const userFunctionsService = new FunctionsService(userEmul.functions);
+    const user = await createUser('User 1', 'user1@example.com');
+    const userDataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+    const userFunctionsService = new FunctionsService(functions);
     await ensureProfile(userDataService, user, undefined);
 
     // If I try to fetch that map without being invited I should get an error
@@ -604,10 +578,12 @@ describe('test functions', () => {
     expect(m1Record?.description).toBe("First map");
 
     // As the map owner I can block that player
+    await auth.updateCurrentUser(owner);
     let playerRef = dataService.getPlayerRef(a1Id, user.uid);
     await dataService.update(playerRef, { allowed: false });
 
     // As the player, I can no longer see that map
+    await auth.updateCurrentUser(user);
     try {
       await userDataService.get(userDataService.getMapRef(a1Id, m1Id));
       fail("Fetched map when blocked");
@@ -628,9 +604,11 @@ describe('test functions', () => {
     } catch {}
 
     // The owner *can* unblock me, though, and then I see it again
+    await auth.updateCurrentUser(owner);
     playerRef = dataService.getPlayerRef(a1Id, user.uid);
     await dataService.update(playerRef, { allowed: true });
 
+    await auth.updateCurrentUser(user);
     m1Record = await userDataService.get(userDataService.getMapRef(a1Id, m1Id));
     expect(m1Record).not.toBeUndefined();
     expect(m1Record?.description).toBe("First map");
@@ -638,10 +616,9 @@ describe('test functions', () => {
 
   test('invites expire', async () => {
     // As the owner, create an adventure
-    const owner = createTestUser('Owner', 'owner@example.com', 'google.com');
-    const emul = initializeEmul(owner);
-    const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
-    const functionsService = new FunctionsService(emul.functions);
+    const owner = await createUser('Owner', 'owner@example.com');
+    const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+    const functionsService = new FunctionsService(functions);
     await ensureProfile(dataService, owner, undefined);
 
     // Add a new adventure
@@ -663,10 +640,9 @@ describe('test functions', () => {
     expect(invite2).toBe(invite);
 
     // Get myself a profile as a different user
-    const user = createTestUser('User 1', 'user1@example.com', 'google.com');
-    const userEmul = initializeEmul(user);
-    const userDataService = new DataService(userEmul.db, firebase.firestore.FieldValue.serverTimestamp);
-    const userFunctionsService = new FunctionsService(userEmul.functions);
+    const user = await createUser('User 1', 'user1@example.com');
+    const userDataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+    const userFunctionsService = new FunctionsService(functions);
     await ensureProfile(userDataService, user, undefined);
 
     // Join the adventure.
@@ -685,10 +661,9 @@ describe('test functions', () => {
     expect(p1Record?.description).toBe('First adventure');
 
     // Register another user
-    const user2 = createTestUser('User 2', 'user2@example.com', 'google.com');
-    const user2Emul = initializeEmul(user2);
-    const user2DataService = new DataService(user2Emul.db, firebase.firestore.FieldValue.serverTimestamp);
-    const user2FunctionsService = new FunctionsService(user2Emul.functions);
+    const user2 = await createUser('User 2', 'user2@example.com');
+    const user2DataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+    const user2FunctionsService = new FunctionsService(functions);
     await ensureProfile(user2DataService, user2, undefined);
 
     // Wait long enough for that invite to have expired
@@ -706,9 +681,11 @@ describe('test functions', () => {
     expect(p2Record).toBeUndefined();
 
     // However, if I create a new invite, another user should be able to join with that:
+    await auth.updateCurrentUser(owner);
     const invite3 = await functionsService.inviteToAdventure(a1Id, testPolicy);
     expect(invite3).not.toBe(invite);
 
+    await auth.updateCurrentUser(user2);
     joinedId = await user2FunctionsService.joinAdventure(invite3 ?? "", testPolicy);
     expect(joinedId).toBe(a1Id);
     p2Record = await user2DataService.get(user2DataService.getPlayerRef(a1Id, user2.uid));
@@ -720,10 +697,9 @@ describe('test functions', () => {
 
   // Having this in a nested describe block stops jest from parallelising it with the rest
   describe('resync', () => { test('resync on conflict', async () => {
-    const user = createTestUser('Owner', 'owner@example.com', 'google.com');
-    const emul = initializeEmul(user);
-    const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
-    const functionsService = new FunctionsService(emul.functions);
+    const user = await createUser('Owner', 'owner@example.com');
+    const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+    const functionsService = new FunctionsService(functions);
     let profile = await ensureProfile(dataService, user, undefined);
 
     // There should be no adventures in the profile now
@@ -915,10 +891,9 @@ describe('test functions', () => {
     const moveCount = 5;
 
     // make sure my user is set up
-    const user = createTestUser('Owner', 'owner@example.com', 'google.com');
-    const emul = initializeEmul(user);
-    const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
-    const functionsService = new FunctionsService(emul.functions);
+    const user = await createUser('Owner', 'owner@example.com');
+    const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+    const functionsService = new FunctionsService(functions);
     const profile = await ensureProfile(dataService, user, undefined);
     expect(profile?.name).toBe('Owner');
 
@@ -1082,10 +1057,9 @@ describe('test functions', () => {
 
   test('create and delete characters as the map owner', async () => {
     // make sure my user is set up
-    const user = createTestUser('Owner', 'owner@example.com', 'google.com');
-    const emul = initializeEmul(user);
-    const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
-    const functionsService = new FunctionsService(emul.functions);
+    const user = await createUser('Owner', 'owner@example.com');
+    const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+    const functionsService = new FunctionsService(functions);
     const profile = await ensureProfile(dataService, user, undefined);
     expect(profile?.name).toBe('Owner');
 
@@ -1098,10 +1072,9 @@ describe('test functions', () => {
 
   test('create and delete characters as a joining player', async () => {
     // make sure my user is set up
-    const owner = createTestUser('Owner', 'owner@example.com', 'google.com');
-    const emul = initializeEmul(owner);
-    const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
-    const functionsService = new FunctionsService(emul.functions);
+    const owner = await createUser('Owner', 'owner@example.com');
+    const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+    const functionsService = new FunctionsService(functions);
     const profile = await ensureProfile(dataService, owner, undefined);
     expect(profile?.name).toBe('Owner');
 
@@ -1109,17 +1082,18 @@ describe('test functions', () => {
     const a1Id = await functionsService.createAdventure('Adventure One', 'First adventure');
 
     // Get myself a profile as a different user
-    const user = createTestUser('User 1', 'user1@example.com', 'google.com');
-    const userEmul = initializeEmul(user);
-    const userDataService = new DataService(userEmul.db, firebase.firestore.FieldValue.serverTimestamp);
-    const userFunctionsService = new FunctionsService(userEmul.functions);
+    const user = await createUser('User 1', 'user1@example.com');
+    const userDataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+    const userFunctionsService = new FunctionsService(functions);
     await ensureProfile(userDataService, user, undefined);
 
     // Issue an invite to that adventure
+    await auth.updateCurrentUser(owner);
     const invite = await functionsService.inviteToAdventure(a1Id, Policy.defaultInviteExpiryPolicy);
     expect(invite).not.toBeUndefined();
 
     // Join the adventure.
+    await auth.updateCurrentUser(user);
     await userFunctionsService.joinAdventure(invite ?? "");
 
     // Exercise character functions
@@ -1165,10 +1139,9 @@ describe('test functions', () => {
     }
 
     test('add and delete one image', async () => {
-      const owner = createTestUser('Owner', 'owner@example.com', 'google.com');
-      const emul = initializeEmul(owner);
-      const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
-      const functionsService = new FunctionsService(emul.functions);
+      const owner = await createUser('Owner', 'owner@example.com');
+      const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+      const functionsService = new FunctionsService(functions);
       const storage = new MockWebStorage(functionsService, storageLocation);
 
       // Make sure the user has a profile
@@ -1219,10 +1192,9 @@ describe('test functions', () => {
     });
 
     test('attach an image to multiple adventures and maps', async () => {
-      const owner = createTestUser('Owner', 'owner@example.com', 'google.com');
-      const emul = initializeEmul(owner);
-      const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
-      const functionsService = new FunctionsService(emul.functions);
+      const owner = await createUser('Owner', 'owner@example.com');
+      const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+      const functionsService = new FunctionsService(functions);
       const storage = new MockWebStorage(functionsService, storageLocation);
 
       // Make sure the user has a profile
@@ -1336,10 +1308,9 @@ describe('test functions', () => {
     });
 
     test('create a sprite', async () => {
-      const owner = createTestUser('Owner', 'owner@example.com', 'google.com');
-      const emul = initializeEmul(owner);
-      const dataService = new DataService(emul.db, firebase.firestore.FieldValue.serverTimestamp);
-      const functionsService = new FunctionsService(emul.functions);
+      const owner = await createUser('Owner', 'owner@example.com');
+      const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+      const functionsService = new FunctionsService(functions);
       const storage = new MockWebStorage(functionsService, storageLocation);
 
       // Make sure the user has a profile
