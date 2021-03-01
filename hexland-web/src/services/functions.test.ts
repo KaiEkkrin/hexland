@@ -28,7 +28,7 @@ import md5 from 'crypto-js/md5';
 import { IdDictionary } from '../data/identified';
 import { IMapImage } from '../data/image';
 
-const adminCredentials = require('../../firebase-admin-credentials.json');
+import adminCredentials from '../../firebase-admin-credentials.json';
 
 export function createTestUser(
   displayName: string | null,
@@ -62,7 +62,7 @@ interface IChangesEvent {
 
 describe('test functions', () => {
   // We must use a fixed project ID here, it seems
-  const projectId = String(adminCredentials?.project_id ?? 'hexland-test');
+  const projectId = String(adminCredentials?.projectId ?? 'hexland-test');
   const region = 'europe-west2';
   const emul: { [uid: string]: IEmul } = {};
 
@@ -73,12 +73,12 @@ describe('test functions', () => {
 
     const e = initializeTestApp({
       projectId: projectId,
-      auth: auth
+      auth: { ...auth, email: auth.email ?? undefined }
     });
 
     const db = e.firestore();
     const functions = e.functions(region);
-    functions.useFunctionsEmulator('http://localhost:5001');
+    functions.useEmulator('localhost', 5001);
     emul[auth.uid] = { app: e, db: db, functions: functions };
     return emul[auth.uid];
   }
