@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import { createContext, useEffect, useState } from 'react';
+import * as React from 'react';
 
 import firebase from 'firebase/app';
 import 'firebase/analytics';
@@ -12,7 +13,7 @@ import * as Auth from '../services/auth';
 
 const region = 'europe-west2';
 
-export const FirebaseContext = React.createContext<IFirebaseContext>({});
+export const FirebaseContext = createContext<IFirebaseContext>({});
 
 async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => void) {
   // Get app config and use it to create the Firebase app

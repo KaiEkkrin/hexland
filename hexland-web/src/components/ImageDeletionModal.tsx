@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
+import * as React from 'react';
 
 import { IImage } from '../data/image';
 
@@ -15,7 +16,7 @@ interface IImageDeletionModalProps {
 
 function ImageDeletionModal(props: IImageDeletionModalProps) {
   const imageItem = useMemo(
-    () => props.image === undefined ? <React.Fragment></React.Fragment> :
+    () => props.image === undefined ? <Fragment></Fragment> :
       <ImageCollectionItem image={props.image}
         style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
       />,

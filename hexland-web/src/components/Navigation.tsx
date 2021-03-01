@@ -1,4 +1,5 @@
-import React, { useContext, useMemo, useCallback, useState, useEffect } from 'react';
+import { useContext, useMemo, useCallback, useState, useEffect } from 'react';
+import * as React from 'react';
 
 import './Navigation.css';
 

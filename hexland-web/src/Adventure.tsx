@@ -1,4 +1,5 @@
-import React, { useContext, useEffect, useReducer, useState, useMemo, useCallback } from 'react';
+import { useContext, useEffect, useReducer, useState, useMemo, useCallback } from 'react';
+import * as React from 'react';
 import './App.css';
 
 import { AdventureContext } from './components/AdventureContextProvider';

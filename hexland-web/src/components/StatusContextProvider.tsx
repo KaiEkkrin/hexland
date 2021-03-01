@@ -1,4 +1,5 @@
-import React from 'react';
+import { createContext } from 'react';
+import * as React from 'react';
 import { Subject } from 'rxjs';
 
 import { IStatusContext, IContextProviderProps, IToast } from './interfaces';
@@ -8,7 +9,7 @@ const value = {
   toasts: new Subject<IIdentified<IToast | undefined>>()
 };
 
-export const StatusContext = React.createContext<IStatusContext>(value);
+export const StatusContext = createContext<IStatusContext>(value);
 
 function StatusContextProvider(props: IContextProviderProps) {
   return (

@@ -1,4 +1,5 @@
-import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import * as React from 'react';
 
 import { AnalyticsContext } from './AnalyticsContextProvider';
 import BusyElement from './BusyElement';
@@ -48,10 +49,10 @@ function TokenImageEditor({
 
     const hexColour = typeof(colour) === 'number' ? hexColours[colour as number] : String(colour);
     return (
-      <React.Fragment>
+      <Fragment>
         Current image&nbsp;
         <SpriteImage sprite={sprites[0]} altName={altText} size={128} borderColour={hexColour} />
-      </React.Fragment>
+      </Fragment>
     );
   }, [colour, sprites, altText]);
 
@@ -103,7 +104,7 @@ function TokenImageEditor({
   const handleUseImage = useCallback(() => handleSetImage(activeImage), [activeImage, handleSetImage]);
 
   return (
-    <React.Fragment>
+    <Fragment>
       <div>
         {currentImage}
       </div>
@@ -115,7 +116,7 @@ function TokenImageEditor({
           <BusyElement normal="Use image" busy="Setting image..." isBusy={busySettingImage} />
         </Button>
       </div>
-    </React.Fragment>
+    </Fragment>
   );
 }
 

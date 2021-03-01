@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState, useContext, useReducer } from 'react';
+import { createContext, useEffect, useMemo, useState, useContext, useReducer } from 'react';
+import * as React from 'react';
 
 import { UserContext } from './UserContextProvider';
 import { AnalyticsContext } from './AnalyticsContextProvider';
@@ -19,7 +20,7 @@ import { v4 as uuidv4 } from 'uuid';
 // Providing an adventure context like this lets us maintain the same watchers
 // while the user navigates between maps in the adventure, etc.
 
-export const AdventureContext = React.createContext<IAdventureContext>({
+export const AdventureContext = createContext<IAdventureContext>({
   players: [],
 });
 

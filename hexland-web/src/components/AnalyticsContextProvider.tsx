@@ -1,10 +1,11 @@
-import React, { useContext, useEffect, useState, useMemo, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
+import * as React from 'react';
 
 import { FirebaseContext } from './FirebaseContextProvider';
 import { IAnalyticsContext, IAnalyticsProps, IContextProviderProps } from './interfaces';
 import { IAnalytics } from '../services/interfaces';
 
-export const AnalyticsContext = React.createContext<IAnalyticsContext>({
+export const AnalyticsContext = createContext<IAnalyticsContext>({
   analytics: undefined,
   enabled: undefined,
   setEnabled: (enabled: boolean | undefined) => {},
@@ -26,7 +27,7 @@ function getExMessage(e: any): string {
 // to use it through, etc.
 // The enabled setting is stored not in the user profile but in local storage.
 export function AnalyticsContextProvider({ children, getItem, setItem }: IContextProviderProps & IAnalyticsProps) {
-  const firebaseContext = useContext(FirebaseContext);
+  const { createAnalytics } = useContext(FirebaseContext);
 
   // Resolve our storage functions
   const doGetItem = useCallback(
@@ -83,7 +84,7 @@ export function AnalyticsContextProvider({ children, getItem, setItem }: IContex
     if (enabled === true) {
       // User chose to enable GA
       console.log("Enabling Google Analytics");
-      setAnalytics(firebaseContext.createAnalytics?.());
+      setAnalytics(createAnalytics?.());
       doSetItem(enabledKey, "true");
     } else if (enabled === false) {
       // User chose to disable GA
@@ -96,7 +97,7 @@ export function AnalyticsContextProvider({ children, getItem, setItem }: IContex
       setAnalytics(undefined);
       doSetItem(enabledKey, null);
     }
-  }, [enabled, firebaseContext.createAnalytics, setAnalytics, doSetItem]);
+  }, [enabled, createAnalytics, setAnalytics, doSetItem]);
 
   return (
     <AnalyticsContext.Provider value={analyticsContext}>

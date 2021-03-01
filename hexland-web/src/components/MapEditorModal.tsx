@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState, useContext, useMemo } from 'react';
+import { useCallback, useEffect, useState, useContext, useMemo } from 'react';
+import * as React from 'react';
 
 import BusyElement from './BusyElement';
 import { UserContext } from './UserContextProvider';

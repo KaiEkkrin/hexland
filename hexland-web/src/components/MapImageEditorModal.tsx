@@ -1,4 +1,5 @@
-import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import * as React from 'react';
 
 import ImageCollectionItem from './ImageCollectionItem';
 import { ImagePickerForm } from './ImagePickerModal';
@@ -54,10 +55,12 @@ function MapImageEditorModal(
       return <p>No image selected.</p>;
     }
 
-    return <React.Fragment>
-      Current image&nbsp;
-      <ImageCollectionItem image={image} />
-    </React.Fragment>;
+    return (
+      <Fragment>
+        Current image&nbsp;
+        <ImageCollectionItem image={image} />
+      </Fragment>
+    );
   }, [image]);
 
   const useImageDisabled = useMemo(() => activeImage === undefined, [activeImage]);

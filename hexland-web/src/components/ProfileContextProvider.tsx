@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState, useContext } from 'react';
+import { createContext, useCallback, useEffect, useMemo, useState, useContext } from 'react';
+import * as React from 'react';
 
 import { IProfile } from '../data/profile';
 
@@ -8,7 +9,7 @@ import { IContextProviderProps, IProfileContext } from './interfaces';
 import { ensureProfile } from '../services/extensions';
 import { IDataReference } from '../services/interfaces';
 
-export const ProfileContext = React.createContext<IProfileContext>({});
+export const ProfileContext = createContext<IProfileContext>({});
 
 // This provides the profile context, and can be wrapped around individual components
 // for unit testing.

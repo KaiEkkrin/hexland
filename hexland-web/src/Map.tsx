@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState, useContext, useMemo, useCallback } from 'react';
+import { useEffect, useRef, useState, useContext, useMemo, useCallback } from 'react';
+import * as React from 'react';
 import './App.css';
 import './Map.css';
 

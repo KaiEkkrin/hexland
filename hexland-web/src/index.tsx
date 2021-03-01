@@ -1,4 +1,5 @@
-import React from 'react';
+import { StrictMode } from 'react';
+import * as React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
@@ -11,9 +12,9 @@ const staticBanner = document.getElementById('static_banner');
 staticBanner?.remove();
 
 ReactDOM.render(
-  <React.StrictMode>
+  <StrictMode>
     <App />
-  </React.StrictMode>,
+  </StrictMode>,
   document.getElementById('root')
 );
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { createContext, useState, useEffect } from 'react';
 
 import firebase from 'firebase/app';
 import 'firebase/auth';
@@ -16,7 +16,7 @@ import { v4 as uuidv4 } from 'uuid';
 const projectId = 'hexland-test';
 const region = 'europe-west2';
 
-export const FirebaseContext = React.createContext<IFirebaseContext>({});
+export const FirebaseContext = createContext<IFirebaseContext>({});
 
 // This module provides a Firebase context provider that uses the simulator.
 // To do this, we need to track project IDs (different for every test and database)

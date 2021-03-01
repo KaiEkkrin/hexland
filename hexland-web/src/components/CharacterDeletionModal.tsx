@@ -1,6 +1,5 @@
-import React from 'react';
-
 import { ICharacter } from '../data/character';
+import * as React from 'react';
 
 import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';

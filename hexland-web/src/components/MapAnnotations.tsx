@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { forwardRef, useState, useEffect, useMemo } from 'react';
+import * as React from 'react';
 import '../App.css';
 import '../Map.css';
 
@@ -23,7 +24,7 @@ interface IMapPopoverProps extends PopoverProps {
 }
 
 // See https://react-bootstrap.github.io/components/overlays/#tooltips
-const UpdatingPopover = React.forwardRef<HTMLElement, IMapPopoverProps>(
+const UpdatingPopover = forwardRef<HTMLElement, IMapPopoverProps>(
   ({ popper, children, left, bottom, ...props }, ref) => {
     useEffect(() => {
       popper.scheduleUpdate();

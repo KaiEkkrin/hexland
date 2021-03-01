@@ -1,4 +1,5 @@
-import React, { useMemo, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
+import * as React from 'react';
 
 import { EditMode } from './MapControls'; // TODO remove it from there entirely and prune some?
 import { IAnnotation } from '../data/annotation';

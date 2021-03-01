@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
+import * as React from 'react';
 
 import { IPlayer } from '../data/adventure';
 import { ITokenProperties } from '../data/feature';
@@ -25,75 +26,78 @@ interface IPlayerInfoListItemProps extends IPlayerInfoListPropsBase {
   player: IPlayer;
 }
 
-function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
+function PlayerInfoListItem({
+  ownerUid, player, tokens, showBlockButtons, showNoTokenWarning,
+  blockPlayer, resetView, unblockPlayer
+}: IPlayerInfoListItemProps) {
   const blockedBadge = useMemo(
-    () => props.player.allowed === false ?
-      <Badge className="ml-2 mt-1" variant="danger" title={"Player " + props.player.playerName + " is blocked"}>BLOCKED</Badge> :
+    () => player.allowed === false ?
+      <Badge className="ml-2 mt-1" variant="danger" title={"Player " + player.playerName + " is blocked"}>BLOCKED</Badge> :
       undefined,
-    [props.player]
+    [player]
   );
 
   const blockItem = useMemo(
-    () => (props.showBlockButtons !== true || props.player.playerId === props.ownerUid) ? undefined :
-      props.player.allowed === false ? <Dropdown.Item onClick={() => props.unblockPlayer?.(props.player)}>Unblock</Dropdown.Item> :
-      <Dropdown.Item onClick={() => props.blockPlayer?.(props.player)}>Block</Dropdown.Item>,
-    [props.ownerUid, props.player, props.showBlockButtons, props.blockPlayer, props.unblockPlayer]
+    () => (showBlockButtons !== true || player.playerId === ownerUid) ? undefined :
+      player.allowed === false ? <Dropdown.Item onClick={() => unblockPlayer?.(player)}>Unblock</Dropdown.Item> :
+      <Dropdown.Item onClick={() => blockPlayer?.(player)}>Block</Dropdown.Item>,
+    [ownerUid, player, showBlockButtons, blockPlayer, unblockPlayer]
   );
 
   const myTokens = useMemo(
-    () => props.tokens.filter(t => t.players.find(p => p === props.player.playerId) !== undefined),
-    [props.player, props.tokens]
+    () => tokens.filter(t => t.players.find(p => p === player.playerId) !== undefined),
+    [player, tokens]
   );
 
   const isNoTokenHidden = useMemo(
-    () => props.player.playerId === props.ownerUid,
-    [props.ownerUid, props.player]
+    () => player.playerId === ownerUid,
+    [ownerUid, player]
   );
 
   const badges = useMemo(() => {
-    if (props.player.playerId === props.ownerUid) {
+    if (player.playerId === ownerUid) {
       return [(
         <Badge key="ownerBadge" className="ml-2 mt-1" variant="warning"
-          title={"Player " + props.player.playerName + " is the owner"}
+          title={"Player " + player.playerName + " is the owner"}
         >Owner</Badge>
       )];
     } else if (myTokens.length > 0) {
       return myTokens.map(t => {
         const key = `badge_${t.id}`;
-        const title = `Player ${props.player.playerName} has token ${t.text}`;
+        const title = `Player ${player.playerName} has token ${t.text}`;
         if (t.characterId.length > 0 || t.sprites.length > 0) { // TODO #46 deal with no-image characters...
           return (
-            <SpriteImage key={key} className="ml-2 mt-1" altName={props.player.playerName}
+            <SpriteImage key={key} className="ml-2 mt-1" altName={player.playerName}
               size={32} border="1px solid" borderColour={hexColours[t.colour]} token={t}
-              onClick={() => props.resetView?.(t.id)} />
+              onClick={() => resetView?.(t.id)} />
           );
         } else {
           return (
             <Badge key={key} className="ml-2 mt-1" title={title}
               style={{ backgroundColor: hexColours[t.colour], color: "black", userSelect: "none" }}
-              onClick={() => props.resetView?.(t.id)}
+              onClick={() => resetView?.(t.id)}
             >{t.text}</Badge>
           );
         }
       });
-    } else if (props.showNoTokenWarning === true) {
+    } else if (showNoTokenWarning === true) {
       return [(
         <Badge key="noTokenBadge" className="ml-2 mt-1" hidden={isNoTokenHidden} variant="warning"
-          title={"Player " + props.player.playerName + " has no token"}
+          title={"Player " + player.playerName + " has no token"}
         >No token</Badge>
       )];
     } else {
       return [];
     }
-  }, [isNoTokenHidden, myTokens, props.ownerUid, props.player, props.resetView, props.showNoTokenWarning]);
+  }, [isNoTokenHidden, myTokens, ownerUid, player, resetView, showNoTokenWarning]);
 
   const contentItems = useMemo(() => {
     // Always show the player name
     const items = [(
       <div key="nameItem"
         style={{ wordBreak: "break-all", wordWrap: "break-word" }}
-        aria-label={`Player ${props.player.playerName}`}
-      >{props.player.playerName}{blockedBadge}</div>
+        aria-label={`Player ${player.playerName}`}
+      >{player.playerName}{blockedBadge}</div>
     )];
 
     // If we have a block item, show that in a little menu to make it less threatening
@@ -116,7 +120,7 @@ function PlayerInfoListItem(props: IPlayerInfoListItemProps) {
     }
 
     return items;
-  }, [badges, blockedBadge, blockItem, props.player]);
+  }, [badges, blockedBadge, blockItem, player]);
 
   return (
     <ListGroup.Item className="Map-info-list-item">

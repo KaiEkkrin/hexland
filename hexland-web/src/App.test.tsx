@@ -1,4 +1,3 @@
-import React from 'react';
 import { Subject } from 'rxjs';
 import { first } from 'rxjs/operators';
 

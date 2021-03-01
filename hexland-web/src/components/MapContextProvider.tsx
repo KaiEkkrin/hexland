@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useContext, useReducer } from 'react';
+import { createContext, useEffect, useState, useContext, useReducer } from 'react';
+import * as React from 'react';
 
 import { trackChanges } from '../data/changeTracking';
 import { IAdventureIdentified } from '../data/identified';
@@ -20,7 +21,7 @@ import { from, Observable } from 'rxjs';
 import { first, map, scan, share, switchMap } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
 
-export const MapContext = React.createContext<IMapContext>({
+export const MapContext = createContext<IMapContext>({
   mapState: createDefaultState()
 });
 

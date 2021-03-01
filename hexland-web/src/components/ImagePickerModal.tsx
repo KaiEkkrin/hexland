@@ -1,4 +1,13 @@
-import React, { useCallback, useContext, useEffect, useMemo, useReducer, useState } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useState,
+} from 'react';
+import * as React from 'react';
 
 import { AnalyticsContext } from './AnalyticsContextProvider';
 import ImageCollectionItem from './ImageCollectionItem';
@@ -133,7 +142,7 @@ export function ImagePickerForm({ show, setActiveImage, setImageCount, handleDel
   const saveDisabled = useMemo(() => shownIndex === undefined, [shownIndex]);
 
   return (
-    <React.Fragment>
+    <Fragment>
       <Form>
         <Form.Group>
           <Form.Label htmlFor="uploadButton">Upload a new image</Form.Label>
@@ -163,7 +172,7 @@ export function ImagePickerForm({ show, setActiveImage, setImageCount, handleDel
           <FontAwesomeIcon icon={faTimes} color="white" />
         </Button>
       </div>
-    </React.Fragment>
+    </Fragment>
   );
 }
 

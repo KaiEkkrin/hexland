@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useContext } from 'react';
+import { createContext, useEffect, useState, useContext } from 'react';
+import * as React from 'react';
 
 import { FirebaseContext } from './FirebaseContextProvider';
 import { IContextProviderProps, ISignInMethodsContext, IUserContext } from './interfaces';
@@ -10,11 +11,11 @@ import { Storage } from '../services/storage';
 import { IStorage } from '../services/interfaces';
 import { ExpiringStringCache } from '../services/expiringStringCache';
 
-export const UserContext = React.createContext<IUserContext>({
+export const UserContext = createContext<IUserContext>({
   user: undefined,
 });
 
-export const SignInMethodsContext = React.createContext<ISignInMethodsContext>({
+export const SignInMethodsContext = createContext<ISignInMethodsContext>({
   signInMethods: []
 });
 

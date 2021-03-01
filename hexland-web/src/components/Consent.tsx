@@ -1,4 +1,5 @@
-import React, { useCallback, useContext, useMemo } from 'react';
+import { useCallback, useContext, useMemo } from 'react';
+import * as React from 'react';
 
 import { AnalyticsContext } from './AnalyticsContextProvider';
 import ExpansionToggle from './ExpansionToggle';

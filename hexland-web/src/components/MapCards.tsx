@@ -1,4 +1,5 @@
-import React, { useContext, useMemo, useState } from 'react';
+import { Fragment, useContext, useMemo, useState } from 'react';
+import * as React from 'react';
 import '../App.css';
 
 import { CardStyle } from './AdventureCards';
@@ -113,7 +114,7 @@ function MapCard({ collapsing, adventures, map, cloneMap, deleteMap, pickImage }
 
   const content = useMemo(
     () => (
-      <React.Fragment>
+      <Fragment>
         <Card.Subtitle className="text-muted">{map.ty} map</Card.Subtitle>
         <Card.Text>{map.description}</Card.Text>
         <div className="card-row-spaced">
@@ -122,7 +123,7 @@ function MapCard({ collapsing, adventures, map, cloneMap, deleteMap, pickImage }
           </LinkContainer>
           {manageButtons}
         </div>
-      </React.Fragment>
+      </Fragment>
     ),
     [map, manageButtons]
   );
