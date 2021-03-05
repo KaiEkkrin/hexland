@@ -14,6 +14,12 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "1.3.3",
+    changes: [
+      "Update to React 17 and various other upgrades"
+    ]
+  },
+  {
     version: "1.3.2",
     changes: [
       "Security patch for Three.js"
