@@ -23,6 +23,7 @@ import Modal from 'react-bootstrap/Modal';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronLeft, faChevronRight, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { from } from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
 
 interface IImageStatusProps {
@@ -71,15 +72,23 @@ export function ImagePickerForm({ show, setActiveImage, setImageCount, handleDel
     }
 
     setStatus({ message: `Uploading ${file.name}...` });
-    storageService.ref(path).put(file, {
-      customMetadata: {
-        originalName: file.name
+    const doUpload = async () => {
+      try {
+        await storageService.ref(path).put(file, {
+          customMetadata: {
+            originalName: file.name
+          }
+        });
+        setStatus({ message: `Processing ${file.name}...` }); // will be replaced when the onUpload function finishes
       }
-    }).then(() => setStatus({ message: `Processing ${file.name}...` })) // will be replaced when the onUpload function finishes
-      .catch(e => {
-        setStatus({ message: "Upload failed: " + e.message, isError: true });
+      catch (e) {
+        setStatus({ message: `Upload failed: ${e.message}`, isError: true });
         logError("Upload failed", e);
-      });
+      }
+    };
+
+    const sub = from(doUpload()).subscribe();
+    return () => sub.unsubscribe();
   }, [logError, setStatus, storageService, user]);
 
   const [images, setImages] = useState<IImage[]>([]);
