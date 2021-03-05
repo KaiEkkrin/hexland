@@ -14,6 +14,12 @@ interface IVersion {
 
 const changes: IVersion[] = [
   {
+    version: "1.3.2",
+    changes: [
+      "Security patch for Three.js"
+    ]
+  },
+  {
     version: "1.3.1",
     changes: [
       "Increase maximum image size to 5MB"
