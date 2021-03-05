@@ -1,5 +1,4 @@
 import { Fragment, useMemo } from 'react';
-import * as React from 'react';
 
 import { IImage } from '../data/image';
 

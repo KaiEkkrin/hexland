@@ -1,5 +1,4 @@
 import { createContext, useEffect, useState, useContext, useReducer } from 'react';
-import * as React from 'react';
 
 import { trackChanges } from '../data/changeTracking';
 import { IAdventureIdentified } from '../data/identified';

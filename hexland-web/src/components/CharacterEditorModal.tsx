@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import * as React from 'react';
 
 import { ICharacter } from '../data/character';
 import { IImage } from '../data/image';

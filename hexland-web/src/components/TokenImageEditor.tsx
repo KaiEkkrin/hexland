@@ -1,5 +1,4 @@
 import { Fragment, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import * as React from 'react';
 
 import { AnalyticsContext } from './AnalyticsContextProvider';
 import BusyElement from './BusyElement';

@@ -1,5 +1,4 @@
 import { useContext, useMemo, useReducer } from 'react';
-import * as React from 'react';
 import './App.css';
 
 import AdventureCollection from './components/AdventureCollection';

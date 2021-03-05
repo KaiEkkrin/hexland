@@ -1,5 +1,4 @@
 import { createContext, useEffect, useState } from 'react';
-import * as React from 'react';
 
 import firebase from 'firebase/app';
 import 'firebase/analytics';

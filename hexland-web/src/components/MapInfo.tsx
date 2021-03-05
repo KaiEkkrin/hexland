@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import * as React from 'react';
 
 import { IPlayer } from '../data/adventure';
 import { ITokenProperties } from '../data/feature';

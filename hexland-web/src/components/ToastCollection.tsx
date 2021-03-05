@@ -1,5 +1,4 @@
 import { useContext, useReducer, useEffect } from 'react';
-import * as React from 'react';
 import '../App.css';
 import { StatusContext } from './StatusContextProvider';
 import { IToast } from './interfaces';

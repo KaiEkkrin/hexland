@@ -1,5 +1,4 @@
 import { createContext } from 'react';
-import * as React from 'react';
 import { Subject } from 'rxjs';
 
 import { IStatusContext, IContextProviderProps, IToast } from './interfaces';

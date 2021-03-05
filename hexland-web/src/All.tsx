@@ -1,5 +1,4 @@
 import { useContext, useState, useEffect, useMemo } from 'react';
-import * as React from 'react';
 import './App.css';
 
 import AdventureCollection from './components/AdventureCollection';

@@ -1,5 +1,4 @@
 import { hexColours } from '../models/featureColour';
-import * as React from 'react';
 
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import ToggleButton from 'react-bootstrap/ToggleButton';

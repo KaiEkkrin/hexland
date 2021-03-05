@@ -1,5 +1,4 @@
 import { Fragment, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import * as React from 'react';
 
 import ImageCollectionItem from './ImageCollectionItem';
 import { ImagePickerForm } from './ImagePickerModal';

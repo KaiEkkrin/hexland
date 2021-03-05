@@ -1,5 +1,4 @@
 import { createContext, useEffect, useMemo, useState, useContext, useReducer } from 'react';
-import * as React from 'react';
 
 import { UserContext } from './UserContextProvider';
 import { AnalyticsContext } from './AnalyticsContextProvider';

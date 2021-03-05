@@ -1,5 +1,4 @@
 import { Fragment, useContext, useMemo, useState } from 'react';
-import * as React from 'react';
 import '../App.css';
 
 import { CardStyle } from './AdventureCards';

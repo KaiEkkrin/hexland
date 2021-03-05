@@ -1,5 +1,4 @@
 import './App.css';
-import * as React from 'react';
 
 import AdventureContextProvider from './components/AdventureContextProvider';
 import AdventurePage from './Adventure';

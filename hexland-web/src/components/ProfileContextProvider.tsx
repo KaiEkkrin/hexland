@@ -1,5 +1,4 @@
 import { createContext, useCallback, useEffect, useMemo, useState, useContext } from 'react';
-import * as React from 'react';
 
 import { IProfile } from '../data/profile';
 

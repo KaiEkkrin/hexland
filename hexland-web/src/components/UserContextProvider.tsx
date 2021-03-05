@@ -1,5 +1,4 @@
 import { createContext, useEffect, useState, useContext } from 'react';
-import * as React from 'react';
 
 import { FirebaseContext } from './FirebaseContextProvider';
 import { IContextProviderProps, ISignInMethodsContext, IUserContext } from './interfaces';
