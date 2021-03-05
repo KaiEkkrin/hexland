@@ -42,11 +42,16 @@ interface IModeButtonProps<T> {
 }
 
 function ModeButton<T>({ value, icon, children, mode, setMode }: IModeButtonProps<T>) {
+  // Deal with a strange `readonly string[]` possibility for type T
+  const valueProperty = useMemo(
+    () => typeof(value) === 'number' ? value : `${value}`,
+    [value]
+  );
   return (
     <OverlayTrigger placement="right" overlay={
       <Tooltip id={value + "-tooltip"}>{children}</Tooltip>
     }>
-      <ToggleButton type="radio" variant="dark" value={value}
+      <ToggleButton type="radio" variant="dark" value={valueProperty}
         checked={mode === value}
         onChange={e => setMode(value)}>
         {icon}

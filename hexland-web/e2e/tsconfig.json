@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
+    "jsx": "react",
     "lib": [
       "esnext"
     ],
