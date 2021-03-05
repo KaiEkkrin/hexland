@@ -41,7 +41,7 @@ function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
                         <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
                         <Route exact path="/invite/:inviteId" component={InvitePage} />
                         <Route exact path="/login" component={Login} />
-                        <Route exact page="/shared" component={Shared} />
+                        <Route exact path="/shared" component={Shared} />
                       </Switch>
                     </MapContextProvider>
                   </AdventureContextProvider>

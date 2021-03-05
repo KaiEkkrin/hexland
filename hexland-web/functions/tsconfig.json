@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
     "allowJs": true,
+    "esModuleInterop": true,
     "module": "commonjs",
+    "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,
     "noUnusedLocals": true,
     "outDir": "lib",

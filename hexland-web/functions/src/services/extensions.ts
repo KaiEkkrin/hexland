@@ -375,8 +375,8 @@ async function isValidInvite(
     return true;
   }
 
-  const inviteDate = dayjs((invite.data.timestamp as FirebaseFirestore.Timestamp).toDate());
-  const age = dayjs().diff(inviteDate, policy.timeUnit);
+  const inviteDate = dayjs.default((invite.data.timestamp as FirebaseFirestore.Timestamp).toDate());
+  const age = dayjs.default().diff(inviteDate, policy.timeUnit);
   if (age >= policy.deletion) {
     try {
       await dataService.delete(invite);
@@ -510,8 +510,8 @@ export async function joinAdventure(
   }
 
   if (typeof(invite.timestamp) !== 'number') {
-    const inviteDate = dayjs((invite.timestamp as FirebaseFirestore.Timestamp).toDate());
-    const age = dayjs().diff(inviteDate, policy.timeUnit);
+    const inviteDate = dayjs.default((invite.timestamp as FirebaseFirestore.Timestamp).toDate());
+    const age = dayjs.default().diff(inviteDate, policy.timeUnit);
     if (age >= policy.expiry) {
       throw new functions.https.HttpsError('deadline-exceeded', 'Invite has expired');
     }

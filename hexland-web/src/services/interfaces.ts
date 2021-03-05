@@ -256,7 +256,7 @@ export interface IStorageReference {
   getDownloadURL(): Promise<string>;
 
   // Uploads a file here.
-  put(file: Blob | Buffer, metadata: any): Promise<void>;
+  put(file: any, metadata: any): Promise<void>;
 
   // Uploads a file here (from the filesystem.)
   upload(source: string, metadata: { contentType: string }): Promise<void>;
@@ -268,5 +268,5 @@ export interface IWebDAV {
   createWriteStream(path: string, options: any): any; 
   deleteFile(path: string): Promise<void>;
   getFileDownloadLink(path: string): string;
-  putFileContents(path: string, file: Blob | Buffer): Promise<void>;
+  putFileContents(path: string, file: any): Promise<boolean>;
 }

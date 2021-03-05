@@ -218,30 +218,30 @@ test('Surround lots of 3-square rooms on a square grid', () => {
   // exercise the performance of the colouring algorithm.
   const radius = 100;
   const step = 6;
-  let colouring = new MapColouring(new SquareGridGeometry(75, 12));
+  const colouring = new MapColouring(new SquareGridGeometry(75, 12));
 
-  for (let sq of enumerateSquares(radius, step)) {
+  for (const sq of enumerateSquares(radius, step)) {
     walledSquare(sq.x, sq.y).forEach(w => colouring.setWall(w, true));
   }
   colouring.recalculate();
 
   // Each of the faces at offset (0, 0) and (1, 2) should be in the same colour
   // as each other and different to all the other ones
-  let innerColours = new Map<number, number>();
-  for (let sq of enumerateSquares(radius, step)) {
-    let atZero = colouring.colourOf(sq);
+  const innerColours = new Map<number, number>();
+  for (const sq of enumerateSquares(radius, step)) {
+    const atZero = colouring.colourOf(sq);
     expect(innerColours.has(atZero)).toBeFalsy();
     innerColours.set(atZero, 0);
 
-    let atOneTwo = colouring.colourOf({ x: sq.x + 1, y: sq.y + 2 });
+    const atOneTwo = colouring.colourOf({ x: sq.x + 1, y: sq.y + 2 });
     expect(atOneTwo).toBe(atZero);
   }
 
   // Each of the faces at offset (3, 3) should be in the outside colour, which is
   // different again
   let outsideColour: number | undefined = undefined;
-  for (let sq of enumerateSquares(radius, step)) {
-    let atThree = colouring.colourOf({ x: sq.x + 3, y: sq.y + 3 });
+  for (const sq of enumerateSquares(radius, step)) {
+    const atThree = colouring.colourOf({ x: sq.x + 3, y: sq.y + 3 });
     if (outsideColour === undefined) {
       outsideColour = atThree;
     } else {

@@ -46,7 +46,7 @@ describe('test extensions', () => {
 
     const e = initializeTestApp({
       projectId: projectId,
-      auth: auth
+      auth: { ...auth, email: auth.email ?? undefined }
     });
     emul[auth.uid] = e;
     return e;

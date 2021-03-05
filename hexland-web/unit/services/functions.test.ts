@@ -101,7 +101,7 @@ describe('test functions', () => {
 
   // test('invoke hello world function', async () => {
   //   const functions = emul['owner'].functions;
-  //   functions.useFunctionsEmulator('http://localhost:5001');
+  //   functions.useEmulator('localhost', 5001);
   //   const hello = functions.httpsCallable('helloWorld');
   //   const result = await hello();
   //   expect(result.data).toBe('Hello from Firebase!');
