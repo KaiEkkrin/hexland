@@ -206,7 +206,6 @@ export class OutlineTokenTexture {
 
   dispose() {
     this._outlineFilter.dispose();
-    this._outlineScene.dispose();
     this._outlineTarget.dispose();
   }
 }

@@ -240,7 +240,6 @@ export class TokenDrawing extends BaseTokenDrawingWithText<
     this.fillVertices.dispose();
     this.texts.dispose();
 
-    this._textScene.dispose();
     this._textTarget.dispose();
   }
 }

@@ -692,13 +692,6 @@ export class DrawingOrtho implements IDrawing {
     this._textureCache.dispose();
     this._textMaterial.dispose();
 
-    this._imageScene.dispose();
-    this._mapScene.dispose();
-    this._fixedFilterScene.dispose();
-    this._filterScene.dispose();
-    this._fixedHighlightScene.dispose();
-    this._overlayScene.dispose();
-
     // do *not* dispose the renderer, it'll be re-used for the next drawing context
 
     this._disposed = true;
