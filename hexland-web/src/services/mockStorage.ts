@@ -50,13 +50,14 @@ export class MockStorageReference implements IStorageReference {
     const writeStream = fs.createWriteStream(destination, { autoClose: true });
     return new Promise((resolve, reject) => {
       function safeReject(e: any) {
-        writeStream.close();
+        console.log(`download of ${webDAVPath} failed`, e);
         reject(e);
       }
 
       readStream.on('data', (d: any) => writeStream.write(d));
       readStream.on('end', () => {
         writeStream.end();
+        console.log(`download of ${webDAVPath} successful`);
         resolve();
       });
       readStream.on('error', safeReject);
@@ -81,7 +82,7 @@ export class MockStorageReference implements IStorageReference {
 
     // I'm going to try to be a bit careful about making sure the local
     // file has closed before continuing:
-    const readStream = fs.createReadStream(source);
+    const readStream = fs.createReadStream(source, { autoClose: true });
     const writeStream = this._webdav.createWriteStream(webDAVPath, {
       extraHeaders: { 'Content-Type': metadata.contentType }
     });

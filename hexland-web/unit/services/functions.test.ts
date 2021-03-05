@@ -4,11 +4,14 @@ import { deleteAdventure, deleteCharacter, deleteMap, editAdventure, editCharact
 import { FunctionsService } from './functions';
 import { IDataService, IUser } from './interfaces';
 import { MockWebStorage } from './mockWebStorage';
+import { IAdventure, summariseAdventure } from '../data/adventure';
 import { IAnnotation } from '../data/annotation';
 import { ChangeCategory, ChangeType, Changes, TokenAdd, TokenMove, WallAdd } from '../data/change';
 import { SimpleChangeTracker, trackChanges } from '../data/changeTracking';
 import { coordString, edgeString, GridCoord, GridEdge } from '../data/coord';
 import { FeatureDictionary, IFeature, StripedArea } from '../data/feature';
+import { IdDictionary } from '../data/identified';
+import { IMapImage } from '../data/image';
 import { IMap, MapType } from '../data/map';
 import * as Policy from '../data/policy';
 import { getTokenGeometry } from '../data/tokenGeometry';
@@ -18,15 +21,14 @@ import firebase from 'firebase/app';
 import 'firebase/firestore';
 import 'firebase/functions';
 
+import md5 from 'crypto-js/md5';
 import * as fs from 'fs';
 import { initializeTestApp } from '@firebase/rules-unit-testing';
 import * as http from 'http';
 import { Subject } from 'rxjs';
 import { filter, first } from 'rxjs/operators';
+import { promisify } from 'util';
 import { v4 as uuidv4 } from 'uuid';
-import md5 from 'crypto-js/md5';
-import { IdDictionary } from '../data/identified';
-import { IMapImage } from '../data/image';
 
 import adminCredentials from '../../firebase-admin-credentials.json';
 
@@ -1126,6 +1128,7 @@ describe('test functions', () => {
 
   // I expect this will be a bit heavy too
   describe('test images', () => {
+    const readFile = promisify(fs.readFile);
     const storageLocation = 'http://mock-storage';
     const testImages = [
       './test-images/st01.png',
@@ -1179,7 +1182,7 @@ describe('test functions', () => {
       expect(a1?.imagePath).toBe("");
 
       // Upload an image for it
-      const buffer = fs.readFileSync(testImages[0]);
+      const buffer = await readFile(testImages[0]);
       const path = `images/${owner.uid}/one`;
       await storage.ref(path).put(buffer, { customMetadata: { originalName: 'st01.png' } });
 
@@ -1192,7 +1195,7 @@ describe('test functions', () => {
 
       // Attach that image to the adventure
       if (a1 !== undefined) {
-        await editAdventure(dataService, owner.uid, { id: a1Id, ...a1, imagePath: path });
+        await editAdventure(dataService, owner.uid, { ...summariseAdventure(a1Id, a1 as IAdventure), imagePath: path });
       }
 
       // The image should appear in the adventure and profile records now
@@ -1251,11 +1254,11 @@ describe('test functions', () => {
       const m22Id = await functionsService.createMap(a2Id, 'M22', 'Map 22', MapType.Square, false);
 
       // Upload both images
-      const buffer01 = fs.readFileSync(testImages[0]);
+      const buffer01 = await readFile(testImages[0]);
       const path01 = `images/${owner.uid}/one`;
       await storage.ref(path01).put(buffer01, { customMetadata: { originalName: 'st01.png' } });
 
-      const buffer02 = fs.readFileSync(testImages[1]);
+      const buffer02 = await readFile(testImages[1]);
       const path02 = `images/${owner.uid}/two`;
       await storage.ref(path02).put(buffer02, { customMetadata: { originalName: 'st02.png' } });
 
@@ -1350,7 +1353,7 @@ describe('test functions', () => {
       expect(a1?.imagePath).toBe("");
 
       // Upload an image for it
-      const buffer = fs.readFileSync(testImages[0]);
+      const buffer = await readFile(testImages[0]);
       const path = `images/${owner.uid}/one`;
       await storage.ref(path).put(buffer, { customMetadata: { originalName: 'st01.png' } });
 
@@ -1369,7 +1372,7 @@ describe('test functions', () => {
       expect(spritesheets?.[0].data.freeSpaces).toBe(15);
 
       // Upload another image
-      const buffer2 = fs.readFileSync(testImages[1]);
+      const buffer2 = await readFile(testImages[1]);
       const path2 = `images/${owner.uid}/two`;
       await storage.ref(path2).put(buffer2, { customMetadata: { originalName: 'st02.png' } });
 

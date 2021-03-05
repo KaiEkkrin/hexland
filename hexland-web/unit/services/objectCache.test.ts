@@ -18,7 +18,7 @@ function createFetch() {
 }
 
 test('Resolve one value immediately', async () => {
-  const logError = jest.fn<void, [message: string, e: any]>();
+  const logError = jest.fn();
   const cache = new ObjectCache(logError);
 
   const f1 = createFetch();
@@ -75,7 +75,7 @@ test('Resolve one value immediately', async () => {
 });
 
 test('resolve one value with a delay, queueing requests', async () => {
-  const logError = jest.fn<void, [message: string, e: any]>();
+  const logError = jest.fn();
   const cache = new ObjectCache(logError);
 
   const f1 = createFetch();
@@ -107,7 +107,7 @@ test('resolve one value with a delay, queueing requests', async () => {
 });
 
 test('resolve one value with an error the first time', async () => {
-  const logError = jest.fn<void, [message: string, e: any]>();
+  const logError = jest.fn();
   const cache = new ObjectCache(logError);
 
   const f1 = createFetch();
@@ -135,7 +135,7 @@ test('resolve one value with an error the first time', async () => {
 });
 
 test('an accidental double release is ignored', async () => {
-  const logError = jest.fn<void, [message: string, e: any]>();
+  const logError = jest.fn();
   const cache = new ObjectCache(logError);
 
   const f1 = createFetch();
@@ -164,7 +164,7 @@ test('an accidental double release is ignored', async () => {
 });
 
 test('multiple values can be loaded independently', async () => {
-  const logError = jest.fn<void, [message: string, e: any]>();
+  const logError = jest.fn();
   const cache = new ObjectCache<string>(logError);
 
   const expectedValues = ['a', 'b', 'c', 'd'];
