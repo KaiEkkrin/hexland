@@ -67,7 +67,7 @@ export async function signIn(page: Page, user: User) {
   // Fill in the form
   await page.fill('[id=emailInput]', user.email);
   await page.fill('[id=passwordInput]', user.password);
-  await page.click('text="Sign in"', { force: true });
+  await page.click('button >> text=/^Sign in$/'); // regexp to avoid matching the "Sign in with..." buttons below the modal on the login page
 
   // Wait for the front page to come back
   await expect(page).toHaveSelector('.Introduction-image');
@@ -97,7 +97,7 @@ export async function signUp(deviceName: string, page: Page, prefix?: string | u
   await page.fill('[id=confirmPasswordInput]', user.password);
 
   // Sign up
-  await page.click('text="Sign up"', { force: true });
+  await page.click('button >> text="Sign up"');
 
   // Wait for the front page to come back
   await expect(page).toHaveSelector('.Introduction-image');

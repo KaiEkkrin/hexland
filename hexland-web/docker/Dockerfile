@@ -10,7 +10,7 @@ ENV USER=${USER}
 RUN apt-get update && \
     apt-get install -yqq default-jre imagemagick less && \
     apt-get clean && apt-get autoclean && rm -fr /var/lib/apt/lists/* && \
-    yarn global add firebase-admin firebase-tools npm-run-all
+    yarn global add firebase-admin firebase-tools npm-run-all playwright
 
 COPY ./*.sh /usr/src/scripts/
 
