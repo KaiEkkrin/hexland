@@ -1282,7 +1282,7 @@ export class MapStateMachine {
 
       // We want to effectively rotate around the centre of the window, which means
       // we also need to rotate our camera translation point to match
-      this._cameraTranslation.applyQuaternion(this._scratchRotation.inverse());
+      this._cameraTranslation.applyQuaternion(this._scratchRotation.invert());
     } else {
       // Because of the way round that the camera transform is applied, we need to
       // apply the current scaling to our translation delta
