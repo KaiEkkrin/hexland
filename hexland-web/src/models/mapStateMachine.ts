@@ -517,6 +517,29 @@ export class MapStateMachine {
     }
   }
 
+  private getTokenAtPosition(position?: GridCoord & { isTokenFace: boolean }) {
+    if (!position) {
+      return { token: undefined, position };
+    }
+
+    // Try to be helpful towards players aiming at tokens.
+    // If there isn't the other kind present, return a regular token when aiming
+    // at an outline, and vice versa
+    const tokenHere = this._tokens.at(position);
+    const outlineTokenHere = this._outlineTokens.at(position);
+    console.log(`at ${coordString(position)} : found token ${tokenHere?.id}, outline ${outlineTokenHere?.id}`);
+    const token = position.isTokenFace ?
+      (tokenHere ?? outlineTokenHere) :
+      (outlineTokenHere ?? tokenHere);
+
+    // We may have changed our minds about whether we're aiming at a token face,
+    // so return an updated position too
+    return { token, chosenPosition: {
+      ...position,
+      isTokenFace: token === undefined ? position.isTokenFace : !token.outline
+    } };
+  }
+
   private getTokenMoveDelta(position: GridCoord) {
     if (this._tokenMoveDragStart === undefined || this._tokenMoveJog === undefined) {
       return undefined;
@@ -1142,11 +1165,7 @@ export class MapStateMachine {
   getToken(cp: THREE.Vector3 | string): ITokenProperties | undefined {
     if (cp instanceof THREE.Vector3) {
       const position = this._drawing.getGridCoordAt(cp);
-      if (position === undefined) {
-        return undefined;
-      }
-
-      return position.isTokenFace ? this._tokens.at(position) : this._outlineTokens.at(position);
+      return this.getTokenAtPosition(position).token;
     }
 
     return this._tokens.ofId(cp) ?? this._outlineTokens.ofId(cp);
@@ -1382,20 +1401,20 @@ export class MapStateMachine {
       this.imageMoveDragStart(cp, shiftKey);
       return true;
     } else { // object layer
-      const token = position.isTokenFace ? this._tokens.at(position) : this._outlineTokens.at(position);
-      if (token === undefined || !this.canSelectToken(token)) {
+      const { token, chosenPosition } = this.getTokenAtPosition(position);
+      if (token === undefined || chosenPosition === undefined || !this.canSelectToken(token)) {
         return false;
       }
 
-      const selection = position.isTokenFace ? this._selection : this._outlineSelection;
-      const selected = selection.at(token.position);
+      const selection = token.outline ? this._outlineSelection : this._selection;
+      const selected = selection.at(chosenPosition);
       if (selected === undefined) {
         this.clearSelection();
         selection.add(token);
         this.buildLoS();
       }
 
-      this.tokenMoveDragStart(position);
+      this.tokenMoveDragStart(chosenPosition);
       return true;
     }
   }
@@ -1406,6 +1425,7 @@ export class MapStateMachine {
     const chs: Change[] = [];
     if (position) {
       if (this._tokenMoveDragStart !== undefined) {
+        console.log(`ending drag`);
         this.tokenMoveDragEnd(position, chs);
       } else if (this._inImageMoveDrag === true) {
         this.imageMoveDragEnd(cp, chs);
@@ -1421,11 +1441,12 @@ export class MapStateMachine {
         }
         this.setSelectedImage(image);
       } else { // object layer
+        console.log(`selecting token`);
         // Always add the token at this position
         // (This is needed if the drag rectangle is very small)
-        const token = (position.isTokenFace ? this._tokens : this._outlineTokens).at(position);
+        const { token } = this.getTokenAtPosition(position);
         if (token !== undefined && this.canSelectToken(token)) {
-          (position.isTokenFace ? this._selection : this._outlineSelection).add(token);
+          (token.outline ? this._outlineSelection : this._selection).add(token);
         }
       }
 
