@@ -527,7 +527,6 @@ export class MapStateMachine {
     // at an outline, and vice versa
     const tokenHere = this._tokens.at(position);
     const outlineTokenHere = this._outlineTokens.at(position);
-    console.log(`at ${coordString(position)} : found token ${tokenHere?.id}, outline ${outlineTokenHere?.id}`);
     const token = position.isTokenFace ?
       (tokenHere ?? outlineTokenHere) :
       (outlineTokenHere ?? tokenHere);
@@ -1425,7 +1424,6 @@ export class MapStateMachine {
     const chs: Change[] = [];
     if (position) {
       if (this._tokenMoveDragStart !== undefined) {
-        console.log(`ending drag`);
         this.tokenMoveDragEnd(position, chs);
       } else if (this._inImageMoveDrag === true) {
         this.imageMoveDragEnd(cp, chs);
@@ -1441,7 +1439,6 @@ export class MapStateMachine {
         }
         this.setSelectedImage(image);
       } else { // object layer
-        console.log(`selecting token`);
         // Always add the token at this position
         // (This is needed if the drag rectangle is very small)
         const { token } = this.getTokenAtPosition(position);
