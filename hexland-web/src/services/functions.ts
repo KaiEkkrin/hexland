@@ -3,30 +3,17 @@ import { IInviteExpiryPolicy } from "../data/policy";
 import { ISprite } from "../data/sprite";
 import { spriteConverter } from "./converter";
 import { IFunctionsService } from "./interfaces";
+import * as Req from './request';
 
 import firebase from 'firebase/app';
 
 export class FunctionsService implements IFunctionsService {
   private readonly _addSprites: firebase.functions.HttpsCallable;
-  private readonly _createAdventure: firebase.functions.HttpsCallable;
-  private readonly _createMap: firebase.functions.HttpsCallable;
-  private readonly _cloneMap: firebase.functions.HttpsCallable;
-  private readonly _consolidateMapChanges: firebase.functions.HttpsCallable;
-  private readonly _deleteImage: firebase.functions.HttpsCallable;
-  private readonly _handleMockStorageUpload: firebase.functions.HttpsCallable;
-  private readonly _inviteToAdventure: firebase.functions.HttpsCallable;
-  private readonly _joinAdventure: firebase.functions.HttpsCallable;
+  private readonly _interact: firebase.functions.HttpsCallable;
 
   constructor(functions: firebase.functions.Functions) {
     this._addSprites = functions.httpsCallable('addSprites');
-    this._createAdventure = functions.httpsCallable('createAdventure');
-    this._createMap = functions.httpsCallable('createMap');
-    this._cloneMap = functions.httpsCallable('cloneMap');
-    this._consolidateMapChanges = functions.httpsCallable('consolidateMapChanges');
-    this._deleteImage = functions.httpsCallable('deleteImage');
-    this._handleMockStorageUpload = functions.httpsCallable('handleMockStorageUpload');
-    this._inviteToAdventure = functions.httpsCallable('inviteToAdventure');
-    this._joinAdventure = functions.httpsCallable('joinAdventure');
+    this._interact = functions.httpsCallable('interact');
   }
 
   async addSprites(adventureId: string, geometry: string, sources: string[]): Promise<ISprite[]> {
@@ -47,61 +34,75 @@ export class FunctionsService implements IFunctionsService {
   }
 
   async createAdventure(name: string, description: string): Promise<string> {
-    const result = await this._createAdventure({ name: name, description: description });
+    const request: Req.CreateAdventureRequest = {
+      verb: 'createAdventure',
+      name, description
+    };
+    const result = await this._interact(request);
     return String(result.data);
   }
 
   async createMap(adventureId: string, name: string, description: string, ty: MapType, ffa: boolean): Promise<string> {
-    const result = await this._createMap({
-      adventureId: adventureId,
-      name: name,
-      description: description,
-      ty: ty,
-      ffa: ffa
-    });
+    const request: Req.CreateMapRequest = {
+      verb: 'createMap',
+      adventureId, name, description, ty, ffa
+    };
+    const result = await this._interact(request);
     return String(result.data);
   }
 
   async cloneMap(adventureId: string, mapId: string, name: string, description: string): Promise<string> {
-    const result = await this._cloneMap({
-      adventureId: adventureId,
-      mapId: mapId,
-      name: name,
-      description: description
-    });
+    const request: Req.CloneMapRequest = {
+      verb: 'cloneMap',
+      adventureId, mapId, name, description
+    };
+    const result = await this._interact(request);
     return String(result.data);
   }
 
   async consolidateMapChanges(adventureId: string, mapId: string, resync: boolean) {
-    await this._consolidateMapChanges({ adventureId: adventureId, mapId: mapId, resync: resync });
+    const request: Req.ConsolidateMapChangesRequest = {
+      verb: 'consolidateMapChanges',
+      adventureId, mapId, resync
+    };
+    await this._interact(request);
   }
 
   async handleMockStorageUpload(imageId: string, name: string): Promise<void> {
-    await this._handleMockStorageUpload({
-      imageId: imageId,
-      name: name
-    });
+    const request: Req.HandleMockStorageUploadRequest = {
+      verb: 'handleMockStorageUpload',
+      imageId, name
+    };
+    await this._interact(request);
   }
 
   async deleteImage(path: string): Promise<void> {
-    await this._deleteImage({ path: path });
+    const request: Req.DeleteImageRequest = {
+      verb: 'deleteImage', path
+    };
+    await this._interact(request);
   }
 
   async inviteToAdventure(
     adventureId: string,
     policy?: IInviteExpiryPolicy | undefined // for testing purposes only
   ) {
-    const result = await this._inviteToAdventure({ adventureId: adventureId, ...policy });
+    const request: Req.InviteToAdventureRequest = {
+      verb: 'inviteToAdventure',
+      adventureId, policy
+    };
+    const result = await this._interact(request);
     return String(result.data);
   }
 
   async joinAdventure(
     inviteId: string, policy?: IInviteExpiryPolicy | undefined // for testing purposes only
   ) {
-    const result = await this._joinAdventure({
-      inviteId: inviteId,
-      ...policy
-    });
+    const request: Req.JoinAdventureRequest = {
+      verb: 'joinAdventure',
+      inviteId, policy
+    };
+    const result = await this._interact(request);
     return String(result.data);
   }
 }

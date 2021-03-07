@@ -107,6 +107,11 @@ async function createMapTransaction(
     throw new functions.https.HttpsError('invalid-argument', 'No such adventure');
   }
 
+  // Check the caller owns this adventure
+  if (profileRef.id !== adventure.owner) {
+    throw new functions.https.HttpsError('permission-denied', 'You do not own this adventure');
+  }
+
   // Check they haven't exceeded their map quota in this adventure
   const policy = getUserPolicy(profile.level);
   if (adventure.maps.length >= policy.maps) {
