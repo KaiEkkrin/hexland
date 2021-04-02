@@ -1,5 +1,5 @@
-import { coordString, edgeString, GridCoord, GridEdge } from './coord';
-import { FeatureDictionary, IFeature } from './feature';
+import { coordString, GridCoord } from '../data/coord';
+import { FeatureDictionary, IFeature } from '../data/feature';
 import { rasterLoS } from './rasterLoS';
 
 import * as THREE from 'three';
@@ -9,7 +9,6 @@ describe('test on 16 square', () =>
   const origin = new THREE.Vector3(0, 0, 1);
   const min = new THREE.Vector2(-8, -8);
   const max = new THREE.Vector2(8, 8);
-  const walls = new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString);
   const los = new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString);
 
   // Initialise everything to visible
@@ -64,7 +63,7 @@ describe('test on 16 square', () =>
       origin, new THREE.Vector3(1, -1, 1), new THREE.Vector3()
     );
 
-    rasterLoS.traceSquaresRows(a, b, new THREE.Vector2(origin.x, origin.y), -1, min.y, max.y, los);
+    rasterLoS.traceSquaresRows(a, b, { x: origin.x, y: origin.y }, -1, min.y, max.y, los);
     printLoS();
   });
 
@@ -80,7 +79,7 @@ describe('test on 16 square', () =>
       origin, new THREE.Vector3(-1, -1, 1), new THREE.Vector3()
     );
 
-    rasterLoS.traceSquaresColumns(a, b, new THREE.Vector2(origin.x, origin.y), -1, min.x, max.x, los);
+    rasterLoS.traceSquaresColumns(a, b, { x: origin.x, y: origin.y }, -1, min.x, max.x, los);
     printLoS();
   });
 
@@ -96,7 +95,7 @@ describe('test on 16 square', () =>
       origin, new THREE.Vector3(1, 1, 1), new THREE.Vector3()
     );
 
-    rasterLoS.traceSquaresRows(a, b, new THREE.Vector2(origin.x, origin.y), 1, min.y, max.y, los);
+    rasterLoS.traceSquaresRows(a, b, { x: origin.x, y: origin.y }, 1, min.y, max.y, los);
     printLoS();
   });
 
@@ -112,7 +111,7 @@ describe('test on 16 square', () =>
       origin, new THREE.Vector3(1, -1, 1), new THREE.Vector3()
     );
 
-    rasterLoS.traceSquaresColumns(a, b, new THREE.Vector2(origin.x, origin.y), 1, min.x, max.x, los);
+    rasterLoS.traceSquaresColumns(a, b, { x: origin.x, y: origin.y }, 1, min.x, max.x, los);
     printLoS();
   });
 });
