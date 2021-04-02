@@ -12,12 +12,12 @@ describe('test on 16 square', () =>
   const walls = new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString);
   const los = new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString);
 
-  // Initialise everything to invisible
+  // Initialise everything to visible
   function initLoS() {
     los.clear();
     for (let y = min.y; y <= max.y; ++y) {
       for (let x = min.x; x <= max.x; ++x) {
-        los.add({ position: { x, y }, colour: 2 });
+        los.add({ position: { x, y }, colour: 0 });
       }
     }
   }
@@ -64,7 +64,7 @@ describe('test on 16 square', () =>
       origin, new THREE.Vector3(1, -1, 1), new THREE.Vector3()
     );
 
-    rasterLoS.traceSquaresRows(a, b, new THREE.Vector2(origin.x, origin.y), -1, min.y, max.y, walls, los);
+    rasterLoS.traceSquaresRows(a, b, new THREE.Vector2(origin.x, origin.y), -1, min.y, max.y, los);
     printLoS();
   });
 
@@ -80,7 +80,7 @@ describe('test on 16 square', () =>
       origin, new THREE.Vector3(-1, -1, 1), new THREE.Vector3()
     );
 
-    rasterLoS.traceSquaresColumns(a, b, new THREE.Vector2(origin.x, origin.y), -1, min.x, max.x, walls, los);
+    rasterLoS.traceSquaresColumns(a, b, new THREE.Vector2(origin.x, origin.y), -1, min.x, max.x, los);
     printLoS();
   });
 
@@ -96,7 +96,7 @@ describe('test on 16 square', () =>
       origin, new THREE.Vector3(1, 1, 1), new THREE.Vector3()
     );
 
-    rasterLoS.traceSquaresRows(a, b, new THREE.Vector2(origin.x, origin.y), 1, min.y, max.y, walls, los);
+    rasterLoS.traceSquaresRows(a, b, new THREE.Vector2(origin.x, origin.y), 1, min.y, max.y, los);
     printLoS();
   });
 
@@ -112,7 +112,7 @@ describe('test on 16 square', () =>
       origin, new THREE.Vector3(1, -1, 1), new THREE.Vector3()
     );
 
-    rasterLoS.traceSquaresColumns(a, b, new THREE.Vector2(origin.x, origin.y), 1, min.x, max.x, walls, los);
+    rasterLoS.traceSquaresColumns(a, b, new THREE.Vector2(origin.x, origin.y), 1, min.x, max.x, los);
     printLoS();
   });
 });

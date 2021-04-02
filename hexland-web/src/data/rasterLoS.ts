@@ -44,13 +44,14 @@ export module rasterLoS {
     );
   }
 
-  // Increases visibility (0 visible, 1 partial, 2 hidden) on a face.
-  function increaseVisibility(
+  // Decreases visibility (0 visible, 1 partial, 2 hidden) on a face.
+  function decreaseVisibility(
     position: GridCoord, vis: number, los: IFeatureDictionary<GridCoord, IFeature<GridCoord>>
   ) {
     const before = los.remove(position);
     if (before !== undefined) {
-      los.add({ position, colour: Math.min(before.colour, vis) });
+      // Combining two partials makes a hidden
+      los.add({ position, colour: before.colour === 1 && vis === 1 ? 2 : Math.max(before.colour, vis) });
     } else {
       los.add({ position, colour: vis });
     }
@@ -66,7 +67,6 @@ export module rasterLoS {
     direction: number, // -1 or 1 depending on which direction to progress in
     min: number, // lower y bound of LoS
     max: number, // upper y bound of LoS
-    walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>, // read only
     los: IFeatureDictionary<GridCoord, IFeature<GridCoord>>, // write here. 1 for semi visible, 2 for fully
   ): void {
     const r1 = new THREE.Vector3(start.x, start.y + direction, 1);
@@ -97,25 +97,25 @@ export module rasterLoS {
       const gi2XFloor = Math.floor(i2.x);
       const gi2XCeil = Math.ceil(i2.x);
 
-      const [giLOuter, iL, giLInner, giUInner, iU, giUOuter] = i1.x < i2.x ?
-        [gi1XFloor, i1.x, gi1XCeil, gi2XFloor, i2.x, gi2XCeil] :
-        [gi2XFloor, i2.x, gi2XCeil, gi1XFloor, i1.x, gi1XCeil];
+      const [giLOuter, giLInner, giUInner, giUOuter] = i1.x < i2.x ?
+        [gi1XFloor, gi1XCeil, gi2XFloor, gi2XCeil] :
+        [gi2XFloor, gi2XCeil, gi1XFloor, gi1XCeil];
 
       //console.log(`at y=${gi1Y}: ${giLOuter}:${iL}:${giLInner} -- ${giUInner}:${iU}:${giUOuter}`);
 
       // Fill in the visibilities.
-      // Either end may be either fully or partially visible depending on
+      // Either end may be either hidden or partially visible depending on
       // how far the actual ray intersection is from the coord
       if (giLOuter !== giLInner) {
-        increaseVisibility({ x: giLOuter, y: gi1Y }, 1, los);
+        decreaseVisibility({ x: giLOuter, y: gi1Y }, 1, los);
       }
 
       for (let x = giLInner; x <= giUInner; ++x) {
-        increaseVisibility({ x, y: gi1Y }, x === giLOuter || x === giUOuter ? 1 : 0, los);
+        decreaseVisibility({ x, y: gi1Y }, x === giLOuter || x === giUOuter ? 1 : 2, los);
       }
 
       if (giUOuter !== giUInner) {
-        increaseVisibility({ x: giUOuter, y: gi1Y }, 1, los);
+        decreaseVisibility({ x: giUOuter, y: gi1Y }, 1, los);
       }
 
       // Move the raster line along a step
@@ -131,7 +131,6 @@ export module rasterLoS {
     direction: number, // -1 or 1 depending on which direction to progress in
     min: number, // lower x bound of LoS
     max: number, // upper x bound of LoS
-    walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>, // read only
     los: IFeatureDictionary<GridCoord, IFeature<GridCoord>>, // write here. 1 for semi visible, 2 for fully
   ): void {
     const r1 = new THREE.Vector3(start.x + direction, start.y, 1);
@@ -162,25 +161,25 @@ export module rasterLoS {
       const gi2YFloor = Math.floor(i2.y);
       const gi2YCeil = Math.ceil(i2.y);
 
-      const [giLOuter, iL, giLInner, giUInner, iU, giUOuter] = i1.y < i2.y ?
-        [gi1YFloor, i1.y, gi1YCeil, gi2YFloor, i2.y, gi2YCeil] :
-        [gi2YFloor, i2.y, gi2YCeil, gi1YFloor, i1.y, gi1YCeil];
+      const [giLOuter, giLInner, giUInner, giUOuter] = i1.y < i2.y ?
+        [gi1YFloor, gi1YCeil, gi2YFloor, gi2YCeil] :
+        [gi2YFloor, gi2YCeil, gi1YFloor, gi1YCeil];
 
       //console.log(`at x=${gi1X}: ${giLOuter}:${iL}:${giLInner} -- ${giUInner}:${iU}:${giUOuter}`);
 
       // Fill in the visibilities.
-      // Either end may be either fully or partially visible depending on
+      // Either end may be either hidden or partially visible depending on
       // how far the actual ray intersection is from the coord
       if (giLOuter !== giLInner) {
-        increaseVisibility({ x: gi1X, y: giLOuter }, 1, los);
+        decreaseVisibility({ x: gi1X, y: giLOuter }, 1, los);
       }
 
       for (let y = giLInner; y <= giUInner; ++y) {
-        increaseVisibility({ x: gi1X, y }, y === giLOuter || y === giUOuter ? 1 : 0, los);
+        decreaseVisibility({ x: gi1X, y }, y === giLOuter || y === giUOuter ? 1 : 2, los);
       }
 
       if (giUOuter !== giUInner) {
-        increaseVisibility({ x: gi1X, y: giUOuter }, 1, los);
+        decreaseVisibility({ x: gi1X, y: giUOuter }, 1, los);
       }
 
       // Move the raster line along a step
