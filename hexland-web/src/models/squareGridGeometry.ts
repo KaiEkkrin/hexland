@@ -1,5 +1,4 @@
 import { GridCoord, GridEdge, coordAdd, GridVertex } from '../data/coord';
-import { EdgeOcclusion } from './occlusion';
 import { BaseGeometry, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
 
@@ -102,16 +101,6 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     yield baseIndex + 1;
     yield baseIndex + 3;
     yield baseIndex + 2;
-  }
-
-  createEdgeOcclusion(coord: GridCoord, edge: GridEdge, z: number): EdgeOcclusion {
-    let [edgeA, edgeB] = [new THREE.Vector3(), new THREE.Vector3()];
-
-    let centre = this.createCentre(new THREE.Vector3(), edge.x, edge.y, z);
-    this.createEdgeVertices(edgeA, edgeB, centre, edge.edge);
-
-    this.createCoordCentre(centre, coord, z);
-    return new EdgeOcclusion(centre, edgeA, edgeB, this._squareSize * 0.01);
   }
 
   *createOcclusionTestVertices(coord: GridCoord, z: number, alpha: number): Iterable<THREE.Vector3> {

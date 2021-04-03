@@ -1,6 +1,5 @@
 import { GridCoord, GridEdge, createGridCoord, createGridEdge, createGridVertex, GridVertex } from '../data/coord';
 import { Anchor } from '../data/image';
-import { EdgeOcclusion } from './occlusion';
 import * as THREE from 'three';
 
 // A grid geometry describes a grid's layout (currently either squares
@@ -39,9 +38,6 @@ export interface IGridGeometry {
 
   // Creates the co-ordinates of the centre of this vertex.
   createVertexCentre(target: THREE.Vector3, vertex: GridVertex, z: number): THREE.Vector3;
-
-  // Creates the edge occlusion tester for the edge when seen from the coord.
-  createEdgeOcclusion(coord: GridCoord, edge: GridEdge, z: number): EdgeOcclusion;
 
   // Creates the 'face' attribute array that matches `createSolidVertices` when used
   // for the grid colours.

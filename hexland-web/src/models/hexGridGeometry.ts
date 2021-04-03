@@ -1,5 +1,4 @@
 import { GridCoord, GridEdge, GridVertex, coordAdd } from '../data/coord';
-import { EdgeOcclusion } from './occlusion';
 import { BaseGeometry, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
 
@@ -140,16 +139,6 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     yield offset;
     yield offset + 1;
     yield offset + 6;
-  }
-
-  createEdgeOcclusion(coord: GridCoord, edge: GridEdge, z: number): EdgeOcclusion {
-    let [edgeA, edgeB] = [new THREE.Vector3(), new THREE.Vector3()];
-
-    let centre = this.createCentre(new THREE.Vector3(), edge.x, edge.y, z);
-    this.createEdgeVertices(edgeA, edgeB, centre, edge.edge);
-
-    this.createCoordCentre(centre, coord, z);
-    return new EdgeOcclusion(centre, edgeA, edgeB, this._hexSize * 0.01);
   }
 
   *createOcclusionTestVertices(coord: GridCoord, z: number, alpha: number): Iterable<THREE.Vector3> {
