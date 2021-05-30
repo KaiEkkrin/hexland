@@ -1,4 +1,5 @@
 import { GridCoord, GridEdge, GridVertex, coordAdd } from '../data/coord';
+import { IFeature, IFeatureDictionary } from '../data/feature';
 import { BaseGeometry, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
 
@@ -212,6 +213,18 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
 
   createTokenFillVertexIndices(): number[] {
     return [ 0, 1, 2 ];
+  }
+
+  drawLoSSingle(
+    origin: THREE.Vector3,
+    min: THREE.Vector2,
+    max: THREE.Vector2,
+    walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
+    los: IFeatureDictionary<GridCoord, IFeature<GridCoord>>
+  ): void
+  {
+    // TODO #207
+    throw Error("Not implemented yet");
   }
 
   forEachAdjacentFace(coord: GridCoord, fn: (face: GridCoord, edge: GridEdge) => void) {

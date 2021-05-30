@@ -1,5 +1,7 @@
 import { GridCoord, GridEdge, coordAdd, GridVertex } from '../data/coord';
+import { IFeature, IFeatureDictionary } from '../data/feature';
 import { BaseGeometry, IGridGeometry, EdgeGeometry } from './gridGeometry';
+import { rasterLoS } from '../data/rasterLoS';
 import * as THREE from 'three';
 
 export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
@@ -176,6 +178,90 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
 
   createTokenFillVertexIndices(): number[] {
     return [ 0, 1, 2, 1, 3, 2 ];
+  }
+
+  drawLoSSingle(
+    origin: THREE.Vector3,
+    min: THREE.Vector2,
+    max: THREE.Vector2,
+    walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
+    los: IFeatureDictionary<GridCoord, IFeature<GridCoord>>
+  ): void
+  {
+    const [w1, w2, wCentre, a, b] =
+      [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+    const traceWall = (wall: IFeature<GridEdge>) => {
+      // TODO check for the wall being at least partly inside the same map colouring area as the
+      // origin here; otherwise, can ignore it
+      const adjacency = this.getEdgeFaceAdjacency(wall.position);
+
+      // If either face is outside bounds we can skip it
+      for (const adj of adjacency) {
+        if (adj.x < min.x || adj.y < min.y || adj.x > max.x || adj.y > max.y) {
+          return;
+        }
+      }
+    
+      // If both sides of this wall are already invisible we can safely skip it -- it would
+      // have no effect on the LoS overall
+      const minVisibility = adjacency.reduce(
+        (vis, adj) =>
+        {
+          const here = los.get(adj);
+          return Math.min(vis, here?.colour ?? 0);
+        }, 0
+      );
+      if (minVisibility === 2) {
+        return;
+      }
+    
+      // TODO Possible optimisation here -- merge aligned walls into longer sections handled together
+      // (Although, that wouldn't work for hexes...)
+    
+      // Work out the two ends of the wall in LoS co-ordinates, wherein the integer co-ordinate is in
+      // the centre of the face
+      if (wall.position.edge === 0) {
+        // bottom left -> top left
+        w1.set(wall.position.x - 0.5, wall.position.y + 0.5, 1);
+        w2.set(wall.position.x - 0.5, wall.position.y - 0.5, 1);
+        wCentre.set(wall.position.x - 0.5, wall.position.y, 1);
+      } else {
+        // top left -> top right
+        w1.set(wall.position.x - 0.5, wall.position.y - 0.5, 1);
+        w2.set(wall.position.x + 0.5, wall.position.y - 0.5, 1);
+        wCentre.set(wall.position.x, wall.position.y - 0.5, 1);
+      }
+
+      // Draw the rays
+      rasterLoS.createLineThrough(origin, w1, a);
+      rasterLoS.createLineThrough(origin, w2, b);
+
+      // The start position is the closest adjacent face to the origin
+      const { start } = adjacency.reduce(
+        ({ start, dsq }, adj) => {
+          const pos = new THREE.Vector3(adj.x, adj.y, 1);
+          const posDsq = pos.distanceToSquared(origin);
+          return posDsq < dsq ? { start: adj, dsq: posDsq } : { start, dsq };
+        },
+        { start: undefined as GridCoord | undefined, dsq: Number.MAX_SAFE_INTEGER }
+      );
+      if (start === undefined) {
+        throw Error("Start position couldn't be resolved");
+      }
+
+      // Do we want to trace rows or columns?
+      if (Math.abs(wCentre.x - origin.x) > Math.abs(wCentre.y - origin.y)) {
+        rasterLoS.traceSquaresColumns(
+          a, b, start, Math.sign(wCentre.x - origin.x), min.x, max.x, los
+        );
+      } else {
+        rasterLoS.traceSquaresRows(
+          a, b, start, Math.sign(wCentre.y - origin.y), min.y, max.y, los
+        );
+      }
+    };
+
+    walls.forEach(w => traceWall(w));
   }
 
   forEachAdjacentFace(coord: GridCoord, fn: (face: GridCoord, edge: GridEdge) => void) {

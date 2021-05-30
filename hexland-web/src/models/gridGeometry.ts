@@ -1,4 +1,5 @@
 import { GridCoord, GridEdge, createGridCoord, createGridEdge, createGridVertex, GridVertex } from '../data/coord';
+import { IFeature, IFeatureDictionary } from '../data/feature';
 import { Anchor } from '../data/image';
 import * as THREE from 'three';
 
@@ -102,6 +103,15 @@ export interface IGridGeometry {
   // starting from the offset) into a grid coord.
   decodeVertexSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): GridVertex | undefined;
 
+  // Blocks out the LoS from a single face by walls.
+  // TODO Optimise to include only reachable walls (by map colouring), etc?
+  drawLoSSingle(
+    origin: THREE.Vector3, // position to look from (homogeneous co-ordinates; or, z=1)
+    min: THREE.Vector2, // lower bounds of LoS area
+    max: THREE.Vector2, // upper bounds of LoS area
+    walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>, // read only
+    los: IFeatureDictionary<GridCoord, IFeature<GridCoord>> // write here. 1 for semi visible, 2 for fully
+  ): void;
   // Evaluates the function for each face adjacent to the given one.
   forEachAdjacentFace(coord: GridCoord, fn: (face: GridCoord, edge: GridEdge) => void): void;
 
