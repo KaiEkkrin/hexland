@@ -82,8 +82,11 @@ export module rasterLoS {
       createLineIntersection(rasterLine, b, h2);
 
       // Identify the grid coords affected
-      const i1 = { x: h1.x / h1.z, y: h1.y / h1.z };
-      const i2 = { x: h2.x / h2.z, y: h2.y / h2.z };
+      let i1 = { x: h1.x / h1.z, y: h1.y / h1.z };
+      let i2 = { x: h2.x / h2.z, y: h2.y / h2.z };
+      if (i1.x > i2.x) {
+        [i1, i2] = [i2, i1];
+      }
 
       const gi1Y = Math.round(i1.y);
       const gi2Y = Math.round(i2.y);
@@ -92,16 +95,22 @@ export module rasterLoS {
         throw Error(`Rows rasterisation came off axis: i1 = ${i1.x}, ${i1.y}; i2 = ${i2.x}, ${i2.y}`);
       }
 
-      const gi1XFloor = Math.floor(i1.x);
-      const gi1XCeil = Math.ceil(i1.x);
-      const gi2XFloor = Math.floor(i2.x);
-      const gi2XCeil = Math.ceil(i2.x);
+      let giLOuter = Math.floor(i1.x);
+      const giLInner = Math.ceil(i1.x);
+      const giUInner = Math.floor(i2.x);
+      let giUOuter = Math.ceil(i2.x);
 
-      const [giLOuter, giLInner, giUInner, giUOuter] = i1.x < i2.x ?
-        [gi1XFloor, gi1XCeil, gi2XFloor, gi2XCeil] :
-        [gi2XFloor, gi2XCeil, gi1XFloor, gi1XCeil];
+      // Remember the centres of the faces are at round number co-ordinates and the
+      // edges at multiples of 0.5:
+      if ((giLInner - i1.x) <= 0.5) {
+        giLOuter = giLInner;
+      }
 
-      //console.log(`at y=${gi1Y}: ${giLOuter}:${iL}:${giLInner} -- ${giUInner}:${iU}:${giUOuter}`);
+      if ((i2.x - giUInner) <= 0.5) {
+        giUOuter = giUInner;
+      }
+
+      //console.log(`at y=${gi1Y}: ${giLOuter}:${i1.x}:${giLInner} -- ${giUInner}:${i2.x}:${giUOuter}`);
 
       // Fill in the visibilities.
       // Either end may be either hidden or partially visible depending on
@@ -146,8 +155,11 @@ export module rasterLoS {
       createLineIntersection(rasterLine, b, h2);
 
       // Identify the grid coords affected
-      const i1 = { x: h1.x / h1.z, y: h1.y / h1.z };
-      const i2 = { x: h2.x / h2.z, y: h2.y / h2.z };
+      let i1 = { x: h1.x / h1.z, y: h1.y / h1.z };
+      let i2 = { x: h2.x / h2.z, y: h2.y / h2.z };
+      if (i1.y > i2.y) {
+        [i1, i2] = [i2, i1];
+      }
 
       const gi1X = Math.round(i1.x);
       const gi2X = Math.round(i2.x);
@@ -156,16 +168,22 @@ export module rasterLoS {
         throw Error(`Columns rasterisation came off axis: i1 = ${i1.x}, ${i1.y}; i2 = ${i2.x}, ${i2.y}`);
       }
 
-      const gi1YFloor = Math.floor(i1.y);
-      const gi1YCeil = Math.ceil(i1.y);
-      const gi2YFloor = Math.floor(i2.y);
-      const gi2YCeil = Math.ceil(i2.y);
+      let giLOuter = Math.floor(i1.y);
+      const giLInner = Math.ceil(i1.y);
+      const giUInner = Math.floor(i2.y);
+      let giUOuter = Math.ceil(i2.y);
 
-      const [giLOuter, giLInner, giUInner, giUOuter] = i1.y < i2.y ?
-        [gi1YFloor, gi1YCeil, gi2YFloor, gi2YCeil] :
-        [gi2YFloor, gi2YCeil, gi1YFloor, gi1YCeil];
+      // Remember the centres of the faces are at round number co-ordinates and the
+      // edges at multiples of 0.5:
+      if ((giLInner - i1.y) <= 0.5) {
+        giLOuter = giLInner;
+      }
 
-      //console.log(`at x=${gi1X}: ${giLOuter}:${iL}:${giLInner} -- ${giUInner}:${iU}:${giUOuter}`);
+      if ((i2.y - giUInner) <= 0.5) {
+        giUOuter = giUInner;
+      }
+
+      //console.log(`at x=${gi1X}: ${giLOuter}:${i1.y}:${giLInner} -- ${giUInner}:${i2.y}:${giUOuter}`);
 
       // Fill in the visibilities.
       // Either end may be either hidden or partially visible depending on

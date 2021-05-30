@@ -312,21 +312,21 @@ describe('test on 16 square', () =>
     -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
 
  -8  . . . . . o X X X X X o . . . . .
- -7  . . . . . o X X X X X o . . . . .
+ -7  . . . . . . o X X X o . . . . . .
  -6  . . . . . . o X X X o . . . . . .
  -5  . . . . . . o X X X o . . . . . .
- -4  . . . . . . o X X X o . . . . . .
- -3  o o . . . . . o X o . . . . . o o
- -2  X X o o o . . o X o . . o o o X X
- -1  X X X X X o o . . . o o X X X X X
+ -4  . . . . . . . o X o . . . . . . .
+ -3  o . . . . . . o X o . . . . . . o
+ -2  X o o o . . . o X o . . . o o o X
+ -1  X X X X o o o . . . o o o X X X X
   0  X X X X X X X . . . X X X X X X X
-  1  X X X X X o o . . . o o X X X X X
-  2  X X o o o . . o X o . . o o o X X
-  3  o o . . . . . o X o . . . . . o o
-  4  . . . . . . o X X X o . . . . . .
+  1  X X X X o o o . . . o o o X X X X
+  2  X o o o . . . o X o . . . o o o X
+  3  o . . . . . . o X o . . . . . . o
+  4  . . . . . . . o X o . . . . . . .
   5  . . . . . . o X X X o . . . . . .
   6  . . . . . . o X X X o . . . . . .
-  7  . . . . . o X X X X X o . . . . .
+  7  . . . . . . o X X X o . . . . . .
   8  . . . . . o X X X X X o . . . . .`);
   });
 
@@ -344,21 +344,21 @@ describe('test on 16 square', () =>
     -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
 
  -8  . . . . . . o X X X o . . . . . .
- -7  . . . . . . o X X X o . . . . . .
- -6  . . . . . . o X X X o . . . . . .
+ -7  . . . . . . . o X o . . . . . . .
+ -6  . . . . . . . o X o . . . . . . .
  -5  . . . . . . . o X o . . . . . . .
  -4  . . . . . . . o X o . . . . . . .
  -3  . . . . . . . o X o . . . . . . .
- -2  o o o . . . . . . . . . . . o o o
- -1  X X X o o o . . . . . o o o X X X
+ -2  o . . . . . . . . . . . . . . . o
+ -1  X o o o o o . . . . . o o o o o X
   0  X X X X X X . . . . . X X X X X X
-  1  X X X o o o . . . . . o o o X X X
-  2  o o o . . . . . . . . . . . o o o
+  1  X o o o o o . . . . . o o o o o X
+  2  o . . . . . . . . . . . . . . . o
   3  . . . . . . . o X o . . . . . . .
   4  . . . . . . . o X o . . . . . . .
   5  . . . . . . . o X o . . . . . . .
-  6  . . . . . . o X X X o . . . . . .
-  7  . . . . . . o X X X o . . . . . .
+  6  . . . . . . . o X o . . . . . . .
+  7  . . . . . . . o X o . . . . . . .
   8  . . . . . . o X X X o . . . . . .`);
   });
 
@@ -407,26 +407,62 @@ describe('test on 16 square', () =>
     walls.add({ position: { x: 1, y: 2, edge: 1 }, colour: 0 });
     geometry.drawLoSSingle(origin, min, max, walls, los);
     const losStr = losString(min, max, los);
-    console.log(losStr);
+    //console.log(losStr);
     expect(losStr).toBe(`
     -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
 
- -8  X X X X X X o . . . o X X X X X X
+ -8  X X X X X o . . . . . o X X X X X
  -7  X X X X X X o . . . o X X X X X X
  -6  X X X X X X o . . . o X X X X X X
- -5  X X X X X X X o . o X X X X X X X
+ -5  X X X X X X o . . . o X X X X X X
  -4  X X X X X X X o . o X X X X X X X
- -3  X X X X X X X o . o X X X X X X X
- -2  o o o X X X X X . X X X X X o o o
- -1  . . . o o o X . . . X o o o . . .
+ -3  o X X X X X X o . o X X X X X X o
+ -2  . o o o X X X o . o X X X o o o .
+ -1  . . . . o o o . . . o o o . . . .
   0  . . . . . . . . . . . . . . . . .
-  1  . . . o o o X . . . X o o o . . .
-  2  o o o X X X X X . X X X X X o o o
-  3  X X X X X X X o . o X X X X X X X
+  1  . . . . o o o . . . o o o . . . .
+  2  . o o o X X X o . o X X X o o o .
+  3  o X X X X X X o . o X X X X X X o
   4  X X X X X X X o . o X X X X X X X
-  5  X X X X X X X o . o X X X X X X X
+  5  X X X X X X o . . . o X X X X X X
   6  X X X X X X o . . . o X X X X X X
   7  X X X X X X o . . . o X X X X X X
-  8  X X X X X X o . . . o X X X X X X`);
+  8  X X X X X o . . . . . o X X X X X`);
+  });
+
+  test('draw four 3-distance corners', () =>
+  {
+    initLoS();
+    walls.add({ position: { x: -2, y: -2, edge: 0 }, colour: 0 });
+    walls.add({ position: { x: -2, y: -2, edge: 1 }, colour: 0 });
+    walls.add({ position: { x: 3, y: -2, edge: 0 }, colour: 0 });
+    walls.add({ position: { x: 2, y: -2, edge: 1 }, colour: 0 });
+    walls.add({ position: { x: -2, y: 2, edge: 0 }, colour: 0 });
+    walls.add({ position: { x: -2, y: 3, edge: 1 }, colour: 0 });
+    walls.add({ position: { x: 3, y: 2, edge: 0 }, colour: 0 });
+    walls.add({ position: { x: 2, y: 3, edge: 1 }, colour: 0 });
+    geometry.drawLoSSingle(origin, min, max, walls, los);
+    const losStr = losString(min, max, los);
+    //console.log(losStr);
+    expect(losStr).toBe(`
+    -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
+
+ -8  X X X o . . . . . . . . . o X X X
+ -7  X X X X o . . . . . . . o X X X X
+ -6  X X X X o . . . . . . . o X X X X
+ -5  o X X X X o . . . . . o X X X X o
+ -4  . o o X X X o . . . o X X X o o .
+ -3  . . . o X X o . . . o X X o . . .
+ -2  . . . . o o . . . . . o o . . . .
+ -1  . . . . . . . . . . . . . . . . .
+  0  . . . . . . . . . . . . . . . . .
+  1  . . . . . . . . . . . . . . . . .
+  2  . . . . o o . . . . . o o . . . .
+  3  . . . o X X o . . . o X X o . . .
+  4  . o o X X X o . . . o X X X o o .
+  5  o X X X X o . . . . . o X X X X o
+  6  X X X X o . . . . . . . o X X X X
+  7  X X X X o . . . . . . . o X X X X
+  8  X X X o . . . . . . . . . o X X X`);
   });
 });

@@ -222,8 +222,8 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
       // the centre of the face
       if (wall.position.edge === 0) {
         // bottom left -> top left
-        w1.set(wall.position.x - 0.5, wall.position.y + 0.5, 1);
-        w2.set(wall.position.x - 0.5, wall.position.y - 0.5, 1);
+        w1.set(wall.position.x - 0.5, wall.position.y - 0.5, 1);
+        w2.set(wall.position.x - 0.5, wall.position.y + 0.5, 1);
         wCentre.set(wall.position.x - 0.5, wall.position.y, 1);
       } else {
         // top left -> top right
