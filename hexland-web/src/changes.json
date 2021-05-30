@@ -1,5 +1,11 @@
 [
   {
+    "version": "1.3.5",
+    "changes": [
+      "Package update"
+    ]
+  },
+  {
     "version": "1.3.4",
     "changes": [
       "Make aiming at tokens easier",
