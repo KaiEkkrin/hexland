@@ -55,7 +55,7 @@ describe.each([
   // Some of these tests can take a while.  We define a long test timeout, but a
   // shorter timeout for individual page operations because each one shouldn't
   // take very long
-  const longTestTimeout = 120000;
+  const longTestTimeout = 180000;
   const pageTimeout = 8000;
   const pageNavigationTimeout = 12000;
 
