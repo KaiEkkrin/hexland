@@ -873,5 +873,19 @@ describe('raster LoS test', () => {
   5  . . . . . . . . . o X o . . . . . . . . . .
   6  . . . . . . . . o X X X o . . . . . . . . .
   7  . . . . . . . o X X X X X o . . . . . . . .`);
-  });  
+  });
+
+  test('200x200 performance', () => {
+    initLoS(-100, -100, 99, 99);
+    for (let i = 0; i < 100; ++i) {
+      const x = Math.floor(Math.random() * 200) - 100;
+      const y = Math.floor(Math.random() * 200) - 100;
+      const edge = Math.floor(Math.random() * 2);
+      //console.log(`x: ${x}, y: ${y}, edge: ${edge}`);
+      walls.add({ position: { x, y, edge }, colour: 0 });
+    }
+
+    geometry.drawLoSSingle(origin, min, max, walls, los);
+    //console.log(losString(min, max, los));
+  });
 });
