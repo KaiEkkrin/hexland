@@ -110,8 +110,12 @@ export interface IGridGeometry {
     min: THREE.Vector2, // lower bounds of LoS area
     max: THREE.Vector2, // upper bounds of LoS area
     walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>, // read only
-    los: IFeatureDictionary<GridCoord, IFeature<GridCoord>> // write here. 1 for semi visible, 2 for fully
-  ): void;
+    los: IFeatureDictionary<GridCoord, IFeature<GridCoord>> // write here.
+                                                            // - 0 for fully visible
+                                                            // - 1 for semi visible
+                                                            // - 2 (or more) for fully hidden
+
+  ): IFeatureDictionary<GridCoord, IFeature<GridCoord>>;
   // Evaluates the function for each face adjacent to the given one.
   forEachAdjacentFace(coord: GridCoord, fn: (face: GridCoord, edge: GridEdge) => void): void;
 

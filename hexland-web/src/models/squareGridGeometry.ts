@@ -186,7 +186,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     max: THREE.Vector2,
     walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
     los: IFeatureDictionary<GridCoord, IFeature<GridCoord>>
-  ): void
+  ): IFeatureDictionary<GridCoord, IFeature<GridCoord>>
   {
     const [w1, w2, wCentre, a, b] =
       [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
@@ -262,6 +262,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     };
 
     walls.forEach(w => traceWall(w));
+    return los;
   }
 
   forEachAdjacentFace(coord: GridCoord, fn: (face: GridCoord, edge: GridEdge) => void) {

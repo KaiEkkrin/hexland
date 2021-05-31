@@ -221,7 +221,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
     max: THREE.Vector2,
     walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
     los: IFeatureDictionary<GridCoord, IFeature<GridCoord>>
-  ): void
+  ): IFeatureDictionary<GridCoord, IFeature<GridCoord>>
   {
     // TODO #207
     throw Error("Not implemented yet");

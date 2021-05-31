@@ -67,7 +67,10 @@ export module rasterLoS {
     direction: number, // -1 or 1 depending on which direction to progress in
     min: number, // lower y bound of LoS
     max: number, // upper y bound of LoS
-    los: IFeatureDictionary<GridCoord, IFeature<GridCoord>>, // write here. 1 for semi visible, 2 for fully
+    los: IFeatureDictionary<GridCoord, IFeature<GridCoord>>, // write here.
+                                                             // - 0 for fully visible
+                                                             // - 1 for semi visible
+                                                             // - 2 (or more) for fully hidden
   ): void {
     const r1 = new THREE.Vector3(start.x, start.y + direction, 1);
     const r2 = new THREE.Vector3(r1.x + direction, r1.y, 1);
@@ -140,7 +143,10 @@ export module rasterLoS {
     direction: number, // -1 or 1 depending on which direction to progress in
     min: number, // lower x bound of LoS
     max: number, // upper x bound of LoS
-    los: IFeatureDictionary<GridCoord, IFeature<GridCoord>>, // write here. 1 for semi visible, 2 for fully
+    los: IFeatureDictionary<GridCoord, IFeature<GridCoord>>, // write here.
+                                                             // - 0 for fully visible
+                                                             // - 1 for semi visible
+                                                             // - 2 (or more) for fully hidden
   ): void {
     const r1 = new THREE.Vector3(start.x + direction, start.y, 1);
     const r2 = new THREE.Vector3(r1.x, r1.y + direction, 1);
@@ -204,5 +210,24 @@ export module rasterLoS {
       r1.add(directionStep);
       r2.add(directionStep);
     }
+  }
+
+  // Merges the other LoS into the target one. In the target, faces will be visible if
+  // they are visible in it currently or in any of the targets.
+  export function combine(
+    target: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
+    ...others: IFeatureDictionary<GridCoord, IFeature<GridCoord>>[]
+  ) {
+    for (const o of others) {
+      o.forEach(f => {
+        const existing = target.remove(f.position);
+        if (existing !== undefined) {
+          target.add({ ...existing, colour: Math.min(existing.colour, f.colour) });
+        } else {
+          target.add(f);
+        }
+      });
+    }
+    return target;
   }
 }
