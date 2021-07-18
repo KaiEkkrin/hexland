@@ -1,5 +1,5 @@
 import { GridCoord } from './coord';
-import { IFeature, IFeatureDictionary } from './feature';
+import { IBareFeature, IBoundedFeatureDictionary } from './feature';
 import * as THREE from 'three';
 
 export module rasterLoS {
@@ -46,15 +46,20 @@ export module rasterLoS {
 
   // Decreases visibility (0 visible, 1 partial, 2 hidden) on a face.
   function decreaseVisibility(
-    position: GridCoord, vis: number, los: IFeatureDictionary<GridCoord, IFeature<GridCoord>>
+    position: GridCoord, vis: number, los: IBoundedFeatureDictionary<GridCoord, IBareFeature>
   ) {
-    const before = los.remove(position);
-    if (before !== undefined) {
-      // Combining two partials makes a hidden
-      los.add({ position, colour: before.colour === 1 && vis === 1 ? 2 : Math.max(before.colour, vis) });
-    } else {
-      los.add({ position, colour: vis });
+    const index = los.getIndex(position);
+    if (index === undefined) {
+      return;
     }
+
+    const f = los.getByIndex(index);
+
+    // Combining two partials makes a hidden
+    los.setByIndex(
+      index,
+      { ...f, colour: f.colour === 1 && vis === 1 ? 2 : Math.max(f.colour, vis) }
+    );
   }
 
   // Fills in the visible faces by tracing LoS
@@ -65,9 +70,7 @@ export module rasterLoS {
     b: THREE.Vector3, // second ray
     start: GridCoord, // start position to rasterise from
     direction: number, // -1 or 1 depending on which direction to progress in
-    min: number, // lower y bound of LoS
-    max: number, // upper y bound of LoS
-    los: IFeatureDictionary<GridCoord, IFeature<GridCoord>>, // write here.
+    los: IBoundedFeatureDictionary<GridCoord, IBareFeature>, // write here.
                                                              // - 0 for fully visible
                                                              // - 1 for semi visible
                                                              // - 2 (or more) for fully hidden
@@ -76,6 +79,8 @@ export module rasterLoS {
     const r2 = new THREE.Vector3(r1.x + direction, r1.y, 1);
     const directionStep = new THREE.Vector3(0, direction, 0);
     const [rasterLine, h1, h2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+    const min = los.min.y;
+    const max = los.max.y;
     while (r1.y >= min && r1.y <= max) {
       //console.log(`r1 = ${r1.x}, ${r1.y}; r2 = ${r2.x}, ${r2.y}`);
 
@@ -141,9 +146,7 @@ export module rasterLoS {
     b: THREE.Vector3, // second ray
     start: GridCoord, // start position to rasterise from
     direction: number, // -1 or 1 depending on which direction to progress in
-    min: number, // lower x bound of LoS
-    max: number, // upper x bound of LoS
-    los: IFeatureDictionary<GridCoord, IFeature<GridCoord>>, // write here.
+    los: IBoundedFeatureDictionary<GridCoord, IBareFeature>, // write here.
                                                              // - 0 for fully visible
                                                              // - 1 for semi visible
                                                              // - 2 (or more) for fully hidden
@@ -152,6 +155,8 @@ export module rasterLoS {
     const r2 = new THREE.Vector3(r1.x, r1.y + direction, 1);
     const directionStep = new THREE.Vector3(direction, 0, 0);
     const [rasterLine, h1, h2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+    const min = los.min.x;
+    const max = los.max.x;
     while (r1.x >= min && r1.x <= max) {
       //console.log(`r1 = ${r1.x}, ${r1.y}; r2 = ${r2.x}, ${r2.y}`);
 
@@ -215,18 +220,22 @@ export module rasterLoS {
   // Merges the other LoS into the target one. In the target, faces will be visible if
   // they are visible in it currently or in any of the targets.
   export function combine(
-    target: IFeatureDictionary<GridCoord, IFeature<GridCoord>>,
-    ...others: IFeatureDictionary<GridCoord, IFeature<GridCoord>>[]
+    target: IBoundedFeatureDictionary<GridCoord, IBareFeature>,
+    ...others: IBoundedFeatureDictionary<GridCoord, IBareFeature>[]
   ) {
     for (const o of others) {
-      o.forEach(f => {
-        const existing = target.remove(f.position);
-        if (existing !== undefined) {
-          target.add({ ...existing, colour: Math.min(existing.colour, f.colour) });
-        } else {
-          target.add(f);
+      for (const { position, feature } of o) {
+        const targetIndex = target.getIndex(position);
+        if (targetIndex === undefined) {
+          continue;
         }
-      });
+
+        const existing = target.getByIndex(targetIndex);
+        target.setByIndex(
+          targetIndex,
+          { ...existing, colour: Math.min(existing.colour, feature.colour) }
+        );
+      }
     }
     return target;
   }

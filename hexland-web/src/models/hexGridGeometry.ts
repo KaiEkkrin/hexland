@@ -1,5 +1,5 @@
 import { GridCoord, GridEdge, GridVertex, coordAdd } from '../data/coord';
-import { IFeature, IFeatureDictionary } from '../data/feature';
+import { IBareFeature, IBoundedFeatureDictionary, IFeature, IFeatureDictionary } from '../data/feature';
 import { BaseGeometry, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import * as THREE from 'three';
 
@@ -217,12 +217,9 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
 
   drawLoSSingle(
     origin: THREE.Vector3,
-    min: THREE.Vector2,
-    max: THREE.Vector2,
     walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
-    los: IFeatureDictionary<GridCoord, IFeature<GridCoord>>
-  ): IFeatureDictionary<GridCoord, IFeature<GridCoord>>
-  {
+    los: IBoundedFeatureDictionary<GridCoord, IBareFeature>
+  ): IBoundedFeatureDictionary<GridCoord, IBareFeature> {
     // TODO #207
     throw Error("Not implemented yet");
   }

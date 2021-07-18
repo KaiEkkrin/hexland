@@ -234,6 +234,10 @@ export interface ITokenDictionary extends IFeatureDictionary<GridCoord, IToken> 
 // The bounded feature dictionary should give us a higher performance way of
 // doing a similar thing in the case where we know the bounds of the featured area
 export interface IBoundedFeatureDictionary<K extends GridCoord, F extends IBareFeature> {
+  get min(): K;
+  get max(): K;
+
+  [Symbol.iterator](): Iterator<{ position: K, feature: F }>;
   get(k: K): F | undefined;
   getByIndex(index: number): F;
   getIndex(k: K): number | undefined;
@@ -245,20 +249,34 @@ export interface IBoundedFeatureDictionary<K extends GridCoord, F extends IBareF
 
 export class BoundedFeatureDictionary<K extends GridCoord, F extends IBareFeature> implements IBoundedFeatureDictionary<K, F> {
   private readonly _items: F[] = [];
-  private readonly _min: GridCoord;
-  private readonly _max: GridCoord;
+  private readonly _min: K;
+  private readonly _max: K;
   private readonly _width: number;
-  private readonly _height: number;
 
-  constructor(defaultItem: F, min: GridCoord, max: GridCoord) {
+  constructor(
+    min: K, max: K,
+    defaultItem?: F,
+    itemCount?: number,
+    items?: F[]
+  ) {
     this._min = min;
     this._max = max;
     this._width = max.x - min.x + 1;
-    this._height = max.y - min.y + 1;
-    for (let i = 0; i < this._width * this._height; ++i) {
-      this._items.push({ ...defaultItem });
+    const height = max.y - min.y + 1;
+    if (items !== undefined) {
+      this._items = items;
+    } else if (defaultItem !== undefined) {
+      itemCount ??= this._width * height;
+      for (let i = 0; i < itemCount; ++i) {
+        this._items.push({ ...defaultItem });
+      }
+    } else {
+      throw Error("No initialisation supplied");
     }
   }
+
+  get min() { return this._min; }
+  get max() { return this._max; }
 
   [Symbol.iterator](): Iterator<{ position: K, feature: F }> {
     return this.iterate();
@@ -289,7 +307,7 @@ export class BoundedFeatureDictionary<K extends GridCoord, F extends IBareFeatur
       k.x < this._min.x ||
       k.y < this._min.y ||
       k.x > this._max.x ||
-      k.x > this._max.y
+      k.y > this._max.y
     ) {
       return undefined;
     }
@@ -298,14 +316,14 @@ export class BoundedFeatureDictionary<K extends GridCoord, F extends IBareFeatur
   }
 
   *iterate() {
-    for (let i = 0; i < this._width * this._height; ++i) {
+    for (let i = 0; i < this._items.length; ++i) {
       let position = this.fromIndex(i);
       yield { position, feature: this._items[i] };
     }
   }
 
   reset(defaultItem: F) {
-    for (let i = 0; i < this._width * this._height; ++i) {
+    for (let i = 0; i < this._items.length; ++i) {
       this._items[i] = { ...defaultItem };
     }
   }

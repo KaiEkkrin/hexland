@@ -1,5 +1,5 @@
 import { GridCoord, GridEdge, coordAdd, GridVertex } from '../data/coord';
-import { IFeature, IFeatureDictionary } from '../data/feature';
+import { IBareFeature, IBoundedFeatureDictionary, IFeature, IFeatureDictionary } from '../data/feature';
 import { BaseGeometry, IGridGeometry, EdgeGeometry } from './gridGeometry';
 import { rasterLoS } from '../data/rasterLoS';
 import * as THREE from 'three';
@@ -182,23 +182,25 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
 
   drawLoSSingle(
     origin: THREE.Vector3,
-    min: THREE.Vector2,
-    max: THREE.Vector2,
     walls: IFeatureDictionary<GridEdge, IFeature<GridEdge>>,
-    los: IFeatureDictionary<GridCoord, IFeature<GridCoord>>
-  ): IFeatureDictionary<GridCoord, IFeature<GridCoord>>
-  {
+    los: IBoundedFeatureDictionary<GridCoord, IBareFeature>
+  ): IBoundedFeatureDictionary<GridCoord, IBareFeature> {
     const [w1, w2, wCentre, a, b] =
       [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
-    const traceWall = (wall: IFeature<GridEdge>) => {
+    for (const wall of walls) {
       // TODO check for the wall being at least partly inside the same map colouring area as the
       // origin here; otherwise, can ignore it
       const adjacency = this.getEdgeFaceAdjacency(wall.position);
 
       // If either face is outside bounds we can skip it
       for (const adj of adjacency) {
-        if (adj.x < min.x || adj.y < min.y || adj.x > max.x || adj.y > max.y) {
-          return;
+        if (
+          adj.x < los.min.x ||
+          adj.y < los.min.y ||
+          adj.x > los.max.x ||
+          adj.y > los.max.y)
+        {
+          continue;
         }
       }
     
@@ -212,7 +214,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
         }, 0
       );
       if (minVisibility === 2) {
-        return;
+        continue;
       }
     
       // TODO Possible optimisation here -- merge aligned walls into longer sections handled together
@@ -252,16 +254,15 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
       // Do we want to trace rows or columns?
       if (Math.abs(wCentre.x - origin.x) > Math.abs(wCentre.y - origin.y)) {
         rasterLoS.traceSquaresColumns(
-          a, b, start, Math.sign(wCentre.x - origin.x), min.x, max.x, los
+          a, b, start, Math.sign(wCentre.x - origin.x), los
         );
       } else {
         rasterLoS.traceSquaresRows(
-          a, b, start, Math.sign(wCentre.y - origin.y), min.y, max.y, los
+          a, b, start, Math.sign(wCentre.y - origin.y), los
         );
       }
-    };
+    }
 
-    walls.forEach(w => traceWall(w));
     return los;
   }
 
