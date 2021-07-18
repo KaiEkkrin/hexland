@@ -82,7 +82,15 @@ To start, run the following:
 
 This will build a Docker image containing build tools and the emulators, and then start a
 container that runs the emulators and builds the web application (rebuilding when source file
-changes are detected). The web application can then be accessed at:
+changes are detected).
+
+If you get a permissions error, run this and try again
+
+```bash
+sudo chown -R $USER .usercache
+```
+
+When running, the web application can then be accessed at:
 
 [http://localhost:5000](http://localhost:5000)
 
