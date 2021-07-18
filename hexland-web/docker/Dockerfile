@@ -1,5 +1,5 @@
 # Dockerfile for creating a build and test environment for hexland
-FROM mcr.microsoft.com/playwright:bionic
+FROM mcr.microsoft.com/playwright:v1.10.0-focal
 
 ARG USER
 ARG UID
