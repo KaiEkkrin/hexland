@@ -888,4 +888,18 @@ describe('raster LoS test', () => {
     geometry.drawLoSSingle(origin, min, max, walls, los);
     //console.log(losString(min, max, los));
   });
+
+  test('400x400 performance', () => {
+    initLoS(-200, -200, 199, 199);
+    for (let i = 0; i < 200; ++i) {
+      const x = Math.floor(Math.random() * 400) - 200;
+      const y = Math.floor(Math.random() * 400) - 200;
+      const edge = Math.floor(Math.random() * 2);
+      //console.log(`x: ${x}, y: ${y}, edge: ${edge}`);
+      walls.add({ position: { x, y, edge }, colour: 0 });
+    }
+
+    geometry.drawLoSSingle(origin, min, max, walls, los);
+    //console.log(losString(min, max, los));
+  });
 });

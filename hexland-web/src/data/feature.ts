@@ -4,9 +4,12 @@ import { v4 as uuidv4 } from 'uuid';
 
 // Describes an instanced feature:
 // (Must be possible to copy this with Object.assign)
-export interface IFeature<K> {
-  position: K;
+export interface IBareFeature {
   colour: number;
+}
+
+export interface IFeature<K> extends IBareFeature {
+  position: K;
 }
 
 // Some features have a string id
@@ -226,4 +229,98 @@ export interface ITokenDictionary extends IFeatureDictionary<GridCoord, IToken> 
 
   // Returns the token with the given id, or undefined for none.
   ofId(id: string): IToken | undefined;
+}
+
+// The bounded feature dictionary should give us a higher performance way of
+// doing a similar thing in the case where we know the bounds of the featured area
+export interface IBoundedFeatureDictionary<K extends GridCoord, F extends IBareFeature> {
+  get(k: K): F | undefined;
+  getByIndex(index: number): F;
+  getIndex(k: K): number | undefined;
+  iterate(): Iterable<{ position: K, feature: F }>;
+  reset(defaultItem: F): void;
+  set(k: K, f: F): boolean;
+  setByIndex(index: number, f: F): void;
+}
+
+export class BoundedFeatureDictionary<K extends GridCoord, F extends IBareFeature> implements IBoundedFeatureDictionary<K, F> {
+  private readonly _items: F[] = [];
+  private readonly _min: GridCoord;
+  private readonly _max: GridCoord;
+  private readonly _width: number;
+  private readonly _height: number;
+
+  constructor(defaultItem: F, min: GridCoord, max: GridCoord) {
+    this._min = min;
+    this._max = max;
+    this._width = max.x - min.x + 1;
+    this._height = max.y - min.y + 1;
+    for (let i = 0; i < this._width * this._height; ++i) {
+      this._items.push({ ...defaultItem });
+    }
+  }
+
+  [Symbol.iterator](): Iterator<{ position: K, feature: F }> {
+    return this.iterate();
+  }
+
+  protected fromIndex(index: number): K {
+    return <K>{
+      x: this._min.x + (index % this._width),
+      y: this._min.y + Math.floor(index / this._width)
+    };
+  }
+
+  get(k: K) {
+    const index = this.getIndex(k);
+    if (index === undefined) {
+      return undefined;
+    } else {
+      return this._items[index];
+    }
+  }
+
+  getByIndex(index: number) {
+    return this._items[index];
+  }
+
+  getIndex(k: K) {
+    if (
+      k.x < this._min.x ||
+      k.y < this._min.y ||
+      k.x > this._max.x ||
+      k.x > this._max.y
+    ) {
+      return undefined;
+    }
+
+    return (k.x - this._min.x) + (k.y - this._min.y) * this._width;
+  }
+
+  *iterate() {
+    for (let i = 0; i < this._width * this._height; ++i) {
+      let position = this.fromIndex(i);
+      yield { position, feature: this._items[i] };
+    }
+  }
+
+  reset(defaultItem: F) {
+    for (let i = 0; i < this._width * this._height; ++i) {
+      this._items[i] = { ...defaultItem };
+    }
+  }
+
+  set(k: K, f: F) {
+    const index = this.getIndex(k);
+    if (index === undefined) {
+      return false;
+    } else {
+      this._items[index] = f;
+      return true;
+    }
+  }
+
+  setByIndex(index: number, f: F) {
+    this._items[index] = f;
+  }
 }
