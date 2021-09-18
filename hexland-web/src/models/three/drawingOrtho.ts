@@ -2,6 +2,7 @@ import { GridCoord, GridVertex } from '../../data/coord';
 import { ITokenGeometry } from '../../data/tokenGeometry';
 import { ITokenDrawing } from '../../data/tokens';
 import { MapColouring } from '../colouring';
+import { CpuLoS } from '../cpuLoS';
 import { FeatureColour } from '../featureColour';
 import { IGridGeometry } from '../gridGeometry';
 import { IDrawing } from '../interfaces';
@@ -61,6 +62,8 @@ export class DrawingOrtho implements IDrawing {
   private readonly _logError: (message: string, e: any) => void;
   private readonly _resolveImageUrl: (path: string) => Promise<string>;
 
+  private readonly _cpuLoS: CpuLoS;
+
   private readonly _camera: THREE.OrthographicCamera;
   private readonly _losCamera: THREE.OrthographicCamera;
   private readonly _fixedCamera: THREE.OrthographicCamera;
@@ -89,6 +92,7 @@ export class DrawingOrtho implements IDrawing {
   private readonly _imageControlPointHighlights: MapControlPoints;
   private readonly _los: LoS;
   private readonly _losParameters: ILoSPreRenderParameters;
+  private readonly _losTarget: Areas; // #207 CPU LoS final target
   private readonly _selection: ITokenDrawing;
   private readonly _selectionDrag: ITokenDrawing; // a copy of the selection shown only while dragging it
   private readonly _selectionDragRed: ITokenDrawing; // likewise, but shown if the selection couldn't be dropped there
@@ -106,8 +110,9 @@ export class DrawingOrtho implements IDrawing {
 
   private readonly _outlinedRectangle: OutlinedRectangle;
 
-  private readonly _gridNeedsRedraw: RedrawFlag;
-  private readonly _needsRedraw: RedrawFlag;
+  private readonly _gridNeedsRedraw = new RedrawFlag();
+  private readonly _losNeedsRecalculate = new RedrawFlag();
+  private readonly _needsRedraw = new RedrawFlag();
 
   private readonly _scratchMatrix1 = new THREE.Matrix4();
   private readonly _scratchQuaternion = new THREE.Quaternion();
@@ -152,8 +157,7 @@ export class DrawingOrtho implements IDrawing {
     this._overlayCamera = new THREE.OrthographicCamera(0, renderWidth, renderHeight, 0, -1, 1);
     this._overlayCamera.position.z = 0;
 
-    this._gridNeedsRedraw = new RedrawFlag();
-    this._needsRedraw = new RedrawFlag();
+    this._cpuLoS = new CpuLoS(gridGeometry, this._losNeedsRecalculate);
 
     // These scenes need to be drawn in sequence to get the blending right and allow us
     // to draw the map itself, then overlay fixed features (the grid), then tokens, then overlay LoS
@@ -358,6 +362,13 @@ export class DrawingOrtho implements IDrawing {
     this._textFilter.addToScene(this._fixedFilterScene);
 
     this._losFilter = createLoSFilter(gridGeometry, losZ);
+
+    // The CPU LoS target. TODO #207 This declaration is wrong and I need to work out how to fix it.
+    this._losTarget = createAreas(
+      this._gridGeometry, this._needsRedraw,
+      createSelectionColouredAreaObject(this._gridGeometry, areaAlpha, highlightZ),
+      100
+    );
 
     // Don't start with LoS if we should see everything.
     // The state machine will call showLoSPositions() to update this after changes come in.
@@ -598,6 +609,9 @@ export class DrawingOrtho implements IDrawing {
     // Doing this makes fully-hidden areas show up a bit if we can notionally
     // see everything -- for the map owner / FFA mode.
     this._losParameters.fullyHidden = seeEverything ? 0.25 : 0.0;
+
+    // TODO #207 Beginning integration of CPU LoS here.
+    this._cpuLoS.setPositions(positions ?? []);
   }
 
   setMount(newMount: HTMLDivElement | undefined) {

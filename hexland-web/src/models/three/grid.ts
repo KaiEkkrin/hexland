@@ -426,7 +426,7 @@ export class Grid extends Drawn {
     }
   }
 
-  fitGridToFrame() {
+  fitGridToFrame(): IGridBounds | undefined {
     const width = this._faceCoordRenderTarget.width;
     const height = this._faceCoordRenderTarget.height;
 
@@ -439,6 +439,7 @@ export class Grid extends Drawn {
 
     const undefinedCount = fluent(samples).count(s => s === undefined);
     let countChanged = 0;
+    let sampleBounds: IGridBounds | undefined = undefined;
     if (undefinedCount === samples.length) {
       // This shouldn't happen unless we only just loaded the map.  Extend the grid around the origin.
       countChanged = this.extendGridAround(0, 0);
@@ -454,17 +455,21 @@ export class Grid extends Drawn {
       // Reduce the amount of stuff we need to consider by removing any tiles outside this range.
       // (The 0 fallbacks here will never be used because of the if clause, and are here to
       // appease TypeScript)
-      countChanged = this.shrinkToRange({
+      sampleBounds = {
         minS: Math.min(...samples.map(s => s?.x ?? 0)),
         minT: Math.min(...samples.map(s => s?.y ?? 0)),
         maxS: Math.max(...samples.map(s => s?.x ?? 0)),
         maxT: Math.max(...samples.map(s => s?.y ?? 0))
-      });
+      };
+      countChanged = this.shrinkToRange(sampleBounds);
     }
 
     if (countChanged !== 0) {
       this.updateTileOrigin();
     }
+
+    // Return the bounds defined by our control samples. That should provide a good bounds for LoS.
+    return sampleBounds;
   }
 
   getGridCoordAt(cp: THREE.Vector3): GridCoord & { isTokenFace: boolean } | undefined {
