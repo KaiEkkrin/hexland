@@ -82,7 +82,7 @@ export module rasterLoS {
     const min = los.min.y;
     const max = los.max.y;
     while (r1.y >= min && r1.y <= max) {
-      //console.log(`r1 = ${r1.x}, ${r1.y}; r2 = ${r2.x}, ${r2.y}`);
+      //console.debug(`r1 = ${r1.x}, ${r1.y}; r2 = ${r2.x}, ${r2.y}`);
 
       // Find the points of intersection
       createLineThrough(r1, r2, rasterLine);
@@ -118,7 +118,7 @@ export module rasterLoS {
         giUOuter = giUInner;
       }
 
-      //console.log(`at y=${gi1Y}: ${giLOuter}:${i1.x}:${giLInner} -- ${giUInner}:${i2.x}:${giUOuter}`);
+      //console.debug(`at y=${gi1Y}: ${giLOuter}:${i1.x}:${giLInner} -- ${giUInner}:${i2.x}:${giUOuter}`);
 
       // Fill in the visibilities.
       // Either end may be either hidden or partially visible depending on
@@ -158,7 +158,7 @@ export module rasterLoS {
     const min = los.min.x;
     const max = los.max.x;
     while (r1.x >= min && r1.x <= max) {
-      //console.log(`r1 = ${r1.x}, ${r1.y}; r2 = ${r2.x}, ${r2.y}`);
+      //console.debug(`r1 = ${r1.x}, ${r1.y}; r2 = ${r2.x}, ${r2.y}`);
 
       // Find the points of intersection
       createLineThrough(r1, r2, rasterLine);
@@ -194,7 +194,7 @@ export module rasterLoS {
         giUOuter = giUInner;
       }
 
-      //console.log(`at x=${gi1X}: ${giLOuter}:${i1.y}:${giLInner} -- ${giUInner}:${i2.y}:${giUOuter}`);
+      //console.debug(`at x=${gi1X}: ${giLOuter}:${i1.y}:${giLInner} -- ${giUInner}:${i2.y}:${giUOuter}`);
 
       // Fill in the visibilities.
       // Either end may be either hidden or partially visible depending on

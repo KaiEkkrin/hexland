@@ -76,7 +76,7 @@ describe('raster LoS test', () => {
 
     rasterLoS.traceSquaresRows(a, b, { x: origin.x, y: origin.y }, -1, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
 
@@ -112,7 +112,7 @@ describe('raster LoS test', () => {
 
     rasterLoS.traceSquaresColumns(a, b, { x: origin.x, y: origin.y }, -1, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
 
@@ -148,7 +148,7 @@ describe('raster LoS test', () => {
 
     rasterLoS.traceSquaresRows(a, b, { x: origin.x, y: origin.y }, 1, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
 
@@ -184,7 +184,7 @@ describe('raster LoS test', () => {
 
     rasterLoS.traceSquaresColumns(a, b, { x: origin.x, y: origin.y }, 1, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
 
@@ -212,7 +212,7 @@ describe('raster LoS test', () => {
     walls.add({ position: { x: 0, y: 0, edge: 1 }, colour: 0 });
     geometry.drawLoSSingle(origin, walls, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
 
@@ -241,7 +241,7 @@ describe('raster LoS test', () => {
     walls.add({ position: { x: 0, y: 0, edge: 1 }, colour: 0 });
     geometry.drawLoSSingle(origin, walls, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
 
@@ -272,7 +272,7 @@ describe('raster LoS test', () => {
     walls.add({ position: { x: 0, y: 1, edge: 1 }, colour: 0 });
     geometry.drawLoSSingle(origin, walls, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
 
@@ -303,7 +303,7 @@ describe('raster LoS test', () => {
     walls.add({ position: { x: 0, y: 2, edge: 1 }, colour: 0 });
     geometry.drawLoSSingle(origin, walls, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
 
@@ -334,7 +334,7 @@ describe('raster LoS test', () => {
     walls.add({ position: { x: 0, y: 3, edge: 1 }, colour: 0 });
     geometry.drawLoSSingle(origin, walls, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
 
@@ -365,7 +365,7 @@ describe('raster LoS test', () => {
     walls.add({ position: { x: 0, y: 5, edge: 1 }, colour: 0 });
     geometry.drawLoSSingle(origin, walls, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
 
@@ -400,7 +400,7 @@ describe('raster LoS test', () => {
     walls.add({ position: { x: 1, y: 2, edge: 1 }, colour: 0 });
     geometry.drawLoSSingle(origin, walls, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
 
@@ -435,7 +435,7 @@ describe('raster LoS test', () => {
     walls.add({ position: { x: 2, y: 3, edge: 1 }, colour: 0 });
     geometry.drawLoSSingle(origin, walls, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
 
@@ -468,7 +468,7 @@ describe('raster LoS test', () => {
     walls.add({ position: { x: 4, y: -2, edge: 0 }, colour: 0 });
     geometry.drawLoSSingle(origin, walls, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
 
@@ -501,7 +501,7 @@ describe('raster LoS test', () => {
     walls.add({ position: { x: 2, y: 4, edge: 1 }, colour: 0 });
     geometry.drawLoSSingle(origin, walls, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
 
@@ -532,7 +532,7 @@ describe('raster LoS test', () => {
     walls.add({ position: { x: 4, y: -2, edge: 0 }, colour: 0 });
     geometry.drawLoSSingle(origin, walls, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
 
@@ -563,7 +563,7 @@ describe('raster LoS test', () => {
     walls.add({ position: { x: 2, y: 4, edge: 1 }, colour: 0 });
     geometry.drawLoSSingle(origin, walls, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8
 
@@ -598,7 +598,7 @@ describe('raster LoS test', () => {
     walls.add({ position: { x: 2, y: 3, edge: 1 }, colour: 0 });
     geometry.drawLoSSingle(origin, walls, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -10-9-8-7-6-5-4-3-2-1 0 1 2 3 4 5 6
 
@@ -637,7 +637,7 @@ describe('raster LoS test', () => {
     walls.add({ position: { x: 2, y: 3, edge: 1 }, colour: 0 });
     geometry.drawLoSSingle(origin, walls, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -10-9-8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8 91011
 
@@ -672,7 +672,7 @@ describe('raster LoS test', () => {
     walls.add({ position: { x: 2, y: 3, edge: 1 }, colour: 0 });
     geometry.drawLoSSingle(new THREE.Vector3(0, 2, 1), walls, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -10-9-8-7-6-5-4-3-2-1 0 1 2 3 4 5 6
 
@@ -711,7 +711,7 @@ describe('raster LoS test', () => {
     walls.add({ position: { x: 2, y: 3, edge: 1 }, colour: 0 });
     geometry.drawLoSSingle(new THREE.Vector3(2, 0, 1), walls, los);
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -10-9-8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8 91011
 
@@ -751,7 +751,7 @@ describe('raster LoS test', () => {
     rasterLoS.combine(los, other);
 
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -10-9-8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8 91011
 
@@ -796,7 +796,7 @@ describe('raster LoS test', () => {
     );
 
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -10-9-8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8 91011
 
@@ -845,7 +845,7 @@ describe('raster LoS test', () => {
     );
 
     const losStr = losString(min, max, los);
-    //console.log(losStr);
+    //console.debug(losStr);
     expect(losStr).toBe(`
     -10-9-8-7-6-5-4-3-2-1 0 1 2 3 4 5 6 7 8 91011
 
@@ -874,12 +874,12 @@ describe('raster LoS test', () => {
       const x = Math.floor(Math.random() * 200) - 100;
       const y = Math.floor(Math.random() * 200) - 100;
       const edge = Math.floor(Math.random() * 2);
-      //console.log(`x: ${x}, y: ${y}, edge: ${edge}`);
+      //console.debug(`x: ${x}, y: ${y}, edge: ${edge}`);
       walls.add({ position: { x, y, edge }, colour: 0 });
     }
 
     geometry.drawLoSSingle(origin, walls, los);
-    //console.log(losString(min, max, los));
+    //console.debug(losString(min, max, los));
   });
 
   test('400x400 performance', () => {
@@ -888,11 +888,11 @@ describe('raster LoS test', () => {
       const x = Math.floor(Math.random() * 400) - 200;
       const y = Math.floor(Math.random() * 400) - 200;
       const edge = Math.floor(Math.random() * 2);
-      //console.log(`x: ${x}, y: ${y}, edge: ${edge}`);
+      //console.debug(`x: ${x}, y: ${y}, edge: ${edge}`);
       walls.add({ position: { x, y, edge }, colour: 0 });
     }
 
     geometry.drawLoSSingle(origin, walls, los);
-    //console.log(losString(min, max, los));
+    //console.debug(losString(min, max, los));
   });
 });
