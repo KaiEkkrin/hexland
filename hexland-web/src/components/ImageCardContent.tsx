@@ -29,7 +29,7 @@ function ImageCardContent({ altName, imagePath, children }: IImageCardProps) {
 
     const sub = from(resolveImageUrl(imagePath)).subscribe(
       u => {
-        console.log(`got download URL for image ${imagePath} : ${u}`);
+        console.debug(`got download URL for image ${imagePath} : ${u}`);
         setUrl(String(u));
       },
       e => logError("Failed to get download URL for image " + imagePath, e)

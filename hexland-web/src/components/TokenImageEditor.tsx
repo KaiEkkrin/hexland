@@ -90,7 +90,7 @@ function TokenImageEditor({
     functionsService.addSprites(
       adventureId, toSpriteGeometryString(defaultSpriteGeometry), [image.path]
     ).then(s => {
-      console.log(`setting sprite to ${image.path}`);
+      console.debug(`setting sprite to ${image.path}`);
       setSprites(s.filter(s2 => s2.source === image.path));
       setBusySettingImage(false);
     }).catch(e => {

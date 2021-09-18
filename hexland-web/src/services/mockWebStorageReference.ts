@@ -13,7 +13,7 @@ export class MockWebStorageReference extends MockStorageReference {
     await super.put(file, metadata);
 
     // This call replaces the onFinalize trigger that is active in the real deployment.
-    console.log("making functions aware of " + this.path);
+    console.debug("making functions aware of " + this.path);
     await this._functionsService.handleMockStorageUpload(this.path, metadata?.customMetadata?.originalName);
   }
 }

@@ -257,7 +257,7 @@ export class MapStateMachine {
     this.onPostAnimate = this.onPostAnimate.bind(this);
     this.onPreAnimate = this.onPreAnimate.bind(this);
     this._drawing.animate(this.onPreAnimate, this.onPostAnimate);
-    console.log(`created new map state for ${map.adventureId}/${map.id}`);
+    console.debug(`created new map state for ${map.adventureId}/${map.id}`);
   }
 
   private get isOwner() { return this._uid === this._map.record.owner; }
@@ -475,7 +475,7 @@ export class MapStateMachine {
     const worldPosition = this._scratchVector1.copy(cp).applyMatrix4(clientToWorld);
     const hitDistanceSq = Math.pow(this._drawing.vertexHitDistance, 2);
     return (anchor: Anchor) => {
-      console.log(`testing anchor: ${anchorString(anchor)}`);
+      console.debug(`testing anchor: ${anchorString(anchor)}`);
 
       // Test for direct vertex match
       if (vertex !== undefined && anchorsEqual(anchor, {
@@ -884,7 +884,7 @@ export class MapStateMachine {
       selectionDragRed.clear();
       selection.forEach(f => {
         const dragged = { ...f, position: coordAdd(f.position, delta) };
-        // console.log(coordString(f.position) + " -> " + coordString(dragged.position));
+        // console.debug(coordString(f.position) + " -> " + coordString(dragged.position));
         drag.add(dragged);
       });
     };
@@ -1337,7 +1337,7 @@ export class MapStateMachine {
     }
 
     if (centreOn !== undefined) {
-      console.log("resetView: centre on " + centreOn.x + ", " + centreOn.y);
+      console.debug("resetView: centre on " + centreOn.x + ", " + centreOn.y);
       const worldToClient = getWorldToClient(this._scratchMatrix1, this._drawing);
       const zeroCentre = this._gridGeometry.createCoordCentre(this._scratchVector2, { x: 0, y: 0 }, 0)
         .applyMatrix4(worldToClient);
@@ -1615,7 +1615,7 @@ export class MapStateMachine {
 
   dispose() {
     if (this._isDisposed === false) {
-      console.log("disposing map state machine");
+      console.debug("disposing map state machine");
       this._stateSubj.complete();
       this._drawing.dispose();
       this._isDisposed = true;

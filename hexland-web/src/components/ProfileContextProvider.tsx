@@ -36,11 +36,11 @@ function ProfileContextProvider(props: IContextProviderProps) {
 
     const newDisplayName = newUserDisplayNames.get(email);
     if (newDisplayName === undefined) {
-      console.log(`ensuring profile of ${email}`);
+      console.debug(`ensuring profile of ${email}`);
       return undefined;
     }
 
-    console.log(`ensuring profile of ${email} setting display name ${newDisplayName}`);
+    console.debug(`ensuring profile of ${email} setting display name ${newDisplayName}`);
     newUserDisplayNames.delete(email);
     return newDisplayName;
   }, [newUserDisplayNames]);

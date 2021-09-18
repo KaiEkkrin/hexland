@@ -55,7 +55,7 @@ export function AnalyticsContextProvider({ children, getItem, setItem }: IContex
     logError: (message: string, e: any, fatal?: boolean | undefined) => {
       console.error(message, e);
       if (enabled) {
-        console.log("logging to analytics with error: " + getExMessage(e));
+        console.info("logging to analytics with error: " + getExMessage(e));
         analytics?.logEvent("exception", {
           "exDescription": message,
           "exMessage": getExMessage(e),
@@ -82,17 +82,17 @@ export function AnalyticsContextProvider({ children, getItem, setItem }: IContex
   useEffect(() => {
     if (enabled === true) {
       // User chose to enable GA
-      console.log("Enabling Google Analytics");
+      console.info("Enabling Google Analytics");
       setAnalytics(createAnalytics?.());
       doSetItem(enabledKey, "true");
     } else if (enabled === false) {
       // User chose to disable GA
-      console.log("Disabling Google Analytics");
+      console.info("Disabling Google Analytics");
       setAnalytics(undefined);
       doSetItem(enabledKey, "false");
     } else {
       // User hasn't chosen yet (default to disabled)
-      console.log("Disabling Google Analytics by default");
+      console.info("Disabling Google Analytics by default");
       setAnalytics(undefined);
       doSetItem(enabledKey, null);
     }

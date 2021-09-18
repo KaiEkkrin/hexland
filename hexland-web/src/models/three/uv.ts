@@ -78,7 +78,7 @@ function createTokenUvTransform(
   // correct aspect ratio.
   const boundsWidth = boundsMax.x - boundsMin.x;
   const boundsHeight = boundsMax.y - boundsMin.y;
-  // console.log(`found boundsWidth ${boundsWidth} (${boundsMin.x}..${boundsMax.x}), boundsHeight ${boundsHeight} (${boundsMin.y}..${boundsMax.y})`);
+  // console.debug(`found boundsWidth ${boundsWidth} (${boundsMin.x}..${boundsMax.x}), boundsHeight ${boundsHeight} (${boundsMin.y}..${boundsMax.y})`);
   if (boundsWidth < boundsHeight) {
     boundsMin.x -= 0.5 * (boundsHeight - boundsWidth);
   } else {
@@ -93,22 +93,22 @@ function createTokenUvTransform(
   const scratchMatrix1 = new THREE.Matrix4();
   for (const f of uvFaces) {
     const baseTransform = scratchMatrix1.copy(f.transform);
-    // console.log(`face ${coordString(f.position)}: base transform\n` +
+    // console.debug(`face ${coordString(f.position)}: base transform\n` +
     //   debugMatrix(baseTransform)
     // );
 
     const fScaling = f.transform.copy(scalingTransform);
-    // console.log(`face ${coordString(f.position)}: face scaling\n` +
+    // console.debug(`face ${coordString(f.position)}: face scaling\n` +
     //   debugMatrix(fScaling)
     // );
 
     // correct for off-centre (very, very confusing)
-    // console.log(`face ${coordString(f.position)}: face translation\n` +
+    // console.debug(`face ${coordString(f.position)}: face translation\n` +
     //   debugMatrix(translationTransform)
     // );
 
     f.transform = fScaling.multiply(translationTransform).multiply(baseTransform);
-    // console.log(`face ${coordString(f.position)}: offset ${f.offset.toArray()}, scale ${f.scale}, transform\n` +
+    // console.debug(`face ${coordString(f.position)}: offset ${f.offset.toArray()}, scale ${f.scale}, transform\n` +
     //   debugMatrix(f.transform)
     // );
   }

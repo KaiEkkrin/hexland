@@ -115,7 +115,7 @@ class TokenFeatures<K extends GridCoord, F extends (IFeature<K> & ITokenProperti
     // Remember to release all the sprite resources before emptying the dictionary!
     const toRelease = [...fluent(this._spriteFeatures)];
     Promise.all(toRelease.map(f => f.texture.release()))
-      .then(done => console.log(`${done.length} sprite features released`));
+      .then(done => console.debug(`${done.length} sprite features released`));
     this._spriteFeatures.clear();
   }
 

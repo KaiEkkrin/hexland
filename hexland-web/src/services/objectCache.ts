@@ -33,7 +33,7 @@ export class ObjectCache<T> {
       throw Error(entry.error.message);
     }
 
-    // console.log(`acquire ${id}: refCount = ${entry.refCount}`);
+    // console.debug(`acquire ${id}: refCount = ${entry.refCount}`);
     ++entry.refCount;
     if (entry.obj !== undefined) {
       return { value: entry.obj.value, release: this.createRelease(id, entry) };
@@ -48,13 +48,13 @@ export class ObjectCache<T> {
     // accidental multi-release
     let done = false;
     return async () => {
-      // console.log(`releasing ${id}`);
+      // console.debug(`releasing ${id}`);
       if (done) {
         return;
       }
 
       done = true;
-      // console.log(`release ${id}: refCount = ${entry.refCount}`);
+      // console.debug(`release ${id}: refCount = ${entry.refCount}`);
       if (--entry.refCount === 0) {
         this.removeEntry(id, entry);
         try {
@@ -89,7 +89,7 @@ export class ObjectCache<T> {
       return undefined;
     }
 
-    // console.log(`get: refCount = ${entry.refCount}`);
+    // console.debug(`get: refCount = ${entry.refCount}`);
     ++entry.refCount;
     return { value: entry.obj.value, release: this.createRelease(id, entry) };
   }
@@ -145,7 +145,7 @@ export class ObjectCache<T> {
       if (entry.refCount > 0) {
       entry.subj.pipe(first()).toPromise()
         .then(o => o.cleanup())
-        .then(() => console.log(`disposed ${id}`))
+        .then(() => console.debug(`disposed ${id}`))
         .catch(e => this._logError(`Error disposing ${id}`, e));
       }
     }

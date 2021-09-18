@@ -80,7 +80,7 @@ function MapCollection({ adventures, maps, showNewMap, deleteMap, pickImage }: I
     try {
       const id = await functionsService.createMap(adventureId, map.name, map.description, map.ty, map.ffa);
       history.replace('/adventure/' + adventureId + '/map/' + id);
-    } catch (e) {
+    } catch (e: any) {
       handleModalClose();
       logError('Failed to create map', e);
       const message = String(e.message);

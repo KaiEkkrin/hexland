@@ -34,7 +34,7 @@ async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => vo
     });
     functions.useEmulator(hostname, 5001);
     usingLocalEmulators = true;
-    console.log("Running with local emulators");
+    console.debug("Running with local emulators");
   } else {
     storage = app.storage();
   }

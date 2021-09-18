@@ -40,7 +40,7 @@ export class SpriteManager implements ISpriteManager {
     adventureId: string,
     players: Observable<IPlayer[]> // must be a hot observable that will replay the latest
   ) {
-    console.log(`subscribing to spritesheets of ${adventureId}`);
+    console.debug(`subscribing to spritesheets of ${adventureId}`);
     this._adventureId = adventureId;
     this._players = players;
     const ssFeed = new Observable<IDataAndReference<ISpritesheet>[]>(sub => {
@@ -105,7 +105,7 @@ export class SpriteManager implements ISpriteManager {
 
   dispose() {
     if (!this._isDisposed) {
-      console.log(`unsubscribing from spritesheets`);
+      console.debug(`unsubscribing from spritesheets`);
       this._unsub?.();
       this._isDisposed = true;
     }

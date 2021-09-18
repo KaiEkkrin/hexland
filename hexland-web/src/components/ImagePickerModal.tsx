@@ -81,7 +81,7 @@ export function ImagePickerForm({ show, setActiveImage, setImageCount, handleDel
         });
         setStatus({ message: `Processing ${file.name}...` }); // will be replaced when the onUpload function finishes
       }
-      catch (e) {
+      catch (e: any) {
         setStatus({ message: `Upload failed: ${e.message}`, isError: true });
         logError("Upload failed", e);
       }
@@ -98,7 +98,7 @@ export function ImagePickerForm({ show, setActiveImage, setImageCount, handleDel
     }
 
     const imagesRef = dataService.getImagesRef(user.uid);
-    console.log("watching images");
+    console.debug("watching images");
     return dataService.watch(
       imagesRef,
       r => {
@@ -128,7 +128,7 @@ export function ImagePickerForm({ show, setActiveImage, setImageCount, handleDel
     setList(images.map(i => (
       <ImageCollectionItem key={i.path} image={i} style={{ gridRow: '1/span 3', gridColumn: '2' }} />
     )));
-    console.log("new images arrived; resetting index to 0");
+    console.debug("new images arrived; resetting index to 0");
     setIndex(0);
   }, [images, setIndex, setList]);
 

@@ -643,7 +643,7 @@ export function watchChangesAndConsolidate(
     // be done in one transaction), and randomly, so that clients don't all
     // try to consolidate at once
     const i = Math.floor(100 + Math.random() * 350);
-    console.log("next consolidate after " + i + " changes");
+    console.debug("next consolidate after " + i + " changes");
     return i;
   }
 
@@ -653,7 +653,7 @@ export function watchChangesAndConsolidate(
   const resyncSubject = new Subject<void>();
   const resyncSub = resyncSubject.pipe(throttle(() => interval(resyncIntervalMillis ?? 5000)))
     .subscribe(() => {
-      console.log("lost sync -- trying to consolidate");
+      console.debug("lost sync -- trying to consolidate");
       onEvent("desync", { "adventureId": adventureId, "mapId": mapId });
       changesBeforeConsolidate = createConsolidateInterval();
       functionsService.consolidateMapChanges(adventureId, mapId, true)
@@ -667,13 +667,13 @@ export function watchChangesAndConsolidate(
       // If this isn't a resync and we've seen the base change already, we can
       // safely skip this; there shouldn't be any new information
       if (chs.incremental === false && chs.resync === false && seenBaseChange === true) {
-        console.log("skipping non-resync base change");
+        console.debug("skipping non-resync base change");
         return;
       }
 
       if (chs.incremental === false) {
         // This is a first base change or a resync.  Reset the map state before this one
-        console.log("accepting base change");
+        console.debug("accepting base change");
         onReset();
         seenBaseChange = true;
       }
@@ -690,7 +690,7 @@ export function watchChangesAndConsolidate(
       } else if (--changesBeforeConsolidate <= 0) {
         // Issue regular consolidate on interval to reduce the number of in-flight changes
         // users opening the map have to handle
-        console.log("consolidating map changes upon counted interval");
+        console.debug("consolidating map changes upon counted interval");
         changesBeforeConsolidate = createConsolidateInterval();
         functionsService.consolidateMapChanges(adventureId, mapId, false)
           .catch(e => onError?.("Consolidate call failed", e));

@@ -15,7 +15,7 @@ export function RequireLoggedIn(props: IRequireLoggedInProps) {
 
   useEffect(() => {
     if (user === null) {
-      console.log("Not logged in.  Redirecting to login page");
+      console.debug("Not logged in.  Redirecting to login page");
       history.push("/login");
     }
   }, [user, history]);

@@ -26,13 +26,13 @@ export class MockStorageReference implements IStorageReference {
 
   async delete(): Promise<void> {
     const webDAVPath = this.getWebDAVPath();
-    console.log(`deleting file at path ${webDAVPath}...`);
+    console.debug(`deleting file at path ${webDAVPath}...`);
     await this._webdav.deleteFile(webDAVPath);
   }
 
   download(destination: string): Promise<void> {
     const webDAVPath = this.getWebDAVPath();
-    console.log(`downloading file at path ${webDAVPath} to ${destination}...`);
+    console.debug(`downloading file at path ${webDAVPath} to ${destination}...`);
 
     // I'm going to try to be a bit careful about making sure the local
     // file has closed before continuing:
@@ -40,14 +40,14 @@ export class MockStorageReference implements IStorageReference {
     const writeStream = fs.createWriteStream(destination, { autoClose: true });
     return new Promise((resolve, reject) => {
       function safeReject(e: any) {
-        console.log(`download of ${webDAVPath} failed`, e);
+        console.debug(`download of ${webDAVPath} failed`, e);
         reject(e);
       }
 
       readStream.on('data', (d: any) => writeStream.write(d));
       readStream.on('end', () => {
         writeStream.end();
-        console.log(`download of ${webDAVPath} successful`);
+        console.debug(`download of ${webDAVPath} successful`);
         resolve();
       });
       readStream.on('error', safeReject);
@@ -62,14 +62,14 @@ export class MockStorageReference implements IStorageReference {
   async put(file: any, metadata: any): Promise<void> {
     const name = metadata?.customMetadata?.originalName;
     const webDAVPath = this.getWebDAVPath();
-    console.log(`uploading file ${name} to path ${webDAVPath}...`);
+    console.debug(`uploading file ${name} to path ${webDAVPath}...`);
     const buffer = await this.resolveFile(file);
     await this._webdav.putFileContents(webDAVPath, buffer);
   }
 
   async upload(source: string, metadata: { contentType: string }): Promise<void> {
     const webDAVPath = this.getWebDAVPath();
-    console.log(`uploading file at path ${webDAVPath}...`);
+    console.debug(`uploading file at path ${webDAVPath}...`);
 
     // I'm going to try to be a bit careful about making sure the local
     // file has closed before continuing:

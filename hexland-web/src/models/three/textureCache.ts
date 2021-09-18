@@ -31,11 +31,11 @@ export class TextureCache {
     return await new Promise((resolve, reject) => {
       const startTime = performance.now();
       textureLoader.load(url, t => {
-        console.log(`texture loaded from ${url} in ${performance.now() - startTime} millis`);
+        console.debug(`texture loaded from ${url} in ${performance.now() - startTime} millis`);
         resolve({
           value: t,
           cleanup: () => {
-            console.log(`disposing texture from ${url}`);
+            console.debug(`disposing texture from ${url}`);
             t.dispose();
           }
         });
