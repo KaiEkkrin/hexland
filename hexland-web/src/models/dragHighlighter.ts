@@ -88,7 +88,7 @@ abstract class DragHighlighter<K extends GridCoord, F extends IFeature<K>, H ext
       }
     }
 
-    console.log("created " + (changes?.length ?? 0) + " changes");
+    console.debug("created " + (changes?.length ?? 0) + " changes");
     return changes ?? [];
   }
 
@@ -148,7 +148,7 @@ abstract class DragHighlighter<K extends GridCoord, F extends IFeature<K>, H ext
   // the colours between (0, 1) and (2, 3).  (This is the only place where we'll
   // assign the highlight colours 2 and 3.)
   setHighlightValidity(valid: boolean) {
-    console.log("setting highlight validity to " + valid);
+    console.debug("setting highlight validity to " + valid);
     function needsChange(h: IFeature<K>) {
       return valid ? (h.colour >= 2) : (h.colour < 2);
     }

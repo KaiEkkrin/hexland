@@ -128,7 +128,7 @@ export class ImageResizer {
     const anchor = getAnchor(this._dragMode);
     const currently = this._highlights.get(this._dragging);
     const currentImageHighlight = this._imageHighlights.get(this._dragging.id);
-    console.log(`moving: ${anchorString(currently?.anchor)} -> ${anchorString(anchor)}`);
+    console.debug(`moving: ${anchorString(currently?.anchor)} -> ${anchorString(anchor)}`);
     if (currently !== undefined && (anchor === undefined || anchorsEqual(currently.anchor, anchor))) {
       // No change.
       return false;
@@ -143,7 +143,7 @@ export class ImageResizer {
     }
 
     if (anchor !== undefined) {
-      console.log(`adding highlight at ${anchorString(anchor)}`);
+      console.debug(`adding highlight at ${anchorString(anchor)}`);
       const image = this._images.get(this._dragging.id);
       const otherAnchor = this._dragging.which === 'start' ? image?.end : image?.start;
       this._highlights.add({
@@ -168,7 +168,7 @@ export class ImageResizer {
   // Draws the highlights for an image (or removes them.)
   setSelectedImage(image: IMapImage | undefined) {
     if (image !== undefined) {
-      console.log(`selecting image ${image.id} at ${anchorString(image.start)}, ${anchorString(image.end)}`);
+      console.debug(`selecting image ${image.id} at ${anchorString(image.start)}, ${anchorString(image.end)}`);
     }
     this.dragCancel();
     this._selection.clear();

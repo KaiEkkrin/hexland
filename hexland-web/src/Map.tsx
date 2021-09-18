@@ -211,7 +211,7 @@ function Map() {
     }
 
     functionsService.deleteImage(imageToDelete.path)
-      .then(() => console.log(`deleted image ${imageToDelete.path}`))
+      .then(() => console.debug(`deleted image ${imageToDelete.path}`))
       .catch(e => logError(`failed to delete image ${imageToDelete}`, e));
   }, [functionsService, logError, ui, uiState]);
 
@@ -260,7 +260,7 @@ function Map() {
   const editCharacterTokenFromMenu = useCallback((id) => ui?.editToken(id, true), [ui]);
 
   const flipTokenFromMenu = useCallback(() => {
-    console.log("called flipToken with x " + uiState.contextMenuX + ", y " + uiState.contextMenuY);
+    console.debug("called flipToken with x " + uiState.contextMenuX + ", y " + uiState.contextMenuY);
     const cp = getClientPosition(uiState.contextMenuX, uiState.contextMenuY);
     if (cp === undefined) {
       return;

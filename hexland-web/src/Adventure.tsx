@@ -267,7 +267,7 @@ function Adventure({ adventureId }: IAdventureProps) {
       editAdventure(
         dataService, user?.uid, summariseAdventure(adventureId, updated)
       )
-        .then(() => console.log(`Adventure ${adventureId} successfully edited`))
+        .then(() => console.debug(`Adventure ${adventureId} successfully edited`))
         .catch(e => logError(`Error editing adventure ${adventureId}`, e));
     } else {
       const mapSummary = pickImageForMap;
@@ -290,7 +290,7 @@ function Adventure({ adventureId }: IAdventureProps) {
       }
 
       getAndUpdateMap()
-        .then(() => console.log(`Map ${mapSummary.id} successfully edited`))
+        .then(() => console.debug(`Map ${mapSummary.id} successfully edited`))
         .catch(e => logError(`Error editing map ${mapSummary.id}`, e));
     }
   }, [adventure, logError, handleModalClose, pickImageForMap, adventureId, dataService, user]);
@@ -302,7 +302,7 @@ function Adventure({ adventureId }: IAdventureProps) {
     }
 
     functionsService.deleteImage(imageToDelete.path)
-      .then(() => console.log(`deleted image ${imageToDelete.path}`))
+      .then(() => console.debug(`deleted image ${imageToDelete.path}`))
       .catch(e => logError(`failed to delete image ${imageToDelete}`, e));
   }, [logError, handleModalClose, imageToDelete, functionsService]);
 
@@ -310,7 +310,7 @@ function Adventure({ adventureId }: IAdventureProps) {
     handleModalClose();
     deleteAdventure(dataService, user?.uid, adventureId)
       .then(() => {
-        console.log("Adventure " + adventureId + " successfully deleted");
+        console.debug("Adventure " + adventureId + " successfully deleted");
         history.replace("/");
       })
       .catch(e => logError("Error deleting adventure " + adventureId, e));
@@ -320,7 +320,7 @@ function Adventure({ adventureId }: IAdventureProps) {
     handleModalClose();
     leaveAdventure(dataService, user?.uid, adventureId)
       .then(() => {
-        console.log("Successfully left adventure " + adventureId);
+        console.debug("Successfully left adventure " + adventureId);
         history.replace("/");
       })
       .catch(e => logError("Error leaving adventure " + adventureId, e));
@@ -361,7 +361,7 @@ function Adventure({ adventureId }: IAdventureProps) {
     handleModalClose();
     editCharacter(dataService, adventureId, user?.uid, character)
       .then(() => {
-        console.log("Successfully edited character " + character.id);
+        console.debug("Successfully edited character " + character.id);
       })
       .catch(e => logError("Error editing character " + character.id, e));
   }, [dataService, user, logError, adventureId, handleModalClose]);
@@ -374,7 +374,7 @@ function Adventure({ adventureId }: IAdventureProps) {
 
     deleteCharacter(dataService, adventureId, user?.uid, characterToEdit.id)
       .then(() => {
-        console.log("Successfully deleted character " + characterToEdit.id);
+        console.debug("Successfully deleted character " + characterToEdit.id);
       })
       .catch(e => logError("Error deleting character " + characterToEdit.id, e));
   }, [dataService, user, logError, adventureId, characterToEdit, handleModalClose]);
@@ -383,7 +383,7 @@ function Adventure({ adventureId }: IAdventureProps) {
   const maps = useMemo(() => adventure?.record.maps ?? [], [adventure]);
   const mapDelete = useCallback((id: string) => {
     deleteMap(dataService, user?.uid, adventureId, id)
-      .then(() => console.log("Map " + id + " successfully deleted"))
+      .then(() => console.debug("Map " + id + " successfully deleted"))
       .catch(e => logError("Error deleting map " + id, e));
   }, [dataService, user, adventureId, logError]);
 

@@ -115,7 +115,7 @@ export class MapUi {
     this._getClientPosition = getClientPosition;
     this._logError = logError;
     this._toasts = toasts;
-    console.log("created new UI state");
+    console.debug("created new UI state");
   }
 
   private addToast(title: string, message: string, id?: string | undefined) {
@@ -166,7 +166,7 @@ export class MapUi {
     } else {
       switch (this._state.editMode) {
         case EditMode.Select:
-          console.log(`calling selectionDragEnd`);
+          console.debug(`calling selectionDragEnd`);
           changes = this._stateMachine?.selectionDragEnd(cp, this._state.layer);
           break;
 
@@ -284,13 +284,13 @@ export class MapUi {
 
     this._stateMachine.addChanges(changes, (id, title, message) => {
       this._toasts.next({ id: id, record: { title: title, message: message }});
-    }).then(() => console.log(`Added ${changes?.length} changes to map ${this._stateMachine?.map.id}`))
+    }).then(() => console.debug(`Added ${changes?.length} changes to map ${this._stateMachine?.map.id}`))
       .catch(e => this._logError(`Error adding ${changes?.length} changes to map ${this._stateMachine?.map.id}`, e));
   }
 
   contextMenu(e: MouseEvent, bounds: DOMRect) {
     const cp = this._getClientPosition(e.clientX, e.clientY);
-    console.log(`from ${e.clientX}, ${e.clientY} : got cp ${cp?.toArray()}`);
+    console.debug(`from ${e.clientX}, ${e.clientY} : got cp ${cp?.toArray()}`);
     const getTokens = () => {
       if (cp === undefined || this._stateMachine === undefined) {
         return [];

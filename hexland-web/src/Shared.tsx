@@ -27,7 +27,7 @@ function Shared() {
     return dataService?.watchSharedAdventures(
       uid,
       a => {
-        console.log("Received " + a.length + " shared adventures");
+        console.debug("Received " + a.length + " shared adventures");
         setAdventures(a.filter(a2 => a2.playerId !== a2.owner && a2.allowed !== false));
       },
       e => logError("Error watching shared adventures: ", e)

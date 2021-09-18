@@ -309,7 +309,7 @@ export class MapControlPoints extends Drawn implements IMapControlPointDictionar
   private transformToAnchor(m: THREE.Matrix4, a: Anchor): THREE.Matrix4 {
     switch (a.anchorType) {
       case 'vertex':
-        console.log(`drawing control point at ${vertexString(a.position)}`);
+        console.debug(`drawing control point at ${vertexString(a.position)}`);
         return this.geometry.transformToVertex(m, a.position);
 
       case 'pixel':

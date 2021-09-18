@@ -35,16 +35,16 @@ export class EdgeOcclusion {
     this._seenInlineWithEdge = edgeNorm.dot(edgeANorm) > 0.999 || edgeNorm.dot(edgeBNorm) > 0.999;
 
     // TODO remove all debug
-    // console.log("***");
-    // console.log("seenFrom = " + seenFrom.toArray());
-    // console.log("edgeCentre = " + edgeCentre.toArray());
-    // console.log("chirality = " + chirality);
-    // console.log("edgeNorm = " + edgeNorm.toArray());
-    // console.log("edgeA = " + edgeA.toArray());
-    // console.log("edgeANorm = " + edgeANorm.toArray());
-    // console.log("edgeB = " + edgeB.toArray());
-    // console.log("edgeBNorm = " + edgeBNorm.toArray());
-    // console.log("epsilon = " + epsilon);
+    // console.debug("***");
+    // console.debug("seenFrom = " + seenFrom.toArray());
+    // console.debug("edgeCentre = " + edgeCentre.toArray());
+    // console.debug("chirality = " + chirality);
+    // console.debug("edgeNorm = " + edgeNorm.toArray());
+    // console.debug("edgeA = " + edgeA.toArray());
+    // console.debug("edgeANorm = " + edgeANorm.toArray());
+    // console.debug("edgeB = " + edgeB.toArray());
+    // console.debug("edgeBNorm = " + edgeBNorm.toArray());
+    // console.debug("epsilon = " + epsilon);
   }
 
   test(point: THREE.Vector3) {
@@ -95,7 +95,7 @@ class PlanarOcclusion {
 
   test(point: THREE.Vector3) {
     const dot = this._norm.dot(point);
-    //console.log("dot = " + dot + "; min = " + this._min);
+    //console.debug("dot = " + dot + "; min = " + this._min);
     return dot >= this._min;
   }
 }

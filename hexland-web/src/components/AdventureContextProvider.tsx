@@ -115,7 +115,7 @@ function AdventureContextProvider(props: IContextProviderProps) {
     }
 
     registerAdventureAsRecent(dataService, uid, adventure.id, adventure.record)
-      .then(() => console.log("registered adventure " + adventure.id + " as recent"))
+      .then(() => console.debug("registered adventure " + adventure.id + " as recent"))
       .catch(e => logError("Failed to register adventure " + adventure.id + " as recent", e));
 
     // We need the feed of players both so that we can expose it in the adventure context
@@ -136,7 +136,7 @@ function AdventureContextProvider(props: IContextProviderProps) {
 
     const playerSub = playerObs.subscribe(setPlayers);
 
-    console.log('creating sprite manager');
+    console.debug('creating sprite manager');
     setSpriteManager(new SpriteManager(dataService, resolveImageUrl, adventure.id, playerObs));
     return () => {
       playerSub.unsubscribe();

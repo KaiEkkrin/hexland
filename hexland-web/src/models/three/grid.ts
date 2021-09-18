@@ -334,7 +334,7 @@ export class Grid extends Drawn {
     }
 
     // if (count > 0) {
-    //   console.log("extended grid to " + fluent(this._faces).count() + " tiles");
+    //   console.debug("extended grid to " + fluent(this._faces).count() + " tiles");
     // }
 
     return count;
@@ -403,7 +403,7 @@ export class Grid extends Drawn {
     });
 
     if (added !== 0 || toDelete.length !== 0) {
-    //   console.log("shrunk grid to " + fluent(this._faces).count() + " tiles");
+    //   console.debug("shrunk grid to " + fluent(this._faces).count() + " tiles");
     }
 
     return added + toDelete.length;
@@ -422,7 +422,7 @@ export class Grid extends Drawn {
 
     if (tileCount !== 0) {
       this._tileOrigin.set(Math.round(tileXSum / tileCount), Math.round(tileYSum / tileCount));
-      // console.log("Set tile origin to " + this._tileOrigin.toArray());
+      // console.debug("Set tile origin to " + this._tileOrigin.toArray());
     }
   }
 

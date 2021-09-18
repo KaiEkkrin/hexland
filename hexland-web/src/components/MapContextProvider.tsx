@@ -115,7 +115,7 @@ function MapContextProvider(props: IContextProviderProps) {
 
     const consolidateSub = watchMap.pipe(first(), switchMap(m =>
       from((async () => {
-        console.log(`consolidating map changes for ${m.adventureId}/${m.id}`);
+        console.debug(`consolidating map changes for ${m.adventureId}/${m.id}`);
         await lcm.functionsService?.consolidateMapChanges(m.adventureId, m.id, false);
       })())
     )).subscribe(

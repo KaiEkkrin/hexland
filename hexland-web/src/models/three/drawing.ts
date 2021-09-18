@@ -26,12 +26,12 @@ function getRenderer() {
     if (renderer.domElement.getContext('webgl2')) {
       // This should be enough for us, instancing support is implicit rather than
       // an extension
-      console.log('This platform has WebGL 2');
+      console.info('This platform has WebGL 2');
       return renderer;
     }
 
     const supportedExtensions = renderer.getContext().getSupportedExtensions();
-    console.log(
+    console.info(
       `This platform's WebGL renderer supports:\n    ` +
       supportedExtensions?.join('\n    ')
     );

@@ -34,7 +34,7 @@ function AdventureModal(props: IAdventureModalProps) {
   const doHandleSave = useCallback(() => {
     setIsSaving(true);
     handleSave().then(() => {
-      console.log("created adventure successfully");
+      console.debug("created adventure successfully");
     });
   }, [handleSave]);
 

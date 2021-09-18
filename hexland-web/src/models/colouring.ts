@@ -225,7 +225,7 @@ export class MapColouring {
       return;
     }
     
-    //console.log("Filling " + maybeColour + " from " + coordString(startCoord) + " with bounds " + lowerBounds.toArray() + ", " + upperBounds.toArray());
+    //console.debug("Filling " + maybeColour + " from " + coordString(startCoord) + " with bounds " + lowerBounds.toArray() + ", " + upperBounds.toArray());
 
     const colour = maybeFeature.colour;
     let stack = [startCoord];
@@ -235,7 +235,7 @@ export class MapColouring {
         break;
       }
 
-      //console.log("Filled " + colour + " at " + coordString(coord));
+      //console.debug("Filled " + colour + " at " + coordString(coord));
 
       this._geometry.forEachAdjacentFace(coord, (face: GridCoord, edge: GridEdge) => {
         if (

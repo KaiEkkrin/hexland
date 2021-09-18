@@ -249,7 +249,7 @@ function NavLogin({ expanded }: { expanded: boolean }) {
         await user.updateProfile({ displayName: displayName });
       }
 
-      console.log(`successfully updated profile of ${editDisplayName}`);
+      console.debug(`successfully updated profile of ${editDisplayName}`);
     }
 
     doUpdateProfile().catch(e => logError("error updating profile", e));

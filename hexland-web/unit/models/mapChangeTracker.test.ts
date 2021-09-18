@@ -186,9 +186,9 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
   expect(handleChangesApplied.mock.calls[0][0]).toBe(false); // no tokens changed
   expect(handleChangesAborted.mock.calls.length).toBe(0);
 
-  // console.log("zero colour: " + colouring.colourOf({ x: 0, y: 0 }));
-  // console.log("inner colour: " + colouring.colourOf({ x: 0, y: 1 }));
-  // console.log("outer colour: " + colouring.colourOf({ x: 1, y: -1 }));
+  // console.debug("zero colour: " + colouring.colourOf({ x: 0, y: 0 }));
+  // console.debug("inner colour: " + colouring.colourOf({ x: 0, y: 1 }));
+  // console.debug("outer colour: " + colouring.colourOf({ x: 1, y: -1 }));
 
   let addTokens = [
     { position: { x: 0, y: 0 }, colour: 0, id: "a", players: [uid1], size: "1", text: "Zero" },
@@ -271,10 +271,10 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
   expect(handleChangesApplied.mock.calls[4][0]).toBe(true); // this time token changes were made
   expect(handleChangesAborted.mock.calls.length).toBe(2);
 
-  // console.log("wall removed");
-  // console.log("zero colour: " + colouring.colourOf({ x: 0, y: 0 }));
-  // console.log("inner colour: " + colouring.colourOf({ x: 0, y: 1 }));
-  // console.log("outer colour: " + colouring.colourOf({ x: 1, y: -1 }));
+  // console.debug("wall removed");
+  // console.debug("zero colour: " + colouring.colourOf({ x: 0, y: 0 }));
+  // console.debug("inner colour: " + colouring.colourOf({ x: 0, y: 1 }));
+  // console.debug("outer colour: " + colouring.colourOf({ x: 1, y: -1 }));
 
   // We still couldn't move it into the inner area, though
   const moveOuterToInner = <TokenMove>{

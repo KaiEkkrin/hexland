@@ -95,7 +95,7 @@ export class SpriteFeatureObject<
       }
 
       this._texture = t;
-      console.log(`received texture ${this._texture?.value} for url ${url}`);
+      console.debug(`received texture ${this._texture?.value} for url ${url}`);
       this._uniforms['spriteTex'].value = t.value;
       redrawFlag.setNeedsRedraw();
     });
@@ -118,7 +118,7 @@ export class SpriteFeatureObject<
     const x = (f.sheetEntry.position % columns);
     const y = Math.floor(f.sheetEntry.position / columns);
 
-    // console.log(`adding sprite feature ${this.toIndex(f.position)} from ${coordString(f.basePosition)}`);
+    // console.debug(`adding sprite feature ${this.toIndex(f.position)} from ${coordString(f.basePosition)}`);
     const baseTransform = this._getUvTransform(f);
     if (baseTransform === undefined) {
       return;
@@ -143,7 +143,7 @@ export class SpriteFeatureObject<
 
       //   const xy = v.clone().applyMatrix4(baseTransform.testTransform);
       //   const uv = v.clone().applyMatrix4(transform);
-      //   console.log(`sprite mat: ${xy.toArray()} -> ${uv.toArray()}`);
+      //   console.debug(`sprite mat: ${xy.toArray()} -> ${uv.toArray()}`);
 
       //   const sc = new THREE.Vector2(baseTransform.testBuvs[2 * i], baseTransform.testBuvs[2 * i + 1])
       //     .multiply(new THREE.Vector2(
@@ -153,7 +153,7 @@ export class SpriteFeatureObject<
       //       uvTranslateX,
       //       uvTranslateY
       //     ));
-      //   console.log(`sprite sc : ${xy.toArray()} -> ${sc.toArray()}`);
+      //   console.debug(`sprite sc : ${xy.toArray()} -> ${sc.toArray()}`);
       // });
     return instanceIndex;
   }
