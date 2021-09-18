@@ -605,7 +605,7 @@ export class DrawingOrtho implements IDrawing {
       try {
         this._mount.removeChild(this._renderer.domElement);
       } catch (e) {
-        console.warn("failed to unmount renderer dom element", String(e.message));
+        console.warn("failed to unmount renderer dom element");
       }
     }
 

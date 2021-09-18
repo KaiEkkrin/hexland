@@ -546,7 +546,7 @@ export class MapUi {
     if (this._state.mapImageToEditPosition !== undefined) {
       try {
         this.addChanges(this._stateMachine?.setMapImage(this._state.mapImageToEditPosition, properties));
-      } catch (e) {
+      } catch (e: any) {
         this.addToast('Failed to save map image', String(e.message));
       }
     }
@@ -696,7 +696,7 @@ export class MapUi {
     if (this._state.tokenToEditPosition !== undefined) {
       try {
         this.addChanges(this._stateMachine?.setToken(this._state.tokenToEditPosition, undefined));
-      } catch (e) {
+      } catch (e: any) {
         this.addToast('Failed to delete token', String(e.message));
       }
     }
@@ -708,7 +708,7 @@ export class MapUi {
     if (this._state.tokenToEditPosition !== undefined) {
       try {
         this.addChanges(this._stateMachine?.setToken(this._state.tokenToEditPosition, properties));
-      } catch (e) {
+      } catch (e: any) {
         this.addToast('Failed to save token', String(e.message));
       }
     }

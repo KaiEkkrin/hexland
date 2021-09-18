@@ -43,7 +43,7 @@ function AdventureCollection(props: IAdventureCollectionProps) {
     try {
       const id = await functionsService.createAdventure(editName, editDescription);
       history.replace('/adventure/' + id);
-    } catch (e) {
+    } catch (e: any) {
       setShowEditAdventure(false);
       analyticsContext.logError('Failed to create adventure', e);
       const message = String(e.message);

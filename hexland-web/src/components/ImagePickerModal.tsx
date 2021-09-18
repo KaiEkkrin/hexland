@@ -81,7 +81,7 @@ export function ImagePickerForm({ show, setActiveImage, setImageCount, handleDel
         });
         setStatus({ message: `Processing ${file.name}...` }); // will be replaced when the onUpload function finishes
       }
-      catch (e) {
+      catch (e: any) {
         setStatus({ message: `Upload failed: ${e.message}`, isError: true });
         logError("Upload failed", e);
       }

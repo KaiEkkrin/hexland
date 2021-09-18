@@ -696,8 +696,8 @@ describe('test functions', () => {
     try {
       await user2FunctionsService.joinAdventure(invite ?? "", testPolicy);
       fail('Invite should have expired');
-    } catch (e) {
-      expect(e.message).toMatch(/expired/i);
+    } catch (e: any) {
+      expect(e?.toString()).toMatch(/expired/i);
     }
 
     // That should *not* have joined user 2:

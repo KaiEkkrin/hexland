@@ -245,7 +245,7 @@ function Map() {
     if (here !== undefined) {
       try {
         ui?.addChanges(stateMachine.flipToken(here));
-      } catch (e) {
+      } catch (e: any) {
         statusContext.toasts.next({ id: uuidv4(), record: {
           title: "Cannot flip token",
           message: String(e.message)
