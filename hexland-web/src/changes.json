@@ -1,5 +1,11 @@
 [
   {
+    "version": "1.3.9",
+    "changes": [
+      "Update three.js"
+    ]
+  },
+  {
     "version": "1.3.8",
     "changes": [
       "Package updates"
