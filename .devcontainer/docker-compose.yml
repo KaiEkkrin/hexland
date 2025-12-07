@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  hexland-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    volumes:
+      # Use named volume for workspace to avoid Windows/Linux permission issues
+      - hexland_workspace:/workspace
+
+      # Staging mount (read-only) for initial code copy from Windows
+      - ..:/workspace-staging:ro
+
+      # Cache Firebase emulator downloads for faster startup
+      # (kept as named volume since it's in user's home directory)
+      - hexland_firebase_cache:/home/node/.cache/firebase
+
+    environment:
+      # Critical: webpack 4 compatibility with Node 20
+      - NODE_OPTIONS=--openssl-legacy-provider
+      # Enable emulator-only functions
+      - IS_LOCAL_DEV=true
+      # Colorized output in logs
+      - FORCE_COLOR=true
+      # Firebase admin credentials path (if file exists)
+      - GOOGLE_APPLICATION_CREDENTIALS=/workspace/hexland-web/firebase-admin-credentials.json
+
+    ports:
+      - "3400:3400"  # Firebase Hosting emulator
+      - "4000:4000"  # Firebase Emulator UI
+      - "5000:5000"  # React dev server
+      - "5001:5001"  # Firebase Functions emulator
+      - "8080:8080"  # Firestore emulator
+      - "9005:9005"  # Firestore debug port
+      - "9099:9099"  # Firebase Auth emulator
+      - "9229:9229"  # Node.js debug port for Functions
+
+    networks:
+      - hexland-network
+
+    # Keep container running
+    command: sleep infinity
+
+    # Run as node user (simpler permissions model)
+    user: node
+
+  mock-storage:
+    build:
+      context: ../mock-storage
+      dockerfile: Dockerfile
+
+    ports:
+      - "7000:80"  # WebDAV storage service
+
+    networks:
+      - hexland-network
+
+networks:
+  hexland-network:
+    driver: bridge
+
+volumes:
+  hexland_workspace:
+  hexland_firebase_cache:

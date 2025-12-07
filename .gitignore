@@ -12,5 +12,5 @@
 /.usercache/.yarn
 /.usercache/.yarnrc
 
-# environment files
-.env
+# Other stuff
+.claude

@@ -42,6 +42,49 @@ yarn test
 
 The expected execution time of some of the tests is quite close to the timeout value.  If you encounter spurious timeouts, try adding longer timeout values to the `test(...)` declarations.
 
+## Development with VS Code Dev Container (Recommended)
+
+The easiest way to get started with modern tooling is to use the VS Code dev container. This provides:
+
+- **Node.js 20 LTS** - Modern, secure runtime (vs. the EOL Node.js 12/14 mentioned above)
+- **Firebase Emulator Suite** - Fully configured and ready to use
+- **All dependencies pre-installed** - No manual setup required
+- **VS Code integration** - Debugging, extensions, and more
+- **Zero configuration** - Works with existing codebase, no upgrades needed
+
+### Prerequisites
+
+1. [Docker Desktop](https://www.docker.com/products/docker-desktop) installed and running
+2. [Visual Studio Code](https://code.visualstudio.com/) with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+
+### Quick Start
+
+1. Open this repository in VS Code
+2. Press `F1` (or `Ctrl+Shift+P` / `Cmd+Shift+P`) and select **"Dev Containers: Reopen in Container"**
+3. Wait for the container to build (5-10 minutes first time)
+4. Follow the prompts to set up Firebase credentials (see `.devcontainer/README.md` for details)
+5. Start developing:
+   ```bash
+   cd hexland-web
+   yarn start
+   ```
+6. Open http://localhost:5000 in your browser
+
+### Documentation
+
+See [`.devcontainer/README.md`](.devcontainer/README.md) for comprehensive documentation including:
+- Firebase credentials setup
+- Service endpoints and ports
+- Development workflows
+- Debugging guide
+- Troubleshooting common issues
+
+### Note on Compatibility
+
+The dev container uses **Node.js 20 LTS** with a compatibility workaround (`NODE_OPTIONS=--openssl-legacy-provider`) that allows the existing 2022-era dependencies to work without any upgrades. This gives you a secure, modern development environment while maintaining full compatibility with the existing codebase.
+
+The standalone Docker setup (see "Running locally with Docker" below) is still available and fully supported.
+
 ## First time setup: enabling the CORS policy on your project's storage bucket (needed for deployment only)
 
 Make sure that `hexland-web/cors.json` contains the correct origin(s) for your project and then run
