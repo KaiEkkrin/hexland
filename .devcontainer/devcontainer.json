@@ -2,7 +2,7 @@
   "name": "Hexland Development",
   "dockerComposeFile": "docker-compose.yml",
   "service": "hexland-dev",
-  "workspaceFolder": "/workspace",
+  "workspaceFolder": "/workspace/hexland",
   "shutdownAction": "stopCompose",
 
   "customizations": {

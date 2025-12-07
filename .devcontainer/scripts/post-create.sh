@@ -5,30 +5,23 @@ echo ""
 echo "🚀 Setting up Hexland development environment..."
 echo ""
 
-# # Check if workspace needs to be initialized from staging
-# if [ ! -f "/workspace/.git/config" ]; then
-#     echo "📋 First-time setup: Copying project from Windows into container volume..."
-#     echo "   This avoids permission issues with bind mounts."
-#     echo ""
+# Verify repository is in the expected location
+if [ ! -d "/workspace/hexland/.git" ]; then
+    echo "❌ ERROR: Repository not found at /workspace/hexland"
+    echo ""
+    echo "   This dev container requires the repository to be cloned using:"
+    echo "   \"Dev Containers: Clone Repository in Named Container Volume...\""
+    echo ""
+    echo "   Please see .devcontainer/README.md for setup instructions."
+    echo ""
+    exit 1
+fi
 
-#     # Copy everything from staging mount to workspace
-#     # Exclude .git initially to avoid permission issues, we'll copy it separately
-#     rsync -av --exclude='.git' --exclude='node_modules' --exclude='.usercache' /workspace-staging/ /workspace/
-
-#     # Copy .git directory
-#     if [ -d "/workspace-staging/.git" ]; then
-#         rsync -av /workspace-staging/.git/ /workspace/.git/
-#     fi
-
-#     echo "   ✅ Project files copied to container volume"
-#     echo ""
-# else
-#     echo "ℹ️  Workspace already initialized (using existing container volume)"
-#     echo ""
-# fi
+echo "✅ Repository found at /workspace/hexland"
+echo ""
 
 # Check for Firebase admin credentials
-CREDS_FILE="/workspace/hexland-web/firebase-admin-credentials.json"
+CREDS_FILE="/workspace/hexland/hexland-web/firebase-admin-credentials.json"
 if [ ! -f "$CREDS_FILE" ]; then
     echo "⚠️  WARNING: Firebase admin credentials not found!"
     echo ""
@@ -50,7 +43,7 @@ fi
 
 # Install web app dependencies
 echo "📦 Installing web app dependencies..."
-cd /workspace/hexland-web
+cd /workspace/hexland/hexland-web
 if [ -f "yarn.lock" ]; then
     echo "   Using yarn.lock for deterministic install..."
     yarn install --frozen-lockfile || yarn install
@@ -61,7 +54,7 @@ echo ""
 
 # Install Firebase Functions dependencies
 echo "📦 Installing Firebase Functions dependencies..."
-cd /workspace/hexland-web/functions
+cd /workspace/hexland/hexland-web/functions
 if [ -f "yarn.lock" ]; then
     echo "   Using yarn.lock for deterministic install..."
     yarn install --frozen-lockfile || yarn install
@@ -72,13 +65,13 @@ echo ""
 
 # Install Playwright browsers for E2E tests
 echo "🎭 Installing Playwright browsers..."
-cd /workspace/hexland-web
+cd /workspace/hexland/hexland-web
 npx playwright install || echo "   Note: Playwright browser installation failed (non-critical)"
 echo ""
 
 # Firebase setup
 echo "🔥 Setting up Firebase..."
-cd /workspace/hexland-web
+cd /workspace/hexland/hexland-web
 
 # Try to login (may already be logged in)
 firebase login --no-localhost || echo "   Firebase login skipped (already logged in or running non-interactively)"

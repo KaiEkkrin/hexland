@@ -25,25 +25,61 @@ Before using this dev container, ensure you have:
 
 ## Quick Start
 
-1. **Open in VS Code**: Open this repository in VS Code
+**IMPORTANT**: This dev container uses a named Docker volume to avoid Windows/Linux permission issues. You **must** follow these exact steps:
 
-2. **Reopen in Container**:
+### First-Time Setup
+
+1. **Open VS Code Command Palette**:
    - Press `F1` or `Ctrl+Shift+P` (Windows/Linux) / `Cmd+Shift+P` (Mac)
-   - Type "Reopen in Container"
-   - Select "Dev Containers: Reopen in Container"
 
-3. **Wait for setup**: First build takes 5-10 minutes
-   - Downloading base image
-   - Installing dependencies
-   - Setting up Firebase
+2. **Clone Repository in Named Container Volume**:
+   - Type and select: **"Dev Containers: Clone Repository in Named Container Volume..."**
 
-4. **Start developing**:
+3. **Enter Repository URL**:
+   - Paste: `https://github.com/KaiEkkrin/hexland.git`
+   - Press Enter
+
+4. **⚠️ Enter Volume Name** (MUST BE EXACT):
+   - Type exactly: **`hexland_workspace`**
+   - Press Enter
+
+5. **⚠️ Enter Target Folder Name** (MUST BE EXACT):
+   - Type exactly: **`hexland`**
+   - Press Enter
+
+6. **Wait for Setup** (5-10 minutes):
+   - Container builds (downloads base image, installs system packages)
+   - Repository clones into `/workspace/hexland` inside the volume
+   - Dependencies install automatically
+   - Firebase emulators set up
+
+7. **Start Developing**:
    ```bash
    cd hexland-web
    yarn start
    ```
 
-5. **Open in browser**: Navigate to http://localhost:5000
+8. **Open in Browser**: Navigate to http://localhost:5000
+
+### Reconnecting After Closing VS Code
+
+**Method 1: Open Recent** (Easiest)
+- `Ctrl+Shift+P` → "File: Open Recent"
+- Select your hexland container workspace from the list
+
+**Method 2: Remote Explorer**
+- Open Remote Explorer in VS Code sidebar
+- Select "Dev Containers" from dropdown
+- Find "Dev Volumes" section → `hexland_workspace`
+- Right-click → "Open Folder in Container"
+
+### Rebuilding the Container
+
+If you modify `.devcontainer/` configuration:
+
+1. Connect to the container (see above)
+2. `Ctrl+Shift+P` → "Dev Containers: Rebuild Container"
+3. Wait for rebuild (your code in the volume is preserved!)
 
 ## Firebase Setup
 
@@ -203,16 +239,17 @@ Creates optimized production build in `hexland-web/build/` directory.
 
 **Symptom**: Slow file operations, long build times
 
-**Why**: Docker on Windows has slower file I/O for bind mounts
+**This should not occur** if you followed the Quick Start setup correctly.
 
-**Optimizations already applied**:
-- `node_modules` directories use named volumes (not bind mounted)
-- Source code uses `:cached` mount option
+**Optimizations applied**:
+- Entire workspace uses named Docker volume at `/workspace/hexland` (not bind mount)
+- Firebase cache uses named volume for faster emulator startup
+- No cross-OS filesystem translation overhead
 
-**Additional tips**:
-- Ensure WSL 2 backend is enabled in Docker Desktop
-- Keep the project on the Linux filesystem if using WSL 2
-- Close unnecessary applications
+**If experiencing slow performance**:
+- Verify you used "Clone Repository in Named Container Volume" (not "Reopen in Container")
+- Ensure you specified volume name as **`hexland_workspace`** and folder as **`hexland`**
+- Check Docker Desktop is using WSL 2 backend (Settings → General)
 
 ### Module Not Found
 
@@ -323,13 +360,16 @@ Both services share a Docker network for seamless communication.
 
 ### Volumes
 
-**Named volumes** (for performance):
-- `hexland_node_modules_web` - Web app dependencies
-- `hexland_node_modules_functions` - Functions dependencies
+**Named volumes**:
+- `hexland_workspace` - Your source code at `/workspace/hexland` (avoids Windows/Linux permission conflicts)
 - `hexland_firebase_cache` - Firebase emulator JARs (faster startup)
 
-**Bind mounts**:
-- Project root → `/workspace` (your source code)
+Using named volumes instead of bind mounts provides:
+- Better performance on Windows/Mac (no cross-OS filesystem translation)
+- No permission conflicts between host and container users
+- Isolation from host filesystem quirks (line endings, file attributes)
+
+**Important**: The repository must be cloned into `/workspace/hexland` inside the `hexland_workspace` volume using the exact setup steps in Quick Start.
 
 ### Environment Variables
 

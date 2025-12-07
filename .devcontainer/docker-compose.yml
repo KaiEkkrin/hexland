@@ -7,14 +7,11 @@ services:
       dockerfile: Dockerfile
 
     volumes:
-      # Use named volume for workspace to avoid Windows/Linux permission issues
+      # Named volume for workspace (repository cloned into /workspace/hexland)
+      # Avoids Windows/Linux permission issues and provides better I/O performance
       - hexland_workspace:/workspace
 
-      # Staging mount (read-only) for initial code copy from Windows
-      - ..:/workspace-staging:ro
-
       # Cache Firebase emulator downloads for faster startup
-      # (kept as named volume since it's in user's home directory)
       - hexland_firebase_cache:/home/node/.cache/firebase
 
     environment:
@@ -25,7 +22,7 @@ services:
       # Colorized output in logs
       - FORCE_COLOR=true
       # Firebase admin credentials path (if file exists)
-      - GOOGLE_APPLICATION_CREDENTIALS=/workspace/hexland-web/firebase-admin-credentials.json
+      - GOOGLE_APPLICATION_CREDENTIALS=/workspace/hexland/hexland-web/firebase-admin-credentials.json
 
     ports:
       - "3400:3400"  # Firebase Hosting emulator
