@@ -5,28 +5,6 @@ echo ""
 echo "🚀 Setting up Hexland development environment..."
 echo ""
 
-# # Check if workspace needs to be initialized from staging
-# if [ ! -f "/workspace/.git/config" ]; then
-#     echo "📋 First-time setup: Copying project from Windows into container volume..."
-#     echo "   This avoids permission issues with bind mounts."
-#     echo ""
-
-#     # Copy everything from staging mount to workspace
-#     # Exclude .git initially to avoid permission issues, we'll copy it separately
-#     rsync -av --exclude='.git' --exclude='node_modules' --exclude='.usercache' /workspace-staging/ /workspace/
-
-#     # Copy .git directory
-#     if [ -d "/workspace-staging/.git" ]; then
-#         rsync -av /workspace-staging/.git/ /workspace/.git/
-#     fi
-
-#     echo "   ✅ Project files copied to container volume"
-#     echo ""
-# else
-#     echo "ℹ️  Workspace already initialized (using existing container volume)"
-#     echo ""
-# fi
-
 # Check for Firebase admin credentials
 CREDS_FILE="/workspace/hexland-web/firebase-admin-credentials.json"
 if [ ! -f "$CREDS_FILE" ]; then

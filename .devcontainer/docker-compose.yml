@@ -7,15 +7,11 @@ services:
       dockerfile: Dockerfile
 
     volumes:
-      # Use named volume for workspace to avoid Windows/Linux permission issues
-      - hexland_workspace:/workspace
-
-      # Staging mount (read-only) for initial code copy from Windows
-      - ..:/workspace-staging:ro
-
       # Cache Firebase emulator downloads for faster startup
-      # (kept as named volume since it's in user's home directory)
       - hexland_firebase_cache:/home/node/.cache/firebase
+
+      # Note: Workspace volume is configured via workspaceMount in devcontainer.json
+      # to enable proper "Clone Repository in Container Volume" workflow
 
     environment:
       # Critical: webpack 4 compatibility with Node 20
@@ -62,5 +58,4 @@ networks:
     driver: bridge
 
 volumes:
-  hexland_workspace:
   hexland_firebase_cache:

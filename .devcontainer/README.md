@@ -25,25 +25,35 @@ Before using this dev container, ensure you have:
 
 ## Quick Start
 
-1. **Open in VS Code**: Open this repository in VS Code
+**RECOMMENDED**: Use the volume-based workflow to avoid permission issues (especially on Windows):
 
-2. **Reopen in Container**:
+1. **Clone Repository in Container Volume** (First time):
    - Press `F1` or `Ctrl+Shift+P` (Windows/Linux) / `Cmd+Shift+P` (Mac)
-   - Type "Reopen in Container"
-   - Select "Dev Containers: Reopen in Container"
+   - Type "Clone Repository in Container Volume"
+   - Select **"Dev Containers: Clone Repository in Container Volume..."**
+   - Enter repository URL: `https://github.com/KaiEkkrin/hexland.git`
+   - VS Code will clone the repo directly into a Docker volume
 
-3. **Wait for setup**: First build takes 5-10 minutes
+2. **Wait for setup**: First build takes 5-10 minutes
    - Downloading base image
    - Installing dependencies
    - Setting up Firebase
 
-4. **Start developing**:
+3. **Start developing**:
    ```bash
    cd hexland-web
    yarn start
    ```
 
-5. **Open in browser**: Navigate to http://localhost:5000
+4. **Open in browser**: Navigate to http://localhost:5000
+
+**ALTERNATIVE**: If you already have the repository checked out locally:
+
+1. Open the repository folder in VS Code
+2. Press `F1` and select "Dev Containers: Reopen in Container"
+3. Follow steps 2-4 above
+
+> **Note**: The volume-based approach (first method) provides better performance on Windows/Mac and avoids filesystem permission issues between the host and container.
 
 ## Firebase Setup
 
@@ -203,16 +213,16 @@ Creates optimized production build in `hexland-web/build/` directory.
 
 **Symptom**: Slow file operations, long build times
 
-**Why**: Docker on Windows has slower file I/O for bind mounts
+**Solution**: Use the volume-based workflow (see Quick Start)
 
-**Optimizations already applied**:
-- `node_modules` directories use named volumes (not bind mounted)
-- Source code uses `:cached` mount option
+**Optimizations applied**:
+- Workspace uses named Docker volume (not bind mount from Windows)
+- Firebase cache uses named volume for faster emulator startup
 
-**Additional tips**:
+**If you must use bind mounts**:
 - Ensure WSL 2 backend is enabled in Docker Desktop
 - Keep the project on the Linux filesystem if using WSL 2
-- Close unnecessary applications
+- Consider cloning into the container volume instead (recommended)
 
 ### Module Not Found
 
@@ -323,13 +333,14 @@ Both services share a Docker network for seamless communication.
 
 ### Volumes
 
-**Named volumes** (for performance):
-- `hexland_node_modules_web` - Web app dependencies
-- `hexland_node_modules_functions` - Functions dependencies
+**Named volumes** (configured via `workspaceMount`):
+- `hexland_workspace` - Your source code (avoids Windows/Linux permission conflicts)
 - `hexland_firebase_cache` - Firebase emulator JARs (faster startup)
 
-**Bind mounts**:
-- Project root → `/workspace` (your source code)
+Using named volumes instead of bind mounts provides:
+- Better performance on Windows/Mac (no cross-OS filesystem translation)
+- No permission conflicts between host and container users
+- Isolation from host filesystem quirks (line endings, file attributes)
 
 ### Environment Variables
 
