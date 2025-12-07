@@ -49,7 +49,7 @@ Before using this dev container, ensure you have:
 
 6. **Wait for Setup** (5-10 minutes):
    - Container builds (downloads base image, installs system packages)
-   - Repository clones into `/workspace/hexland` inside the volume
+   - Repository clones into `/workspaces/hexland` inside the volume
    - Dependencies install automatically
    - Firebase emulators set up
 
@@ -242,7 +242,7 @@ Creates optimized production build in `hexland-web/build/` directory.
 **This should not occur** if you followed the Quick Start setup correctly.
 
 **Optimizations applied**:
-- Entire workspace uses named Docker volume at `/workspace/hexland` (not bind mount)
+- Entire workspace uses named Docker volume at `/workspaces/hexland` (not bind mount)
 - Firebase cache uses named volume for faster emulator startup
 - No cross-OS filesystem translation overhead
 
@@ -361,7 +361,7 @@ Both services share a Docker network for seamless communication.
 ### Volumes
 
 **Named volumes**:
-- `hexland_workspace` - Your source code at `/workspace/hexland` (avoids Windows/Linux permission conflicts)
+- `hexland_workspace` - Your source code at `/workspaces/hexland` (avoids Windows/Linux permission conflicts)
 - `hexland_firebase_cache` - Firebase emulator JARs (faster startup)
 
 Using named volumes instead of bind mounts provides:
@@ -369,7 +369,7 @@ Using named volumes instead of bind mounts provides:
 - No permission conflicts between host and container users
 - Isolation from host filesystem quirks (line endings, file attributes)
 
-**Important**: The repository must be cloned into `/workspace/hexland` inside the `hexland_workspace` volume using the exact setup steps in Quick Start.
+**Important**: The repository must be cloned into `/workspaces/hexland` inside the `hexland_workspace` volume using the exact setup steps in Quick Start. Note the plural `/workspaces` - this is VS Code's standard convention.
 
 ### Environment Variables
 

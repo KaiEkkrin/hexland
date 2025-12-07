@@ -7,9 +7,10 @@ services:
       dockerfile: Dockerfile
 
     volumes:
-      # Named volume for workspace (repository cloned into /workspace/hexland)
+      # Named volume for workspace (repository cloned into /workspaces/hexland)
+      # Uses VS Code's default /workspaces path for "Clone Repository in Container Volume"
       # Avoids Windows/Linux permission issues and provides better I/O performance
-      - hexland_workspace:/workspace
+      - hexland_workspace:/workspaces
 
       # Cache Firebase emulator downloads for faster startup
       - hexland_firebase_cache:/home/node/.cache/firebase
@@ -22,7 +23,7 @@ services:
       # Colorized output in logs
       - FORCE_COLOR=true
       # Firebase admin credentials path (if file exists)
-      - GOOGLE_APPLICATION_CREDENTIALS=/workspace/hexland/hexland-web/firebase-admin-credentials.json
+      - GOOGLE_APPLICATION_CREDENTIALS=/workspaces/hexland/hexland-web/firebase-admin-credentials.json
 
     ports:
       - "3400:3400"  # Firebase Hosting emulator

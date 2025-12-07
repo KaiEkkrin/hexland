@@ -6,8 +6,8 @@ echo "🚀 Setting up Hexland development environment..."
 echo ""
 
 # Verify repository is in the expected location
-if [ ! -d "/workspace/hexland/.git" ]; then
-    echo "❌ ERROR: Repository not found at /workspace/hexland"
+if [ ! -d "/workspaces/hexland/.git" ]; then
+    echo "❌ ERROR: Repository not found at /workspaces/hexland"
     echo ""
     echo "   This dev container requires the repository to be cloned using:"
     echo "   \"Dev Containers: Clone Repository in Named Container Volume...\""
@@ -17,11 +17,11 @@ if [ ! -d "/workspace/hexland/.git" ]; then
     exit 1
 fi
 
-echo "✅ Repository found at /workspace/hexland"
+echo "✅ Repository found at /workspaces/hexland"
 echo ""
 
 # Check for Firebase admin credentials
-CREDS_FILE="/workspace/hexland/hexland-web/firebase-admin-credentials.json"
+CREDS_FILE="/workspaces/hexland/hexland-web/firebase-admin-credentials.json"
 if [ ! -f "$CREDS_FILE" ]; then
     echo "⚠️  WARNING: Firebase admin credentials not found!"
     echo ""
@@ -43,7 +43,7 @@ fi
 
 # Install web app dependencies
 echo "📦 Installing web app dependencies..."
-cd /workspace/hexland/hexland-web
+cd /workspaces/hexland/hexland-web
 if [ -f "yarn.lock" ]; then
     echo "   Using yarn.lock for deterministic install..."
     yarn install --frozen-lockfile || yarn install
@@ -54,7 +54,7 @@ echo ""
 
 # Install Firebase Functions dependencies
 echo "📦 Installing Firebase Functions dependencies..."
-cd /workspace/hexland/hexland-web/functions
+cd /workspaces/hexland/hexland-web/functions
 if [ -f "yarn.lock" ]; then
     echo "   Using yarn.lock for deterministic install..."
     yarn install --frozen-lockfile || yarn install
@@ -65,13 +65,13 @@ echo ""
 
 # Install Playwright browsers for E2E tests
 echo "🎭 Installing Playwright browsers..."
-cd /workspace/hexland/hexland-web
+cd /workspaces/hexland/hexland-web
 npx playwright install || echo "   Note: Playwright browser installation failed (non-critical)"
 echo ""
 
 # Firebase setup
 echo "🔥 Setting up Firebase..."
-cd /workspace/hexland/hexland-web
+cd /workspaces/hexland/hexland-web
 
 # Try to login (may already be logged in)
 firebase login --no-localhost || echo "   Firebase login skipped (already logged in or running non-interactively)"

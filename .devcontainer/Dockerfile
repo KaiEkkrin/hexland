@@ -27,5 +27,5 @@ RUN mkdir -p /home/node/.cache/firebase \
 # Switch to node user for subsequent operations
 USER node
 
-# Set working directory
-WORKDIR /workspace
+# Set working directory to VS Code's default for container volumes
+WORKDIR /workspaces
