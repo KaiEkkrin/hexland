@@ -3,7 +3,6 @@
   "dockerComposeFile": "docker-compose.yml",
   "service": "hexland-dev",
   "workspaceFolder": "/workspace",
-  "workspaceMount": "source=hexland_workspace,target=/workspace,type=volume",
   "shutdownAction": "stopCompose",
 
   "customizations": {

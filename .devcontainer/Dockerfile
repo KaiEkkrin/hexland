@@ -8,6 +8,7 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends \
     openjdk-17-jdk \
     imagemagick \
+    rsync \
     && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
 # Install Playwright system dependencies
