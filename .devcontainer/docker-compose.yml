@@ -15,6 +15,14 @@ services:
       # Cache Firebase emulator downloads for faster startup
       - hexland_firebase_cache:/home/node/.cache/firebase
 
+      # Persist Firebase CLI credentials across container rebuilds
+      # Firebase stores OAuth tokens in ~/.config/configstore/firebase-tools.json
+      - hexland_config:/home/node/.config
+
+      # Persist Claude Code CLI credentials across container rebuilds
+      # Claude stores OAuth tokens in ~/.claude/.credentials.json and settings in ~/.claude/settings.json
+      - hexland_claude:/home/node/.claude
+
     environment:
       # Critical: webpack 4 compatibility with Node 20
       - NODE_OPTIONS=--openssl-legacy-provider
@@ -62,3 +70,5 @@ networks:
 volumes:
   hexland_workspace:
   hexland_firebase_cache:
+  hexland_config:
+  hexland_claude:
