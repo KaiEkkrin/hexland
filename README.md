@@ -25,19 +25,29 @@ I develop using WSL 2 and Visual Studio Code, I can't vouch for the effectivenes
 First time setup: ensure you have the Firebase emulators ready
 
 ```bash
+# Initialize only the emulators we need (Auth, Firestore, Functions, Hosting)
+# This excludes Storage, Database, Pub/Sub, and other emulators
 firebase init emulators
+# When prompted, select: Authentication, Firestore, Functions, Hosting
+# Use default ports or customize as needed
 ```
 
 The following command is set up to load a Firebase emulator with Firestore and Functions support:
 
 ```bash
-cd functions && yarn serve
+cd hexland-web/functions && yarn serve
 ```
 
-Having left that running you can now do
+Having left that running you can now run tests:
 
 ```bash
-yarn test
+# Run unit tests (Jest-based tests for models, services, data)
+cd hexland-web
+yarn test:unit
+
+# Run end-to-end tests (Playwright-based visual regression tests)
+# Note: E2E tests require Playwright setup (currently needs revival)
+yarn test:e2e
 ```
 
 The expected execution time of some of the tests is quite close to the timeout value.  If you encounter spurious timeouts, try adding longer timeout values to the `test(...)` declarations.
@@ -84,6 +94,80 @@ See [`.devcontainer/README.md`](.devcontainer/README.md) for comprehensive docum
 The dev container uses **Node.js 20 LTS** with a compatibility workaround (`NODE_OPTIONS=--openssl-legacy-provider`) that allows the existing 2022-era dependencies to work without any upgrades. This gives you a secure, modern development environment while maintaining full compatibility with the existing codebase.
 
 The standalone Docker setup (see "Running locally with Docker" below) is still available and fully supported.
+
+## Running locally (in Dev Container)
+
+Once you're inside the dev container (see "Development with VS Code Dev Container" above), follow these steps to run the application locally:
+
+### 1. Build Functions
+
+First, build the Firebase Functions TypeScript code:
+
+```bash
+cd /workspaces/hexland/hexland-web/functions
+yarn install  # First time only
+yarn build    # Compiles TypeScript to lib/
+```
+
+### 2. Start Firebase Emulators
+
+Start the Firebase emulators (Auth, Firestore, Functions, Hosting) in one terminal:
+
+```bash
+cd /workspaces/hexland/hexland-web
+firebase emulators:start --only auth,firestore,functions,hosting
+```
+
+This will start:
+- **Authentication Emulator**: `http://localhost:9099`
+- **Firestore Emulator**: `http://localhost:8080`
+- **Functions Emulator**: `http://localhost:5001`
+- **Hosting Emulator**: `http://localhost:3400`
+- **Emulator UI**: `http://localhost:4000` (view all emulator data here)
+
+### 3. Start React Dev Server
+
+In a separate terminal, start the React development server:
+
+```bash
+cd /workspaces/hexland/hexland-web
+PORT=5000 yarn react-scripts start
+```
+
+Or use the convenience script that runs both emulators and dev server in parallel:
+
+```bash
+cd /workspaces/hexland/hexland-web
+yarn start  # Runs both dev:firebase and dev:react in parallel
+```
+
+### 4. Access the Application
+
+Open your browser to:
+- **Application**: http://localhost:5000
+- **Emulator UI**: http://localhost:4000 (to view/manage emulated Firebase data)
+
+### Running Tests
+
+```bash
+cd /workspaces/hexland/hexland-web
+
+# Unit tests (interactive watch mode)
+yarn test:unit
+
+# Unit tests (single run)
+yarn test:unit --watchAll=false
+
+# End-to-end tests (requires Playwright setup)
+yarn test:e2e
+```
+
+### Building for Production
+
+```bash
+cd /workspaces/hexland/hexland-web
+yarn build  # Creates optimized production build in build/
+```
 
 ## First time setup: enabling the CORS policy on your project's storage bucket (needed for deployment only)
 
