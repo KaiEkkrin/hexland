@@ -149,7 +149,14 @@ export async function createNewMap(
     await page.check('[id=mapFfa]');
   }
 
-  await page.click('text="Save map"');
+  // Wait for navigation to complete after clicking Save
+  // React Router uses history.replace() which is client-side navigation
+  await Promise.all([
+    page.waitForURL('**/map/**', { timeout: 10000 }), // Wait for URL to change to map page
+    page.click('text="Save map"'),
+  ]);
+
+  console.log('✓ Navigation to map page completed, URL:', page.url());
 }
 
 export async function verifyMap(
@@ -161,19 +168,59 @@ export async function verifyMap(
   if (browserName !== 'firefox' && browserName !== 'webkit') {
     // TODO On Safari, no error but no grid shows (investigate?)
     await expect(page.locator('.Map-content')).toBeVisible();
+
+    // Wait for the loading spinner to disappear - this indicates stateMachine is initialized
+    // The breadcrumb won't appear until map/mapState/profile are all loaded
+    await expect(page.locator('.Throbber-container')).not.toBeVisible({ timeout: 20000 });
+    console.log('✓ Throbber disappeared');
+
+    // Wait a bit more for network activity to fully settle
+    await page.waitForLoadState('networkidle', { timeout: 10000 });
+    console.log('✓ Network idle');
+
     await whileNavbarExpanded(page, deviceName, async () => {
-      await expect(page.locator(`[aria-label="Link to this adventure"] >> text="${adventureName}"`)).toBeVisible();
-      await expect(page.locator(`[aria-label="Link to this map"] >> text="${mapName}"`)).toBeVisible();
+      // Debug: Check what's in the navbar after loading
+      const navbarText = await page.locator('.navbar').textContent();
+      console.log('Navbar after loading:', navbarText);
+
+      // Check if the adventure name appears ANYWHERE on the page
+      const adventureOnPage = await page.locator(`text="${adventureName}"`).count();
+      console.log(`"${adventureName}" appears ${adventureOnPage} times on page`);
+
+      // Check all elements with aria-labels in the navbar
+      const ariaLabelElements = await page.locator('.navbar [aria-label]').all();
+      console.log(`Found ${ariaLabelElements.length} elements with aria-label in navbar`);
+      for (const el of ariaLabelElements) {
+        const label = await el.getAttribute('aria-label');
+        const text = await el.textContent();
+        console.log(`  - aria-label="${label}": "${text}"`);
+      }
+
+      // Check the entire page for elements with our aria-labels
+      const adventureLinkAll = await page.locator('[aria-label="Link to this adventure"]').all();
+      console.log(`Found ${adventureLinkAll.length} elements with aria-label="Link to this adventure" on entire page`);
+
+      // Breadcrumb links appear after map/mapState/profile all load
+      const adventureLink = page.locator('[aria-label="Link to this adventure"]');
+      await expect(adventureLink).toBeVisible({ timeout: 10000 });
+      await expect(adventureLink).toContainText(adventureName);
+
+      const mapLink = page.locator('[aria-label="Link to this map"]');
+      await expect(mapLink).toBeVisible({ timeout: 10000 });
+      await expect(mapLink).toContainText(mapName);
     });
+
+    // Small delay for rendering stability before screenshot
+    await page.waitForTimeout(500);
 
     // Make sure the map looks right
     await takeAndVerifyScreenshot(page, browserName, deviceName, message);
 
     // Return to the adventure page, waiting for the description to pop up again
     await whileNavbarExpanded(page, deviceName, async () => {
-      await page.click(`[aria-label="Link to this adventure"] >> text="${adventureName}"`);
+      await page.locator('[aria-label="Link to this adventure"]').filter({ hasText: adventureName }).click();
     });
-    await expect(page.locator(`.card-text >> text="${adventureDescription}"`)).toBeVisible();
+    await expect(page.locator('.card-text').filter({ hasText: adventureDescription })).toBeVisible();
   } else {
     // Click off the error.  I can continue, but need to navigate back to the adventure
     await page.click('.toast-header .close');

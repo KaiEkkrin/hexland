@@ -8,6 +8,14 @@ import * as Util from './util';
 
 test.describe('Basic tests', () => {
   test.beforeEach(async ({ page }) => {
+    // Capture browser console logs
+    page.on('console', msg => {
+      const text = msg.text();
+      if (text.includes('[Map') || text.includes('✓')) {
+        console.log('Browser console:', text);
+      }
+    });
+
     // Navigate to home page and accept cookies before each test
     await page.goto('/');
     await expect(page.locator('.Introduction-image')).toBeVisible();

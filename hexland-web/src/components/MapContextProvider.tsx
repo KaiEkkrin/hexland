@@ -57,16 +57,25 @@ function MapContextProvider(props: IContextProviderProps) {
   // We'll try not to depend on `dataService` in here to avoid repeated calls
   const [mapContext, setMapContext] = useState<IMapContext>({ mapState: createDefaultState() });
   useEffect(() => {
+    console.log('[MapContextProvider] useEffect running, pathname:', location?.pathname);
     const matches = /^\/adventure\/([^/]+)\/map\/([^/]+)$/.exec(location?.pathname);
+    console.log('[MapContextProvider] regex matches:', matches ? 'YES' : 'NO');
+    console.log('[MapContextProvider] lcm:', lcm ? 'DEFINED' : 'UNDEFINED');
+    console.log('[MapContextProvider] profile:', profile ? 'DEFINED' : 'UNDEFINED');
+    console.log('[MapContextProvider] spriteManager:', spriteManager ? 'DEFINED' : 'UNDEFINED');
+
     if (!lcm || !matches || !profile || !spriteManager) {
+      console.log('[MapContextProvider] Early return - missing dependencies');
       return undefined;
     }
 
     const [adventureId, mapId] = [matches[1], matches[2]];
+    console.log('[MapContextProvider] Setting up map watch for:', adventureId, mapId);
     const mapRef = lcm.dataService.getMapRef(adventureId, mapId);
 
     // How to handle a map load failure.
     function couldNotLoad(message: string) {
+      console.log('[MapContextProvider] couldNotLoad called with message:', message);
       if (lcm && mapRef) {
         removeMapFromRecent(lcm.dataService, lcm.uid, mapRef.id)
           .catch(e => logError("Error removing map from recent", e));
@@ -77,6 +86,7 @@ function MapContextProvider(props: IContextProviderProps) {
         record: { title: 'Error loading map', message: message }
       });
 
+      console.log('[MapContextProvider] Navigating back to home due to error');
       history.replace('/');
     }
 

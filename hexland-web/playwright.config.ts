@@ -41,6 +41,17 @@ export default defineConfig({
     // Navigation timeout (matching pageNavigationTimeout from main.test.ts:60)
     navigationTimeout: 12000,
     actionTimeout: 8000,
+
+    // Enable WebGL support via NVIDIA GPU passthrough
+    // Required for Three.js map rendering in headless mode
+    // Note: Requires Docker container to be run with --gpus=all
+    launchOptions: {
+      args: [
+        '--use-gl=desktop',       // Use desktop OpenGL (NVIDIA GPU)
+        '--enable-gpu',            // Enable GPU hardware acceleration
+        '--ignore-gpu-blocklist',  // Bypass GPU blocklist
+      ],
+    },
   },
 
   // Browser/device projects (matching the 8 configs from main.test.ts:44-53)
