@@ -15,9 +15,44 @@ const region = 'europe-west2';
 export const FirebaseContext = createContext<IFirebaseContext>({});
 
 async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => void) {
-  // Get app config and use it to create the Firebase app
-  const response = await fetch('/__/firebase/init.json?v=2');
-  const app = firebase.initializeApp(await response.json());
+  let config;
+  const isLocalDevelopment = 'webpackHotUpdate' in window;
+
+  // Try to get app config from Firebase Hosting
+  try {
+    const response = await fetch('/__/firebase/init.json?v=2');
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    config = await response.json();
+  } catch (error) {
+    // Fallback to local development config when not served via Firebase Hosting
+    console.debug("Using local development Firebase config (emulator mode)", error);
+
+    // Try to get project ID from admin credentials file
+    let projectId = "hexland-test";
+    try {
+      const credsResponse = await fetch('/firebase-admin-credentials.json');
+      if (credsResponse.ok) {
+        const creds = await credsResponse.json();
+        projectId = creds.project_id || projectId;
+        console.debug(`Using project ID from credentials: ${projectId}`);
+      }
+    } catch (e) {
+      console.debug("Could not load admin credentials, using default project ID", e);
+    }
+
+    config = {
+      apiKey: "fake-api-key-for-emulator",
+      authDomain: `${projectId}.firebaseapp.com`,
+      projectId: projectId,
+      storageBucket: `${projectId}.appspot.com`,
+      messagingSenderId: "123456789",
+      appId: "1:123456789:web:abcdef"
+    };
+  }
+
+  const app = firebase.initializeApp(config);
   const auth = app.auth();
   const db = app.firestore();
   const functions = app.functions(region);
@@ -25,12 +60,13 @@ async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => vo
   let usingLocalEmulators = false;
 
   // Configure to use local emulators when running locally with webpack hot-plugging
-  if ('webpackHotUpdate' in window) {
+  if (isLocalDevelopment) {
     const hostname = document.location.hostname;
     auth.useEmulator(`http://${hostname}:9099`);
     db.settings({
       host: `${hostname}:8080`,
-      ssl: false
+      ssl: false,
+      merge: true
     });
     functions.useEmulator(hostname, 5001);
     usingLocalEmulators = true;
@@ -47,7 +83,8 @@ async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => vo
     storage: storage,
     timestampProvider: firebase.firestore.FieldValue.serverTimestamp,
     usingLocalEmulators: usingLocalEmulators,
-    createAnalytics: () => app.analytics()
+    // Don't initialize Analytics in local development mode (requires real API key)
+    createAnalytics: isLocalDevelopment ? undefined : (() => app.analytics())
   });
 }
 

@@ -1,10 +1,13 @@
 import * as THREE from 'three';
+// TODO #235 :
+// @ts-ignore - FontLoader types not available in @types/three for examples/jsm (Phase 0 workaround)
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader';
 
 export class TextCreator {
   private _font: THREE.Font | undefined;
 
   constructor() {
-    let loader = new THREE.FontLoader();
+    let loader = new FontLoader();
     loader.load('/fonts/helvetiker_bold.typeface.json', (f: THREE.Font) => this._font = f);
   }
 
