@@ -6,11 +6,12 @@
     "forceConsistentCasingInFileNames": true,
     "jsx": "react",
     "lib": [
-      "esnext"
+      "esnext",
+      "dom"
     ],
     "noImplicitReturns": true,
     "noUnusedLocals": true,
     "strict": true,
-    "types": ["@types/jest", "@types/node", "expect-playwright"]
+    "types": ["@types/node"]
   }
 }

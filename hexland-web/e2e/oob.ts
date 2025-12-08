@@ -12,12 +12,21 @@ type OobDocument = {
 }
 
 async function getOobLink(email: string): Promise<string> {
-  const d = await new Promise<OobDocument>((resolve, reject) => {
-    http.get(
-      `http://localhost:9099/emulator/v1/projects/hexland-test-${process.env.USER}/oobCodes`,
-      res => {
+  // Use the default Firebase project name for the emulator
+  const projectName = 'hexland-test';
+
+  // Retry logic to handle async emulator operations
+  const maxRetries = 10;
+  const retryDelay = 200; // ms
+
+  for (let i = 0; i < maxRetries; i++) {
+    const d = await new Promise<OobDocument>((resolve, reject) => {
+      const url = `http://localhost:9099/emulator/v1/projects/${projectName}/oobCodes`;
+
+      const req = http.get(url, res => {
         if (res.statusCode !== 200) {
           reject('Oob document returned status: ' + res.statusCode);
+          return;
         }
 
         let output = '';
@@ -31,16 +40,25 @@ async function getOobLink(email: string): Promise<string> {
             reject(e);
           }
         });
-      }
-    )
-  });
+      });
 
-  const oobLink = d.oobCodes?.find(c => c.email === email)?.oobLink;
-  if (!oobLink) {
-    throw Error("No OOB link for " + email);
+      req.on('error', (e) => {
+        reject(e);
+      });
+    });
+
+    const oobLink = d.oobCodes?.find(c => c.email === email)?.oobLink;
+    if (oobLink) {
+      return oobLink;
+    }
+
+    // Wait before retrying
+    if (i < maxRetries - 1) {
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
+    }
   }
 
-  return oobLink;
+  throw Error("No OOB link for " + email + " after " + maxRetries + " retries");
 }
 
 export async function verifyEmail(email: string): Promise<void> {

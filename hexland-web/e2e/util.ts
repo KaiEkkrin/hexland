@@ -1,32 +1,45 @@
 import * as path from 'path';
 
-import { Page } from 'playwright';
+import { Page, expect } from '@playwright/test';
 import { v4 as uuidv4 } from 'uuid';
 
 import { SCREENSHOTS_PATH } from './globals';
-import { TestState } from './types';
 
 // Various utility functions for testing.
 
-export function takeScreenshot(state: TestState, message: string) {
-  return state.page.screenshot({
+// Helper to extract device name from project name (e.g., "chromium-iphone7" -> "iPhone 7")
+export function getDeviceNameFromProject(projectName: string): string {
+  if (projectName.includes('iphone7')) return 'iPhone 7';
+  if (projectName.includes('pixel2')) return 'Pixel 2';
+  if (projectName.includes('laptop')) return 'Laptop';
+  if (projectName.includes('desktop')) return 'Desktop';
+  return 'Desktop'; // default
+}
+
+// Helper to extract browser name from project name (e.g., "chromium-laptop" -> "chromium")
+export function getBrowserNameFromProject(projectName: string): string {
+  if (projectName.startsWith('chromium')) return 'chromium';
+  if (projectName.startsWith('firefox')) return 'firefox';
+  if (projectName.startsWith('webkit')) return 'webkit';
+  return 'chromium'; // default
+}
+
+export function takeScreenshot(page: Page, browserName: string, deviceName: string, message: string) {
+  return page.screenshot({
     path: path.join(
-      SCREENSHOTS_PATH, `${state.browserName}_${state.deviceName}_${message}.png`
+      SCREENSHOTS_PATH, `${browserName}_${deviceName}_${message}.png`
     )
   });
 }
 
-export async function takeAndVerifyScreenshot(state: TestState, message: string) {
+export async function takeAndVerifyScreenshot(page: Page, browserName: string, deviceName: string, message: string) {
   // Wait a bit to give animations some time to complete
   // (I don't see a nice way to do this better)
   await new Promise((resolve) => setTimeout(resolve, 500));
 
-  const ss = await takeScreenshot(state, message);
-  expect(ss).toMatchImageSnapshot({
-    comparisonMethod: 'ssim',
-    failureThreshold: 0.05,
-    failureThresholdType: "percent",
-    customSnapshotIdentifier: ({ defaultIdentifier }) => `${defaultIdentifier}-${message}`
+  // Use Playwright's native screenshot comparison
+  await expect(page).toHaveScreenshot(`${browserName}_${deviceName}_${message}.png`, {
+    maxDiffPixelRatio: 0.05, // 5% threshold (matching failureThreshold from old setup)
   });
 }
 
@@ -34,18 +47,18 @@ export function isPhone(deviceName: string) {
   return /(iPhone)|(Pixel)/.test(deviceName);
 }
 
-export async function ensureNavbarExpanded(deviceName: string, page: Page) {
+export async function ensureNavbarExpanded(page: Page, deviceName: string) {
   // On phones we'll get the collapsed hamburger thingy
   if (isPhone(deviceName)) {
-    await expect(page).toHaveSelector('.navbar-toggler');
+    await expect(page.locator('.navbar-toggler')).toBeVisible();
     await page.click('.navbar-toggler');
   }
 }
 
-export async function whileNavbarExpanded(deviceName: string, page: Page, fn: () => Promise<void>) {
+export async function whileNavbarExpanded(page: Page, deviceName: string, fn: () => Promise<void>) {
   // Likewise
   if (isPhone(deviceName)) {
-    await expect(page).toHaveSelector('.navbar-toggler');
+    await expect(page.locator('.navbar-toggler')).toBeVisible();
     await page.click('.navbar-toggler');
     await fn();
     await page.click('.navbar-toggler'); // collapse it back down again
@@ -60,7 +73,7 @@ let signupNumber = 0;
 export async function signIn(page: Page, user: User) {
   // Go through the login page
   await page.click('text="Sign up/Login"');
-  await expect(page).toHaveSelector('.App-login-text');
+  await expect(page.locator('.App-login-text').first()).toBeVisible();
   await page.click('.App-header .btn-primary');
   await page.click('[id=signIn-tab-existing]');
 
@@ -70,17 +83,17 @@ export async function signIn(page: Page, user: User) {
   await page.click('button >> text=/^Sign in$/'); // regexp to avoid matching the "Sign in with..." buttons below the modal on the login page
 
   // Wait for the front page to come back
-  await expect(page).toHaveSelector('.Introduction-image');
+  await expect(page.locator('.Introduction-image')).toBeVisible();
 }
 
-export async function signUp(deviceName: string, page: Page, prefix?: string | undefined): Promise<User> {
-  await ensureNavbarExpanded(deviceName, page);
+export async function signUp(page: Page, deviceName: string, prefix?: string | undefined): Promise<User> {
+  await ensureNavbarExpanded(page, deviceName);
 
   // Go through the login page
   await page.click('text="Sign up/Login"');
-  await expect(page).toHaveSelector('.App-login-text');
+  await expect(page.locator('.App-login-text').first()).toBeVisible();
   await page.click('.App-header .btn-primary');
-  await expect(page).toHaveSelector('.modal .tab-pane');
+  await expect(page.locator('.modal .tab-pane').first()).toBeVisible();
 
   // Fill in the form.  Take care to create unique email addresses because
   // we may be re-using the authentication emulator instance from another run
@@ -100,10 +113,10 @@ export async function signUp(deviceName: string, page: Page, prefix?: string | u
   await page.click('button >> text="Sign up"');
 
   // Wait for the front page to come back
-  await expect(page).toHaveSelector('.Introduction-image');
+  await expect(page.locator('.Introduction-image')).toBeVisible();
 
   // A verification email should have been sent (click the toast off)
-  await expect(page).toHaveSelector(`text="A verification email has been sent to ${user.email}"`);
+  await expect(page.locator(`text="A verification email has been sent to ${user.email}"`)).toBeVisible();
   await page.click('.toast-header .close');
   return user;
 }
@@ -140,27 +153,27 @@ export async function createNewMap(
 }
 
 export async function verifyMap(
-  browserName: string, deviceName: string, page: Page, state: TestState,
+  page: Page, browserName: string, deviceName: string,
   adventureName: string, adventureDescription: string, mapName: string, message: string
 ) {
   // TODO On Firefox, I get "error creating WebGL context"; on Webkit, I get
   // "no ANGLE_instanced_arrays"
   if (browserName !== 'firefox' && browserName !== 'webkit') {
     // TODO On Safari, no error but no grid shows (investigate?)
-    await expect(page).toHaveSelector('css=.Map-content');
-    await whileNavbarExpanded(deviceName, page, async () => {
-      await expect(page).toHaveSelector(`css=[aria-label="Link to this adventure"] >> text="${adventureName}"`);
-      await expect(page).toHaveSelector(`css=[aria-label="Link to this map"] >> text="${mapName}"`);
+    await expect(page.locator('.Map-content')).toBeVisible();
+    await whileNavbarExpanded(page, deviceName, async () => {
+      await expect(page.locator(`[aria-label="Link to this adventure"] >> text="${adventureName}"`)).toBeVisible();
+      await expect(page.locator(`[aria-label="Link to this map"] >> text="${mapName}"`)).toBeVisible();
     });
 
     // Make sure the map looks right
-    await takeAndVerifyScreenshot(state, message);
+    await takeAndVerifyScreenshot(page, browserName, deviceName, message);
 
     // Return to the adventure page, waiting for the description to pop up again
-    await whileNavbarExpanded(deviceName, page, async () => {
-      await page.click(`css=[aria-label="Link to this adventure"] >> text="${adventureName}"`);
+    await whileNavbarExpanded(page, deviceName, async () => {
+      await page.click(`[aria-label="Link to this adventure"] >> text="${adventureName}"`);
     });
-    await expect(page).toHaveSelector(`css=.card-text >> text="${adventureDescription}"`);
+    await expect(page.locator(`.card-text >> text="${adventureDescription}"`)).toBeVisible();
   } else {
     // Click off the error.  I can continue, but need to navigate back to the adventure
     await page.click('.toast-header .close');
