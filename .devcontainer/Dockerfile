@@ -20,9 +20,12 @@ ENV NODE_OPTIONS=--openssl-legacy-provider
 # Install global npm packages
 RUN npm install -g firebase-tools npm-run-all
 
-# Create and configure cache directories for Firebase emulators
+# Create and configure cache directories for Firebase emulators,
+# and fix ownership on other volumes
 RUN mkdir -p /home/node/.cache/firebase \
-    && chown -R node:node /home/node/.cache
+    && chown -R node:node /home/node/.cache \
+    && chown -R node:node /home/node/.claude \
+    && chown -R node:node /home/node/.config
 
 # Switch to node user for subsequent operations
 USER node
