@@ -169,6 +169,32 @@ yarn test:e2e
 yarn test
 ```
 
+### GPU Support for Playwright Tests (Optional)
+
+Some Playwright tests require WebGL support for rendering the 3D map with Three.js. To enable GPU acceleration:
+
+**Requirements**:
+- NVIDIA GPU on the host machine
+- NVIDIA Container Toolkit installed:
+  - **Windows/Mac**: Already included in Docker Desktop
+  - **Linux**: Must be installed separately ([installation guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html))
+
+**To Enable GPU Support**:
+
+1. Open `.devcontainer/devcontainer.json`
+2. Uncomment the GPU compose file in the `dockerComposeFile` array:
+   ```json
+   "dockerComposeFile": [
+     "docker-compose.yml",
+     "docker-compose.gpu.yml"  // <- uncomment this line
+   ]
+   ```
+3. Rebuild the dev container: `Ctrl+Shift+P` → "Dev Containers: Rebuild Container"
+
+**Running Without GPU**:
+
+The dev container works fine without GPU support - the WebGL-dependent Playwright test will simply fail, but all other functionality (development, unit tests, other E2E tests) works normally.
+
 ### Debugging
 
 #### Debugging the React App
@@ -360,11 +386,23 @@ Both services share a Docker network for seamless communication.
 
 ### Volumes
 
-**Named volumes**:
-- `hexland_workspace` - Your source code at `/workspaces/hexland` (avoids Windows/Linux permission conflicts)
-- `hexland_firebase_cache` - Firebase emulator JARs (faster startup)
+**Named volume**:
+- `hexland_workspace` - Contains everything: source code, cache, config, and credentials at `/workspaces/hexland`
 
-Using named volumes instead of bind mounts provides:
+**Simplified Architecture**:
+
+All cache and configuration data is stored within the workspace volume using symlinks:
+- `~/.cache/firebase` → `.devcontainer/.cache/firebase` (Firebase emulator JARs for faster startup)
+- `~/.config` → `.devcontainer/.config` (Firebase CLI credentials and config)
+- `~/.claude` → `.devcontainer/.claude` (Claude Code CLI credentials and settings)
+
+This consolidation means:
+- **Only one volume** to manage, backup, and restore
+- Cache and credentials **persist across container rebuilds** (stored in the workspace volume)
+- **Simpler architecture** - everything in one place
+- Symlinks created automatically in `postCreateCommand` (see `.devcontainer/scripts/post-create.sh`)
+
+Using a named volume instead of bind mounts provides:
 - Better performance on Windows/Mac (no cross-OS filesystem translation)
 - No permission conflicts between host and container users
 - Isolation from host filesystem quirks (line endings, file attributes)

@@ -20,6 +20,30 @@ fi
 echo "✅ Repository found at /workspaces/hexland"
 echo ""
 
+# Create directories for cache, config, and credentials within the workspace
+# These will be symlinked from /home/node to keep everything in one volume
+echo "🔗 Setting up cache and config symlinks..."
+DEVCONTAINER_DIR="/workspaces/hexland/.devcontainer"
+
+# Create actual directories within .devcontainer
+mkdir -p "$DEVCONTAINER_DIR/.cache/firebase"
+mkdir -p "$DEVCONTAINER_DIR/.config"
+mkdir -p "$DEVCONTAINER_DIR/.claude"
+
+# Create parent directories in home if they don't exist
+mkdir -p /home/node/.cache
+
+# Create symlinks from home directory to workspace
+# Use -f to force in case they already exist from a rebuild
+ln -sfn "$DEVCONTAINER_DIR/.cache/firebase" /home/node/.cache/firebase
+ln -sfn "$DEVCONTAINER_DIR/.config" /home/node/.config
+ln -sfn "$DEVCONTAINER_DIR/.claude" /home/node/.claude
+
+echo "   ✅ ~/.cache/firebase -> .devcontainer/.cache/firebase"
+echo "   ✅ ~/.config -> .devcontainer/.config"
+echo "   ✅ ~/.claude -> .devcontainer/.claude"
+echo ""
+
 # Check for Firebase admin credentials
 CREDS_FILE="/workspaces/hexland/hexland-web/firebase-admin-credentials.json"
 if [ ! -f "$CREDS_FILE" ]; then
