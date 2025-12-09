@@ -1,4 +1,6 @@
 import * as http from 'http';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // A quick thing for handling the OOB codes endpoint on the authentication emulator.
 
@@ -12,8 +14,18 @@ type OobDocument = {
 }
 
 async function getOobLink(email: string): Promise<string> {
-  // Use the default Firebase project name for the emulator
-  const projectName = 'hexland-test';
+  // Try to get project ID from admin credentials file
+  let projectName = 'hexland-test';
+  try {
+    const credsPath = path.join(__dirname, '..', 'firebase-admin-credentials.json');
+    if (fs.existsSync(credsPath)) {
+      const creds = JSON.parse(fs.readFileSync(credsPath, 'utf8'));
+      projectName = creds.project_id || projectName;
+      console.debug(`Using project ID from credentials: ${projectName}`);
+    }
+  } catch (e) {
+    console.debug("Could not load admin credentials, using default project ID", e);
+  }
 
   // Retry logic to handle async emulator operations
   const maxRetries = 10;

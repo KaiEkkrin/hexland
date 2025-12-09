@@ -22,17 +22,17 @@ I develop using WSL 2 and Visual Studio Code, I can't vouch for the effectivenes
 
 ## Running tests
 
-First time setup: ensure you have the Firebase emulators ready
+First time setup: The Firebase emulator configuration is already present in `hexland-web/firebase.json`. No initialization needed.
 
-```bash
-# Initialize only the emulators we need (Auth, Firestore, Functions, Hosting)
-# This excludes Storage, Database, Pub/Sub, and other emulators
-firebase init emulators
-# When prompted, select: Authentication, Firestore, Functions, Hosting
-# Use default ports or customize as needed
-```
+The project uses these emulators:
+- **Authentication** (auth) - For user authentication in tests
+- **Firestore** (firestore) - For database operations
+- **Functions** (functions) - For Cloud Functions
+- **Hosting** (hosting) - For serving the app (development only)
 
-The following command is set up to load a Firebase emulator with Firestore and Functions support:
+Note: Storage emulator is NOT used. The project uses MockStorage for local development instead.
+
+The following command is set up to load Firebase emulators with Auth, Firestore, and Functions support:
 
 ```bash
 cd hexland-web/functions && yarn serve
@@ -109,7 +109,18 @@ yarn install  # First time only
 yarn build    # Compiles TypeScript to lib/
 ```
 
-### 2. Start Firebase Emulators
+### 2. Set Up Admin Credentials for Local Development
+
+Copy the Firebase admin credentials to the public directory so the web app can access the correct project ID:
+
+```bash
+cd /workspaces/hexland/hexland-web
+cp firebase-admin-credentials.json public/
+```
+
+This file is gitignored, so it won't be committed. The web app uses this to determine the correct Firebase project ID when running locally.
+
+### 3. Start Firebase Emulators
 
 Start the Firebase emulators (Auth, Firestore, Functions, Hosting) in one terminal:
 
@@ -125,7 +136,7 @@ This will start:
 - **Hosting Emulator**: `http://localhost:3400`
 - **Emulator UI**: `http://localhost:4000` (view all emulator data here)
 
-### 3. Start React Dev Server
+### 4. Start React Dev Server
 
 In a separate terminal, start the React development server:
 
@@ -141,7 +152,7 @@ cd /workspaces/hexland/hexland-web
 yarn start  # Runs both dev:firebase and dev:react in parallel
 ```
 
-### 4. Access the Application
+### 5. Access the Application
 
 Open your browser to:
 - **Application**: http://localhost:5000
