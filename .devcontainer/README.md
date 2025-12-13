@@ -21,7 +21,9 @@ Complete development environment for Hexland (Wall & Shadow) with Node.js 20, Fi
 
 ### Initial Setup
 
-**On Windows:**
+**Step 1: Clone the repository**
+
+**On Windows (WSL2):**
 ```bash
 # Inside WSL2 (Ubuntu or other Linux distribution)
 cd ~
@@ -44,9 +46,38 @@ Alternatively, press `F1` and select **"Dev Containers: Reopen in Container"**.
 
 The first build takes 5-10 minutes (downloads base image, installs dependencies, sets up Firebase emulators). Subsequent starts are much faster.
 
-### Start Developing
+**Step 2: Set up Firebase Admin credentials** (Required for Firebase Functions)
 
 Once the container is ready:
+
+1. Open [Firebase Console](https://console.firebase.google.com/)
+2. Select or create your Firebase project
+3. Go to **Project Settings** > **Service Accounts**
+4. Click **"Generate new private key"**
+5. Save the downloaded JSON file as:
+   ```
+   hexland-web/firebase-admin-credentials.json
+   ```
+
+⚠️ **Important**: This file is required for Firebase Functions to work properly (including creating adventures, maps, etc.). Without it, you'll get CORS errors and "internal" errors when calling Functions.
+
+This file is in `.gitignore` and will never be committed. A symlink at `public/firebase-admin-credentials.json` is already in the repository so the dev server can serve it to the browser.
+
+**Step 3: Build Firebase Functions**
+
+Before starting the dev server, you must build the Firebase Functions:
+
+```bash
+cd hexland-web/functions
+yarn build
+cd ..
+```
+
+This compiles the TypeScript Functions to JavaScript. The emulator cannot run without this build step.
+
+### Start Developing
+
+Once setup is complete:
 
 ```bash
 cd hexland-web
@@ -57,6 +88,8 @@ This starts:
 - React development server at http://localhost:5000
 - Firebase Emulator UI at http://localhost:4000
 - All Firebase emulators (Firestore, Auth, Functions, Hosting)
+
+**Note**: If you make changes to Firebase Functions code, you need to rebuild them (`cd functions && yarn build`) and restart the emulator.
 
 ## GPU Configuration
 
@@ -123,22 +156,6 @@ nvidia-smi
 ls -la /dev/dri /dev/kfd
 ```
 
-## Firebase Setup (Optional)
-
-For full Firebase Functions and Firestore emulator functionality, add admin credentials:
-
-1. Open [Firebase Console](https://console.firebase.google.com/)
-2. Select or create your Firebase project
-3. Go to **Project Settings** > **Service Accounts**
-4. Click **"Generate new private key"**
-5. Save the downloaded JSON file as:
-   ```
-   hexland-web/firebase-admin-credentials.json
-   ```
-
-This file is in `.gitignore` and will never be committed.
-
-The dev container works without credentials, but some Firebase features will be limited.
 
 ## Service Endpoints
 
@@ -237,13 +254,43 @@ Automatically configured in the container:
 2. Check: `echo $NODE_OPTIONS` (should show `--openssl-legacy-provider`)
 3. Rebuild the container
 
+### CORS Errors or "internal" Errors When Creating Adventures/Maps
+
+**Symptom**: Browser console shows CORS errors like "No 'Access-Control-Allow-Origin' header" or "Error: internal" when trying to create adventures or maps
+
+**Root cause**: Firebase Functions not built, admin credentials missing, or credentials symlink not created
+
+**Solution**:
+```bash
+# 1. Build Firebase Functions
+cd hexland-web/functions
+yarn build
+
+# 2. Ensure firebase-admin-credentials.json exists and symlink is present
+ls -la ../firebase-admin-credentials.json
+ls -la ../public/firebase-admin-credentials.json
+
+# If symlink is missing (shouldn't happen unless you deleted it), recreate it:
+# cd .. && ln -s ../firebase-admin-credentials.json public/firebase-admin-credentials.json
+
+# 3. Restart the dev server (if it's running)
+# Stop yarn start (Ctrl+C) and restart
+yarn start
+
+# 4. Hard refresh your browser to clear cached requests
+# Ctrl+Shift+R (Windows/Linux) or Cmd+Shift+R (Mac)
+```
+
+If `firebase-admin-credentials.json` is missing, follow Step 2 in the Quick Start section above.
+
 ### Firebase Emulators Won't Start
 
 **Possible causes:**
 
-1. **Java not found**: Run `java --version` (should show OpenJDK 17)
-2. **Port conflicts**: Check if ports 3400, 4000, 5000, 5001, 8080, 9099 are already in use on your host
-3. **Missing credentials**: Some emulators need `firebase-admin-credentials.json` (see Firebase Setup section)
+1. **Functions not built**: Run `cd hexland-web/functions && yarn build`
+2. **Java not found**: Run `java --version` (should show OpenJDK 17)
+3. **Port conflicts**: Check if ports 3400, 4000, 5000, 5001, 8080, 9099 are already in use on your host
+4. **Missing credentials**: Ensure `hexland-web/firebase-admin-credentials.json` exists (see Quick Start Step 2)
 
 ### Slow Performance on Windows
 
