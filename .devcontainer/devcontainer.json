@@ -2,8 +2,9 @@
   "name": "Hexland Development",
   "dockerComposeFile": "docker-compose.yml",
 
-  // GPU support is configured via COMPOSE_PROFILES environment variable
-  // See README.md for setup instructions (nvidia/amd profiles available)
+  // GPU support: Service name must match active profile (see README.md)
+  // Default connects to hexland-dev (no GPU)
+  // Create .devcontainer/.env to activate GPU profiles
   "service": "hexland-dev",
   "workspaceFolder": "/workspaces/hexland",
   "shutdownAction": "stopCompose",

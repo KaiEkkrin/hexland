@@ -8,5 +8,5 @@
 .config/
 .claude/
 
-# Ignore environment file (contains GPU profile configuration)
+# Ignore GPU configuration (user creates this from .env.sample)
 .env

@@ -91,54 +91,46 @@ This starts:
 
 **Note**: If you make changes to Firebase Functions code, you need to rebuild them (`cd functions && yarn build`) and restart the emulator.
 
-## GPU Configuration
+## GPU Configuration (Optional)
 
 GPU support enables hardware-accelerated WebGL rendering for Playwright tests. **This is optional** - the dev container works fine without GPU support (only the WebGL-specific Playwright test will fail).
 
-### Option 1: NVIDIA GPU (WSL2 + Docker Desktop)
+### Quick Setup
 
-**Requirements:**
+Copy the appropriate sample `.env` file for your system into `.devcontainer/.env`:
+
+**For NVIDIA GPU (WSL2 + Docker Desktop):**
+```bash
+cd .devcontainer
+cp .env.nvidia .env
+```
+
+**For AMD GPU (Native Linux with ROCm):**
+```bash
+cd .devcontainer
+cp .env.amd .env
+```
+
+**For No GPU (default):**
+```bash
+# Don't create a .env file - default configuration is used automatically
+```
+
+After creating the `.env` file, rebuild the container: `F1` → **"Dev Containers: Rebuild Container"**
+
+### Requirements by GPU Type
+
+**NVIDIA (WSL2 + Docker Desktop):**
 - NVIDIA GPU
 - NVIDIA driver installed on Windows host
-- Docker Desktop with WSL2 backend (includes NVIDIA Container Toolkit)
+- Docker Desktop with WSL2 backend (includes NVIDIA Container Toolkit automatically)
+- **Important**: Do NOT install any NVIDIA driver inside WSL2 - the Windows driver is automatically made available
 
-**Setup:**
-
-Create a `.env` file in the `.devcontainer` directory:
-
-```bash
-# .devcontainer/.env
-COMPOSE_PROFILES=nvidia
-```
-
-Then rebuild the container: `F1` → **"Dev Containers: Rebuild Container"**
-
-**Note for WSL2 users**: Do NOT install any NVIDIA driver inside WSL2. The Windows driver is automatically made available to WSL2.
-
-### Option 2: AMD GPU (Native Linux)
-
-**Requirements:**
+**AMD (Native Linux):**
 - AMD GPU with ROCm support
-- ROCm drivers installed on Linux host
+- ROCm drivers installed on Linux host ([installation guide](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/))
 - Verify GPU access: `ls -la /dev/dri /dev/kfd`
-
-**Setup:**
-
-Create a `.env` file in the `.devcontainer` directory:
-
-```bash
-# .devcontainer/.env
-COMPOSE_PROFILES=amd
-```
-
-Then rebuild the container: `F1` → **"Dev Containers: Rebuild Container"**
-
-**Installing ROCm drivers** (if not already installed):
-- Follow AMD's guide: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/
-
-### Option 3: No GPU
-
-No configuration needed! Just open the repository in the dev container. The WebGL-dependent Playwright test will skip/fail, but all other functionality works normally.
+- Ensure your user is in `video` and `render` groups on the host
 
 ### Verifying GPU Access
 
@@ -322,12 +314,14 @@ yarn install
 **NVIDIA**:
 - Verify NVIDIA driver on Windows: Open PowerShell, run `nvidia-smi`
 - Verify Docker Desktop has WSL2 backend enabled
-- Check `.env` file has `COMPOSE_PROFILES=nvidia`
+- Check `.devcontainer/.env` file exists and contains `COMPOSE_PROFILES=nvidia`
+- Rebuild the container after creating/modifying `.env` file
 
 **AMD**:
 - Verify ROCm drivers: `rocm-smi` on host Linux
 - Verify devices exist: `ls -la /dev/dri /dev/kfd`
-- Check `.env` file has `COMPOSE_PROFILES=amd`
+- Check `.devcontainer/.env` file exists and contains `COMPOSE_PROFILES=amd`
+- Rebuild the container after creating/modifying `.env` file
 - Ensure your user is in `video` and `render` groups on the host
 
 ### Changes Not Reflecting in Browser
