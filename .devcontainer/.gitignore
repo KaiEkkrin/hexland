@@ -7,3 +7,6 @@
 .cache/
 .config/
 .claude/
+
+# Ignore environment file (contains GPU profile configuration)
+.env

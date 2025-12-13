@@ -9,9 +9,6 @@ echo ""
 if [ ! -d "/workspaces/hexland/.git" ]; then
     echo "❌ ERROR: Repository not found at /workspaces/hexland"
     echo ""
-    echo "   This dev container requires the repository to be cloned using:"
-    echo "   \"Dev Containers: Clone Repository in Named Container Volume...\""
-    echo ""
     echo "   Please see .devcontainer/README.md for setup instructions."
     echo ""
     exit 1

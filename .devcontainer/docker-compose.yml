@@ -7,11 +7,10 @@ services:
       dockerfile: Dockerfile
 
     volumes:
-      # Named volume for workspace (repository cloned into /workspaces/hexland)
-      # Uses VS Code's default /workspaces path for "Clone Repository in Container Volume"
-      # Avoids Windows/Linux permission issues and provides better I/O performance
-      # All cache and config data is stored within this volume via symlinks (see postCreateCommand)
-      - hexland_workspace:/workspaces
+      # Bind mount to workspace
+      # Performance: Excellent on Linux and WSL2 (when repo is in WSL filesystem)
+      # All cache and config data stored via symlinks (see post-create.sh)
+      - ..:/workspaces/hexland
 
     environment:
       # Critical: webpack 4 compatibility with Node 20
@@ -42,6 +41,35 @@ services:
     # Run as node user (simpler permissions model)
     user: node
 
+  # NVIDIA GPU variant (for WSL2 + Docker Desktop)
+  # Activate with: COMPOSE_PROFILES=nvidia or create .env file
+  hexland-dev-nvidia:
+    extends:
+      service: hexland-dev
+    profiles: ["nvidia"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # AMD GPU variant (for native Linux with ROCm)
+  # Activate with: COMPOSE_PROFILES=amd or create .env file
+  hexland-dev-amd:
+    extends:
+      service: hexland-dev
+    profiles: ["amd"]
+    devices:
+      - /dev/dri:/dev/dri
+      - /dev/kfd:/dev/kfd
+    security_opt:
+      - seccomp=unconfined
+    group_add:
+      - video
+      - render
+
   mock-storage:
     build:
       context: ../mock-storage
@@ -56,6 +84,3 @@ services:
 networks:
   hexland-network:
     driver: bridge
-
-volumes:
-  hexland_workspace:

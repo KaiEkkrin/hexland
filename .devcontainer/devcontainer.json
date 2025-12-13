@@ -1,11 +1,9 @@
 {
   "name": "Hexland Development",
-  "dockerComposeFile": [
-    "docker-compose.yml"
-    // Uncomment the line below to enable GPU support for Playwright/WebGL tests
-    // (requires NVIDIA GPU + NVIDIA Container Toolkit on host):
-    // "docker-compose.gpu.yml"
-  ],
+  "dockerComposeFile": "docker-compose.yml",
+
+  // GPU support is configured via COMPOSE_PROFILES environment variable
+  // See README.md for setup instructions (nvidia/amd profiles available)
   "service": "hexland-dev",
   "workspaceFolder": "/workspaces/hexland",
   "shutdownAction": "stopCompose",

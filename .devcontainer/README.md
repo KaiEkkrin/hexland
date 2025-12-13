@@ -1,130 +1,146 @@
 # Hexland Dev Container
 
-This dev container provides a complete, modern development environment for Hexland (Wall & Shadow), including:
-
-- **Node.js 20 LTS** - Modern, secure Node.js runtime
-- **Firebase Emulator Suite** - Full local Firebase environment
-- **Mock WebDAV Storage** - Local file storage emulation
-- **All build tools** - TypeScript, React, testing frameworks
-- **VS Code integration** - Debugging, extensions, and more
+Complete development environment for Hexland (Wall & Shadow) with Node.js 20, Firebase Emulator Suite, and optional GPU support for Playwright/WebGL tests.
 
 ## Prerequisites
 
-Before using this dev container, ensure you have:
+1. **Docker Desktop** (or Docker Engine + Docker Compose on Linux)
+   - [Download Docker Desktop](https://www.docker.com/products/docker-desktop)
 
-1. **Docker Desktop** installed and running
-   - [Download for Windows/Mac](https://www.docker.com/products/docker-desktop)
-   - Linux: Install Docker Engine + Docker Compose
-
-2. **Visual Studio Code** with the "Dev Containers" extension
+2. **Visual Studio Code** with **Dev Containers** extension
    - Install VS Code: https://code.visualstudio.com/
    - Install extension: `ms-vscode-remote.remote-containers`
 
-3. **Firebase Admin Credentials** (optional but recommended)
-   - See "Firebase Setup" section below
+3. **Windows Users: Use WSL2**
+   - ⚠️ **IMPORTANT**: On Windows, you MUST use WSL2 for good performance
+   - Clone and work with this repository inside WSL2, not directly on Windows (C: drive)
+   - Docker Desktop must be configured to use the WSL2 backend
+   - Setup guide: https://learn.microsoft.com/en-us/windows/wsl/install
 
 ## Quick Start
 
-**IMPORTANT**: This dev container uses a named Docker volume to avoid Windows/Linux permission issues. You **must** follow these exact steps:
+### Initial Setup
 
-### First-Time Setup
+**On Windows:**
+```bash
+# Inside WSL2 (Ubuntu or other Linux distribution)
+cd ~
+git clone https://github.com/KaiEkkrin/hexland.git
+cd hexland
+code .
+```
 
-1. **Open VS Code Command Palette**:
-   - Press `F1` or `Ctrl+Shift+P` (Windows/Linux) / `Cmd+Shift+P` (Mac)
+**On Linux:**
+```bash
+cd ~
+git clone https://github.com/KaiEkkrin/hexland.git
+cd hexland
+code .
+```
 
-2. **Clone Repository in Named Container Volume**:
-   - Type and select: **"Dev Containers: Clone Repository in Named Container Volume..."**
+When VS Code opens, you'll see a popup: **"Reopen in Container"** - click it.
 
-3. **Enter Repository URL**:
-   - Paste: `https://github.com/KaiEkkrin/hexland.git`
-   - Press Enter
+Alternatively, press `F1` and select **"Dev Containers: Reopen in Container"**.
 
-4. **⚠️ Enter Volume Name** (MUST BE EXACT):
-   - Type exactly: **`hexland_workspace`**
-   - Press Enter
+The first build takes 5-10 minutes (downloads base image, installs dependencies, sets up Firebase emulators). Subsequent starts are much faster.
 
-5. **⚠️ Enter Target Folder Name** (MUST BE EXACT):
-   - Type exactly: **`hexland`**
-   - Press Enter
+### Start Developing
 
-6. **Wait for Setup** (5-10 minutes):
-   - Container builds (downloads base image, installs system packages)
-   - Repository clones into `/workspaces/hexland` inside the volume
-   - Dependencies install automatically
-   - Firebase emulators set up
+Once the container is ready:
 
-7. **Start Developing**:
-   ```bash
-   cd hexland-web
-   yarn start
-   ```
+```bash
+cd hexland-web
+yarn start
+```
 
-8. **Open in Browser**: Navigate to http://localhost:5000
+This starts:
+- React development server at http://localhost:5000
+- Firebase Emulator UI at http://localhost:4000
+- All Firebase emulators (Firestore, Auth, Functions, Hosting)
 
-### Reconnecting After Closing VS Code
+## GPU Configuration
 
-**Method 1: Open Recent** (Easiest)
-- `Ctrl+Shift+P` → "File: Open Recent"
-- Select your hexland container workspace from the list
+GPU support enables hardware-accelerated WebGL rendering for Playwright tests. **This is optional** - the dev container works fine without GPU support (only the WebGL-specific Playwright test will fail).
 
-**Method 2: Remote Explorer**
-- Open Remote Explorer in VS Code sidebar
-- Select "Dev Containers" from dropdown
-- Find "Dev Volumes" section → `hexland_workspace`
-- Right-click → "Open Folder in Container"
+### Option 1: NVIDIA GPU (WSL2 + Docker Desktop)
 
-### Rebuilding the Container
+**Requirements:**
+- NVIDIA GPU
+- NVIDIA driver installed on Windows host
+- Docker Desktop with WSL2 backend (includes NVIDIA Container Toolkit)
 
-If you modify `.devcontainer/` configuration:
+**Setup:**
 
-1. Connect to the container (see above)
-2. `Ctrl+Shift+P` → "Dev Containers: Rebuild Container"
-3. Wait for rebuild (your code in the volume is preserved!)
+Create a `.env` file in the `.devcontainer` directory:
 
-## Firebase Setup
+```bash
+# .devcontainer/.env
+COMPOSE_PROFILES=nvidia
+```
 
-For full functionality (Functions, Firestore), you need Firebase admin credentials:
+Then rebuild the container: `F1` → **"Dev Containers: Rebuild Container"**
 
-### Getting Credentials
+**Note for WSL2 users**: Do NOT install any NVIDIA driver inside WSL2. The Windows driver is automatically made available to WSL2.
+
+### Option 2: AMD GPU (Native Linux)
+
+**Requirements:**
+- AMD GPU with ROCm support
+- ROCm drivers installed on Linux host
+- Verify GPU access: `ls -la /dev/dri /dev/kfd`
+
+**Setup:**
+
+Create a `.env` file in the `.devcontainer` directory:
+
+```bash
+# .devcontainer/.env
+COMPOSE_PROFILES=amd
+```
+
+Then rebuild the container: `F1` → **"Dev Containers: Rebuild Container"**
+
+**Installing ROCm drivers** (if not already installed):
+- Follow AMD's guide: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/
+
+### Option 3: No GPU
+
+No configuration needed! Just open the repository in the dev container. The WebGL-dependent Playwright test will skip/fail, but all other functionality works normally.
+
+### Verifying GPU Access
+
+Inside the container, check for GPU devices:
+
+**NVIDIA:**
+```bash
+# Should show your GPU
+nvidia-smi
+```
+
+**AMD:**
+```bash
+# Should list GPU devices
+ls -la /dev/dri /dev/kfd
+```
+
+## Firebase Setup (Optional)
+
+For full Firebase Functions and Firestore emulator functionality, add admin credentials:
 
 1. Open [Firebase Console](https://console.firebase.google.com/)
-2. Select your project (or create a new one)
-3. Go to **Project Settings** > **Service Accounts** tab
+2. Select or create your Firebase project
+3. Go to **Project Settings** > **Service Accounts**
 4. Click **"Generate new private key"**
 5. Save the downloaded JSON file as:
    ```
    hexland-web/firebase-admin-credentials.json
    ```
 
-### Important Notes
+This file is in `.gitignore` and will never be committed.
 
-- This file is already in `.gitignore` and will **never be committed**
-- The dev container works without it, but with limited functionality
-- You can add it anytime and rebuild the container
-
-### Firebase Project Setup
-
-If you don't have a Firebase project:
-
-1. Go to https://console.firebase.google.com/
-2. Click "Add project" or "Create a project"
-3. Follow the setup wizard
-4. Enable these services:
-   - **Authentication** (Email/Password + Google providers)
-   - **Firestore Database**
-   - **Cloud Functions**
-   - **Hosting** (optional)
-   - **Storage**
-
-5. After creating the project, run in the dev container:
-   ```bash
-   cd hexland-web
-   firebase use --add
-   ```
+The dev container works without credentials, but some Firebase features will be limited.
 
 ## Service Endpoints
-
-Once the dev server is running, access these services:
 
 | Service | URL | Description |
 |---------|-----|-------------|
@@ -139,21 +155,6 @@ Once the dev server is running, access these services:
 
 ## Development Workflows
 
-### Starting the Application
-
-From within the dev container terminal:
-
-```bash
-cd hexland-web
-yarn start
-```
-
-This command:
-- Starts the React development server (port 5000)
-- Starts all Firebase emulators (Firestore, Auth, Functions, Hosting)
-- Enables hot-reload for both React and Functions
-- Opens the Emulator UI at http://localhost:4000
-
 ### Running Tests
 
 ```bash
@@ -165,53 +166,9 @@ yarn test:unit
 # E2E tests (requires dev server running in another terminal)
 yarn test:e2e
 
-# All tests (interactive)
+# All tests
 yarn test
 ```
-
-### GPU Support for Playwright Tests (Optional)
-
-Some Playwright tests require WebGL support for rendering the 3D map with Three.js. To enable GPU acceleration:
-
-**Requirements**:
-- NVIDIA GPU on the host machine
-- NVIDIA Container Toolkit installed:
-  - **Windows/Mac**: Already included in Docker Desktop
-  - **Linux**: Must be installed separately ([installation guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html))
-
-**To Enable GPU Support**:
-
-1. Open `.devcontainer/devcontainer.json`
-2. Uncomment the GPU compose file in the `dockerComposeFile` array:
-   ```json
-   "dockerComposeFile": [
-     "docker-compose.yml",
-     "docker-compose.gpu.yml"  // <- uncomment this line
-   ]
-   ```
-3. Rebuild the dev container: `Ctrl+Shift+P` → "Dev Containers: Rebuild Container"
-
-**Running Without GPU**:
-
-The dev container works fine without GPU support - the WebGL-dependent Playwright test will simply fail, but all other functionality (development, unit tests, other E2E tests) works normally.
-
-### Debugging
-
-#### Debugging the React App
-
-1. Start the dev server: `yarn start`
-2. In VS Code, press `F5` or go to Run & Debug
-3. Select **"Launch Chrome"**
-4. Set breakpoints in your React code
-5. Interact with the app in the browser
-
-#### Debugging Firebase Functions
-
-1. Start emulators: `yarn start`
-2. In VS Code, go to Run & Debug
-3. Select **"Debug Firebase Functions"**
-4. Set breakpoints in `hexland-web/functions/src/**/*.ts`
-5. Trigger the function from your app or Emulator UI
 
 ### Building for Production
 
@@ -222,60 +179,81 @@ yarn build
 
 Creates optimized production build in `hexland-web/build/` directory.
 
+### Debugging
+
+#### React App Debugging
+
+1. Start dev server: `yarn start`
+2. Press `F5` in VS Code or go to Run & Debug
+3. Select **"Launch Chrome"**
+4. Set breakpoints in your React code
+
+#### Firebase Functions Debugging
+
+1. Start emulators: `yarn start`
+2. Go to Run & Debug in VS Code
+3. Select **"Debug Firebase Functions"**
+4. Set breakpoints in `hexland-web/functions/src/**/*.ts`
+5. Trigger the function from your app or Emulator UI
+
+## Architecture
+
+### Services
+
+The dev container runs two Docker services:
+
+1. **hexland-dev** - Main development environment with Node.js, Firebase tools, and all dependencies
+2. **mock-storage** - NGINX-based WebDAV server emulating Firebase Storage
+
+Both share a Docker network for seamless communication.
+
+### Storage
+
+The repository is mounted as a bind mount at `/workspaces/hexland`. Cache and config directories are stored within the repository via symlinks:
+
+- `~/.cache/firebase` → `.devcontainer/.cache/firebase`
+- `~/.config` → `.devcontainer/.config`
+- `~/.claude` → `.devcontainer/.claude`
+
+This keeps cache/config persistent across container rebuilds while maintaining good performance on Linux/WSL2.
+
+### Environment Variables
+
+Automatically configured in the container:
+
+- `NODE_OPTIONS=--openssl-legacy-provider` - webpack 4 compatibility with Node 20
+- `IS_LOCAL_DEV=true` - Enables emulator-only features
+- `FORCE_COLOR=true` - Colorized terminal output
+- `GOOGLE_APPLICATION_CREDENTIALS` - Path to Firebase admin credentials
+
 ## Troubleshooting
 
 ### OpenSSL Error
 
 **Symptom**: `error:0308010C:digital envelope routines::unsupported`
 
-**Cause**: webpack 4 incompatibility with Node 18+
-
-**Solution**: This should not happen in the dev container as `NODE_OPTIONS=--openssl-legacy-provider` is automatically set. If you see this error:
+**Solution**: This should not happen as `NODE_OPTIONS=--openssl-legacy-provider` is set automatically. If you see this error:
 1. Verify you're inside the dev container
-2. Check environment variable: `echo $NODE_OPTIONS`
+2. Check: `echo $NODE_OPTIONS` (should show `--openssl-legacy-provider`)
 3. Rebuild the container
 
 ### Firebase Emulators Won't Start
 
-**Symptom**: Errors when running `yarn start` about emulators
+**Possible causes:**
 
-**Possible causes and solutions**:
+1. **Java not found**: Run `java --version` (should show OpenJDK 17)
+2. **Port conflicts**: Check if ports 3400, 4000, 5000, 5001, 8080, 9099 are already in use on your host
+3. **Missing credentials**: Some emulators need `firebase-admin-credentials.json` (see Firebase Setup section)
 
-1. **Java not found**:
-   ```bash
-   java --version  # Should show OpenJDK 17
-   ```
-   If not found, rebuild the container.
-
-2. **Port conflicts**:
-   - Check if ports are already in use on your host machine
-   - Stop other services using ports 3400, 4000, 5000, 5001, 8080, 9099
-
-3. **Firebase credentials**:
-   - Some emulators need `firebase-admin-credentials.json`
-   - See "Firebase Setup" section above
-
-4. **Clear cache**:
-   ```bash
-   rm -rf ~/.cache/firebase
-   firebase emulators:start
-   ```
-
-### Slow Performance (Windows)
+### Slow Performance on Windows
 
 **Symptom**: Slow file operations, long build times
 
-**This should not occur** if you followed the Quick Start setup correctly.
+**Solution**: Ensure you're working in WSL2, NOT directly on Windows:
+- ✅ Repository should be in WSL2 filesystem: `/home/username/hexland`
+- ❌ NOT on Windows filesystem: `/mnt/c/Users/username/hexland`
 
-**Optimizations applied**:
-- Entire workspace uses named Docker volume at `/workspaces/hexland` (not bind mount)
-- Firebase cache uses named volume for faster emulator startup
-- No cross-OS filesystem translation overhead
-
-**If experiencing slow performance**:
-- Verify you used "Clone Repository in Named Container Volume" (not "Reopen in Container")
-- Ensure you specified volume name as **`hexland_workspace`** and folder as **`hexland`**
-- Check Docker Desktop is using WSL 2 backend (Settings → General)
+Verify Docker Desktop is using WSL2 backend: Settings → General → Use WSL 2 based engine
 
 ### Module Not Found
 
@@ -292,203 +270,55 @@ rm -rf node_modules
 yarn install
 ```
 
-### Port Already in Use
+### GPU Not Detected
 
-**Symptom**: `EADDRINUSE: address already in use`
+**NVIDIA**:
+- Verify NVIDIA driver on Windows: Open PowerShell, run `nvidia-smi`
+- Verify Docker Desktop has WSL2 backend enabled
+- Check `.env` file has `COMPOSE_PROFILES=nvidia`
 
-**Solution**: Stop processes using the required ports
+**AMD**:
+- Verify ROCm drivers: `rocm-smi` on host Linux
+- Verify devices exist: `ls -la /dev/dri /dev/kfd`
+- Check `.env` file has `COMPOSE_PROFILES=amd`
+- Ensure your user is in `video` and `render` groups on the host
 
-On Windows:
-```powershell
-netstat -ano | findstr :5000
-taskkill /PID <PID> /F
-```
+### Changes Not Reflecting in Browser
 
-On Linux/Mac:
-```bash
-lsof -ti:5000 | xargs kill -9
-```
+**Solutions:**
 
-Or restart the dev container to reset all services.
-
-### Firebase Login Issues
-
-**Symptom**: `firebase login` fails or asks for login repeatedly
-
-**Solutions**:
-
-1. **Use localhost login** (if in interactive terminal):
-   ```bash
-   firebase login --reauth
-   ```
-
-2. **Use CI token** (for non-interactive):
-   ```bash
-   firebase login:ci
-   # Copy the token, then:
-   firebase login --token <your-token>
-   ```
-
-3. **Already logged in**:
-   - This is fine! The error can be ignored if you're already logged in
-   - Verify: `firebase projects:list`
+1. Hard refresh: `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac)
+2. Check terminal for compilation messages
+3. Restart dev server: `Ctrl+C`, then `yarn start`
+4. Verify file is in `hexland-web/src/` and not excluded by `.gitignore`
 
 ### Container Build Fails
 
-**Symptom**: Dev container fails to build
+**Common causes:**
 
-**Common causes**:
-
-1. **Docker out of space**:
-   ```bash
-   docker system prune -a
-   ```
-
+1. **Docker out of space**: Run `docker system prune -a`
 2. **Network issues**: Retry the build
-
 3. **Invalid configuration**: Check `.devcontainer/devcontainer.json` syntax
 
-### Changes Not Reflecting
+## Reconnecting After Closing VS Code
 
-**Symptom**: Code changes don't appear in the browser
+1. Open VS Code
+2. Press `F1`
+3. Type **"File: Open Recent"**
+4. Select your hexland container workspace
 
-**Solutions**:
-
-1. **Check hot-reload**: Look for compilation messages in terminal
-
-2. **Hard refresh browser**: `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac)
-
-3. **Restart dev server**:
-   - Stop with `Ctrl+C`
-   - Run `yarn start` again
-
-4. **Check file is being watched**:
-   - Ensure file is within `hexland-web/src/`
-   - Check `.gitignore` isn't excluding it
-
-## Architecture
-
-### Multi-Service Setup
-
-The dev container uses Docker Compose with two services:
-
-1. **hexland-dev** (main container):
-   - Your development environment
-   - Contains Node.js, Firebase tools, all dependencies
-   - Runs your terminal and VS Code server
-
-2. **mock-storage** (companion container):
-   - NGINX-based WebDAV server
-   - Emulates Firebase Storage locally
-   - Accessible at http://localhost:7000
-
-Both services share a Docker network for seamless communication.
-
-### Volumes
-
-**Named volume**:
-- `hexland_workspace` - Contains everything: source code, cache, config, and credentials at `/workspaces/hexland`
-
-**Simplified Architecture**:
-
-All cache and configuration data is stored within the workspace volume using symlinks:
-- `~/.cache/firebase` → `.devcontainer/.cache/firebase` (Firebase emulator JARs for faster startup)
-- `~/.config` → `.devcontainer/.config` (Firebase CLI credentials and config)
-- `~/.claude` → `.devcontainer/.claude` (Claude Code CLI credentials and settings)
-
-This consolidation means:
-- **Only one volume** to manage, backup, and restore
-- Cache and credentials **persist across container rebuilds** (stored in the workspace volume)
-- **Simpler architecture** - everything in one place
-- Symlinks created automatically in `postCreateCommand` (see `.devcontainer/scripts/post-create.sh`)
-
-Using a named volume instead of bind mounts provides:
-- Better performance on Windows/Mac (no cross-OS filesystem translation)
-- No permission conflicts between host and container users
-- Isolation from host filesystem quirks (line endings, file attributes)
-
-**Important**: The repository must be cloned into `/workspaces/hexland` inside the `hexland_workspace` volume using the exact setup steps in Quick Start. Note the plural `/workspaces` - this is VS Code's standard convention.
-
-### Environment Variables
-
-Automatically set in the container:
-
-- `NODE_OPTIONS=--openssl-legacy-provider` - webpack 4 compatibility
-- `IS_LOCAL_DEV=true` - Enables emulator-only features
-- `FORCE_COLOR=true` - Colorized terminal output
-- `GOOGLE_APPLICATION_CREDENTIALS` - Path to Firebase credentials
-
-## Differences from Standalone Docker Setup
-
-This dev container **coexists** with the existing `run_docker.sh` and `docker-compose.yml` setup:
-
-| Feature | Dev Container | Standalone Docker |
-|---------|---------------|-------------------|
-| **Integration** | VS Code native | Command-line |
-| **Extensions** | Auto-installed | Manual |
-| **Debugging** | VS Code debugger | Terminal only |
-| **Permissions** | Standard `node` user | Custom UID/GID mapping |
-| **Use case** | Daily development | CI/CD, standalone |
-
-You can use either approach based on your preference!
-
-## VS Code Extensions
-
-These extensions are automatically installed:
-
-- **ESLint** - JavaScript/TypeScript linting
-- **Prettier** - Code formatting
-- **Docker** - Docker file support
-- **Firebase** - Firebase integration
-- **Jest** - Test runner integration
-- **Playwright** - E2E test support
-- **React snippets** - React development helpers
-- **GitLens** - Enhanced Git integration
-- **Path Intellisense** - Autocomplete file paths
-
-## Advanced Usage
-
-### Rebuilding the Container
-
-If you modify `.devcontainer/` configuration:
-
-1. Press `F1` / `Ctrl+Shift+P`
-2. Select "Dev Containers: Rebuild Container"
-3. Wait for rebuild to complete
-
-### Accessing the Host
-
-From within the container, access host services at:
-- Linux/Mac: `host.docker.internal`
-- Windows: `host.docker.internal`
-
-### Installing Additional Tools
-
-Add to `.devcontainer/Dockerfile`:
-```dockerfile
-RUN apt-get update && apt-get install -y <package-name>
-```
-
-Then rebuild the container.
-
-### Docker-in-Docker (DinD)
-
-If you need Docker inside the container, uncomment in `docker-compose.yml`:
-```yaml
-privileged: true
-volumes:
-  - /var/run/docker.sock:/var/run/docker.sock
-```
-
-## Getting Help
-
-- **VS Code Docs**: https://code.visualstudio.com/docs/devcontainers/containers
-- **Firebase Docs**: https://firebase.google.com/docs/emulator-suite
-- **Project Issues**: Check the main README.md
+OR use the Remote Explorer:
+1. Open Remote Explorer in VS Code sidebar
+2. Select "Dev Containers" from dropdown
+3. Find your hexland container
+4. Click to connect
 
 ## Resources
 
-- [Dev Containers Documentation](https://containers.dev/)
+- [VS Code Dev Containers Documentation](https://code.visualstudio.com/docs/devcontainers/containers)
 - [Firebase Emulator Suite](https://firebase.google.com/docs/emulator-suite)
-- [Node.js 20 Release Notes](https://nodejs.org/en/blog/release/v20.0.0)
-- [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/)
+- [Node.js 20 Documentation](https://nodejs.org/docs/latest-v20.x/api/)
+- [Docker Compose Profiles](https://docs.docker.com/compose/how-tos/profiles/)
+- [WSL2 Setup Guide](https://learn.microsoft.com/en-us/windows/wsl/install)
+- [NVIDIA GPU on WSL2](https://docs.nvidia.com/cuda/wsl-user-guide/index.html)
+- [AMD ROCm on Linux](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/)
