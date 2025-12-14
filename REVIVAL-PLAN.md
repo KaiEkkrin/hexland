@@ -1,9 +1,49 @@
 # Wall & Shadow Revival Plan
 
 **Project**: Wall & Shadow (codename: Hexland)
-**Document Version**: 1.0
+**Document Version**: 1.1
 **Date**: December 2025
-**Status**: Currently mothballed, being revived
+**Status**: Revival in progress - Phase 0 complete, Phase 1 partially complete
+
+## Progress Summary
+
+### ✅ Completed
+- **Phase 0**: Node.js 20 compatibility resolved (commit `0c87280`)
+- **Dev Environment**: WSL2 dev container with GPU support fully configured
+- **Playwright Migration**: Updated from v1.10 to v1.57 (commit `36aee46`)
+- **E2E Tests**: 2 of 3 tests passing with regenerated snapshots
+
+### 🚧 In Progress
+- **Phase 1.2**: Web app stabilization
+  - ⚠️ Map share E2E test still needs fixing
+  - Remaining: TypeScript, RxJS, Three.js patch updates
+
+### 📋 Not Started
+- **Phase 1.1**: Functions stabilization (TSLint→ESLint, Firebase Admin/Functions updates)
+- **Phase 1.3**: Dependency consolidation
+- **Phase 2**: Modernization (Firebase v11, React 18, Router v6, Vite, Three.js 0.170)
+- **Phase 3**: Polish (Bootstrap 5, performance optimization)
+
+## Recent Improvements (Since Plan Creation)
+
+### Dev Container Enhancements
+The development environment has been significantly improved for WSL2 and GPU support:
+
+- **WSL2 Optimization** (`e245daf`) - Configured dev container for optimal WSL2 performance
+- **GPU Support** (`e8d8e10`, `783ba6a`) - Added NVIDIA/AMD GPU support for better rendering
+- **Volume Management** (`c11f543`, `3eb5c96`) - Fixed ownership and persistence of Docker volumes
+- **Runtime Fixes** (`e204696`, `e296fc8`) - Resolved runtime errors for local development
+- **Documentation** (`481ad15`, `9a0033c`) - Updated README with dev container workflow
+
+These improvements ensure the dev environment is production-ready for the modernization phases ahead.
+
+## Next Steps (Recommended Order)
+
+1. **Fix Map Share E2E Test** - Complete Phase 1.2 by fixing the third Playwright test
+2. **Complete Phase 1.2** - Update TypeScript 5.7, RxJS 7, Three.js patch
+3. **Start Phase 1.1** - Functions stabilization (TSLint→ESLint, Firebase Admin/Functions updates)
+4. **Complete Phase 1.3** - Dependency consolidation
+5. **Begin Phase 2** - Major modernization efforts
 
 ---
 
@@ -146,23 +186,27 @@ FirebaseContextProvider (SDK initialization)
 - **Integration**: Firebase emulator for Firestore testing
 - **Risk**: Testing Library version jump (9 → 16)
 
-### Build Environment
+### Build Environment ✅ WORKING
 
-#### Dev Container (`.devcontainer/`)
+#### Dev Container (`.devcontainer/`) ✅
 - **Node.js**: 20 LTS with `NODE_OPTIONS=--openssl-legacy-provider` workaround
 - **Firebase**: Emulators pre-configured (Firestore, Auth, Functions, Hosting)
 - **Volumes**: Named Docker volume for performance (`hexland_workspace`)
 - **Services**: Mock WebDAV storage on port 7000
+- **GPU**: Support for NVIDIA/AMD GPUs for better rendering performance (commits `e8d8e10`, `783ba6a`)
 
-#### Immediate Issue
-**Functions package requires Node.js 14, dev environment uses Node.js 20** - Phase 0 will resolve this.
+**Status**: Dev container fully configured for WSL2 development with GPU support and optimized for local debugging (commits `e245daf`, `c11f543`, `e204696`).
+
+#### Immediate Issue ✅ RESOLVED
+**Functions package requires Node.js 14, dev environment uses Node.js 20** - ✅ Resolved in Phase 0 (commit `0c87280`).
 
 ---
 
-## Phase 0: Emergency Fix
+## Phase 0: Emergency Fix ✅ COMPLETE
 
 **Duration**: 1 day
 **Goal**: Resolve Node.js version conflict so project builds in current dev environment
+**Completed**: December 2025 (commit `0c87280`)
 
 ### Background
 
@@ -211,13 +255,13 @@ yarn start  # Should start React dev server + Firebase emulators
 4. Create map (hex or square)
 5. Verify map renders
 
-### Success Criteria
+### Success Criteria ✅
 
-- [ ] No Node.js version conflicts
-- [ ] `yarn build` succeeds in both `hexland-web/` and `hexland-web/functions/`
-- [ ] Application starts locally without errors
-- [ ] Firebase emulators functional
-- [ ] Can authenticate and create basic adventure/map
+- [x] No Node.js version conflicts
+- [x] `yarn build` succeeds in both `hexland-web/` and `hexland-web/functions/`
+- [x] Application starts locally without errors
+- [x] Firebase emulators functional
+- [x] Can authenticate and create basic adventure/map
 
 ### Rollback Point
 
@@ -227,14 +271,22 @@ If issues arise, revert this commit and investigate further.
 
 ---
 
-## Phase 1: Stabilization
+## Phase 1: Stabilization 🚧 IN PROGRESS
 
 **Duration**: 1-2 weeks
 **Goal**: Update to maintained versions without major refactoring
+**Status**: Phase 1.2 partially complete (Playwright updated), Phase 1.1 and 1.3 not started
 
 ### Strategy
 
 Update dependencies to latest **within their current major versions** where possible, or to minimally-breaking newer versions. Focus on getting security patches and stable foundations before Phase 2's major migrations.
+
+### Recent Commits
+- `36aee46` - Migrate Playwright e2e tests from v1.10 to v1.57
+- `ea6449d` - Fix playwright launch options and login link selector
+- `4f5dacc` - Make the throttling test more robust
+- `e9e983c` - Add new e2e snapshots
+- `709bc58` - Partial fixes and debugging for third playwright test (map share test still needs work)
 
 ---
 
@@ -372,7 +424,9 @@ npx tslint-to-eslint-config
 
 **Test**: `yarn build` compiles successfully
 
-#### Step 2: Update Playwright
+#### Step 2: Update Playwright ✅ COMPLETE
+
+**Completed**: December 2025 (commit `36aee46`)
 
 ```json
 {
@@ -400,6 +454,8 @@ If visual differences appear, **manually verify** rendering is correct, then upd
 ```bash
 yarn test:e2e -u  # Update snapshots
 ```
+
+**Status**: ✅ Playwright migrated, snapshots regenerated. 2 of 3 tests passing (map share test still needs work).
 
 #### Step 3: Update RxJS 6 → 7
 
@@ -455,10 +511,10 @@ const result = await lastValueFrom(observable);
 #### Success Criteria - Phase 1.2
 
 - [ ] TypeScript 5.7.x compiles web app without errors
-- [ ] Playwright 1.57.x tests pass (snapshots may need regeneration)
+- [x] Playwright 1.57.x tests pass (snapshots may need regeneration) - ⚠️ **2 of 3 tests passing**
 - [ ] RxJS 7.x subscriptions work, no `toPromise()` deprecation warnings
 - [ ] Three.js rendering identical (E2E snapshots pass)
-- [ ] `yarn build` succeeds
+- [x] `yarn build` succeeds
 - [ ] `yarn test:unit` passes
 
 **Files Modified**:
