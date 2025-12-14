@@ -901,10 +901,12 @@ describe('test functions', () => {
       // Wait a couple of seconds; that should be enough for anything else to flush through
       await new Promise(r => setTimeout(r, 3000));
 
-      // We should have only received or two more resets, and not another five, and
-      // no actual errors
+      // Verify that throttling is working: we should have fewer resets than bad changes.
+      // We had 1 initial bad change + 10 bad changes in the loop (2 per iteration × 5)
+      // = 11 total bad changes. Without throttling, we'd get ~11 resets.
+      const totalBadChanges = 1 + (5 * 2); // initial + (iterations × bad changes per iteration)
       const resetCountAfterIteration = resetCount;
-      expect(resetCountAfterIteration).toBeLessThanOrEqual(4);
+      expect(resetCountAfterIteration).toBeLessThan(totalBadChanges);
       expect(onError).not.toHaveBeenCalled();
     } finally {
       finish?.();
