@@ -41,44 +41,56 @@ export default defineConfig({
     // Navigation timeout (matching pageNavigationTimeout from main.test.ts:60)
     navigationTimeout: 12000,
     actionTimeout: 8000,
-
-    // Enable WebGL support via NVIDIA GPU passthrough
-    // Required for Three.js map rendering in headless mode
-    // Note: Requires Docker container to be run with --gpus=all
-    launchOptions: {
-      args: [
-        '--use-gl=desktop',       // Use desktop OpenGL (NVIDIA GPU)
-        '--enable-gpu',            // Enable GPU hardware acceleration
-        '--ignore-gpu-blocklist',  // Bypass GPU blocklist
-      ],
-    },
   },
 
   // Browser/device projects (matching the 8 configs from main.test.ts:44-53)
-  // Note: webkit iPhone 7 is excluded due to "invalid frame size" error
+  // Note: GPU flags (--use-gl=desktop, etc) are only compatible with Chromium and Firefox
+  // Webkit browsers (including iPhone 7 which uses webkit as defaultBrowserType) don't support these flags
   projects: [
     {
       name: 'chromium-iphone7',
       use: {
         ...devices['iPhone 7'],
+        // iPhone 7 uses webkit as defaultBrowserType, so no GPU flags
       },
     },
     {
       name: 'chromium-pixel2',
       use: {
         ...devices['Pixel 2'],
+        launchOptions: {
+          args: [
+            '--use-gl=desktop',       // Use desktop OpenGL (NVIDIA GPU)
+            '--enable-gpu',            // Enable GPU hardware acceleration
+            '--ignore-gpu-blocklist',  // Bypass GPU blocklist
+          ],
+        },
       },
     },
     {
       name: 'chromium-laptop',
       use: {
         viewport: { width: 1366, height: 768 },
+        launchOptions: {
+          args: [
+            '--use-gl=desktop',       // Use desktop OpenGL (NVIDIA GPU)
+            '--enable-gpu',            // Enable GPU hardware acceleration
+            '--ignore-gpu-blocklist',  // Bypass GPU blocklist
+          ],
+        },
       },
     },
     {
       name: 'chromium-desktop',
       use: {
         viewport: { width: 1920, height: 1080 },
+        launchOptions: {
+          args: [
+            '--use-gl=desktop',       // Use desktop OpenGL (NVIDIA GPU)
+            '--enable-gpu',            // Enable GPU hardware acceleration
+            '--ignore-gpu-blocklist',  // Bypass GPU blocklist
+          ],
+        },
       },
     },
     {
@@ -86,6 +98,13 @@ export default defineConfig({
       use: {
         ...devices['Desktop Firefox'],
         viewport: { width: 1366, height: 768 },
+        launchOptions: {
+          args: [
+            '--use-gl=desktop',       // Use desktop OpenGL (NVIDIA GPU)
+            '--enable-gpu',            // Enable GPU hardware acceleration
+            '--ignore-gpu-blocklist',  // Bypass GPU blocklist
+          ],
+        },
       },
     },
     {
@@ -93,6 +112,13 @@ export default defineConfig({
       use: {
         ...devices['Desktop Firefox'],
         viewport: { width: 1920, height: 1080 },
+        launchOptions: {
+          args: [
+            '--use-gl=desktop',       // Use desktop OpenGL (NVIDIA GPU)
+            '--enable-gpu',            // Enable GPU hardware acceleration
+            '--ignore-gpu-blocklist',  // Bypass GPU blocklist
+          ],
+        },
       },
     },
     {
@@ -100,6 +126,7 @@ export default defineConfig({
       use: {
         ...devices['Desktop Safari'],
         viewport: { width: 1366, height: 768 },
+        // Webkit doesn't support GPU launch options
       },
     },
     {
@@ -107,6 +134,7 @@ export default defineConfig({
       use: {
         ...devices['Desktop Safari'],
         viewport: { width: 1920, height: 1080 },
+        // Webkit doesn't support GPU launch options
       },
     },
   ],

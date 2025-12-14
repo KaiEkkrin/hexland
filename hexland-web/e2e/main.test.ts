@@ -60,7 +60,7 @@ test.describe('Basic tests', () => {
 
     // If we log out, we should get `Sign up/Login` back:
     await page.click('text="Log out"');
-    await expect(page.locator('text="Sign up/Login"')).toBeVisible();
+    await expect(page.locator('.nav-link >> text="Sign up/Login"')).toBeVisible();
 
     // Check we can log back in again too :)
     await Util.signIn(page, user);
