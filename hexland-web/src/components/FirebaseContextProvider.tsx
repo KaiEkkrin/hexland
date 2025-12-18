@@ -55,11 +55,12 @@ async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => vo
   const app = firebase.initializeApp(config);
   const auth = app.auth();
   const db = app.firestore();
-  const functions = app.functions(region);
   let storage: firebase.storage.Storage | undefined = undefined;
   let usingLocalEmulators = false;
 
   // Configure to use local emulators when running locally with webpack hot-plugging
+  // IMPORTANT: For functions, we must configure the region-specific instance BEFORE calling useEmulator
+  let functions: firebase.functions.Functions;
   if (isLocalDevelopment) {
     const hostname = document.location.hostname;
     auth.useEmulator(`http://${hostname}:9099`);
@@ -68,10 +69,13 @@ async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => vo
       ssl: false,
       merge: true
     });
+    // Create region-specific functions instance first, then configure emulator
+    functions = app.functions(region);
     functions.useEmulator(hostname, 5001);
     usingLocalEmulators = true;
     console.debug("Running with local emulators");
   } else {
+    functions = app.functions(region);
     storage = app.storage();
   }
 
