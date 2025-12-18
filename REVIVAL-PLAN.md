@@ -3,7 +3,7 @@
 **Project**: Wall & Shadow (codename: Hexland)
 **Document Version**: 1.1
 **Date**: December 2025
-**Status**: Revival in progress - Phase 0 complete, Phase 1 partially complete
+**Status**: Revival in progress - Phase 0 complete, Phase 1.1 complete, Phase 1.2 in progress
 
 ## Progress Summary
 
@@ -12,6 +12,12 @@
 - **Dev Environment**: WSL2 dev container with GPU support fully configured
 - **Playwright Migration**: Updated from v1.10 to v1.57 (commit `36aee46`)
 - **E2E Tests**: 2 of 3 tests passing with regenerated snapshots
+- **Phase 1.1**: Functions stabilization complete ✅
+  - TSLint → ESLint 9.x migration
+  - firebase-admin 9.3.0 → 13.6.0
+  - firebase-functions 3.20.0 → 6.3.2
+  - TypeScript 4.2.3 → 5.7.3
+  - All 96 unit tests passing
 
 ### 🚧 In Progress
 - **Phase 1.2**: Web app stabilization
@@ -19,7 +25,6 @@
   - Remaining: TypeScript, RxJS, Three.js patch updates
 
 ### 📋 Not Started
-- **Phase 1.1**: Functions stabilization (TSLint→ESLint, Firebase Admin/Functions updates)
 - **Phase 1.3**: Dependency consolidation
 - **Phase 2**: Modernization (Firebase v11, React 18, Router v6, Vite, Three.js 0.170)
 - **Phase 3**: Polish (Bootstrap 5, performance optimization)
@@ -40,10 +45,9 @@ These improvements ensure the dev environment is production-ready for the modern
 ## Next Steps (Recommended Order)
 
 1. **Fix Map Share E2E Test** - Complete Phase 1.2 by fixing the third Playwright test
-2. **Complete Phase 1.2** - Update TypeScript 5.7, RxJS 7, Three.js patch
-3. **Start Phase 1.1** - Functions stabilization (TSLint→ESLint, Firebase Admin/Functions updates)
-4. **Complete Phase 1.3** - Dependency consolidation
-5. **Begin Phase 2** - Major modernization efforts
+2. **Complete Phase 1.2** - Update TypeScript 5.7, RxJS 7, Three.js patch in web app
+3. **Complete Phase 1.3** - Dependency consolidation (align versions between web and functions)
+4. **Begin Phase 2** - Major modernization efforts (Firebase v11, React 18, Vite)
 
 ---
 
