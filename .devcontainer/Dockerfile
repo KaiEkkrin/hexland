@@ -1,12 +1,12 @@
 # Hexland Dev Container
 # Node 20 LTS with Firebase tools, Java for emulators, and development dependencies
 
-FROM mcr.microsoft.com/devcontainers/typescript-node:20-bookworm
+FROM mcr.microsoft.com/devcontainers/typescript-node:20-trixie
 
 # Install system dependencies
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends \
-    openjdk-17-jdk \
+    openjdk-21-jdk \
     imagemagick \
     rsync \
     && apt-get clean -y && rm -rf /var/lib/apt/lists/*
