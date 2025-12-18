@@ -1,6 +1,5 @@
 import { ICacheLease } from './interfaces';
-import { ReplaySubject } from 'rxjs';
-import { first } from 'rxjs/operators';
+import { ReplaySubject, firstValueFrom } from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface ICacheItem<T> {
@@ -39,7 +38,7 @@ export class ObjectCache<T> {
       return { value: entry.obj.value, release: this.createRelease(id, entry) };
     }
 
-    const obj = await entry.subj.pipe(first()).toPromise();
+    const obj = await firstValueFrom(entry.subj);
     return { value: obj.value, release: this.createRelease(id, entry) };
   }
 
@@ -58,7 +57,7 @@ export class ObjectCache<T> {
       if (--entry.refCount === 0) {
         this.removeEntry(id, entry);
         try {
-          (await entry.subj.pipe(first()).toPromise()).cleanup();
+          (await firstValueFrom(entry.subj)).cleanup();
         } catch (e) {
           this._logError(`Error cleaning up ${id}`, e);
         }
@@ -143,10 +142,10 @@ export class ObjectCache<T> {
     for (const [id, entry] of toDispose) {
       // It should be okay to start this dispose and let it go:
       if (entry.refCount > 0) {
-      entry.subj.pipe(first()).toPromise()
-        .then(o => o.cleanup())
-        .then(() => console.debug(`disposed ${id}`))
-        .catch(e => this._logError(`Error disposing ${id}`, e));
+        firstValueFrom(entry.subj)
+          .then(o => o.cleanup())
+          .then(() => console.debug(`disposed ${id}`))
+          .catch(e => this._logError(`Error disposing ${id}`, e));
       }
     }
   }

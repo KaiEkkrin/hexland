@@ -25,8 +25,8 @@ import md5 from 'crypto-js/md5';
 import * as fs from 'fs';
 import { initializeTestApp } from '@firebase/rules-unit-testing';
 import * as http from 'http';
-import { Subject } from 'rxjs';
-import { filter, first } from 'rxjs/operators';
+import { Subject, firstValueFrom } from 'rxjs';
+import { filter } from 'rxjs/operators';
 import { promisify } from 'util';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -793,7 +793,7 @@ describe('test functions', () => {
           outline: false
         }
       };
-      const addOnePromise = changesSeen.pipe(first()).toPromise();
+      const addOnePromise = firstValueFrom(changesSeen);
       await dataService.addChanges(a1Id, user.uid, m1Id, [addToken1]);
       const addOne = await addOnePromise;
 
@@ -814,7 +814,7 @@ describe('test functions', () => {
         oldPosition: { x: 0, y: 0 },
         newPosition: { x: -1, y: -2 }
       };
-      const moveOnePromise = changesSeen.pipe(first()).toPromise();
+      const moveOnePromise = firstValueFrom(changesSeen);
       await dataService.addChanges(a1Id, user.uid, m1Id, [moveToken1]);
       const moveOne = await moveOnePromise;
 
@@ -838,7 +838,7 @@ describe('test functions', () => {
         oldPosition: { x: 0, y: 0 },
         newPosition: { x: 3, y: 4 }
       };
-      const resyncPromise = changesSeen.pipe(filter(chs => chs.changes.resync === true), first()).toPromise();
+      const resyncPromise = firstValueFrom(changesSeen.pipe(filter(chs => chs.changes.resync === true)));
       await dataService.addChanges(a1Id, user.uid, m1Id, [badMoveToken1]);
       const resync = await resyncPromise;
 
@@ -873,16 +873,16 @@ describe('test functions', () => {
 
         // We can expect that good move in either an incremental change or a resync, so
         // we'll inspect the token dictionary instead (easier)
-        const movedAgainPromise = changesSeen.pipe(filter(chs => {
+        const movedAgainPromise = firstValueFrom(changesSeen.pipe(filter(chs => {
           if (!chs.accepted) {
             return false;
           }
           return tokens.get({ x: -1, y: -2 + i + 1 })?.id === '1';
-        }), first()).toPromise();
+        })));
 
         // Upon the first iteration we'll wait for that resync to fire as well
         const resyncAgainPromise = i === 0 ?
-          changesSeen.pipe(filter(chs => chs.changes.resync === true), first()).toPromise() :
+          firstValueFrom(changesSeen.pipe(filter(chs => chs.changes.resync === true))) :
           undefined;
 
         await dataService.addChanges(a1Id, user.uid, m1Id, [badMoveToken2]);

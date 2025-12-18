@@ -135,7 +135,7 @@ export class DataService implements IDataService {
 
   set<T>(r: IDataReference<T>, value: T): Promise<void> {
     const dref = (r as DataReference<T>).dref;
-    return dref.set(value);
+    return dref.set(value as firebase.firestore.DocumentData);
   }
 
   update<T>(r: IDataReference<T>, changes: any): Promise<void> {
@@ -363,7 +363,7 @@ class TransactionalDataView implements IDataView {
 
   async set<T>(r: IDataReference<T>, value: T): Promise<void> {
     const dref = (r as DataReference<T>).dref;
-    this._tr = this._tr.set(dref, value);
+    this._tr = this._tr.set(dref, value as firebase.firestore.DocumentData);
   }
 
   async update<T>(r: IDataReference<T>, changes: any): Promise<void> {

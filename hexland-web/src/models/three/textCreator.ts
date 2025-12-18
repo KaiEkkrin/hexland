@@ -1,14 +1,13 @@
 import * as THREE from 'three';
-// TODO #235 :
-// @ts-ignore - FontLoader types not available in @types/three for examples/jsm (Phase 0 workaround)
-import { FontLoader } from 'three/examples/jsm/loaders/FontLoader';
+// Font moved to examples/jsm in Three.js 0.133+
+import { Font, FontLoader } from 'three/examples/jsm/loaders/FontLoader';
 
 export class TextCreator {
-  private _font: THREE.Font | undefined;
+  private _font: Font | undefined;
 
   constructor() {
     let loader = new FontLoader();
-    loader.load('/fonts/helvetiker_bold.typeface.json', (f: THREE.Font) => this._font = f);
+    loader.load('/fonts/helvetiker_bold.typeface.json', (f: Font) => this._font = f);
   }
 
   create(text: string, size: number): THREE.ShapeBufferGeometry | undefined {

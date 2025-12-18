@@ -95,7 +95,7 @@ function MapContextProvider(props: IContextProviderProps) {
     // underlying stop function
     let stopWatchingMap: (() => void) | undefined = undefined;
     const watchMap = new Observable<IAdventureIdentified<IMap>>(sub => {
-      const stopWatchingMap = lcm.dataService.watch(
+      stopWatchingMap = lcm.dataService.watch(
         mapRef,
         m => {
           if (m === undefined) {
