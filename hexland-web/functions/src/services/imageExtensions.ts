@@ -9,7 +9,7 @@ import { IDataService, IDataReference, IDataView, ILogger, IStorage, IDataAndRef
 import fluent from 'fluent-iterable';
 
 // For HttpsError.  It's a bit abstraction-breaking, but very convenient...
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 
 function getImageUid(path: string): string | undefined {
   // Extract the uid from the path.  We rely on the Storage security rules to have

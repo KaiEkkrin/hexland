@@ -1,5 +1,5 @@
 import { ILogger } from './interfaces';
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 
 // Provides a Firebase Functions logger.
 class FunctionLogger implements ILogger {

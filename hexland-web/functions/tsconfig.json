@@ -8,9 +8,10 @@
     "noUnusedLocals": true,
     "outDir": "lib",
     "pretty": true,
+    "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,
-    "target": "es2017",
+    "target": "ES2022",
     "typeRoots": [
       "node_modules/@types"
     ]

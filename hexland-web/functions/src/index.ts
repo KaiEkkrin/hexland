@@ -11,7 +11,8 @@ import * as SpriteExtensions from './services/spriteExtensions';
 import { Storage } from './services/storage';
 
 import * as admin from 'firebase-admin';
-import * as functions from 'firebase-functions';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import * as functions from 'firebase-functions/v1';
 
 const region = 'europe-west2';
 
@@ -88,7 +89,7 @@ async function cloneMap(uid: string, request: Req.CloneMapRequest) {
   }
 
   return await Extensions.cloneMap(
-    dataService, functionLogger, admin.firestore.FieldValue.serverTimestamp,
+    dataService, functionLogger, FieldValue.serverTimestamp,
     uid, request.adventureId, request.mapId, request.name, request.description
   );
 }
@@ -109,7 +110,7 @@ async function consolidateMapChanges(uid: string, request: Req.ConsolidateMapCha
   await Extensions.consolidateMapChanges(
     dataService,
     functionLogger,
-    admin.firestore.FieldValue.serverTimestamp,
+    FieldValue.serverTimestamp,
     request.adventureId,
     request.mapId,
     map,
@@ -154,7 +155,7 @@ async function inviteToAdventure(uid: string, request: Req.InviteToAdventureRequ
 
   return await Extensions.inviteToAdventure(
     dataService,
-    admin.firestore.FieldValue.serverTimestamp,
+    FieldValue.serverTimestamp,
     { id: request.adventureId, ...adventure },
     getInviteExpiryPolicy(request.policy)
   );
@@ -255,7 +256,7 @@ export const addSprites = getFunctionBuilder().runWith({ memory: '1GB' }).https.
 
   return await SpriteExtensions.addSprites(
     dataService, functionLogger, storage, uid, String(adventureId), String(geometry),
-    sourceList, admin.firestore.Timestamp.now
+    sourceList, Timestamp.now
   );
 })
 

@@ -22,7 +22,7 @@ import * as dayjs from 'dayjs';
 import { v4 as uuidv4 } from 'uuid';
 
 // For HttpsError.  It's a bit abstraction-breaking, but very convenient...
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 
 async function createAdventureTransaction(
   view: IDataView,

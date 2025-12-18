@@ -1,4 +1,5 @@
 import * as admin from 'firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
 
 import * as Convert from './converter';
 import { IAdminDataService, ICollectionGroupQueryResult } from './extraInterfaces';
@@ -133,7 +134,7 @@ export class AdminDataService implements IAdminDataService {
 
   constructor(app: admin.app.App) {
     this._db = admin.firestore(app);
-    this._timestampProvider = admin.firestore.Timestamp.now;
+    this._timestampProvider = Timestamp.now;
   }
 
   // IDataView implementation
@@ -151,7 +152,7 @@ export class AdminDataService implements IAdminDataService {
 
   async set<T>(r: IDataReference<T>, value: T): Promise<void> {
     const dref = (r as DataReference<T>).dref;
-    await dref.set(value);
+    await dref.set(value as admin.firestore.WithFieldValue<admin.firestore.DocumentData>);
   }
 
   async update<T>(r: IDataReference<T>, chs: any): Promise<void> {
@@ -421,7 +422,7 @@ class TransactionalDataView implements IDataView {
 
   async set<T>(r: IDataReference<T>, value: T): Promise<void> {
     const dref = (r as DataReference<T>).dref;
-    this._tr = this._tr.set(dref, value);
+    this._tr = this._tr.set(dref, value as admin.firestore.WithFieldValue<admin.firestore.DocumentData>);
   }
 
   async update<T>(r: IDataReference<T>, chs: any): Promise<void> {
