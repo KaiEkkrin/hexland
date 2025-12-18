@@ -20,7 +20,7 @@ export type Striped = {
 };
 
 export type StripedArea = IFeature<GridCoord> & Striped;
-export interface IAreaDictionary extends IFeatureDictionary<GridCoord, StripedArea> {}
+export type IAreaDictionary = IFeatureDictionary<GridCoord, StripedArea>
 
 // A token has some extra properties:
 // (Remember to keep `parseTokenSize` below in sync with this definition if it changes)

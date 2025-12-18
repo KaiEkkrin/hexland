@@ -151,7 +151,7 @@ async function getExistingSprites(
     if (sheet !== undefined) {
       found.push({
         source: s,
-        geometry: sheet.data.geometry,
+        geometry: sheet.data.geometry
       });
     } else {
       missing.push(s);

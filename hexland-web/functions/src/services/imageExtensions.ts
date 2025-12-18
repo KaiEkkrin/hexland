@@ -74,7 +74,7 @@ export async function addImage(
   storage: IStorage,
   logger: ILogger,
   name: string,
-  path: string,
+  path: string
 ): Promise<boolean> {
   const uid = getImageUid(path);
   if (!uid) {

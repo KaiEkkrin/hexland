@@ -31,7 +31,7 @@ class DataReferenceBase {
   private readonly _dref: FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>;
 
   constructor(
-    dref: FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>,
+    dref: FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>
   ) {
     this._dref = dref;
   }

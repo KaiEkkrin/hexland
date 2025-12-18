@@ -98,7 +98,7 @@ class TokenMoveConverter extends RecursingConverter<TokenMove> {
       cat: ChangeCategory.Token,
       newPosition: defaultGridCoord,
       oldPosition: defaultGridCoord,
-      tokenId: "",
+      tokenId: ""
     }, {
       "newPosition": (conv, raw) => {
         conv.newPosition = gridCoordConverter.convert(raw);
@@ -365,21 +365,21 @@ const annotationConverter = new RecursingConverter<IAnnotation>(defaultAnnotatio
   "position": (conv, raw) => {
     conv.position = gridCoordConverter.convert(raw);
     return conv;
-  },
+  }
 });
 
 const areaConverter = new RecursingConverter<StripedArea>(defaultStripedArea, {
   "position": (conv, raw) => {
     conv.position = gridCoordConverter.convert(raw);
     return conv;
-  },
+  }
 });
 
 const wallConverter = new RecursingConverter<IFeature<GridEdge>>(defaultWall, {
   "position": (conv, raw) => {
     conv.position = gridEdgeConverter.convert(raw);
     return conv;
-  },
+  }
 });
 
 class AnchorConverter extends ShallowConverter<Anchor> {

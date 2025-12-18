@@ -122,7 +122,7 @@ async function createMapTransaction(
   const record: IMap = {
     ...newMapRecord,
     adventureName: adventure.name,
-    owner: profileRef.id,
+    owner: profileRef.id
   };
   await view.set(newMapRef, record);
 
