@@ -22,6 +22,7 @@ const app = admin.initializeApp(FIREBASE_CONFIG);
 const dataService = new AdminDataService(app);
 
 const emulatorFunctionsDisabled = process.env.IS_LOCAL_DEV !== 'true';
+const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true' || !emulatorFunctionsDisabled;
 if (emulatorFunctionsDisabled) {
   functionLogger.logInfo("Emulator-only functions disabled");
 } else {
@@ -30,6 +31,18 @@ if (emulatorFunctionsDisabled) {
 
 const storage: IStorage = emulatorFunctionsDisabled ? new Storage(app) :
   new MockStorage('http://mock-storage');
+
+// Helper function to conditionally apply region specification
+// In emulator mode, we don't use region specification because it causes issues with test libraries
+function getFunctionBuilder() {
+  if (isEmulator) {
+    functionLogger.logInfo("Using default (no region) function builder for emulator");
+    return functions;
+  } else {
+    functionLogger.logInfo("Using region-specific function builder: " + region);
+    return functions.region(region);
+  }
+}
 
 // Start writing Firebase Functions
 // https://firebase.google.com/docs/functions/typescript
@@ -197,7 +210,7 @@ async function handleMockStorageUpload(uid: string, request: Req.HandleMockStora
 // also reduces the number of cold spin-up delays, without having significant other penalty
 // because they're all sharing back-end modules anyway.)
 
-export const interact = functions.region(region).https.onCall(async (data, context) => {
+export const interact = getFunctionBuilder().https.onCall(async (data, context) => {
   const uid = context.auth?.uid;
   if (uid === undefined) {
     throw new functions.https.HttpsError('unauthenticated', 'No uid found');
@@ -222,7 +235,7 @@ export const interact = functions.region(region).https.onCall(async (data, conte
 // This seems to chew a lot of memory, hence the higher memory limit setting.  Hopefully
 // this won't turn out overly expensive!
 
-export const addSprites = functions.region(region).runWith({ memory: '1GB' }).https.onCall(async (data, context) => {
+export const addSprites = getFunctionBuilder().runWith({ memory: '1GB' }).https.onCall(async (data, context) => {
   const uid = context.auth?.uid;
   if (uid === undefined) {
     throw new functions.https.HttpsError('unauthenticated', 'No uid found');
@@ -248,7 +261,7 @@ export const addSprites = functions.region(region).runWith({ memory: '1GB' }).ht
 
 // == TRIGGER FUNCTIONS ==
 
-export const onUpload = functions.region(region).storage.object().onFinalize(async (object) => {
+export const onUpload = getFunctionBuilder().storage.object().onFinalize(async (object) => {
   if (object.name === undefined) {
     functions.logger.warn("Found unnamed object");
     return;

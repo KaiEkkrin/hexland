@@ -65,7 +65,6 @@ interface IChangesEvent {
 describe('test functions', () => {
   // We must use a fixed project ID here, it seems
   const projectId = String(adminCredentials?.project_id ?? 'hexland-test');
-  const region = 'europe-west2';
   const emul: { [uid: string]: IEmul } = {};
 
   function initializeEmul(auth: IUser): IEmul {
@@ -79,7 +78,8 @@ describe('test functions', () => {
     });
 
     const db = e.firestore();
-    const functions = e.functions(region);
+    // Don't specify region for emulator tests - functions are exported without region in emulator mode
+    const functions = e.functions();
     functions.useEmulator('localhost', 5001);
     emul[auth.uid] = { app: e, db: db, functions: functions };
     return emul[auth.uid];
