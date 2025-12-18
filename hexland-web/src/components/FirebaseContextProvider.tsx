@@ -1,11 +1,12 @@
 import { createContext, useEffect, useState } from 'react';
 
-import firebase from 'firebase/app';
-import 'firebase/analytics';
-import 'firebase/auth';
-import 'firebase/firestore';
-import 'firebase/functions';
-import 'firebase/storage';
+import { initializeApp } from 'firebase/app';
+import { getAnalytics, logEvent as firebaseLogEvent } from 'firebase/analytics';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator, serverTimestamp } from 'firebase/firestore';
+import { getFunctions, Functions, connectFunctionsEmulator } from 'firebase/functions';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
+import { IAnalytics } from '../services/interfaces';
 
 import { IContextProviderProps, IFirebaseContext, IFirebaseProps } from './interfaces';
 import * as Auth from '../services/auth';
@@ -52,31 +53,27 @@ async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => vo
     };
   }
 
-  const app = firebase.initializeApp(config);
-  const auth = app.auth();
-  const db = app.firestore();
-  let storage: firebase.storage.Storage | undefined = undefined;
+  const app = initializeApp(config);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  let storage: FirebaseStorage | undefined = undefined;
   let usingLocalEmulators = false;
 
   // Configure to use local emulators when running locally with webpack hot-plugging
-  let functions: firebase.functions.Functions;
+  let functions: Functions;
   if (isLocalDevelopment) {
     const hostname = document.location.hostname;
-    auth.useEmulator(`http://${hostname}:9099`);
-    db.settings({
-      host: `${hostname}:8080`,
-      ssl: false,
-      merge: true
-    });
+    connectAuthEmulator(auth, `http://${hostname}:9099`);
+    connectFirestoreEmulator(db, hostname, 8080);
     // In emulator mode, don't use region - the server exports functions without region
     // to avoid issues with test libraries (see functions/src/index.ts getFunctionBuilder)
-    functions = app.functions();
-    functions.useEmulator(hostname, 5001);
+    functions = getFunctions(app);
+    connectFunctionsEmulator(functions, hostname, 5001);
     usingLocalEmulators = true;
     console.debug("Running with local emulators");
   } else {
-    functions = app.functions(region);
-    storage = app.storage();
+    functions = getFunctions(app, region);
+    storage = getStorage(app);
   }
 
   setFirebaseContext({
@@ -85,10 +82,15 @@ async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => vo
     functions: functions,
     googleAuthProvider: Auth.googleAuthProviderWrapper,
     storage: storage,
-    timestampProvider: firebase.firestore.FieldValue.serverTimestamp,
+    timestampProvider: serverTimestamp,
     usingLocalEmulators: usingLocalEmulators,
     // Don't initialize Analytics in local development mode (requires real API key)
-    createAnalytics: isLocalDevelopment ? undefined : (() => app.analytics())
+    createAnalytics: isLocalDevelopment ? undefined : (): IAnalytics => {
+      const analytics = getAnalytics(app);
+      return {
+        logEvent: (event: string, parameters: any) => firebaseLogEvent(analytics, event, parameters)
+      };
+    }
   });
 }
 

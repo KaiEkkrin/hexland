@@ -1,31 +1,37 @@
 import { IStorage, IStorageReference } from './interfaces';
 
-import firebase from 'firebase/app';
-import 'firebase/storage';
+import {
+  FirebaseStorage,
+  StorageReference as FirebaseStorageReference,
+  ref,
+  deleteObject,
+  getDownloadURL as getDownloadURLFn,
+  uploadBytes
+} from 'firebase/storage';
 
 // The real Firebase storage implementation.
 
 export class Storage implements IStorage {
-  private readonly _storage: firebase.storage.Storage;
+  private readonly _storage: FirebaseStorage;
 
-  constructor(storage: firebase.storage.Storage) {
+  constructor(storage: FirebaseStorage) {
     this._storage = storage;
   }
 
   ref(path: string): IStorageReference {
-    return new StorageReference(this._storage.ref(path));
+    return new StorageReference(ref(this._storage, path));
   }
 }
 
 export class StorageReference implements IStorageReference {
-  private readonly _ref: firebase.storage.Reference;
+  private readonly _ref: FirebaseStorageReference;
 
-  constructor(ref: firebase.storage.Reference) {
-    this._ref = ref;
+  constructor(storageRef: FirebaseStorageReference) {
+    this._ref = storageRef;
   }
-  
+
   async delete(): Promise<void> {
-    await this._ref.delete();
+    await deleteObject(this._ref);
   }
 
   async download(destination: string): Promise<void> {
@@ -33,13 +39,13 @@ export class StorageReference implements IStorageReference {
   }
 
   async getDownloadURL(): Promise<string> {
-    const url = await this._ref.getDownloadURL();
+    const url = await getDownloadURLFn(this._ref);
     return String(url);
   }
 
   async put(file: any, metadata: any) {
     // For now, I'll enumerate explicitly what metadata I expect here
-    await this._ref.put(file, {
+    await uploadBytes(this._ref, file, {
       customMetadata: metadata.customMetadata
     });
   }

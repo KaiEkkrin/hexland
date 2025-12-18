@@ -3,7 +3,7 @@
 **Project**: Wall & Shadow (codename: Hexland)
 **Document Version**: 1.2
 **Date**: December 2025
-**Status**: Revival in progress - Phase 1 complete, ready for Phase 2
+**Status**: Revival in progress - Phase 1 complete, Phase 2.1 complete
 
 ## Progress Summary
 
@@ -33,9 +33,22 @@
   - @types/three aligned: 0.137.0 in both web and functions
   - RxJS aligned: 7.8.x in both web and functions
   - Functions build and lint pass
+- **Phase 2.1**: Firebase SDK v8 → v11 modular migration complete ✅
+  - firebase 8.0.0 → 11.10.0 (modular API, no compat layer)
+  - @firebase/rules-unit-testing 1.0.4 → 3.0.4
+  - Migrated all Firebase imports to modular API:
+    - FirebaseContextProvider.tsx - app initialization
+    - auth.ts - authentication service
+    - dataService.ts - Firestore data layer
+    - functions.ts - callable functions
+    - storage.ts - Firebase Storage
+    - data/types.ts - FieldValue import
+  - Updated unit tests for @firebase/rules-unit-testing v3 API
+  - Jest config uses projects for selective test isolation (functions tests serial, others parallel)
+  - All 96 unit tests passing
 
 ### 📋 Not Started
-- **Phase 2**: Modernization (Firebase v11, React 18, Router v6, Vite, Three.js 0.170)
+- **Phase 2.2-2.5**: Remaining modernization (React 18, Router v6, Vite, Three.js 0.170)
   - ⚠️ Map share E2E test fix moved here (end of phase)
 - **Phase 3**: Polish (Bootstrap 5, performance optimization)
 
@@ -54,7 +67,7 @@ These improvements ensure the dev environment is production-ready for the modern
 
 ## Next Steps (Recommended Order)
 
-1. **Begin Phase 2** - Major modernization efforts (Firebase v11, React 18, Router v6, Vite)
+1. **Continue Phase 2** - React 18, Router v6, Vite, Three.js 0.170
 2. **Fix Map Share E2E Test** - At end of Phase 2 (requires dev container rebuild, deferred)
 
 ---
@@ -283,11 +296,11 @@ If issues arise, revert this commit and investigate further.
 
 ---
 
-## Phase 1: Stabilization 🚧 IN PROGRESS
+## Phase 1: Stabilization ✅ COMPLETE
 
 **Duration**: 1-2 weeks
 **Goal**: Update to maintained versions without major refactoring
-**Status**: Phase 1.2 partially complete (Playwright updated), Phase 1.1 and 1.3 not started
+**Status**: All sub-phases complete (1.1, 1.2, 1.3)
 
 ### Strategy
 
@@ -615,11 +628,12 @@ This phase involves the most significant changes:
 
 ---
 
-### 2.1: Firebase v8 → v11 Modular SDK
+### 2.1: Firebase v8 → v11 Modular SDK ✅ COMPLETE
 
 **Complexity**: HIGH (touches 50+ files)
 **Duration**: 1-2 weeks
 **Approach**: **Direct migration** (per user preference - no compat layer)
+**Status**: Complete - all Firebase imports migrated to modular API, 96 unit tests passing
 
 #### Background
 
