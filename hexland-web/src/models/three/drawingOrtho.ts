@@ -165,7 +165,7 @@ export class DrawingOrtho implements IDrawing {
     this._fixedHighlightScene = new THREE.Scene();
     this._overlayScene = new THREE.Scene();
 
-    this._canvasClearColour = new THREE.Color(0.1, 0.1, 0.1);
+    this._canvasClearColour = new THREE.Color(0.01, 0.01, 0.01);
     this._renderer.autoClear = false;
     this._textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
 

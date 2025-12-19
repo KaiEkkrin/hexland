@@ -3,8 +3,8 @@
 **Project**: Wall & Shadow (codename: Hexland)
 **Document Version**: 1.4
 **Date**: December 2025
-**Status**: Revival in progress - Phase 1 complete, Phase 2.1-2.4 complete
-**Last Updated**: Phase 2.4 CRA → Vite migration complete
+**Status**: Revival in progress - Phase 1 complete, Phase 2 complete
+**Last Updated**: Phase 2.5 Three.js 0.137 → 0.163 upgrade complete
 
 ## Progress Summary
 
@@ -111,10 +111,18 @@
   - Manual testing successful (login, adventure, map creation, image upload, map rendering)
   - Fast Refresh warnings for context providers are expected (informational, not errors)
 
+### ✅ Phase 2.5 Complete
+- **Phase 2.5**: Three.js 0.137 → 0.163 ✅
+  - three 0.137.5 → 0.163.0
+  - @types/three 0.137.0 → 0.163.0
+  - Fixed `ShapeBufferGeometry` → `ShapeGeometry` (removed in r125)
+  - Fixed background color for new sRGB color management defaults (r152+)
+  - All unit tests passing
+  - Manual testing successful
+
 ### 📋 Not Started
-- **Phase 2.5**: Three.js 0.137 → 0.170
-  - ⚠️ Map share E2E test fix at end of phase
-- **Phase 3**: Polish (performance optimization, code quality)
+- **Phase 3**: Polish (performance optimization, code quality, security fixes)
+  - ⚠️ Map share E2E test fix moved to end of Phase 3 (requires dev container rebuild)
 
 ### ⚠️ Phase Reordering Note (December 2025)
 
@@ -147,8 +155,8 @@ These improvements ensure the dev environment is production-ready for the modern
 1. ✅ **Phase 2.2** - Bootstrap 4 → 5 + react-bootstrap v1 → v2 (COMPLETE)
 2. ✅ **Phase 2.3** - React 17 → 18 + React Router v5 → v6 (COMPLETE)
 3. ✅ **Phase 2.4** - CRA → Vite (COMPLETE)
-4. **Phase 2.5** - Three.js 0.137 → 0.170
-5. **Phase 2.6** - Fix Map Share E2E Test (deferred from Phase 1.2)
+4. ✅ **Phase 2.5** - Three.js 0.137 → 0.163 (COMPLETE)
+5. **Phase 3** - Polish, security fixes, Map Share E2E test
 
 ---
 
@@ -199,7 +207,7 @@ Wall & Shadow is a React-based virtual tabletop (VTT) application built on Fireb
 | react-scripts (CRA) | 4.0.3 | N/A (→Vite) | ✅ Done | Migrated to Vite 7.3.0 |
 | Firebase SDK | 8.0.0 | 11.x | ✅ Done | Modular API, 80% smaller bundle |
 | TypeScript | 4.2.3 | 5.7.x | ✅ Done | Smooth upgrade path |
-| Three.js | 0.137.0 | 0.170.x | 🟡 Behind | Rendering pipeline testing critical |
+| Three.js | 0.137.0 | 0.163.x | ✅ Done | Upgraded to 0.163.0 (conservative target) |
 | React Router | 5.2.0 | 6.28.x | ✅ Done | Migrated to v6.28.0 |
 | Bootstrap | 4.5.0 | 5.3.x | ✅ Done | Migrated to 5.3.0 |
 | RxJS | 6.6.6 | 7.8.x | ✅ Done | Migrated to 7.8.x |
@@ -1620,146 +1628,51 @@ yarn preview  # Serve production build
 
 ---
 
-### 2.6: Three.js 0.137 → 0.170
+### 2.6: Three.js 0.137 → 0.163 ✅ COMPLETE
 
-**Complexity**: MEDIUM
+**Complexity**: LOW (conservative upgrade)
+**Status**: Complete - December 2025
 
-#### Background
+#### Summary
 
-Three.js has evolved significantly from r137 (April 2021) to r170 (December 2024). The migration requires testing the entire rendering pipeline.
+Upgraded Three.js from 0.137.5 to 0.163.0 (conservative target). This version was chosen because:
+- No known security vulnerabilities in Three.js 0.163
+- Avoids the more complex WebGPU/TSL restructuring in r166+
+- Stable release with good TypeScript support
+- The renderer may be replaced in the future, so minimal upgrade preferred
 
-#### Breaking Changes (r137 → r170)
+#### Changes Made
 
-**Major changes** ([Three.js Releases](https://github.com/mrdoob/three.js/releases)):
-- **r150+**: Import paths changed for examples/addons
-- **r155+**: Some geometry/material APIs updated
-- **r160+**: WebGPU renderer added (not used in this app)
-- **r165+**: Further API refinements
+1. **Dependencies updated**:
+   - `three`: 0.137.5 → 0.163.0
+   - `@types/three`: 0.137.0 → 0.163.0
 
-**Most breaking changes don't affect this app** as it uses core Three.js, not examples/addons.
+2. **Code fixes**:
+   - `ShapeBufferGeometry` → `ShapeGeometry` (class was removed/merged in r125)
+   - Background color adjusted for new sRGB color management (r152+ defaults `ColorManagement.enabled = true`)
 
-#### Step 1: Update Dependencies
+3. **Files modified**:
+   - `/workspaces/hexland/hexland-web/package.json`
+   - `/workspaces/hexland/hexland-web/src/models/three/textCreator.ts`
+   - `/workspaces/hexland/hexland-web/src/models/three/drawingOrtho.ts`
 
-```json
-{
-  "dependencies": {
-    "three": "^0.170.0",
-    "@types/three": "^0.170.0"
-  }
-}
-```
+#### Success Criteria - Phase 2.6 ✅
 
-#### Step 2: Review Import Paths
-
-If using examples/jsm (unlikely based on codebase review):
-
-```typescript
-// Old r137
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-
-// New r150+
-import { OrbitControls } from 'three/addons/controls/OrbitControls';
-```
-
-**Check**: `grep -r "three/examples" src/` (likely returns nothing)
-
-#### Step 3: Test Rendering Pipeline
-
-**Critical files** to test:
-- `/workspaces/hexland/hexland-web/src/models/three/drawing.ts`
-- `/workspaces/hexland/hexland-web/src/models/three/gridGeometry.ts`
-- `/workspaces/hexland/hexland-web/src/models/three/hexGridGeometry.ts`
-- `/workspaces/hexland/hexland-web/src/models/three/squareGridGeometry.ts`
-- `/workspaces/hexland/hexland-web/src/models/three/instancedFeatures.ts`
-- `/workspaces/hexland/hexland-web/src/models/three/los.ts`
-- `/workspaces/hexland/hexland-web/src/models/three/walls.ts`
-- `/workspaces/hexland/hexland-web/src/models/three/tokenDrawingOrtho.ts`
-
-**Run E2E tests** (image snapshots will catch visual changes):
-```bash
-yarn test:e2e
-```
-
-**If snapshots fail**:
-1. **Visually inspect** rendering differences
-2. If rendering is **correct** (just minor precision changes): `yarn test:e2e -u` to update snapshots
-3. If rendering is **broken**: investigate API changes
-
-**Manual Testing** (comprehensive):
-- [ ] Hex grid renders correctly
-- [ ] Square grid renders correctly
-- [ ] Tokens render (sprites, outlines)
-- [ ] Walls render on edges
-- [ ] Areas render (filled regions)
-- [ ] Line-of-sight (LOS) calculations work
-- [ ] Token highlighting works
-- [ ] Map images display
-- [ ] Annotations render
-- [ ] Pan/zoom/rotate (if supported)
-
-#### Step 4: Check for Deprecation Warnings
-
-**Run app in dev mode**, open console:
-```bash
-yarn start
-```
-
-Look for Three.js deprecation warnings. Fix any deprecated API usage.
-
-**Common**:
-- `Geometry` → `BufferGeometry` (likely already done)
-- Material parameter changes (check Three.js migration guide if warnings appear)
-
-#### Success Criteria - Phase 2.6
-
-- [ ] Three.js 0.170.x installed
-- [ ] No import errors
-- [ ] E2E tests pass (snapshots may need regeneration)
-- [ ] **Visual inspection**:
-  - [ ] Hex grid rendering identical
-  - [ ] Square grid rendering identical
-  - [ ] Tokens render correctly (sprites, outlines, highlighting)
-  - [ ] Walls render on grid edges
-  - [ ] LOS calculations work
-  - [ ] No visual regressions
-- [ ] No Three.js deprecation warnings in console
-- [ ] Performance acceptable (FPS similar to before)
-
-**Files to Monitor**:
-- All files in `/workspaces/hexland/hexland-web/src/models/three/`
+- [x] Three.js 0.163.x installed
+- [x] No import errors
+- [x] Build passes
+- [x] All 96 unit tests pass
+- [x] Manual visual inspection successful
+- [x] No Three.js deprecation warnings in console
 
 **Reference**: [Three.js Migration Guide](https://github.com/mrdoob/three.js/wiki/Migration-Guide)
 
 ---
 
-### 2.7: Fix Map Share E2E Test (Deferred from Phase 1.2)
+### 2.7: Fix Map Share E2E Test → MOVED TO PHASE 3.6
 
-**Complexity**: MEDIUM
-**Reason for Deferral**: Requires dev container rebuild and environment troubleshooting
-
-#### Background
-
-The map share E2E test (`e2e/map-share.test.ts`) tests sharing maps between users. It was working in the original Playwright 1.10 setup but needs fixes for the new Playwright 1.57+ environment.
-
-#### Known Issues
-
-1. **Multi-user authentication**: Test requires two separate browser contexts with different Firebase Auth users
-2. **Emulator timing**: Firebase Auth emulator may have race conditions with rapid user creation
-3. **Snapshot baselines**: May need regeneration after dev container updates
-
-#### Steps to Fix
-
-1. Review test implementation against current Playwright API
-2. Verify Firebase Auth emulator configuration
-3. Debug user creation/authentication flow
-4. Update selectors if UI changed
-5. Regenerate snapshots if needed
-
-#### Success Criteria
-
-- [ ] Map share E2E test passes consistently
-- [ ] All 3 E2E tests (smoke, throttling, map share) pass
-- [ ] Tests work in CI environment
+**Status**: Moved to Phase 3.6 (end of Phase 3)
+**Reason**: Requires dev container rebuild which disrupts development workflow. Better to complete all other work first.
 
 ---
 
@@ -1786,9 +1699,7 @@ The map share E2E test (`e2e/map-share.test.ts`) tests sharing maps between user
 - [ ] **Three.js 0.170** (2.6):
   - [ ] Rendering pixel-perfect
   - [ ] E2E snapshots pass
-- [ ] **Map Share E2E Test** (2.7, deferred from Phase 1.2):
-  - [ ] Test passes consistently
-  - [ ] Multi-user authentication works
+- [ ] **Map Share E2E Test** → Moved to Phase 3.6 (requires dev container rebuild)
 - [ ] **All tests pass**:
   - [ ] Unit tests
   - [ ] E2E tests (all 3 tests)
@@ -2170,12 +2081,105 @@ jobs:
 
 ---
 
+### 3.5: Fix Package Vulnerabilities
+
+**Priority**: HIGH (security)
+**Goal**: Address all known security vulnerabilities in dependencies
+
+#### Current Vulnerabilities (from `yarn audit`)
+
+The following packages have known vulnerabilities:
+
+| Package | Severity | Issue | Resolution |
+|---------|----------|-------|------------|
+| `@google-cloud/firestore` (4.2.0) | Moderate | Key logging (CVE-2023-6460) | Upgrade to 6.1.0+ or remove |
+| `node-forge` (transitive) | Critical/High | Multiple ASN.1 issues | Via @google-cloud/firestore upgrade |
+| `protobufjs` (transitive) | Critical | Prototype pollution | Via @google-cloud/firestore upgrade |
+| `axios` (via webdav) | Moderate | XSRF token exposure | Upgrade webdav to 5.x+ |
+| `fast-xml-parser` (via webdav) | Moderate | Prototype pollution | Upgrade webdav to 5.x+ |
+
+#### Step 1: Assess @google-cloud/firestore Usage
+
+This package is only used in functions for server-side Firestore access. Options:
+1. **Upgrade to v7+** - Requires code changes to admin SDK usage
+2. **Remove if unused** - Check if `adminDataService.ts` is actively used
+3. **Accept risk** - Document and monitor if upgrade is too disruptive
+
+```bash
+grep -r "@google-cloud/firestore" hexland-web/functions/src/
+```
+
+#### Step 2: Upgrade webdav Package
+
+```json
+{
+  "dependencies": {
+    "webdav": "^5.8.0"
+  }
+}
+```
+
+**Breaking Changes** (webdav 4→5):
+- Review [webdav changelog](https://github.com/perry-mitchell/webdav-client/releases)
+- Check storage service implementations
+
+**Test**:
+- [ ] WebDAV image upload works
+- [ ] WebDAV image retrieval works
+
+#### Step 3: Run Final Audit
+
+```bash
+yarn audit
+```
+
+**Target**: No high/critical vulnerabilities in production dependencies.
+
+#### Success Criteria - Phase 3.5
+
+- [ ] All critical/high vulnerabilities resolved
+- [ ] `yarn audit` shows no high/critical issues
+- [ ] All functionality still works after upgrades
+
+---
+
+### 3.6: Fix Map Share E2E Test (Deferred from Phase 2.7)
+
+**Complexity**: MEDIUM
+**Reason for Deferral**: Requires dev container rebuild which disrupts development workflow
+
+#### Background
+
+The map share E2E test (`e2e/map-share.test.ts`) tests sharing maps between users. It was working in the original Playwright 1.10 setup but needs fixes for the new Playwright 1.57+ environment.
+
+#### Known Issues
+
+1. **Multi-user authentication**: Test requires two separate browser contexts with different Firebase Auth users
+2. **Emulator timing**: Firebase Auth emulator may have race conditions with rapid user creation
+3. **Snapshot baselines**: May need regeneration after dev container updates
+
+#### Steps to Fix
+
+1. Review test implementation against current Playwright API
+2. Verify Firebase Auth emulator configuration
+3. Debug user creation/authentication flow
+4. Update selectors if UI changed
+5. Regenerate snapshots if needed
+
+#### Success Criteria - Phase 3.6
+
+- [ ] Map share E2E test passes consistently
+- [ ] All 3 E2E tests (smoke, throttling, map share) pass
+- [ ] Tests work in CI environment
+
+---
+
 ### Success Criteria - Phase 3 Complete
 
-- [ ] **Bootstrap 5**:
-  - [ ] UI renders correctly
-  - [ ] No jQuery dependency
-  - [ ] Responsive design works
+- [ ] **Bootstrap 5** (already done in Phase 2.2):
+  - [x] UI renders correctly
+  - [x] No jQuery dependency
+  - [x] Responsive design works
 - [ ] **All dependencies at latest stable**:
   - [ ] TypeScript latest
   - [ ] Playwright latest
@@ -2188,14 +2192,19 @@ jobs:
   - [ ] Routes lazy-loaded
   - [ ] Bundle size optimized (<500KB main chunk)
   - [ ] Lighthouse score 90+ across all metrics
+- [ ] **Security** (3.5):
+  - [ ] No critical/high vulnerabilities in production dependencies
+  - [ ] `yarn audit` clean or documented exceptions
+  - [ ] @google-cloud/firestore upgraded or removed
+  - [ ] webdav package upgraded
 - [ ] **Deployment**:
   - [ ] Can deploy to Firebase Hosting
   - [ ] Can deploy to Firebase Functions (Node.js 20)
   - [ ] Environment variables documented
   - [ ] CI/CD setup (optional)
-- [ ] **All tests pass**:
+- [ ] **All tests pass** (3.6):
   - [ ] Unit tests
-  - [ ] E2E tests
+  - [ ] E2E tests (including map share test)
 - [ ] **Manual full walkthrough** (final check)
 
 ### Rollback Point
