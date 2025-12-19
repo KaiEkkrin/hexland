@@ -8,7 +8,7 @@ module.exports = {
             testEnvironment: 'node',
             testMatch: ['**/functions.test.ts'],
             maxWorkers: 1,
-            setupFilesAfterEnv: ['<rootDir>/jest.setup.js']
+            setupFilesAfterEnv: ['<rootDir>/jest.setup.cjs']
         },
         {
             // All other tests can run in parallel
@@ -17,7 +17,7 @@ module.exports = {
             preset: 'ts-jest',
             testEnvironment: 'node',
             testPathIgnorePatterns: ['functions.test.ts'],
-            setupFilesAfterEnv: ['<rootDir>/jest.setup.js']
+            setupFilesAfterEnv: ['<rootDir>/jest.setup.cjs']
         }
     ]
 };

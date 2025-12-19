@@ -40,7 +40,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "jest",
-    "test:unit": "jest --config ./unit/jest.config.js --watchAll",
+    "test:unit": "jest --config ./unit/jest.config.cjs --watchAll",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",

@@ -1,6 +1,11 @@
 import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+// ES module equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // A quick thing for handling the OOB codes endpoint on the authentication emulator.
 
