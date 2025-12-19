@@ -19,7 +19,8 @@ test.describe('Basic tests', () => {
     // Navigate to home page and accept cookies before each test
     await page.goto('/');
     await expect(page.locator('.Introduction-image')).toBeVisible();
-    await page.click('.App-consent-card .btn-success');
+    // Use force: true because Firebase emulator warning banner can overlap the consent card
+    await page.click('.App-consent-card .btn-success', { force: true });
   });
 
   test('view front page', async ({ page }, testInfo) => {
@@ -94,7 +95,8 @@ test.describe('Basic tests', () => {
         // Set up second page
         await page2.goto('/');
         await expect(page2.locator('.Introduction-image')).toBeVisible();
-        await page2.click('.App-consent-card .btn-success');
+        // Use force: true because Firebase emulator warning banner can overlap the consent card
+        await page2.click('.App-consent-card .btn-success', { force: true });
 
         // Sign up a new user
         const user = await Util.signUp(page, deviceName, 'User');
@@ -177,7 +179,7 @@ test.describe('Basic tests', () => {
           // Make sure this map looks right too
           await expect(page2.locator('text=The map owner has not assigned you any tokens')).toBeVisible();
           await Util.takeAndVerifyScreenshot(page2, browserName, deviceName, 'share-joined-map');
-          await page2.click('.toast-header .close');
+          await page2.click('.toast-header .btn-close');
 
           // Check the player list
           await page2.click('[title="Players"]');

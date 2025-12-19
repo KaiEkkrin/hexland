@@ -117,7 +117,7 @@ export async function signUp(page: Page, deviceName: string, prefix?: string | u
 
   // A verification email should have been sent (click the toast off)
   await expect(page.locator(`text="A verification email has been sent to ${user.email}"`)).toBeVisible();
-  await page.click('.toast-header .close');
+  await page.click('.toast-header .btn-close');
   return user;
 }
 
@@ -223,7 +223,7 @@ export async function verifyMap(
     await expect(page.locator('.card-text').filter({ hasText: adventureDescription })).toBeVisible();
   } else {
     // Click off the error.  I can continue, but need to navigate back to the adventure
-    await page.click('.toast-header .close');
+    await page.click('.toast-header .btn-close');
     await page.click('text="Open adventure"');
   }
 }
