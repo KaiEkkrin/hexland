@@ -34,7 +34,7 @@ export class StorageReference implements IStorageReference {
     await deleteObject(this._ref);
   }
 
-  async download(destination: string): Promise<void> {
+  async download(_destination: string): Promise<void> {
     throw Error("Not supported");
   }
 
@@ -50,7 +50,7 @@ export class StorageReference implements IStorageReference {
     });
   }
 
-  async upload(source: string, metadata: { contentType: string }): Promise<void> {
+  async upload(_source: string, _metadata: { contentType: string }): Promise<void> {
     throw Error("Not supported");
   }
 }

@@ -137,7 +137,7 @@ export class MapImages extends Drawn implements IIdDictionary<IMapImage> {
     super(geometry, redrawFlag);
 
     // This is a simple square at [0..1]
-    this._bufferGeometry = [0, 1, 2, 3].map(_ => createSquareBufferGeometry(z));
+    this._bufferGeometry = [0, 1, 2, 3].map(_i => createSquareBufferGeometry(z));
 
     // ...with the UVs inverted in Y, since we draw with 0 at the top
     this._bufferGeometry[0].setAttribute('uv', new THREE.BufferAttribute(new Float32Array([

@@ -71,7 +71,7 @@ export class DragRectangle implements IDragRectangle {
   createFilter() {
     if (this._start === undefined || this._outlined.scale.x < 1 || this._outlined.scale.y < 1) {
       // There definitely isn't anything to select
-      return (c: GridCoord) => false;
+      return (_c: GridCoord) => false;
     }
 
     // To achieve this, I need to get the drag rectangle into world co-ordinates,

@@ -327,7 +327,7 @@ function Map() {
     }
   }, [stateMachine, anEditorIsOpen]);
 
-  const handleWindowResize = useCallback((ev: UIEvent) => { stateMachine?.resize(); }, [stateMachine]);
+  const handleWindowResize = useCallback((_ev: UIEvent) => { stateMachine?.resize(); }, [stateMachine]);
 
   // We need an event listener for the window resize so that we can update the drawing,
   // and for the keyboard and wheel events so that we can implement UI functionality with them.

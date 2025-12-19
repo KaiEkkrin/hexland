@@ -27,6 +27,15 @@ export default tseslint.config(
       'eqeqeq': ['warn', 'always'],
       'no-var': 'warn',
       'prefer-const': 'warn',
+      // Allow unused vars prefixed with underscore
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
     },
   },
 );

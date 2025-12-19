@@ -20,7 +20,7 @@ function NegativeColour(props: INegativeColourProps & { parentId: string }) {
   return (
     <ToggleButton id={`${props.parentId}-neg`} type="radio" variant="dark" key={-1} value={-1}
       checked={props.selectedColour === -1}
-      onChange={(e) => props.setSelectedColour(-1)}>
+      onChange={(_e) => props.setSelectedColour(-1)}>
       <FontAwesomeIcon icon={faSquare} color="black" />
     </ToggleButton>
   );
@@ -42,7 +42,7 @@ function ColourSelection(props: IColourSelectionProps) {
       {hexColours.map((c, i) =>
         <ToggleButton id={`${props.id}-${i}`} type="radio" variant="dark" key={i} value={i}
           checked={props.selectedColour === i}
-          onChange={e => props.setSelectedColour(i)}>
+          onChange={_e => props.setSelectedColour(i)}>
           <FontAwesomeIcon icon={faSquare} color={c} />
         </ToggleButton>
       )}

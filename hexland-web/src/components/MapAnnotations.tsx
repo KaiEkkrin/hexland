@@ -28,7 +28,7 @@ interface IMapPopoverProps {
 
 // See https://react-bootstrap.github.io/components/overlays/#tooltips
 const UpdatingPopover = forwardRef<HTMLDivElement, IMapPopoverProps>(
-  ({ children, left, bottom, ...props }, ref) => {
+  ({ children, left: _left, bottom: _bottom, ...props }, ref) => {
     return (
       <Popover ref={ref} {...props}>
         <Popover.Body>{children as React.ReactNode}</Popover.Body>

@@ -281,11 +281,11 @@ export class VertexHighlighter extends DragHighlighter<GridVertex, IFeature<Grid
     return a === undefined ? "undefined" : vertexString(a);
   }
 
-  protected createFeatureAdd(position: GridVertex, props: DragProperties) {
+  protected createFeatureAdd(_position: GridVertex, _props: DragProperties) {
     return undefined;
   }
 
-  protected createFeatureRemove(position: GridVertex) {
+  protected createFeatureRemove(_position: GridVertex) {
     return undefined;
   }
 

@@ -171,7 +171,7 @@ export class MapUi {
           break;
 
         case EditMode.Token:
-        case EditMode.CharacterToken:
+        case EditMode.CharacterToken: {
           newState.tokenToEdit = this._stateMachine?.getToken(cp);
           newState.tokenToEditPosition = cp;
 
@@ -180,6 +180,7 @@ export class MapUi {
           newState.showCharacterTokenEditor = showCharacterTokenEditor;
           newState.showTokenEditor = showTokenEditor;
           break;
+        }
 
         case EditMode.Notes:
           newState.showNoteEditor = true;

@@ -595,7 +595,7 @@ export class MapStateMachine {
         const startVertex = this.getClosestVertexPosition(this._imageMoveDragStart);
         const targetVertex = this.getClosestVertexPosition(cp);
         if (!startVertex || !targetVertex || coordsEqual(startVertex, targetVertex)) {
-          return (anchor: Anchor) => undefined;
+          return (_anchor: Anchor) => undefined;
         }
 
         const baseVertex = startVertex.vertex;
@@ -638,12 +638,13 @@ export class MapStateMachine {
         return (anchor: Anchor) => {
           let moved: Anchor | undefined = undefined;
           switch (anchor.anchorType) {
-            case 'vertex':
+            case 'vertex': {
               const newPosition =
                 this._gridGeometry.createVertexCentre(this._scratchVector1, anchor.position, 0)
                 .add(pixelDelta);
               moved = { anchorType: 'pixel', x: newPosition.x, y: newPosition.y };
               break;
+            }
 
             case 'pixel':
               moved = { anchorType: 'pixel', x: anchor.x + pixelDelta.x, y: anchor.y + pixelDelta.y };
@@ -1107,9 +1108,11 @@ export class MapStateMachine {
     if (shiftKey) {
       this._dragRectangle.start(cp);
     }
-    isPlayerArea ?
-      this._playerFaceHighlighter.dragStart(this._drawing.getGridCoordAt(cp), { colour, stripe }) :
+    if (isPlayerArea) {
+      this._playerFaceHighlighter.dragStart(this._drawing.getGridCoordAt(cp), { colour, stripe });
+    } else {
       this._faceHighlighter.dragStart(this._drawing.getGridCoordAt(cp), { colour, stripe });
+    }
   }
 
   flipToken(token: ITokenProperties): Change[] | undefined {

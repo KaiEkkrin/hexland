@@ -362,7 +362,7 @@ function NavLogin({ expanded }: { expanded: boolean }) {
       id: uuidv4(),
       record: { title: "Password changed", message: "Password change was successful" }
     }))
-    .catch(e => statusContext.toasts.next({
+    .catch(_e => statusContext.toasts.next({
       id: uuidv4(),
       record: { title: "Password change failed", message: "Check your old password was entered correctly." }
     }));

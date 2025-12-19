@@ -4,7 +4,7 @@
 **Document Version**: 2.0
 **Date**: December 2025
 **Status**: Phase 1 & 2 complete, Phase 3 in progress
-**Last Updated**: Phase 2.5 Three.js upgrade complete
+**Last Updated**: Phase 3.2 ESLint and tsconfig modernization complete
 
 ---
 
@@ -97,11 +97,18 @@ TypeScript 6.0 is a "bridge" release between 5.x and the native TypeScript 7.0 (
 - `@typescript-eslint/*` peer dependency: `>=4.8.4 <6.0.0` (no TS6 support)
 
 **Breaking changes to prepare for**:
-- `moduleResolution: "node"` → `"bundler"` (web) or `"nodenext"` (functions)
+- ~~`moduleResolution: "node"` → `"bundler"` (web) or `"nodenext"` (functions)~~ ✅ Already updated
 - `--strict` becomes default (already enabled - no impact)
-- `--target es5` removed (already using es6/ES2022 - no impact)
+- ~~`--target es5` removed (already using es6/ES2022 - no impact)~~ ✅ Now using ES2022
 
 **Action**: Wait for TS 6.0 release and ecosystem support before upgrading. Consider upgrading Jest 26 → 29 as preparatory work.
+
+**Completed preparatory work**:
+- ✅ Updated `tsconfig.json`: `target` es6 → ES2022, `moduleResolution` node → bundler
+- ✅ Updated `e2e/tsconfig.json`: Added ES2022 target and bundler moduleResolution
+- ✅ Fixed ES module compatibility (`__dirname` → `import.meta.url` in e2e/oob.ts)
+- ✅ Added `"type": "module"` to package.json
+- ✅ Renamed Jest config files to `.cjs` for CommonJS compatibility
 
 #### Playwright (Latest)
 
@@ -126,19 +133,27 @@ yarn test:e2e
 
 ### 3.2: Code Quality
 
-#### ESLint 9.x
+#### ✅ ESLint 9.x (Complete)
+
+Added ESLint 9.39.2 to web application with flat config:
 
 ```json
 {
   "devDependencies": {
-    "eslint": "^9.0.0",
-    "@typescript-eslint/eslint-plugin": "^7.0.0",
-    "@typescript-eslint/parser": "^7.0.0"
+    "eslint": "^9.39.2",
+    "@eslint/js": "^9.39.2",
+    "globals": "^16.2.0",
+    "typescript-eslint": "^8.50.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.26"
   }
 }
 ```
 
-**Update** `.eslintrc.js` for ESLint 9 flat config if needed.
+- ✅ Created `eslint.config.js` with ESLint 9 flat config
+- ✅ Added `yarn lint` script
+- ✅ Functions already had ESLint 9.x configured
+- ⚠️ 275 lint issues (141 errors, 134 warnings) - mostly `no-explicit-any` and `no-unused-vars`
 
 #### Prettier (Add if not present)
 
@@ -166,15 +181,15 @@ yarn test:e2e
 npx prettier --write "src/**/*.{ts,tsx,css,json}"
 ```
 
-#### TypeScript Strict Mode
+#### ✅ TypeScript Strict Mode (Already Enabled)
 
-**Update** `tsconfig.json`:
+`tsconfig.json` already has `"strict": true`. Additional strict options available but not yet enabled:
 ```json
 {
   "compilerOptions": {
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "noPropertyAccessFromIndexSignature": true
+    "strict": true,  // ✅ Already enabled
+    "noUncheckedIndexedAccess": true,  // Optional: stricter index access
+    "noPropertyAccessFromIndexSignature": true  // Optional: require bracket notation
   }
 }
 ```
@@ -383,9 +398,9 @@ The map share E2E test tests sharing maps between users. Needs fixes for Playwri
 
 - [ ] **All dependencies at latest stable** (TypeScript 6.0 deferred until release)
 - [ ] **Code quality**:
-  - [ ] ESLint 9.x passing
+  - [x] ESLint 9.x configured (275 issues to fix)
   - [ ] Prettier formatting applied
-  - [ ] TypeScript strict mode enabled
+  - [x] TypeScript strict mode enabled
 - [ ] **Performance**:
   - [ ] Routes lazy-loaded
   - [ ] Bundle size optimized (<500KB main chunk)
@@ -398,8 +413,8 @@ The map share E2E test tests sharing maps between users. Needs fixes for Playwri
   - [ ] Can deploy to Firebase Functions (Node.js 20)
   - [ ] Environment variables documented
 - [ ] **All tests pass** (3.6):
-  - [ ] Unit tests
-  - [ ] E2E tests (including map share test)
+  - [x] Unit tests (96 passing)
+  - [ ] E2E tests (16 passing, 8 failing - map share test)
 - [ ] **Manual full walkthrough**
 
 ---

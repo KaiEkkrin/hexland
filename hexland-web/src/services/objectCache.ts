@@ -99,7 +99,7 @@ export class ObjectCache<T> {
     while (entry !== undefined) {
       try {
         return await this.acquireEntry(id, entry);
-      } catch (e) {
+      } catch (_e) {
         // Remove invalid entries so we can try again
         this.removeEntry(id, entry);
 

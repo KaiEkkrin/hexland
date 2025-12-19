@@ -7,9 +7,9 @@ import { IAnalytics } from '../services/interfaces';
 export const AnalyticsContext = createContext<IAnalyticsContext>({
   analytics: undefined,
   enabled: undefined,
-  setEnabled: (enabled: boolean | undefined) => {},
-  logError: (message: string, e: any, fatal?: boolean | undefined) => {},
-  logEvent: (event: string, parameters: any) => {}
+  setEnabled: (_enabled: boolean | undefined) => {},
+  logError: (_message: string, _e: unknown, _fatal?: boolean | undefined) => {},
+  logEvent: (_event: string, _parameters: unknown) => {}
 });
 
 const enabledKey = "analyticsEnabled";
