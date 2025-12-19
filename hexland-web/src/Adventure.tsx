@@ -33,7 +33,7 @@ import Container from 'react-bootstrap/Container';
 import Modal from 'react-bootstrap/Modal';
 import Row from 'react-bootstrap/Row';
 
-import { Link, RouteComponentProps, useHistory } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { faImage } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -46,7 +46,7 @@ function Adventure({ adventureId }: IAdventureProps) {
   const { analytics, logError } = useContext(AnalyticsContext);
   const { profile } = useContext(ProfileContext);
   const { adventure, players } = useContext(AdventureContext);
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const userPolicy = useMemo(
     () => profile === undefined ? undefined : getUserPolicy(profile.level),
@@ -310,20 +310,20 @@ function Adventure({ adventureId }: IAdventureProps) {
     deleteAdventure(dataService, user?.uid, adventureId)
       .then(() => {
         console.debug("Adventure " + adventureId + " successfully deleted");
-        history.replace("/");
+        navigate("/", { replace: true });
       })
       .catch(e => logError("Error deleting adventure " + adventureId, e));
-  }, [dataService, user, adventureId, history, handleModalClose, logError]);
+  }, [dataService, user, adventureId, navigate, handleModalClose, logError]);
 
   const handleLeaveAdventureSave = useCallback(() => {
     handleModalClose();
     leaveAdventure(dataService, user?.uid, adventureId)
       .then(() => {
         console.debug("Successfully left adventure " + adventureId);
-        history.replace("/");
+        navigate("/", { replace: true });
       })
       .catch(e => logError("Error leaving adventure " + adventureId, e));
-  }, [dataService, user, logError, adventureId, handleModalClose, history]);
+  }, [dataService, user, logError, adventureId, handleModalClose, navigate]);
 
   // Support for the character list
   const myPlayer = useMemo(() => players.filter(p => p.playerId === user?.uid), [players, user]);
@@ -583,10 +583,11 @@ function Adventure({ adventureId }: IAdventureProps) {
   );
 }
 
-function AdventurePage(props: RouteComponentProps<IAdventureProps>) {
+function AdventurePage() {
+  const { adventureId } = useParams<{ adventureId: string }>();
   return (
     <RequireLoggedIn>
-      <Adventure adventureId={props.match.params.adventureId} />
+      <Adventure adventureId={adventureId ?? ''} />
     </RequireLoggedIn>
   );
 }

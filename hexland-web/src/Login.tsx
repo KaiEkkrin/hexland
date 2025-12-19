@@ -16,7 +16,7 @@ import Modal from 'react-bootstrap/Modal';
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 
 interface ILoginMessageProps {
@@ -179,7 +179,7 @@ function Login() {
   const { profile, expectNewUser } = useContext(ProfileContext);
   const { logError } = useContext(AnalyticsContext);
   const { toasts } = useContext(StatusContext);
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [loginFailedVisible, setLoginFailedVisible] = useState(false);
@@ -217,13 +217,9 @@ function Login() {
 
   const finishLogin = useCallback((success: boolean) => {
     if (success) {
-      if (history.length > 0) {
-        history.goBack();
-      } else {
-        history.replace("/");
-      }
+      navigate(-1);
     }
-  }, [history]);
+  }, [navigate]);
 
   const handleLoginError = useCallback((e: any) => {
     setLoginFailedVisible(true);

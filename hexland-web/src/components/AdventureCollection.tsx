@@ -9,7 +9,7 @@ import { UserContext } from './UserContextProvider';
 
 import { IAdventureSummary } from '../data/profile';
 
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 
 interface IAdventureCollectionProps {
@@ -22,7 +22,7 @@ function AdventureCollection(props: IAdventureCollectionProps) {
   const userContext = useContext(UserContext);
   const analyticsContext = useContext(AnalyticsContext);
   const statusContext = useContext(StatusContext);
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [editName, setEditName] = useState("New adventure");
   const [editDescription, setEditDescription] = useState("");
@@ -42,7 +42,7 @@ function AdventureCollection(props: IAdventureCollectionProps) {
 
     try {
       const id = await functionsService.createAdventure(editName, editDescription);
-      history.replace('/adventure/' + id);
+      navigate('/adventure/' + id, { replace: true });
     } catch (e: any) {
       setShowEditAdventure(false);
       analyticsContext.logError('Failed to create adventure', e);
@@ -53,7 +53,7 @@ function AdventureCollection(props: IAdventureCollectionProps) {
         } });
       }
     }
-  }, [analyticsContext, editName, editDescription, history, statusContext, userContext]);
+  }, [analyticsContext, editName, editDescription, navigate, statusContext, userContext]);
 
   return (
     <div>

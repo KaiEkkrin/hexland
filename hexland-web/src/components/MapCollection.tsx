@@ -14,7 +14,7 @@ import { IAdventureSummary } from '../data/profile';
 
 import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import { v4 as uuidv4 } from 'uuid';
 import fluent from 'fluent-iterable';
@@ -31,7 +31,7 @@ function MapCollection({ adventures, maps, showNewMap, deleteMap, pickImage }: I
   const { logError } = useContext(AnalyticsContext);
   const { toasts } = useContext(StatusContext);
   const { functionsService, user } = useContext(UserContext);
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [showCloneMap, setShowCloneMap] = useState(false);
   const [showDeleteMap, setShowDeleteMap] = useState(false);
@@ -79,7 +79,7 @@ function MapCollection({ adventures, maps, showNewMap, deleteMap, pickImage }: I
 
     try {
       const id = await functionsService.createMap(adventureId, map.name, map.description, map.ty, map.ffa);
-      history.replace('/adventure/' + adventureId + '/map/' + id);
+      navigate('/adventure/' + adventureId + '/map/' + id, { replace: true });
     } catch (e: any) {
       handleModalClose();
       logError('Failed to create map', e);
@@ -90,7 +90,7 @@ function MapCollection({ adventures, maps, showNewMap, deleteMap, pickImage }: I
         }});
       }
     }
-  }, [logError, handleModalClose, history, toasts, functionsService]);
+  }, [logError, handleModalClose, navigate, toasts, functionsService]);
 
   const handleDeleteMapSave = useCallback(() => {
     if (editId !== undefined) {

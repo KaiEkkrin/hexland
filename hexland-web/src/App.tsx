@@ -20,7 +20,7 @@ import StatusContextProvider from './components/StatusContextProvider';
 import ToastCollection from './components/ToastCollection';
 import UserContextProvider from './components/UserContextProvider';
 
-import { Route, Switch } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 
 function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
   return (
@@ -33,15 +33,15 @@ function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
                 <Routing {...props}>
                   <AdventureContextProvider>
                     <MapContextProvider>
-                      <Switch>
-                        <Route exact path="/" component={Home} />
-                        <Route exact path="/all" component={All} />
-                        <Route exact path="/adventure/:adventureId" component={AdventurePage} />
-                        <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
-                        <Route exact path="/invite/:inviteId" component={InvitePage} />
-                        <Route exact path="/login" component={Login} />
-                        <Route exact path="/shared" component={Shared} />
-                      </Switch>
+                      <Routes>
+                        <Route path="/" element={<Home />} />
+                        <Route path="/all" element={<All />} />
+                        <Route path="/adventure/:adventureId" element={<AdventurePage />} />
+                        <Route path="/adventure/:adventureId/map/:mapId" element={<MapPage />} />
+                        <Route path="/invite/:inviteId" element={<InvitePage />} />
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/shared" element={<Shared />} />
+                      </Routes>
                     </MapContextProvider>
                   </AdventureContextProvider>
                 </Routing>

@@ -31,7 +31,7 @@ const UpdatingPopover = forwardRef<HTMLDivElement, IMapPopoverProps>(
   ({ children, left, bottom, ...props }, ref) => {
     return (
       <Popover ref={ref} {...props}>
-        <Popover.Body>{children}</Popover.Body>
+        <Popover.Body>{children as React.ReactNode}</Popover.Body>
       </Popover>
     );
   }

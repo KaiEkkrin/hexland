@@ -13,7 +13,7 @@ import { IInvite } from './data/invite';
 
 import Button from 'react-bootstrap/Button';
 
-import { RouteComponentProps, useHistory } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 
 interface IInvitePageProps {
@@ -25,7 +25,7 @@ function Invite({ inviteId }: IInvitePageProps) {
   const { profile } = useContext(ProfileContext);
   const analyticsContext = useContext(AnalyticsContext);
   const statusContext = useContext(StatusContext);
-  const history = useHistory();
+  const navigate = useNavigate();
 
   // Because the `joinAdventure` function is likely to be cold-started and may take a
   // little while to run, we change the button to "Joining..." while it's happening:
@@ -55,7 +55,7 @@ function Invite({ inviteId }: IInvitePageProps) {
     userContext.functionsService?.joinAdventure(inviteId)
       .then(adventureId => {
         analyticsContext.analytics?.logEvent("join_group", { "group_id": adventureId });
-        history.replace("/adventure/" + adventureId);
+        navigate("/adventure/" + adventureId, { replace: true });
       })
       .catch(e => {
         setButtonDisabled(false);
@@ -67,7 +67,7 @@ function Invite({ inviteId }: IInvitePageProps) {
           }});
         }
       });
-  }, [analyticsContext, userContext, inviteId, history, setButtonDisabled, statusContext]);
+  }, [analyticsContext, userContext, inviteId, navigate, setButtonDisabled, statusContext]);
 
   return (
     <div>
@@ -82,10 +82,11 @@ function Invite({ inviteId }: IInvitePageProps) {
   );
 }
 
-function InvitePage(props: RouteComponentProps<IInvitePageProps>) {
+function InvitePage() {
+  const { inviteId } = useParams<{ inviteId: string }>();
   return (
     <RequireLoggedIn>
-      <Invite inviteId={props.match.params.inviteId} />
+      <Invite inviteId={inviteId ?? ''} />
     </RequireLoggedIn>
   );
 }

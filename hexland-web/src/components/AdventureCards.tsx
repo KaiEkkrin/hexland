@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import * as React from 'react';
 import '../App.css';
 
@@ -11,7 +11,7 @@ import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
 
 import { LinkContainer } from 'react-router-bootstrap';
-import Measure from 'react-measure';
+import useMeasure from 'react-use-measure';
 import ImageCardContent from './ImageCardContent';
 
 // CardStyle is exported for use by other components that need consistent card sizing
@@ -125,23 +125,19 @@ const AdventureCardsLarge = ({ showNewAdventureCard, handleCreate, adventures }:
 }
 
 function AdventureCards(props: IAdventureCardsProps) {
-  const [width, setWidth] = useState<number | undefined>(undefined);
+  const [measureRef, bounds] = useMeasure();
   const cards = useMemo(
-    () => width === undefined || width <= 400 ? (
+    () => bounds.width === 0 || bounds.width <= 400 ? (
       <AdventureCardsCollapsing {...props} />
     ) : (
       <AdventureCardsLarge {...props} />
-    ), [props, width]
+    ), [props, bounds.width]
   );
 
   return (
-    <Measure bounds onResize={r => setWidth(r.bounds?.width)}>
-      {({ measureRef }) => (
-        <div ref={measureRef}>
-          {cards}
-        </div>
-      )}
-    </Measure>
+    <div ref={measureRef}>
+      {cards}
+    </div>
   );
 }
 

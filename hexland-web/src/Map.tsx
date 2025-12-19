@@ -263,8 +263,8 @@ function Map() {
 
   const editImageFromMenu = useCallback(() => ui?.editImage(), [ui]);
   const editNoteFromMenu = useCallback(() => ui?.editNote(), [ui]);
-  const editTokenFromMenu = useCallback(id => ui?.editToken(id), [ui]);
-  const editCharacterTokenFromMenu = useCallback((id) => ui?.editToken(id, true), [ui]);
+  const editTokenFromMenu = useCallback((id: string | undefined) => { if (id) ui?.editToken(id); }, [ui]);
+  const editCharacterTokenFromMenu = useCallback((id: string | undefined) => { if (id) ui?.editToken(id, true); }, [ui]);
 
   const flipTokenFromMenu = useCallback(() => {
     console.debug("called flipToken with x " + uiState.contextMenuX + ", y " + uiState.contextMenuY);

@@ -1,4 +1,4 @@
-import { Fragment, useContext, useMemo, useState } from 'react';
+import { Fragment, useContext, useMemo } from 'react';
 import '../App.css';
 
 import ExpansionToggle from './ExpansionToggle';
@@ -13,7 +13,7 @@ import Card from 'react-bootstrap/Card';
 import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import Tooltip from 'react-bootstrap/Tooltip';
 
-import Measure from 'react-measure';
+import useMeasure from 'react-use-measure';
 import { LinkContainer } from 'react-router-bootstrap';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -159,8 +159,8 @@ export interface IMapCardsProps {
 }
 
 function MapCards(props: IMapCardsProps) {
-  const [width, setWidth] = useState<number | undefined>(undefined);
-  const collapsing = useMemo(() => width === undefined || width <= 400, [width]);
+  const [measureRef, bounds] = useMeasure();
+  const collapsing = useMemo(() => bounds.width === 0 || bounds.width <= 400, [bounds.width]);
 
   // don't offer the option to clone a map if we wouldn't offer the option of a new map
   const cloneMap = useMemo(() => props.showNewMapCard ? props.cloneMap : undefined, [props]);
@@ -188,13 +188,9 @@ function MapCards(props: IMapCardsProps) {
   }, [props, cloneMap, collapsing]);
 
   return (
-    <Measure bounds onResize={r => setWidth(r.bounds?.width)}>
-      {({ measureRef }) => (
-        <div ref={measureRef}>
-          {cards}
-        </div>
-      )}
-    </Measure>
+    <div ref={measureRef}>
+      {cards}
+    </div>
   );
 }
 

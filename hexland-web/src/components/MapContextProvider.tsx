@@ -15,7 +15,7 @@ import { ProfileContext } from './ProfileContextProvider';
 import { StatusContext } from './StatusContextProvider';
 import { UserContext } from './UserContextProvider';
 
-import { useHistory, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { from, Observable } from 'rxjs';
 import { first, map, scan, share, switchMap } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
@@ -31,7 +31,7 @@ function MapContextProvider(props: IContextProviderProps) {
   const { toasts } = useContext(StatusContext);
   const { spriteManager } = useContext(AdventureContext);
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
 
   // We need to re-create the map lifecycle manager only when the user login changes
@@ -87,7 +87,7 @@ function MapContextProvider(props: IContextProviderProps) {
       });
 
       console.log('[MapContextProvider] Navigating back to home due to error');
-      history.replace('/');
+      navigate('/', { replace: true });
     }
 
     // We're going to do several things with this.
@@ -181,7 +181,7 @@ function MapContextProvider(props: IContextProviderProps) {
       stopWatchingMap?.();
     };
   }, [
-    analytics, history, lcm, location, logError, logEvent,
+    analytics, navigate, lcm, location, logError, logEvent,
     profile, setMapContext, spriteManager, toasts
   ]);
 
