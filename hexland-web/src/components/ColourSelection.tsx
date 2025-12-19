@@ -12,13 +12,13 @@ interface INegativeColourProps {
   setSelectedColour(value: number): void;
 }
 
-function NegativeColour(props: INegativeColourProps) {
+function NegativeColour(props: INegativeColourProps & { parentId: string }) {
   if (props.includeNegative === false) {
     return null;
   }
 
   return (
-    <ToggleButton type="radio" variant="dark" key={-1} value={-1}
+    <ToggleButton id={`${props.parentId}-neg`} type="radio" variant="dark" key={-1} value={-1}
       checked={props.selectedColour === -1}
       onChange={(e) => props.setSelectedColour(-1)}>
       <FontAwesomeIcon icon={faSquare} color="black" />
@@ -38,15 +38,15 @@ interface IColourSelectionProps {
 
 function ColourSelection(props: IColourSelectionProps) {
   return (
-    <ButtonGroup className={props.className} id={props.id} hidden={props.hidden} toggle vertical={props.isVertical === true}>
+    <ButtonGroup className={props.className} id={props.id} hidden={props.hidden} vertical={props.isVertical === true}>
       {hexColours.map((c, i) =>
-        <ToggleButton type="radio" variant="dark" key={i} value={i}
+        <ToggleButton id={`${props.id}-${i}`} type="radio" variant="dark" key={i} value={i}
           checked={props.selectedColour === i}
           onChange={e => props.setSelectedColour(i)}>
           <FontAwesomeIcon icon={faSquare} color={c} />
         </ToggleButton>
       )}
-      <NegativeColour includeNegative={props.includeNegative}
+      <NegativeColour parentId={props.id} includeNegative={props.includeNegative}
         selectedColour={props.selectedColour}
         setSelectedColour={props.setSelectedColour} />
     </ButtonGroup>

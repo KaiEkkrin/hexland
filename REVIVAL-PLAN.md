@@ -1,9 +1,10 @@
 # Wall & Shadow Revival Plan
 
 **Project**: Wall & Shadow (codename: Hexland)
-**Document Version**: 1.2
+**Document Version**: 1.4
 **Date**: December 2025
-**Status**: Revival in progress - Phase 1 complete, Phase 2.1 complete
+**Status**: Revival in progress - Phase 1 complete, Phase 2.1-2.2 complete
+**Last Updated**: Phase 2.2 Bootstrap/react-bootstrap upgrade complete
 
 ## Progress Summary
 
@@ -46,11 +47,46 @@
   - Updated unit tests for @firebase/rules-unit-testing v3 API
   - Jest config uses projects for selective test isolation (functions tests serial, others parallel)
   - All 96 unit tests passing
+- **Phase 2.2**: Bootstrap 4 → 5 + react-bootstrap v1 → v2 complete ✅
+  - bootstrap 4.5.0 → 5.3.0
+  - react-bootstrap 1.5.0 → 2.10.0
+  - Added @popperjs/core 2.11.8 (peer dependency)
+  - Migrated all react-bootstrap v2 breaking changes:
+    - CardDeck removed → replaced with `<div className="card-group">`
+    - Form.Row removed → replaced with Row component
+    - AccordionToggle renamed → useAccordionButton
+    - ToggleButton now requires `id` prop
+    - ButtonGroup `toggle` prop removed
+    - Dropdown `drop="right"` → `drop="end"`
+    - Badge `variant` → `bg`
+    - Dropdown.Menu `alignRight` → `align="end"`
+    - Form `inline` prop removed → CSS d-flex
+  - Migrated all Bootstrap 5 CSS class name changes:
+    - `ml-*` → `ms-*` (margin-start)
+    - `mr-*` → `me-*` (margin-end)
+    - `pl-*` → `ps-*` (padding-start)
+    - `pr-*` → `pe-*` (padding-end)
+  - Build passes, all 78 non-emulator unit tests pass
+  - E2E tests require emulators and are environment-dependent
 
 ### 📋 Not Started
-- **Phase 2.2-2.5**: Remaining modernization (React 18, Router v6, Vite, Three.js 0.170)
-  - ⚠️ Map share E2E test fix moved here (end of phase)
-- **Phase 3**: Polish (Bootstrap 5, performance optimization)
+- **Phase 2.3**: React 17 → 18 (clean upgrade after react-bootstrap v2)
+- **Phase 2.4-2.6**: Router v6, Vite, Three.js 0.170
+  - ⚠️ Map share E2E test fix at end of phase
+- **Phase 3**: Polish (performance optimization, code quality)
+
+### ⚠️ Phase Reordering Note (December 2025)
+
+**Bootstrap/react-bootstrap upgrade moved before React 18** for the following reason:
+
+react-bootstrap v1.x has TypeScript type definitions that are incompatible with React 18's stricter JSX types (specifically, `@types/react` v18 removed erroneous `onPointerEnterCapture`/`onPointerLeaveCapture` properties). Attempting to upgrade React 17→18 while on react-bootstrap v1.x causes pervasive type errors on components like `Modal.Header`.
+
+react-bootstrap v2.x (which requires Bootstrap 5):
+- Supports React 16.14+ (including both React 17 AND React 18)
+- Has fixed React 18/19 type compatibility in v2.10.7+
+- Ships its own TypeScript types (no separate `@types/react-bootstrap`)
+
+Therefore, upgrading Bootstrap/react-bootstrap first, while still on React 17, provides a clean path for the subsequent React 18 upgrade.
 
 ## Recent Improvements (Since Plan Creation)
 
@@ -67,8 +103,12 @@ These improvements ensure the dev environment is production-ready for the modern
 
 ## Next Steps (Recommended Order)
 
-1. **Continue Phase 2** - React 18, Router v6, Vite, Three.js 0.170
-2. **Fix Map Share E2E Test** - At end of Phase 2 (requires dev container rebuild, deferred)
+1. ✅ **Phase 2.2** - Bootstrap 4 → 5 + react-bootstrap v1 → v2 (COMPLETE)
+2. **Phase 2.3** - React 17 → 18 (clean upgrade after react-bootstrap v2)
+3. **Phase 2.4** - React Router v5 → v6
+4. **Phase 2.5** - CRA → Vite
+5. **Phase 2.6** - Three.js 0.137 → 0.170
+6. **Phase 2.7** - Fix Map Share E2E Test (deferred from Phase 1.2)
 
 ---
 
@@ -866,12 +906,178 @@ ls -lh build/static/js/main.*.js  # Should be ~80% smaller
 
 ---
 
-### 2.2: React 17 → React 18
+### 2.2: Bootstrap 4 → 5 + react-bootstrap v1 → v2
 
-**Complexity**: MEDIUM
-**Duration**: 3-5 days
+**Complexity**: MEDIUM-HIGH
+**Duration**: 1 week
 
 #### Background
+
+This phase was moved before React 18 because react-bootstrap v1.x has TypeScript type definitions incompatible with `@types/react` v18. Upgrading to react-bootstrap v2.x (which requires Bootstrap 5) first provides a clean migration path.
+
+**Key insight**: react-bootstrap v2.x supports React 16.14+ (including React 17), so we can upgrade Bootstrap/react-bootstrap while staying on React 17, then upgrade React afterwards.
+
+#### Breaking Changes
+
+**react-bootstrap v1 → v2** ([Migration Guide](https://react-bootstrap.netlify.app/docs/migrating/)):
+
+1. **Component Renames**:
+   - `AccordionToggle` → `AccordionButton`
+   - `PopoverContent` → `PopoverBody`
+   - `PopoverTitle` → `PopoverHeader`
+
+2. **Removed Components**:
+   - `FormFile` - use `<Form.Control type="file" />` instead
+   - `InputGroupPrepend` / `InputGroupAppend` - buttons now direct children
+   - `CardColumns` - dropped entirely
+
+3. **Prop Changes**:
+   - Badge: `variant` → `bg`
+   - Dropdown alignment: `left`/`right` → `start`/`end`
+   - Form: `inline` and `bsPrefix` removed
+   - CloseButton: `label` → `aria-label`
+
+**Bootstrap 4 → 5** ([Migration Guide](https://getbootstrap.com/docs/5.0/migration/)):
+
+1. **Class Name Changes** (RTL support):
+   - `ml-*` / `mr-*` → `ms-*` / `me-*` (margin start/end)
+   - `pl-*` / `pr-*` → `ps-*` / `pe-*` (padding start/end)
+   - `text-left` / `text-right` → `text-start` / `text-end`
+   - `float-left` / `float-right` → `float-start` / `float-end`
+
+2. **Other Class Changes**:
+   - `.no-gutters` → `.g-0`
+   - `.btn-block` → wrap in `.d-grid`
+   - `.form-group` → use margin utilities (`.mb-3`)
+   - `.sr-only` → `.visually-hidden`
+
+3. **jQuery Removed** (not relevant - we use react-bootstrap)
+
+#### Step 1: Update Dependencies
+
+```json
+{
+  "dependencies": {
+    "bootstrap": "^5.3.0",
+    "react-bootstrap": "^2.10.0"
+  }
+}
+```
+
+**Note**: react-bootstrap v2.10+ includes React 18/19 type compatibility fixes.
+
+#### Step 2: Update react-bootstrap Component Usage
+
+**Search for deprecated patterns**:
+```bash
+grep -rn "AccordionToggle\|PopoverContent\|PopoverTitle\|FormFile\|InputGroupPrepend\|InputGroupAppend\|CardColumns" src/
+grep -rn "variant=" src/ | grep Badge  # Check Badge variant usage
+```
+
+**Common fixes**:
+
+```typescript
+// Old v1
+<Badge variant="primary">Text</Badge>
+<InputGroup>
+  <InputGroup.Prepend>
+    <Button>Go</Button>
+  </InputGroup.Prepend>
+  <FormControl />
+</InputGroup>
+
+// New v2
+<Badge bg="primary">Text</Badge>
+<InputGroup>
+  <Button>Go</Button>
+  <FormControl />
+</InputGroup>
+```
+
+#### Step 3: Update Bootstrap CSS Classes
+
+**Search and replace**:
+```bash
+# Find all left/right margin/padding classes
+grep -rn "ml-\|mr-\|pl-\|pr-" src/
+grep -rn "text-left\|text-right" src/
+grep -rn "float-left\|float-right" src/
+grep -rn "no-gutters\|btn-block\|sr-only" src/
+```
+
+**Replacements**:
+| Old (Bootstrap 4) | New (Bootstrap 5) |
+|-------------------|-------------------|
+| `ml-*` | `ms-*` |
+| `mr-*` | `me-*` |
+| `pl-*` | `ps-*` |
+| `pr-*` | `pe-*` |
+| `text-left` | `text-start` |
+| `text-right` | `text-end` |
+| `float-left` | `float-start` |
+| `float-right` | `float-end` |
+| `no-gutters` | `g-0` |
+| `sr-only` | `visually-hidden` |
+
+#### Step 4: Update Custom CSS
+
+Check for any custom CSS that references Bootstrap classes:
+```bash
+grep -rn "bootstrap" src/*.css
+```
+
+#### Step 5: Visual Testing
+
+**Build and run**:
+```bash
+yarn build
+yarn start
+```
+
+**Test key pages**:
+- [ ] Home page
+- [ ] Login page / modals
+- [ ] Adventure list and detail
+- [ ] Map view with controls
+- [ ] All modal dialogs (token editor, map editor, character editor)
+- [ ] Forms (adventure creation, map creation)
+
+#### Success Criteria - Phase 2.2
+
+- [ ] `bootstrap` ^5.3.0 and `react-bootstrap` ^2.10.0 installed
+- [ ] No react-bootstrap deprecation warnings
+- [ ] All Bootstrap class names updated to v5 syntax
+- [ ] `yarn build` succeeds
+- [ ] All unit tests pass
+- [ ] All E2E tests pass (snapshots may need updates)
+- [ ] **Visual inspection**:
+  - [ ] Navbar renders correctly
+  - [ ] Modals appear correctly
+  - [ ] Forms styled properly
+  - [ ] Buttons have correct variants
+  - [ ] Cards and layouts unchanged
+
+**Files Modified**:
+- `/workspaces/hexland/hexland-web/package.json`
+- All `.tsx` files with react-bootstrap imports
+- All files with Bootstrap CSS class names
+
+**References**:
+- [React Bootstrap v2 Migration](https://react-bootstrap.netlify.app/docs/migrating/)
+- [Bootstrap 5 Migration](https://getbootstrap.com/docs/5.0/migration/)
+
+---
+
+### 2.3: React 17 → React 18
+
+**Complexity**: LOW (after react-bootstrap v2 upgrade)
+**Duration**: 1-2 days
+
+#### Background
+
+**Note**: With react-bootstrap v2.10+ already installed (Phase 2.2), the React 18 upgrade should be straightforward with no type compatibility issues.
+
+
 
 [React 18](https://react.dev/blog/2022/03/08/react-18-upgrade-guide) introduced concurrent rendering, automatic batching, and new APIs. The migration is mostly straightforward with a few breaking changes.
 
@@ -972,7 +1178,7 @@ flushSync(() => {
 
 **Likely not needed** for this app, but be aware if behavior changes.
 
-#### Success Criteria - Phase 2.2
+#### Success Criteria - Phase 2.3
 
 - [ ] React 18 root API in use (`createRoot`)
 - [ ] No console warnings about deprecated APIs
@@ -992,7 +1198,7 @@ flushSync(() => {
 
 ---
 
-### 2.3: React Router v5 → v6
+### 2.4: React Router v5 → v6
 
 **Complexity**: MEDIUM-HIGH
 **Duration**: 1 week
@@ -1103,7 +1309,7 @@ Check if [react-router-bootstrap v0.26](https://www.npmjs.com/package/react-rout
 
 **Usage**: Search for `LinkContainer` and similar components, ensure they still work.
 
-#### Success Criteria - Phase 2.3
+#### Success Criteria - Phase 2.4
 
 - [ ] All routes render correctly
 - [ ] Navigation works (links, programmatic navigation)
@@ -1123,7 +1329,7 @@ Check if [react-router-bootstrap v0.26](https://www.npmjs.com/package/react-rout
 
 ---
 
-### 2.4: Create React App → Vite
+### 2.5: Create React App → Vite
 
 **Complexity**: HIGH (complete build system change)
 **Duration**: 1-2 weeks
@@ -1340,7 +1546,7 @@ yarn build  # Should output to build/
 yarn preview  # Serve production build
 ```
 
-#### Success Criteria - Phase 2.4
+#### Success Criteria - Phase 2.5
 
 - [ ] Vite dev server runs on port 5000
 - [ ] Hot Module Replacement (HMR) works
@@ -1374,7 +1580,7 @@ yarn preview  # Serve production build
 
 ---
 
-### 2.5: Three.js 0.137 → 0.170
+### 2.6: Three.js 0.137 → 0.170
 
 **Complexity**: MEDIUM
 
@@ -1464,7 +1670,7 @@ Look for Three.js deprecation warnings. Fix any deprecated API usage.
 - `Geometry` → `BufferGeometry` (likely already done)
 - Material parameter changes (check Three.js migration guide if warnings appear)
 
-#### Success Criteria - Phase 2.5
+#### Success Criteria - Phase 2.6
 
 - [ ] Three.js 0.170.x installed
 - [ ] No import errors
@@ -1486,7 +1692,7 @@ Look for Three.js deprecation warnings. Fix any deprecated API usage.
 
 ---
 
-### 2.6: Fix Map Share E2E Test (Deferred from Phase 1.2)
+### 2.7: Fix Map Share E2E Test (Deferred from Phase 1.2)
 
 **Complexity**: MEDIUM
 **Reason for Deferral**: Requires dev container rebuild and environment troubleshooting
@@ -1519,24 +1725,28 @@ The map share E2E test (`e2e/map-share.test.ts`) tests sharing maps between user
 
 ### Success Criteria - Phase 2 Complete
 
-- [ ] **Firebase v11 modular SDK**:
+- [ ] **Firebase v11 modular SDK** (2.1):
   - [ ] All imports use modular API
   - [ ] Bundle size reduced by ~70-80%
   - [ ] Real-time sync works perfectly (two-browser test)
-- [ ] **React 18**:
+- [ ] **Bootstrap 5 + react-bootstrap v2** (2.2):
+  - [ ] All Bootstrap class names updated
+  - [ ] react-bootstrap components work correctly
+  - [ ] Visual styling preserved
+- [ ] **React 18** (2.3):
   - [ ] New root API (`createRoot`)
   - [ ] No memory leaks (repeated map open/close)
-- [ ] **React Router v6**:
+- [ ] **React Router v6** (2.4):
   - [ ] All routes work
   - [ ] Navigation functional
-- [ ] **Vite**:
+- [ ] **Vite** (2.5):
   - [ ] Dev server fast
   - [ ] HMR instant
   - [ ] Production build succeeds
-- [ ] **Three.js 0.170**:
+- [ ] **Three.js 0.170** (2.6):
   - [ ] Rendering pixel-perfect
   - [ ] E2E snapshots pass
-- [ ] **Map Share E2E Test** (deferred from Phase 1.2):
+- [ ] **Map Share E2E Test** (2.7, deferred from Phase 1.2):
   - [ ] Test passes consistently
   - [ ] Multi-user authentication works
 - [ ] **All tests pass**:
@@ -1564,8 +1774,10 @@ The map share E2E test (`e2e/map-share.test.ts`) tests sharing maps between user
   - *Mitigation*: E2E snapshots, extensive manual testing
 
 **Medium Risk**:
+- **Bootstrap 4→5 + react-bootstrap v1→v2**: Component API and CSS class changes
+  - *Mitigation*: Systematic search/replace, visual testing
 - **React 18 Strict Mode**: Double-mounting can reveal cleanup bugs
-  - *Mitigation*: Audit all useEffect cleanup functions
+  - *Mitigation*: Audit all useEffect cleanup functions (already done in exploration)
 - **React Router v6**: API changes
   - *Mitigation*: Small route count, straightforward migration
 
@@ -1582,136 +1794,11 @@ The map share E2E test (`e2e/map-share.test.ts`) tests sharing maps between user
 **Duration**: 1-2 weeks
 **Goal**: Final updates, optimizations, deployment readiness
 
----
-
-### 3.1: Bootstrap 4 → 5
-
-**Complexity**: MEDIUM
-**Duration**: 3-5 days
-
-#### Background
-
-[Bootstrap 5](https://getbootstrap.com/docs/5.3/migration/) removed jQuery and introduced significant class name changes.
-
-#### Breaking Changes
-
-**Major**:
-1. **jQuery removed** - all JavaScript now vanilla
-2. **Class names changed**:
-   - `ml-*` / `mr-*` → `ms-*` / `me-*` (start/end for RTL support)
-   - `.no-gutters` → `.g-0`
-   - `.btn-block` → `.d-grid`
-   - `.form-group` → utility classes
-3. **Popper.js v1 → v2**
-4. **Grid changes**: New `xxl` breakpoint, gutter utilities
-5. **Color contrast**: WCAG 2.2 AA compliance (4.5:1 ratio)
-
-#### Step 1: Update Dependencies
-
-```json
-{
-  "dependencies": {
-    "bootstrap": "^5.3.0",
-    "react-bootstrap": "^2.10.0"
-  }
-}
-```
-
-**Note**: `react-bootstrap` v2.x is compatible with Bootstrap 5.
-
-#### Step 2: Find/Replace Class Names
-
-**Automated tool** (if available):
-```bash
-# Search for common patterns
-grep -r "ml-\|mr-" src/
-grep -r "no-gutters" src/
-grep -r "btn-block" src/
-```
-
-**Manual replacements**:
-- `ml-*` → `ms-*` (margin-left → margin-start)
-- `mr-*` → `me-*` (margin-right → margin-end)
-- `pl-*` → `ps-*` (padding-left → padding-start)
-- `pr-*` → `pe-*` (padding-right → padding-end)
-- `.no-gutters` → `.g-0`
-- `.btn-block` → wrap in `.d-grid` container
-- `.form-group` → use margin utilities (`mb-3`)
-
-#### Step 3: Update React Bootstrap Components
-
-Check [React Bootstrap v2 docs](https://react-bootstrap.github.io/) for component API changes.
-
-**Common changes**:
-- Form components may have slightly different props
-- `variant` prop standardization
-- Some components removed/renamed
-
-**Test each component type used**:
-- Navbar
-- Modal
-- Card
-- Button
-- Form controls
-- Alert/Toast
-
-#### Step 4: Update Custom CSS
-
-**File**: Search all `.css` files for Bootstrap class usage:
-```bash
-grep -r "bootstrap\|ml-\|mr-\|pl-\|pr-" src/
-```
-
-Update any custom CSS that relies on Bootstrap classes.
-
-#### Step 5: Visual Regression Testing
-
-**Screenshot comparison**:
-- Before migration: Take screenshots of key pages
-- After migration: Compare visually
-
-**Key pages to check**:
-- Home page
-- Login page
-- Adventure list
-- Map view
-- Modals (token editor, map editor, character editor)
-- Forms (adventure creation, map creation)
-
-**Desktop testing** (responsive design deferred):
-- Standard desktop (1920x1080)
-- Laptop (1366x768)
-
-**Note**: Tablet and mobile layouts can be inventoried for issues but fixes deferred until after revival.
-
-#### Success Criteria - Phase 3.1
-
-- [ ] Bootstrap 5.3.x installed
-- [ ] No jQuery dependency
-- [ ] All class names updated to Bootstrap 5 syntax
-- [ ] React Bootstrap v2.x components work
-- [ ] **Visual inspection** (desktop only):
-  - [ ] Navigation bars render correctly
-  - [ ] Modals appear correctly
-  - [ ] Forms styled properly
-  - [ ] Buttons have correct variants
-  - [ ] Cards and layouts unchanged
-  - [ ] Desktop layout functional (responsive breakpoints can be reviewed post-revival)
-- [ ] No Bootstrap-related console warnings
-- [ ] E2E tests pass (may need snapshot updates)
-
-**Files Modified**:
-- `/workspaces/hexland/hexland-web/package.json`
-- All `.tsx` files with Bootstrap component usage
-- All `.css` files with Bootstrap class usage
-
-**References**:
-- [Bootstrap 5 Migration Guide](https://getbootstrap.com/docs/5.3/migration/)
-- [React Bootstrap v2](https://react-bootstrap.github.io/)
+**Note**: Bootstrap 5 upgrade was moved to Phase 2.2 (see "Phase Reordering Note" at top of document).
 
 ---
 
-### 3.2: Remaining Dependency Updates
+### 3.1: Remaining Dependency Updates
 
 #### TypeScript (if newer version available)
 
@@ -1762,7 +1849,7 @@ yarn test:e2e
 
 ---
 
-### 3.3: Code Quality
+### 3.2: Code Quality
 
 #### ESLint 9.x
 
@@ -1838,7 +1925,7 @@ npx prettier --write "src/**/*.{ts,tsx,css,json}"
 
 ---
 
-### 3.4: Performance Optimization
+### 3.3: Performance Optimization
 
 #### Code Splitting
 
@@ -1917,7 +2004,7 @@ yarn preview
 
 ---
 
-### 3.5: Deployment Preparation
+### 3.4: Deployment Preparation
 
 #### Firebase Hosting Optimization
 

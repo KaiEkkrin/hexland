@@ -31,7 +31,7 @@ function PlayerInfoListItem({
 }: IPlayerInfoListItemProps) {
   const blockedBadge = useMemo(
     () => player.allowed === false ?
-      <Badge className="ml-2 mt-1" variant="danger" title={"Player " + player.playerName + " is blocked"}>BLOCKED</Badge> :
+      <Badge className="ms-2 mt-1" bg="danger" title={"Player " + player.playerName + " is blocked"}>BLOCKED</Badge> :
       undefined,
     [player]
   );
@@ -56,7 +56,7 @@ function PlayerInfoListItem({
   const badges = useMemo(() => {
     if (player.playerId === ownerUid) {
       return [(
-        <Badge key="ownerBadge" className="ml-2 mt-1" variant="warning"
+        <Badge key="ownerBadge" className="ms-2 mt-1" bg="warning"
           title={"Player " + player.playerName + " is the owner"}
         >Owner</Badge>
       )];
@@ -66,13 +66,13 @@ function PlayerInfoListItem({
         const title = `Player ${player.playerName} has token ${t.text}`;
         if (t.characterId.length > 0 || t.sprites.length > 0) { // TODO #46 deal with no-image characters...
           return (
-            <SpriteImage key={key} className="ml-2 mt-1" altName={player.playerName}
+            <SpriteImage key={key} className="ms-2 mt-1" altName={player.playerName}
               size={32} border="1px solid" borderColour={hexColours[t.colour]} token={t}
               onClick={() => resetView?.(t.id)} />
           );
         } else {
           return (
-            <Badge key={key} className="ml-2 mt-1" title={title}
+            <Badge key={key} className="ms-2 mt-1" title={title}
               style={{ backgroundColor: hexColours[t.colour], color: "black", userSelect: "none" }}
               onClick={() => resetView?.(t.id)}
             >{t.text}</Badge>
@@ -81,7 +81,7 @@ function PlayerInfoListItem({
       });
     } else if (showNoTokenWarning === true) {
       return [(
-        <Badge key="noTokenBadge" className="ml-2 mt-1" hidden={isNoTokenHidden} variant="warning"
+        <Badge key="noTokenBadge" className="ms-2 mt-1" hidden={isNoTokenHidden} bg="warning"
           title={"Player " + player.playerName + " has no token"}
         >No token</Badge>
       )];
@@ -103,7 +103,7 @@ function PlayerInfoListItem({
     if (blockItem !== undefined) {
       items.push((
         <Dropdown key="manageItem">
-          <Dropdown.Toggle className="ml-2" variant="secondary" size="sm">Manage</Dropdown.Toggle>
+          <Dropdown.Toggle className="ms-2" variant="secondary" size="sm">Manage</Dropdown.Toggle>
           <Dropdown.Menu>{blockItem}</Dropdown.Menu>
         </Dropdown>
       ));

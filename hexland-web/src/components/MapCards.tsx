@@ -11,7 +11,6 @@ import Accordion from 'react-bootstrap/Accordion';
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import Card from 'react-bootstrap/Card';
-import CardDeck from 'react-bootstrap/CardDeck';
 import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import Tooltip from 'react-bootstrap/Tooltip';
 
@@ -179,9 +178,9 @@ function MapCards(props: IMapCardsProps) {
         {cardList}
       </Accordion>
     ) : (
-      <CardDeck>
+      <div className="card-group">
         {cardList}
-      </CardDeck>
+      </div>
     );
   }, [props, cloneMap, collapsing]);
 

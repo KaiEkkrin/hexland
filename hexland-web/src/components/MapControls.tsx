@@ -47,11 +47,12 @@ function ModeButton<T>({ value, icon, children, mode, setMode }: IModeButtonProp
     () => typeof(value) === 'number' ? value : `${value}`,
     [value]
   );
+  const buttonId = `mode-btn-${valueProperty}`;
   return (
     <OverlayTrigger placement="right" overlay={
       <Tooltip id={value + "-tooltip"}>{children}</Tooltip>
     }>
-      <ToggleButton type="radio" variant="dark" value={valueProperty}
+      <ToggleButton id={buttonId} type="radio" variant="dark" value={valueProperty}
         checked={mode === value}
         onChange={e => setMode(value)}>
         {icon}
@@ -216,8 +217,8 @@ function MapControls({
 
   return (
     <div className="Map-controls">
-      <ButtonGroup className="Map-control" toggle vertical>{layerButtons}</ButtonGroup>
-      <ButtonGroup className="Map-control" toggle vertical>{modeButtons}</ButtonGroup>
+      <ButtonGroup className="Map-control" vertical>{layerButtons}</ButtonGroup>
+      <ButtonGroup className="Map-control" vertical>{modeButtons}</ButtonGroup>
       <ButtonGroup className="Map-control" vertical>
         <OverlayTrigger placement="right" overlay={
           <Tooltip id="zoomin-tooltip">Zoom in</Tooltip>
@@ -240,7 +241,7 @@ function MapControls({
             <FontAwesomeIcon icon={faDotCircle} color="white" />
           </Button>
         </OverlayTrigger>
-        <Dropdown as={ButtonGroup} drop="right">
+        <Dropdown as={ButtonGroup} drop="end">
           <Dropdown.Toggle variant="dark">
             <FontAwesomeIcon icon={faMapMarker} color="white" />
           </Dropdown.Toggle>
@@ -251,7 +252,7 @@ function MapControls({
             <Dropdown.Item onClick={() => setShowAnnotationFlags(ShowAnnotationFlags.All)}>All notes visible</Dropdown.Item>
           </Dropdown.Menu>
         </Dropdown>
-        <Dropdown as={ButtonGroup} drop="right">
+        <Dropdown as={ButtonGroup} drop="end">
           <Dropdown.Toggle variant="dark">
             <AreaIcon colour="white" stripe={selectedStripe} />
           </Dropdown.Toggle>
@@ -266,7 +267,7 @@ function MapControls({
         isVertical={true}
         selectedColour={selectedColour}
         setSelectedColour={setSelectedColour} />
-      <ButtonGroup className="Map-control" hidden={hideExtraControls} toggle vertical>
+      <ButtonGroup className="Map-control" hidden={hideExtraControls} vertical>
         <ModeButton value={MapColourVisualisationMode.Areas}
           icon={<FontAwesomeIcon icon={faSquare} color="white" />}
           mode={mapColourVisualisationMode} setMode={setMapColourVisualisationMode}

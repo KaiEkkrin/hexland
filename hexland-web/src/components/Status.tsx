@@ -59,7 +59,7 @@ function Status() {
       </div>
     ) : (
       <div className="App-status">
-        <Button className="mr-2 mb-2" size="sm" variant="info" onClick={() => setIsCollapsed(false)}>
+        <Button className="me-2 mb-2" size="sm" variant="info" onClick={() => setIsCollapsed(false)}>
           about | {packageJson.version}
         </Button>
       </div>

@@ -9,7 +9,6 @@ import { IAdventureSummary } from '../data/profile';
 import Accordion from 'react-bootstrap/Accordion';
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
-import CardDeck from 'react-bootstrap/CardDeck';
 
 import { LinkContainer } from 'react-router-bootstrap';
 import Measure from 'react-measure';
@@ -114,9 +113,9 @@ const AdventureCardsLarge = ({ showNewAdventureCard, handleCreate, adventures }:
   }, [showNewAdventureCard, handleCreate, adventures]);
 
   return (
-    <CardDeck>
+    <div className="card-group">
       {cards}
-    </CardDeck>
+    </div>
   );
 }
 

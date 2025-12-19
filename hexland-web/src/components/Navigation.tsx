@@ -92,7 +92,7 @@ function NavPageLinks() {
   );
 
   return (
-    <Nav className="mr-auto">
+    <Nav className="me-auto">
       <LinkContainer to="/">
         <Nav.Link>Home</Nav.Link>
       </LinkContainer>
@@ -266,7 +266,7 @@ function NavLogin({ expanded }: { expanded: boolean }) {
   const verifiedIcon = useMemo(() => {
     if (user?.emailVerified === true) {
       return (
-        <FontAwesomeIcon className="ml-1" icon={faCheck} color="white" />
+        <FontAwesomeIcon className="ms-1" icon={faCheck} color="white" />
       );
     } else {
       return undefined;
@@ -315,7 +315,7 @@ function NavLogin({ expanded }: { expanded: boolean }) {
               {displayName}{verifiedIcon}
             </Avatar>
           </Dropdown.Toggle>
-          <Dropdown.Menu alignRight={!expanded}>
+          <Dropdown.Menu align={!expanded ? "end" : undefined}>
             <Dropdown.Item onClick={handleEditProfile}>Edit profile</Dropdown.Item>
             <Dropdown.Item onClick={handleChangePassword}>Change password</Dropdown.Item>
             {resendVerificationItem}
@@ -351,12 +351,12 @@ function NavLogin({ expanded }: { expanded: boolean }) {
 
   return user ? (
     <div>
-      <Form inline>
+      <div className="d-flex">
         <ButtonGroup>
           {profileButton}
           <Button variant="outline-primary" onClick={handleSignOut}>Log out</Button>
         </ButtonGroup>
-      </Form>
+      </div>
       <ChangePasswordModal shown={showChangePassword} handleClose={handleModalClose}
         handleChange={handleChangePasswordSave} />
       <Modal show={showEditProfile} onHide={handleModalClose}>

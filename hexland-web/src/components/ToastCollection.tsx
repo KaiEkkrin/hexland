@@ -17,7 +17,7 @@ function ToastElement(props: IToastElementProps) {
   return (
     <Toast onClose={props.remove}>
       <Toast.Header>
-        <strong className="mr-auto">{props.toast.title}</strong>
+        <strong className="me-auto">{props.toast.title}</strong>
       </Toast.Header>
       <Toast.Body>
         {props.toast.message}

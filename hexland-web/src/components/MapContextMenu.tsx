@@ -34,7 +34,7 @@ interface IEditTokenMenuItemProps {
 function EditTokenMenuItem({ token, editToken }: IEditTokenMenuItemProps) {
   const icon = useMemo(() => token.characterId.length > 0 ? faUser : faPlus, [token.characterId]);
   return <MapContextMenuItem onClick={() => editToken(token.id)}>
-    <FontAwesomeIcon className="mr-1" icon={icon} color="white" />Edit token {token.text}
+    <FontAwesomeIcon className="me-1" icon={icon} color="white" />Edit token {token.text}
   </MapContextMenuItem>;
 }
 
@@ -45,7 +45,7 @@ interface IFlipTokenMenuItemProps {
 
 function FlipTokenMenuItem({ token, flipToken }: IFlipTokenMenuItemProps) {
   return <MapContextMenuItem onClick={() => flipToken(token.id)}>
-    <FontAwesomeIcon className="mr-1" icon={faArrowsAltH} color="white" />Flip token {token.text}
+    <FontAwesomeIcon className="me-1" icon={faArrowsAltH} color="white" />Flip token {token.text}
   </MapContextMenuItem>;
 }
 
@@ -115,7 +115,7 @@ function MapContextMenu(
     // we can add another one
     if (tokens.length < 2) {
       items.push(<MapContextMenuItem key="addToken" onClick={() => handleTokenClick(undefined)}>
-        <FontAwesomeIcon className="mr-1" icon={faPlus} color="white" />Add token
+        <FontAwesomeIcon className="me-1" icon={faPlus} color="white" />Add token
       </MapContextMenuItem>);
     }
 
@@ -123,7 +123,7 @@ function MapContextMenu(
     // (always regular)
     if (tokens.find(t => t.outline === false) === undefined) {
       items.push(<MapContextMenuItem key="addCharacterToken" onClick={() => handleCharacterTokenClick(undefined)}>
-        <FontAwesomeIcon className="mr-1" icon={faUser} color="white" />Add character token
+        <FontAwesomeIcon className="me-1" icon={faUser} color="white" />Add character token
       </MapContextMenuItem>);
     }
 
@@ -177,19 +177,19 @@ function MapContextMenu(
         {editTokenItems}
         {flipTokenItems}
         <MapContextMenuItem onClick={handleNoteClick}>
-          <FontAwesomeIcon className="mr-1" icon={faMapMarker} color="white" />{noteLabel}
+          <FontAwesomeIcon className="me-1" icon={faMapMarker} color="white" />{noteLabel}
         </MapContextMenuItem>
         <MapContextMenuItem onClick={handleImageClick}>
-          <FontAwesomeIcon className="mr-1" icon={faImage} color="white" />{imageLabel}
+          <FontAwesomeIcon className="me-1" icon={faImage} color="white" />{imageLabel}
         </MapContextMenuItem>
         <MapContextMenuItem onClick={setAreaMode}>
-          <FontAwesomeIcon className="mr-1" icon={faSquare} color="white" />Paint <u>a</u>rea
+          <FontAwesomeIcon className="me-1" icon={faSquare} color="white" />Paint <u>a</u>rea
         </MapContextMenuItem>
         <MapContextMenuItem onClick={setWallMode}>
-          <FontAwesomeIcon className="mr-1" icon={faDrawPolygon} color="white" />Paint <u>w</u>all
+          <FontAwesomeIcon className="me-1" icon={faDrawPolygon} color="white" />Paint <u>w</u>all
         </MapContextMenuItem>
         <MapContextMenuItem onClick={setRoomMode}>
-          <FontAwesomeIcon className="mr-1" icon={faVectorSquare} color="white" />Paint <u>r</u>oom
+          <FontAwesomeIcon className="me-1" icon={faVectorSquare} color="white" />Paint <u>r</u>oom
         </MapContextMenuItem>
       </ListGroup>
     </Card>

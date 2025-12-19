@@ -23,14 +23,14 @@ interface IMapPopoverProps extends PopoverProps {
 }
 
 // See https://react-bootstrap.github.io/components/overlays/#tooltips
-const UpdatingPopover = forwardRef<HTMLElement, IMapPopoverProps>(
+const UpdatingPopover = forwardRef<HTMLDivElement, IMapPopoverProps>(
   ({ popper, children, left, bottom, ...props }, ref) => {
     useEffect(() => {
-      popper.scheduleUpdate();
+      popper?.scheduleUpdate?.();
     }, [popper, left, bottom]);
 
     return (
-      <Popover ref={ref} content {...props}>
+      <Popover ref={ref} {...props}>
         {children}
       </Popover>
     );

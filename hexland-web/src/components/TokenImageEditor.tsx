@@ -111,7 +111,7 @@ function TokenImageEditor({
         handleDelete={handleDeleteImage} />
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
         <Button variant="warning" onClick={handleUseNoImage}>Use no image</Button>
-        <Button className="ml-2" variant="primary" onClick={handleUseImage} disabled={setImageDisabled}>
+        <Button className="ms-2" variant="primary" onClick={handleUseImage} disabled={setImageDisabled}>
           <BusyElement normal="Use image" busy="Setting image..." isBusy={busySettingImage} />
         </Button>
       </div>

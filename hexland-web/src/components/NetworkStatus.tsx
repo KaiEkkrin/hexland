@@ -27,7 +27,7 @@ function NetworkStatus({ resyncCount }: INetworkStatusProps) {
         <ListGroup.Item className="Map-info-list-item">
           <div className="Map-network-status-item">
             <div>Recent resyncs</div>
-            <div className="ml-2">{resyncCount}</div>
+            <div className="ms-2">{resyncCount}</div>
           </div>
         </ListGroup.Item>
       </ListGroup>

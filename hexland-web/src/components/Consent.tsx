@@ -30,7 +30,7 @@ function Consent() {
   }, [setEnabled]);
 
   const rhsButtons = useMemo(() => (
-    <ButtonGroup className="ml-1 mr-1">
+    <ButtonGroup className="ms-1 me-1">
       <Button size="sm" variant="success" onClick={handleAcceptClick}>Accept</Button>
       <Button size="sm" variant="light">More info</Button>
     </ButtonGroup>
@@ -41,7 +41,7 @@ function Consent() {
       <Card className="App-consent-card">
         <ExpansionToggle direction="up" eventKey="0" rhs={rhsButtons}>
           <div>
-            <FontAwesomeIcon className="mr-1" icon={faCookie} color="white" />
+            <FontAwesomeIcon className="me-1" icon={faCookie} color="white" />
             Wall &amp; Shadow wishes to use Google Analytics to help improve.
           </div>
         </ExpansionToggle>
@@ -51,7 +51,7 @@ function Consent() {
               Like many other websites, Wall &amp; Shadow includes Google Analytics to measure how it is used and identify errors.
               To accept this, click the Accept button. No data will be collected unless you do so. <a target="_blank" rel="noopener noreferrer" href="https://policies.google.com/technologies/partner-sites">Learn more.</a>
             </div>
-            <Button className="ml-2" size="sm" variant="danger" onClick={handleDeclineClick}>Decline</Button>
+            <Button className="ms-2" size="sm" variant="danger" onClick={handleDeclineClick}>Decline</Button>
           </Card.Body>
         </Accordion.Collapse>
       </Card>

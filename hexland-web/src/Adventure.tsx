@@ -28,7 +28,6 @@ import { deleteMap, editAdventure, deleteAdventure, leaveAdventure, editMap, edi
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import Card from 'react-bootstrap/Card';
-import CardDeck from 'react-bootstrap/CardDeck';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Modal from 'react-bootstrap/Modal';
@@ -399,7 +398,7 @@ function Adventure({ adventureId }: IAdventureProps) {
         {adventure !== undefined ?
           <Row className="mt-4">
             <Col>
-              <CardDeck>
+              <div className="card-group">
                 <Card bg="dark" text="white">
                   <ImageCardContent altName={adventure.record.name} imagePath={adventure.record.imagePath}>
                     <div className="card-content-spaced">
@@ -407,7 +406,7 @@ function Adventure({ adventureId }: IAdventureProps) {
                         <div className="card-row-spaced">
                           <Card.Title>{adventure.record.name}</Card.Title>
                           {canEditAdventure === true ?
-                            <ButtonGroup className="ml-2">
+                            <ButtonGroup className="ms-2">
                               <Button variant="primary" onClick={handleShowEditAdventure}>Edit</Button>
                               <Button variant="primary" onClick={() => handleShowImagePicker()}>
                                 <FontAwesomeIcon icon={faImage} color="white" />
@@ -451,7 +450,7 @@ function Adventure({ adventureId }: IAdventureProps) {
                     blockPlayer={handleShowBlockPlayer}
                     unblockPlayer={handleShowUnblockPlayer} />
                 </Card>
-              </CardDeck>
+              </div>
             </Col>
           </Row>
           : null
