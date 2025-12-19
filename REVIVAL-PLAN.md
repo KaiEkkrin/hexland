@@ -3,8 +3,8 @@
 **Project**: Wall & Shadow (codename: Hexland)
 **Document Version**: 1.4
 **Date**: December 2025
-**Status**: Revival in progress - Phase 1 complete, Phase 2.1-2.2 complete
-**Last Updated**: Phase 2.2 Bootstrap/react-bootstrap upgrade complete
+**Status**: Revival in progress - Phase 1 complete, Phase 2.1-2.3 complete
+**Last Updated**: Phase 2.3 React 18 + React Router v6 upgrade complete
 
 ## Progress Summary
 
@@ -68,10 +68,36 @@
     - `pr-*` → `pe-*` (padding-end)
   - Build passes, all 78 non-emulator unit tests pass
   - E2E tests require emulators and are environment-dependent
+- **Phase 2.3**: React 17 → 18 + React Router v5 → v6 complete ✅
+  - react 17.0.2 → 18.3.1
+  - react-dom 17.0.2 → 18.3.1
+  - react-router-dom 5.3.4 → 6.28.0
+  - react-router-bootstrap 0.25.0 → 0.26.3
+  - @types/react 17.x → 18.3.0
+  - @types/react-dom 17.x → 18.3.0
+  - @testing-library/react 11.x → 14.0.0
+  - @testing-library/dom 7.x → 9.3.0
+  - @testing-library/jest-dom 5.x → 6.0.0
+  - @testing-library/user-event 12.x → 14.0.0
+  - Migrated React 18 breaking changes:
+    - ReactDOM.render → createRoot API in index.tsx
+    - Added yarn resolutions for @types/react version conflicts
+  - Migrated React Router v6 breaking changes:
+    - Switch → Routes
+    - Route component prop → element prop with JSX
+    - useHistory → useNavigate
+    - RouteComponentProps → useParams hook
+    - history.push/replace → navigate() / navigate(path, { replace: true })
+  - Fixed react-bootstrap v2 ToggleButton issues:
+    - Added name attribute for radio groups
+    - Wrapped in span for reliable onClick handling
+    - Used layer-specific radio group names to avoid stale state
+  - Fixed context menu token callbacks (Add token, Add character token)
+  - Build passes, all unit tests pass, manual testing successful
 
 ### 📋 Not Started
-- **Phase 2.3**: React 17 → 18 (clean upgrade after react-bootstrap v2)
-- **Phase 2.4-2.6**: Router v6, Vite, Three.js 0.170
+- **Phase 2.4**: CRA → Vite
+- **Phase 2.5**: Three.js 0.137 → 0.170
   - ⚠️ Map share E2E test fix at end of phase
 - **Phase 3**: Polish (performance optimization, code quality)
 
@@ -104,11 +130,10 @@ These improvements ensure the dev environment is production-ready for the modern
 ## Next Steps (Recommended Order)
 
 1. ✅ **Phase 2.2** - Bootstrap 4 → 5 + react-bootstrap v1 → v2 (COMPLETE)
-2. **Phase 2.3** - React 17 → 18 (clean upgrade after react-bootstrap v2)
-3. **Phase 2.4** - React Router v5 → v6
-4. **Phase 2.5** - CRA → Vite
-5. **Phase 2.6** - Three.js 0.137 → 0.170
-6. **Phase 2.7** - Fix Map Share E2E Test (deferred from Phase 1.2)
+2. ✅ **Phase 2.3** - React 17 → 18 + React Router v5 → v6 (COMPLETE)
+3. **Phase 2.4** - CRA → Vite
+4. **Phase 2.5** - Three.js 0.137 → 0.170
+5. **Phase 2.6** - Fix Map Share E2E Test (deferred from Phase 1.2)
 
 ---
 
