@@ -81,13 +81,20 @@ Once setup is complete:
 
 ```bash
 cd hexland-web
-yarn start
+
+# Terminal 1: Start Firebase emulators
+yarn dev:firebase
+
+# Terminal 2: Start Vite dev server
+yarn dev:vite
 ```
 
-This starts:
-- React development server at http://localhost:5000
-- Firebase Emulator UI at http://localhost:4000
-- All Firebase emulators (Firestore, Auth, Functions, Hosting)
+Running these separately is recommended - you can restart the app without restarting the emulators.
+
+- Vite dev server: http://localhost:5000
+- Firebase Emulator UI: http://localhost:4000
+
+Alternative: `yarn start` runs both in parallel (less flexible).
 
 **Note**: If you make changes to Firebase Functions code, you need to rebuild them (`cd functions && yarn build`) and restart the emulator.
 
@@ -192,14 +199,14 @@ Creates optimized production build in `hexland-web/build/` directory.
 
 #### React App Debugging
 
-1. Start dev server: `yarn start`
+1. Start dev server: `yarn dev:firebase` (terminal 1) and `yarn dev:vite` (terminal 2)
 2. Press `F5` in VS Code or go to Run & Debug
 3. Select **"Launch Chrome"**
 4. Set breakpoints in your React code
 
 #### Firebase Functions Debugging
 
-1. Start emulators: `yarn start`
+1. Start emulators: `yarn dev:firebase`
 2. Go to Run & Debug in VS Code
 3. Select **"Debug Firebase Functions"**
 4. Set breakpoints in `hexland-web/functions/src/**/*.ts`

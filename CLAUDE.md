@@ -18,14 +18,20 @@ All commands are run from the `hexland-web/` directory unless otherwise noted.
 
 ```bash
 cd hexland-web
-yarn start
+
+# Terminal 1: Start Firebase emulators
+yarn dev:firebase
+
+# Terminal 2: Start Vite dev server
+yarn dev:vite
 ```
 
-This runs two processes in parallel:
-- Vite development server on port 5000
-- Firebase emulators (Firestore, Auth, Functions, Hosting) on various ports
+Running these separately is recommended - you can restart the app without restarting the emulators.
 
-Access the app at http://localhost:5000
+- Vite dev server: http://localhost:5000
+- Firebase Emulator UI: http://localhost:4000
+
+Alternative: `yarn start` runs both in parallel (less flexible).
 
 ### Testing
 
@@ -52,9 +58,8 @@ Outputs to `hexland-web/build/` directory. The build uses Vite with Rollup for o
 
 ```bash
 cd hexland-web/functions
-yarn lint          # Run tslint
+yarn lint          # Run ESLint
 yarn build         # Compile TypeScript to lib/
-yarn serve         # Start emulators (Firestore, Auth, Functions)
 ```
 
 ### Deployment
@@ -272,7 +277,7 @@ Located in `hexland-web/firestore.rules`. Key access patterns:
 1. Add function implementation to `functions/src/index.ts` or separate file
 2. Export from `functions/src/index.ts`
 3. Add TypeScript types to `data/` if needed (types are shared between web and functions)
-4. Test with emulators using `yarn serve` in `functions/`
+4. Test with emulators using `yarn dev:firebase` from `hexland-web/`
 
 ### Debugging Rendering Issues
 
