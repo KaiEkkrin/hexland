@@ -124,7 +124,7 @@ function Map() {
   // This helps us focus somewhere useful when the map becomes visible
   useEffect(() => {
     if (canSeeAnything === false) {
-      let removeToast = addToast(statusContext, {
+      const removeToast = addToast(statusContext, {
         title: "No tokens available",
         message: "The map owner has not assigned you any tokens, so you will not see any of the map yet.  If you remain on this page until they do, it will update."
       });
@@ -277,7 +277,7 @@ function Map() {
   }, [flipToken, getClientPosition, uiState.contextMenuX, uiState.contextMenuY]);
 
   const handleContextMenu = useCallback((e: MouseEvent) => {
-    let bounds = drawingRef.current?.getBoundingClientRect();
+    const bounds = drawingRef.current?.getBoundingClientRect();
     if (bounds === undefined) {
       return;
     }

@@ -1,4 +1,4 @@
-// eslint-disable-next-line
+ 
 import { createClient } from 'webdav/web';
 
 // A little bit of wrapping around the bits of the webdav library that I want.

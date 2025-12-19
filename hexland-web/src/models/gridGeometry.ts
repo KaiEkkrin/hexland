@@ -235,8 +235,8 @@ export abstract class BaseGeometry {
   abstract getVertexRadius(alpha: number): number;
 
   private pushEdgeVertices(vertices: THREE.Vector3[], tile: THREE.Vector2, alpha: number, x: number, y: number, z: number, e: number) {
-    let edge = createGridEdge(tile, new THREE.Vector2(x, y), this.tileDim, e);
-    let eg = this.createEdgeGeometry(edge, alpha, z);
+    const edge = createGridEdge(tile, new THREE.Vector2(x, y), this.tileDim, e);
+    const eg = this.createEdgeGeometry(edge, alpha, z);
 
     vertices.push(eg.bevel1b);
     vertices.push(eg.tip1);
@@ -284,7 +284,7 @@ export abstract class BaseGeometry {
   }
 
   private fromPackedXYEdge(sample: Uint8Array, offset: number) {
-    let unpacked = this.fromPackedXYAbs(sample, offset);
+    const unpacked = this.fromPackedXYAbs(sample, offset);
     const signAndEdgeValue = Math.floor(sample[offset + 1] * 16 * this._maxEdge / 255.0);
     if (signAndEdgeValue === 0) {
       return {};
@@ -305,7 +305,7 @@ export abstract class BaseGeometry {
 
   createFaceAttributes() {
     const faceVertexCount = this.faceVertexCount;
-    let attrs = new Float32Array(this.tileDim * this.tileDim * faceVertexCount * 3);
+    const attrs = new Float32Array(this.tileDim * this.tileDim * faceVertexCount * 3);
     let offset = 0;
     for (let y = 0; y < this.tileDim; ++y) {
       for (let x = 0; x < this.tileDim; ++x) {
@@ -321,10 +321,10 @@ export abstract class BaseGeometry {
   }
 
   *createLoSVertices(z: number, q: number) {
-    let edgeA = new THREE.Vector3();
-    let edgeB = new THREE.Vector3();
+    const edgeA = new THREE.Vector3();
+    const edgeB = new THREE.Vector3();
 
-    let centre = this.createCentre(new THREE.Vector3(), 0, 0, z);
+    const centre = this.createCentre(new THREE.Vector3(), 0, 0, z);
     this.createEdgeVertices(edgeA, edgeB, centre, 0);
     yield edgeA.clone();
     yield edgeB.clone();
@@ -441,7 +441,7 @@ export abstract class BaseGeometry {
 
   createVertexAttributes(maxVertex?: number | undefined) {
     maxVertex = Math.min(maxVertex ?? this.maxVertex, this.maxVertex);
-    let attrs = new Float32Array(this.tileDim * this.tileDim * maxVertex * (vertexRimCount + 1) * 3);
+    const attrs = new Float32Array(this.tileDim * this.tileDim * maxVertex * (vertexRimCount + 1) * 3);
     let offset = 0;
     for (let y = 0; y < this.tileDim; ++y) {
       for (let x = 0; x < this.tileDim; ++x) {
@@ -459,7 +459,7 @@ export abstract class BaseGeometry {
   }
 
   createWallVertices(alpha: number, z: number): THREE.Vector3[] {
-    let vertices: THREE.Vector3[] = [];
+    const vertices: THREE.Vector3[] = [];
     this.pushEdgeVertices(vertices, new THREE.Vector2(0, 0), alpha, 0, 0, z, 0);
     return vertices;
   }
@@ -475,7 +475,7 @@ export abstract class BaseGeometry {
 
   decodeVertexSample(sample: Uint8Array, offset: number, tileOrigin: THREE.Vector2): GridVertex | undefined {
     const { unpacked, edge } = this.fromPackedXYEdge(sample, offset);
-    let face = this.fromPackedXYAbs(sample, offset + 2);
+    const face = this.fromPackedXYAbs(sample, offset + 2);
     return unpacked instanceof THREE.Vector2 && edge !== undefined ?
       createGridVertex(unpacked.add(tileOrigin), face, this.tileDim, edge) :
       undefined;

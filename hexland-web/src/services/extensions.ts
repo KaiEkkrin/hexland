@@ -174,7 +174,7 @@ async function editAdventureTransaction(
   // alter any existing entry, and fix any map entries too
   // I can't update other players' profiles, but they should get the update
   // when they next click the adventure, it's best effort :)
-  let updated = updateProfileAdventures(profile.adventures, changed);
+  const updated = updateProfileAdventures(profile.adventures, changed);
   if (updated !== undefined) {
     await view.update(profileRef, { adventures: updated });
   }
@@ -219,13 +219,13 @@ async function deleteAdventureTransaction(
   playerRefs: IDataAndReference<IPlayer>[]
 ) {
   // Fetch the profile, which we'll want to edit (maybe)
-  let profile = await view.get(profileRef);
+  const profile = await view.get(profileRef);
   if (profile === undefined) {
     throw Error("No profile available");
   }
 
   // Fetch the adventure, so I can complain if it still had maps
-  let adventure = await view.get(adventureRef);
+  const adventure = await view.get(adventureRef);
   if (adventure !== undefined && adventure.maps.length > 0) {
     throw Error("An adventure with maps cannot be deleted");
   }
@@ -285,14 +285,14 @@ async function editMapTransaction(
   // Update the profile to include this map if it didn't already, or
   // alter any existing entry
   if (profile !== undefined) {
-    let latestMaps = updateProfileMaps(profile.latestMaps, summary);
+    const latestMaps = updateProfileMaps(profile.latestMaps, summary);
     if (latestMaps !== undefined) {
       await view.update(profileRef, { latestMaps: latestMaps });
     }
   }
 
   // Update the adventure record with the new summary
-  let allMaps = updateAdventureMaps(adventure.maps, summary);
+  const allMaps = updateAdventureMaps(adventure.maps, summary);
   await view.update(adventureRef, { maps: allMaps });
 
   // Update the map record itself
@@ -316,9 +316,9 @@ export async function editMap(
     return;
   }
 
-  let profileRef = dataService.getProfileRef(changed.owner);
-  let adventureRef = dataService.getAdventureRef(adventureId);
-  let mapRef = dataService.getMapRef(adventureId, mapId);
+  const profileRef = dataService.getProfileRef(changed.owner);
+  const adventureRef = dataService.getAdventureRef(adventureId);
+  const mapRef = dataService.getMapRef(adventureId, mapId);
   await dataService.runTransaction(view =>
     editMapTransaction(view, profileRef, adventureRef, mapRef, changed)
   );
@@ -332,22 +332,22 @@ async function deleteMapTransaction(
   mapId: string
 ): Promise<void> {
   // Fetch the profile, which we'll want to edit (maybe)
-  let profile = await view.get(profileRef);
+  const profile = await view.get(profileRef);
 
   // Fetch the adventure, which we'll certainly want to edit
-  let adventure = await view.get(adventureRef);
+  const adventure = await view.get(adventureRef);
   if (adventure === undefined) {
     throw Error("Adventure not found");
   }
 
   // Update the profile to omit this map
   if (profile?.latestMaps?.find(m => m.id === mapId) !== undefined) {
-    let latestMaps = profile.latestMaps.filter(m => m.id !== mapId);
+    const latestMaps = profile.latestMaps.filter(m => m.id !== mapId);
     await view.update(profileRef, { latestMaps: latestMaps });
   }
 
   // Update the adventure record to omit this map
-  let allMaps = adventure.maps.filter(m => m.id !== mapId);
+  const allMaps = adventure.maps.filter(m => m.id !== mapId);
   await view.update(adventureRef, { maps: allMaps });
 
   // TODO: We also need to remove the sub-collection of changes.
@@ -368,9 +368,9 @@ export async function deleteMap(
     return;
   }
 
-  let profileRef = dataService.getProfileRef(uid);
-  let adventureRef = dataService.getAdventureRef(adventureId);
-  let mapRef = dataService.getMapRef(adventureId, mapId);
+  const profileRef = dataService.getProfileRef(uid);
+  const adventureRef = dataService.getAdventureRef(adventureId);
+  const mapRef = dataService.getMapRef(adventureId, mapId);
 
   await dataService.runTransaction(view =>
     deleteMapTransaction(view, profileRef, adventureRef, mapRef, mapId)
@@ -383,12 +383,12 @@ async function registerAdventureAsRecentTransaction(
   id: string,
   a: IAdventure
 ) {
-  let profile = await view.get(profileRef);
+  const profile = await view.get(profileRef);
   if (profile === undefined) {
     throw Error("No such profile");
   }
 
-  let updated = updateProfileAdventures(profile.adventures, {
+  const updated = updateProfileAdventures(profile.adventures, {
     id: id,
     name: a.name,
     description: a.description,
@@ -411,7 +411,7 @@ export async function registerAdventureAsRecent(
     return;
   }
 
-  let profileRef = dataService.getProfileRef(uid);
+  const profileRef = dataService.getProfileRef(uid);
   await dataService.runTransaction(
     view => registerAdventureAsRecentTransaction(view, profileRef, id, a)
   );
@@ -424,12 +424,12 @@ async function registerMapAsRecentTransaction(
   id: string,
   m: IMap
 ) {
-  let profile = await view.get(profileRef);
+  const profile = await view.get(profileRef);
   if (profile === undefined) {
     throw Error("No such profile");
   }
 
-  let updated = updateProfileMaps(profile.latestMaps, {
+  const updated = updateProfileMaps(profile.latestMaps, {
     adventureId: adventureId,
     id: id,
     name: m.name,
@@ -453,7 +453,7 @@ export async function registerMapAsRecent(
     return;
   }
 
-  let profileRef = dataService.getProfileRef(uid);
+  const profileRef = dataService.getProfileRef(uid);
   await dataService.runTransaction(view =>
     registerMapAsRecentTransaction(view, profileRef, adventureId, id, m)
   );
@@ -464,7 +464,7 @@ async function removeAdventureFromRecentTransaction(
   profileRef: IDataReference<IProfile>,
   id: string
 ) {
-  let profile = await view.get(profileRef);
+  const profile = await view.get(profileRef);
   if (profile === undefined) {
     throw Error("No such profile");
   }
@@ -473,7 +473,7 @@ async function removeAdventureFromRecentTransaction(
     return;
   }
 
-  let excepted = profile.adventures?.filter(a => a.id !== id);
+  const excepted = profile.adventures?.filter(a => a.id !== id);
   if (excepted.length !== profile.adventures.length) {
     view.update(profileRef, { adventures: excepted });
   }
@@ -488,7 +488,7 @@ export async function removeAdventureFromRecent(
     return;
   }
 
-  let profileRef = dataService.getProfileRef(uid);
+  const profileRef = dataService.getProfileRef(uid);
   await dataService.runTransaction(
     view => removeAdventureFromRecentTransaction(view, profileRef, id)
   );
@@ -499,7 +499,7 @@ async function removeMapFromRecentTransaction(
   profileRef: IDataReference<IProfile>,
   id: string
 ) {
-  let profile = await view.get(profileRef);
+  const profile = await view.get(profileRef);
   if (profile === undefined) {
     throw Error("No such profile");
   }
@@ -508,7 +508,7 @@ async function removeMapFromRecentTransaction(
     return;
   }
 
-  let excepted = profile.latestMaps?.filter(a => a.id !== id);
+  const excepted = profile.latestMaps?.filter(a => a.id !== id);
   if (excepted.length !== profile.latestMaps.length) {
     view.update(profileRef, { latestMaps: excepted });
   }
@@ -523,7 +523,7 @@ export async function removeMapFromRecent(
     return;
   }
 
-  let profileRef = dataService.getProfileRef(uid);
+  const profileRef = dataService.getProfileRef(uid);
   await dataService.runTransaction(
     view => removeMapFromRecentTransaction(view, profileRef, id)
   );
@@ -546,7 +546,7 @@ export async function getAllMapChanges(
   const baseChange = await dataService.get(baseChangeRef);
   const incrementalChanges = await dataService.getMapIncrementalChangesRefs(adventureId, mapId, limit, converter);
 
-  let changes = [];
+  const changes = [];
   if (baseChange !== undefined) {
     changes.push(baseChange);
   }
@@ -746,8 +746,8 @@ export async function leaveAdventure(
     return;
   }
 
-  let profileRef = dataService.getProfileRef(uid);
-  let adventureRef = dataService.getAdventureRef(adventureId);
-  let playerRef = dataService.getPlayerRef(adventureId, uid);
+  const profileRef = dataService.getProfileRef(uid);
+  const adventureRef = dataService.getAdventureRef(adventureId);
+  const playerRef = dataService.getPlayerRef(adventureId, uid);
   await dataService.runTransaction(tr => leaveAdventureTransaction(tr, profileRef, adventureRef, playerRef));
 }

@@ -357,7 +357,7 @@ export class Grid extends Drawn {
   }
 
   private *getGridSamples(width: number, height: number) {
-    let cp = new THREE.Vector3(Math.floor(width * 0.5), Math.floor(height * 0.5), 0);
+    const cp = new THREE.Vector3(Math.floor(width * 0.5), Math.floor(height * 0.5), 0);
     yield this.getGridCoordAt(cp);
 
     cp.set(0, 0, 0);

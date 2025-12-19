@@ -413,7 +413,7 @@ export class MapStateMachine {
   private *enumerateAnnotations() {
     // Here we enumerate all the relevant annotations that could be displayed --
     // which means both the map notes, and the token-attached notes.
-    for (let n of this._notes) {
+    for (const n of this._notes) {
       yield n;
     }
 
@@ -674,11 +674,11 @@ export class MapStateMachine {
   }
 
   private onPreAnimate() {
-    let now = window.performance.now();
+    const now = window.performance.now();
 
     // Do the drag-pan if applicable
-    let panningX = this._panningX !== 0 ? this._panningX : this._marginPanningX;
-    let panningY = this._panningY !== 0 ? this._panningY : this._marginPanningY;
+    const panningX = this._panningX !== 0 ? this._panningX : this._marginPanningX;
+    const panningY = this._panningY !== 0 ? this._panningY : this._marginPanningY;
     if ((panningX !== 0 || panningY !== 0) && this._lastAnimationTime !== undefined) {
       this._cameraTranslation.add(
         this._scratchTranslation.set(
@@ -714,7 +714,7 @@ export class MapStateMachine {
   }
 
   private onPanningEnded() {
-    let chs: Change[] = [];
+    const chs: Change[] = [];
     if (fluent(this._selection).concat(this._outlineSelection).any()) {
       const position = this._drawing.getGridCoordAt(panningPosition);
       if (position !== undefined) {
@@ -900,7 +900,7 @@ export class MapStateMachine {
     const [target, scratch1, scratch2] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
     const worldToLoSViewport = this._drawing.getWorldToLoSViewport(this._scratchMatrix2);
     const worldToViewport = this._drawing.getWorldToViewport(this._scratchMatrix1);
-    for (let n of this.enumerateAnnotations()) {
+    for (const n of this.enumerateAnnotations()) {
       // Skip notes not marked as player-visible
       if (!this.seeEverything && n.visibleToPlayers === false) {
         continue;
@@ -1096,7 +1096,7 @@ export class MapStateMachine {
 
   faceDragEnd(cp: THREE.Vector3, colour: number, stripe: number, isPlayerArea: boolean): Change[] {
     this.panMarginReset();
-    let result = isPlayerArea ?
+    const result = isPlayerArea ?
       this._playerFaceHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), { colour, stripe }) :
       this._faceHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), { colour, stripe });
     this._dragRectangle.reset();
@@ -1147,7 +1147,7 @@ export class MapStateMachine {
 
   // For editing
   getNote(cp: THREE.Vector3): IAnnotation | undefined {
-    let position = this._drawing.getGridCoordAt(cp);
+    const position = this._drawing.getGridCoordAt(cp);
     if (position === undefined) {
       return undefined;
     }
@@ -1361,7 +1361,7 @@ export class MapStateMachine {
   roomDragEnd(cp: THREE.Vector3, shiftKey: boolean, colour: number): Change[] {
     this.panMarginReset();
     this._roomHighlighter.difference = shiftKey;
-    let result = this._roomHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), { colour });
+    const result = this._roomHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), { colour });
     this._dragRectangle.reset();
     return result;
   }
@@ -1522,8 +1522,8 @@ export class MapStateMachine {
   }
 
   setNote(cp: THREE.Vector3, id: string, colour: number, text: string, visibleToPlayers: boolean): Change[] {
-    let position = this._drawing.getGridCoordAt(cp);
-    let chs: Change[] = [];
+    const position = this._drawing.getGridCoordAt(cp);
+    const chs: Change[] = [];
     if (position !== undefined) {
       if (this._notes.get(position) !== undefined) {
         // Replace the existing note
@@ -1588,7 +1588,7 @@ export class MapStateMachine {
 
   wallDragEnd(cp: THREE.Vector3, colour: number): Change[] {
     this.panMarginReset();
-    let result = this._dragRectangle.isEnabled() ?
+    const result = this._dragRectangle.isEnabled() ?
       this._wallRectangleHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), { colour }) :
       this._wallHighlighter.dragEnd(this._drawing.getGridVertexAt(cp), { colour });
     this._dragRectangle.reset();

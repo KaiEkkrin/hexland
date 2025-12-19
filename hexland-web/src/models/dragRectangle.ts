@@ -50,8 +50,8 @@ export class DragRectangle implements IDragRectangle {
   private *enumerateCoordsInDragRectangle(scratch: THREE.Vector3) {
     const coordMin = { x: Number.MAX_SAFE_INTEGER, y: Number.MAX_SAFE_INTEGER };
     const coordMax = { x: Number.MIN_SAFE_INTEGER, y: Number.MIN_SAFE_INTEGER };
-    for (let p of this.enumerateCanvasDragRectanglePoints(scratch)) {
-      let coord = this._getGridCoordAt(p);
+    for (const p of this.enumerateCanvasDragRectanglePoints(scratch)) {
+      const coord = this._getGridCoordAt(p);
       if (coord === undefined) {
         continue;
       }
@@ -85,7 +85,7 @@ export class DragRectangle implements IDragRectangle {
     // as required
     const rectangleOcclusion = new RectangleOcclusion(0, [...rectanglePoints]);
     return (c: GridCoord) => {
-      for (let v of this._testVertexCollection.enumerate(c)) {
+      for (const v of this._testVertexCollection.enumerate(c)) {
         if (rectangleOcclusion.test(v) === true) {
           return true;
         }

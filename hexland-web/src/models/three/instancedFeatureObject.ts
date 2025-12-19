@@ -61,7 +61,7 @@ export class InstanceCountedMesh {
     // We find the position of its matrix transform in the instance array.
     // Rather than trying to erase it (awkward), we instead set it to a matrix
     // that will make it appear off-screen, and add the index to the re-use list.
-    let o = new THREE.Object3D();
+    const o = new THREE.Object3D();
     o.translateZ(-1000);
     o.updateMatrix();
     this.mesh.setMatrixAt(instanceIndex, o.matrix);

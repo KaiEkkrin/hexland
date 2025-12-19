@@ -54,13 +54,13 @@ export class FirebaseAuth implements IAuth {
   }
 
   async signInWithEmailAndPassword(email: string, password: string) {
-    let credential = await signInWithEmailAndPasswordFn(this._auth, email, password);
+    const credential = await signInWithEmailAndPasswordFn(this._auth, email, password);
     return createUser(credential.user);
   }
 
   async signInWithPopup(provider: IAuthProvider | undefined) {
     if (provider instanceof PopupAuthProviderWrapper) {
-      let credential = await signInWithPopupFn(this._auth, provider.provider);
+      const credential = await signInWithPopupFn(this._auth, provider.provider);
       return createUser(credential.user);
     }
 

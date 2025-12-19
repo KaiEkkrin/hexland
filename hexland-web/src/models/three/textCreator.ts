@@ -6,7 +6,7 @@ export class TextCreator {
   private _font: Font | undefined;
 
   constructor() {
-    let loader = new FontLoader();
+    const loader = new FontLoader();
     loader.load('/fonts/helvetiker_bold.typeface.json', (f: Font) => this._font = f);
   }
 

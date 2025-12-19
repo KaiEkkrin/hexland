@@ -45,7 +45,7 @@ class FaceDictionary extends FeatureDictionary<GridCoord, IFeature<GridCoord>> {
   get upperBounds() { return this._upperBounds; }
 
   add(f: IFeature<GridCoord>): boolean {
-    let wasAdded = super.add(f);
+    const wasAdded = super.add(f);
     if (wasAdded) {
       this.updateBounds(f.position);
     }
@@ -70,7 +70,7 @@ class FaceDictionary extends FeatureDictionary<GridCoord, IFeature<GridCoord>> {
   // Assigns a new colour to the co-ordinate, returning the old colour or
   // undefined if there wasn't one (ignoring bounds.)
   replace(f: IFeature<GridCoord>): IFeature<GridCoord> | undefined {
-    let oldFeature = super.remove(f.position); // skip the bounds re-calculate
+    const oldFeature = super.remove(f.position); // skip the bounds re-calculate
     if (oldFeature !== undefined) {
       super.add(f); // can skip this bounds re-calculate too
     } else {
@@ -92,7 +92,7 @@ class FaceDictionary extends FeatureDictionary<GridCoord, IFeature<GridCoord>> {
         f.position.x < newLowerBounds.x || f.position.x > newUpperBounds.x ||
         f.position.y < newLowerBounds.y || f.position.y > newUpperBounds.y
       )];
-      for (let f of toDelete) {
+      for (const f of toDelete) {
         this.remove(f.position);
       }
     }
@@ -161,8 +161,8 @@ export class MapColouring {
   private calculateWallBounds(lowerBounds: THREE.Vector2, upperBounds: THREE.Vector2) {
     lowerBounds.set(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
     upperBounds.set(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER);
-    for (let w of this._walls) {
-      for (let adj of this._geometry.getEdgeFaceAdjacency(w.position)) {
+    for (const w of this._walls) {
+      for (const adj of this._geometry.getEdgeFaceAdjacency(w.position)) {
         lowerBounds.x = Math.min(lowerBounds.x, adj.x);
         lowerBounds.y = Math.min(lowerBounds.y, adj.y);
         upperBounds.x = Math.max(upperBounds.x, adj.x);
@@ -182,7 +182,7 @@ export class MapColouring {
   }
 
   colourOf(coord: GridCoord): number {
-    let f = this._faces.get(coord);
+    const f = this._faces.get(coord);
     //assert(f?.colour !== -1);
     return f?.colour ?? 0;
   }
@@ -204,7 +204,7 @@ export class MapColouring {
 
   // Gets a dictionary of all the walls adjacent to a particular map colour.
   getWallsOfColour(colour: number) {
-    let walls = new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString);
+    const walls = new FeatureDictionary<GridEdge, IFeature<GridEdge>>(edgeString);
     this._walls.forEach(w => {
       this._geometry.getEdgeFaceAdjacency(w.position).forEach(f => {
         if (this.colourOf(f) === colour) {
@@ -228,9 +228,9 @@ export class MapColouring {
     //console.debug("Filling " + maybeColour + " from " + coordString(startCoord) + " with bounds " + lowerBounds.toArray() + ", " + upperBounds.toArray());
 
     const colour = maybeFeature.colour;
-    let stack = [startCoord];
+    const stack = [startCoord];
     while (true) {
-      let coord = stack.pop();
+      const coord = stack.pop();
       if (coord === undefined) {
         break;
       }
@@ -246,7 +246,7 @@ export class MapColouring {
           return;
         }
 
-        let oldFeature = this._faces.replace({ position: face, colour: colour });
+        const oldFeature = this._faces.replace({ position: face, colour: colour });
         if (oldFeature?.colour !== colour) {
           stack.push(face);
         }
@@ -263,11 +263,11 @@ export class MapColouring {
     const newColours = new Set<number>();
 
     // Make all the wall edits, and populate our dictionary of things to fill
-    let addedLowerWallBounds = new THREE.Vector2(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
-    let addedUpperWallBounds = new THREE.Vector2(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER);
+    const addedLowerWallBounds = new THREE.Vector2(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
+    const addedUpperWallBounds = new THREE.Vector2(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER);
     let removedCount = 0;
     this._pending.forEach(pw => {
-      let adjacentFaces = this._geometry.getEdgeFaceAdjacency(pw.position);
+      const adjacentFaces = this._geometry.getEdgeFaceAdjacency(pw.position);
       if (pw.present === false) {
         if (this._walls.remove(pw.position) === undefined) {
           return;
@@ -287,7 +287,7 @@ export class MapColouring {
 
         // We assign a fresh colour to each side of the wall
         adjacentFaces.forEach(a => {
-          let newColour = this._nextColour++;
+          const newColour = this._nextColour++;
           this._toFill.set({ position: a, colour: newColour });
           newColours.add(newColour);
 
@@ -334,7 +334,7 @@ export class MapColouring {
       // (This may or may not be redundant but it's a bit hard to determine)
       // We can safely use the zero colour for the outside; that's all it can ever
       // have been.
-      let boundsPosition = { x: this._lowerWallBounds.x, y: this._upperWallBounds.y };
+      const boundsPosition = { x: this._lowerWallBounds.x, y: this._upperWallBounds.y };
       this._faces.replace({ position: boundsPosition, colour: 0 });
       this.fill(boundsPosition, this._lowerWallBounds, this._upperWallBounds);
     }

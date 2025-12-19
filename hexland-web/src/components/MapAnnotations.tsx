@@ -78,7 +78,7 @@ function MapAnnotation(props: IMapAnnotationProps) {
   const [placement, setPlacement] = useState<"top" | "bottom">("top");
   const [zIndex, setZIndex] = useState(1);
 
-  let isToken = useMemo(() => props.annotation.id.startsWith("Token"), [props.annotation.id]);
+  const isToken = useMemo(() => props.annotation.id.startsWith("Token"), [props.annotation.id]);
 
   useEffect(() => {
     setLeft(viewToPercent(props.annotation.clientX) + "vw");
@@ -110,7 +110,7 @@ function MapAnnotation(props: IMapAnnotationProps) {
     }
   }, [props, showTooltip]);
 
-  let show = useMemo(() => {
+  const show = useMemo(() => {
     if (props.suppressAnnotations) {
       // Annotations are always hidden while dragging the view and re-shown afterwards,
       // for performance reasons
