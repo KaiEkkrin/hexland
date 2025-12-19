@@ -13,8 +13,6 @@ x-hexland-common: &hexland-common
     - ..:/workspaces/hexland
 
   environment:
-    # Critical: webpack 4 compatibility with Node 20
-    - NODE_OPTIONS=--openssl-legacy-provider
     # Enable emulator-only functions
     - IS_LOCAL_DEV=true
     # Colorized output in logs

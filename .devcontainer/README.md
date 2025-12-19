@@ -230,21 +230,11 @@ This keeps cache/config persistent across container rebuilds while maintaining g
 
 Automatically configured in the container:
 
-- `NODE_OPTIONS=--openssl-legacy-provider` - webpack 4 compatibility with Node 20
 - `IS_LOCAL_DEV=true` - Enables emulator-only features
 - `FORCE_COLOR=true` - Colorized terminal output
 - `GOOGLE_APPLICATION_CREDENTIALS` - Path to Firebase admin credentials
 
 ## Troubleshooting
-
-### OpenSSL Error
-
-**Symptom**: `error:0308010C:digital envelope routines::unsupported`
-
-**Solution**: This should not happen as `NODE_OPTIONS=--openssl-legacy-provider` is set automatically. If you see this error:
-1. Verify you're inside the dev container
-2. Check: `echo $NODE_OPTIONS` (should show `--openssl-legacy-provider`)
-3. Rebuild the container
 
 ### CORS Errors or "internal" Errors When Creating Adventures/Maps
 

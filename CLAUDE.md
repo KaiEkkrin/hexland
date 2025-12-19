@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Wall & Shadow (project codename: Hexland) is a virtual tabletop (VTT) web application for running tabletop RPG sessions online. It provides real-time collaborative map editing, token management, and game state sharing.
 
-**Stack**: React + TypeScript + Firebase (Firestore, Functions, Auth, Hosting, Storage) + Three.js for 3D rendering
+**Stack**: React 18 + TypeScript + Firebase (Firestore, Functions, Auth, Hosting, Storage) + Three.js for 3D rendering + Vite
 
-**Status**: Currently mothballed but being revived. Uses legacy dependencies (Node.js 12/14, React 17, webpack 4) that are end-of-life. The dev container provides Node.js 20 with compatibility shims.
+**Status**: Currently being revived. Modern toolchain with Node.js 20, React 18, Vite, and Firebase v11.
 
 ## Development Commands
 
@@ -22,7 +22,7 @@ yarn start
 ```
 
 This runs two processes in parallel:
-- React development server on port 5000
+- Vite development server on port 5000
 - Firebase emulators (Firestore, Auth, Functions, Hosting) on various ports
 
 Access the app at http://localhost:5000
@@ -46,7 +46,7 @@ yarn test
 yarn build
 ```
 
-Outputs to `hexland-web/build/` directory. The build uses webpack 4 which requires `NODE_OPTIONS=--openssl-legacy-provider` on Node.js 17+ (automatically set in dev container).
+Outputs to `hexland-web/build/` directory. The build uses Vite with Rollup for optimized production bundles.
 
 ### Firebase Functions
 
@@ -204,7 +204,7 @@ The storage abstraction is in `services/storage.ts` with mock implementations fo
 ### Dev Container (Recommended)
 
 The repository includes a VS Code dev container (`.devcontainer/`) that provides:
-- Node.js 20 LTS with legacy OpenSSL provider for webpack 4 compatibility
+- Node.js 20 LTS
 - All Firebase emulators pre-configured
 - Mock WebDAV storage service
 - VS Code extensions for React/TypeScript development
@@ -228,14 +228,6 @@ Playwright tests that use image snapshots to verify rendering. Tests run against
 **Note**: Some tests have tight timeouts and may be flaky. Increase timeout values in test declarations if needed.
 
 ## Important Gotchas
-
-### Legacy Dependencies
-
-- Uses webpack 4 (EOL) - requires `NODE_OPTIONS=--openssl-legacy-provider` on Node.js 17+
-- React Scripts 4.0.3 (Create React App, no longer maintained)
-- Node.js 12/14 (EOL) - dev container uses Node 20 with compatibility shim
-
-**Do not upgrade dependencies** unless explicitly discussed - this is a mothballed project and upgrades are out of scope.
 
 ### Firebase Configuration
 

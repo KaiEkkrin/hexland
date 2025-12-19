@@ -3,8 +3,8 @@
 **Project**: Wall & Shadow (codename: Hexland)
 **Document Version**: 1.4
 **Date**: December 2025
-**Status**: Revival in progress - Phase 1 complete, Phase 2.1-2.3 complete
-**Last Updated**: Phase 2.3 React 18 + React Router v6 upgrade complete
+**Status**: Revival in progress - Phase 1 complete, Phase 2.1-2.4 complete
+**Last Updated**: Phase 2.4 CRA → Vite migration complete
 
 ## Progress Summary
 
@@ -94,9 +94,24 @@
     - Used layer-specific radio group names to avoid stale state
   - Fixed context menu token callbacks (Add token, Add character token)
   - Build passes, all unit tests pass, manual testing successful
+- **Phase 2.4**: CRA → Vite migration complete ✅
+  - react-scripts 4.0.3 removed → Vite 7.3.0
+  - Jest 26.6.0 added explicitly (was bundled in CRA)
+  - Environment variable migration:
+    - `process.env.NODE_ENV` → `import.meta.env.DEV` / `import.meta.env.PROD`
+    - `process.env.PUBLIC_URL` → `import.meta.env.BASE_URL`
+    - `'webpackHotUpdate' in window` → `import.meta.env.DEV`
+  - index.html moved from public/ to project root (Vite requirement)
+  - NODE_OPTIONS=--openssl-legacy-provider workaround removed (not needed with Vite)
+  - Added `--host` flag for dev container browser access
+  - Created vite.config.ts with Firebase emulator proxy (replaces setupProxy.js)
+  - Deleted CRA-specific files: setupProxy.js, react-app-env.d.ts
+  - Created .eslintrc.cjs (extracted from package.json)
+  - All 78 non-emulator unit tests passing
+  - Manual testing successful (login, adventure, map creation, image upload, map rendering)
+  - Fast Refresh warnings for context providers are expected (informational, not errors)
 
 ### 📋 Not Started
-- **Phase 2.4**: CRA → Vite
 - **Phase 2.5**: Three.js 0.137 → 0.170
   - ⚠️ Map share E2E test fix at end of phase
 - **Phase 3**: Polish (performance optimization, code quality)
@@ -131,7 +146,7 @@ These improvements ensure the dev environment is production-ready for the modern
 
 1. ✅ **Phase 2.2** - Bootstrap 4 → 5 + react-bootstrap v1 → v2 (COMPLETE)
 2. ✅ **Phase 2.3** - React 17 → 18 + React Router v5 → v6 (COMPLETE)
-3. **Phase 2.4** - CRA → Vite
+3. ✅ **Phase 2.4** - CRA → Vite (COMPLETE)
 4. **Phase 2.5** - Three.js 0.137 → 0.170
 5. **Phase 2.6** - Fix Map Share E2E Test (deferred from Phase 1.2)
 
@@ -180,27 +195,27 @@ Wall & Shadow is a React-based virtual tabletop (VTT) application built on Fireb
 
 | Dependency | Current | Target | Status | Impact |
 |------------|---------|--------|--------|--------|
-| React | 17.0.1 | 18.3.x | 🔴 Superseded | New root API required |
-| react-scripts (CRA) | 4.0.3 | N/A (→Vite) | 🔴 **Deprecated Feb 2025** | Complete build system change |
-| Firebase SDK | 8.0.0 | 11.x | 🔴 Superseded | Modular API, 80% smaller bundle |
-| TypeScript | 4.2.3 | 5.7.x | 🟡 Behind | Smooth upgrade path |
+| React | 17.0.1 | 18.3.x | ✅ Done | New root API required |
+| react-scripts (CRA) | 4.0.3 | N/A (→Vite) | ✅ Done | Migrated to Vite 7.3.0 |
+| Firebase SDK | 8.0.0 | 11.x | ✅ Done | Modular API, 80% smaller bundle |
+| TypeScript | 4.2.3 | 5.7.x | ✅ Done | Smooth upgrade path |
 | Three.js | 0.137.0 | 0.170.x | 🟡 Behind | Rendering pipeline testing critical |
-| React Router | 5.2.0 | 6.28.x | 🔴 Superseded | Significant API changes |
-| Bootstrap | 4.5.0 | 5.3.x | 🟡 Behind | jQuery removed, class name changes |
-| RxJS | 6.6.6 | 7.8.x | 🟡 Behind | Minimal breaking changes |
-| Playwright | 1.10.0 | 1.57.x | 🔴 Very outdated | 40+ versions behind |
-| Testing Library | 9.3.2 | 16.x | 🔴 Outdated | React 18 compatibility |
+| React Router | 5.2.0 | 6.28.x | ✅ Done | Migrated to v6.28.0 |
+| Bootstrap | 4.5.0 | 5.3.x | ✅ Done | Migrated to 5.3.0 |
+| RxJS | 6.6.6 | 7.8.x | ✅ Done | Migrated to 7.8.x |
+| Playwright | 1.10.0 | 1.57.x | ✅ Done | Migrated to 1.57.x |
+| Testing Library | 9.3.2 | 16.x | ✅ Done | Migrated to 14.x (React 18 compatible) |
 
 #### Firebase Functions (`hexland-web/functions/package.json`)
 
 | Dependency | Current | Target | Status | Impact |
 |------------|---------|--------|--------|--------|
-| Node.js | 14 | 20/22 | 🔴 **Decommissioned** | Critical - deployment disabled |
-| firebase-admin | 9.3.0 | 13.x | 🔴 Outdated | Drop Node 14/16, require Node 18+ |
-| firebase-functions | 3.13.0 | 6.x | 🔴 Outdated | API updates |
-| TypeScript | 4.2.3 | 5.7.x | 🟡 Behind | Same as web app |
-| TSLint | 6.1.3 | N/A (→ESLint) | 🔴 **Deprecated 2019** | Automated migration available |
-| RxJS | 7.3.0 | 7.8.x | 🟢 Good | Minor update only |
+| Node.js | 14 | 20/22 | ✅ Done | Running on Node 20 |
+| firebase-admin | 9.3.0 | 13.x | ✅ Done | Migrated to 13.6.0 |
+| firebase-functions | 3.13.0 | 6.x | ✅ Done | Migrated to 6.3.2 |
+| TypeScript | 4.2.3 | 5.7.x | ✅ Done | Migrated to 5.7.3 |
+| TSLint | 6.1.3 | N/A (→ESLint) | ✅ Done | Migrated to ESLint 9.x |
+| RxJS | 7.3.0 | 7.8.x | ✅ Done | Migrated to 7.8.x |
 
 🔴 = Critical / Deprecated
 🟡 = Needs update

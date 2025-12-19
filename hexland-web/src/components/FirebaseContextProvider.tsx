@@ -17,7 +17,8 @@ export const FirebaseContext = createContext<IFirebaseContext>({});
 
 async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => void) {
   let config;
-  const isLocalDevelopment = 'webpackHotUpdate' in window;
+  // Detect local development: Vite sets import.meta.env.DEV, webpack had webpackHotUpdate
+  const isLocalDevelopment = import.meta.env.DEV;
 
   // Try to get app config from Firebase Hosting
   try {

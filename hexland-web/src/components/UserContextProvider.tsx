@@ -42,10 +42,10 @@ function UserContextProvider(props: IContextProviderProps) {
       new Storage(storage);
 
     return auth?.onAuthStateChanged(u => {
-      // Create the relevant storage service (if any.)  If webpack hot-plugging is enabled,
-      // we use the mock storage service because there isn't an emulator
+      // Create the relevant storage service (if any.)  In local dev mode,
+      // we use the mock storage service because there isn't a storage emulator
       const storageService = functionsService === undefined || !u ? undefined :
-        ('webpackHotUpdate' in window) ? new MockWebStorageWeb(functionsService, 'http://localhost:7000') :
+        import.meta.env.DEV ? new MockWebStorageWeb(functionsService, 'http://localhost:7000') :
         realStorageService;
 
       setUserContext({

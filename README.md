@@ -89,10 +89,6 @@ See [`.devcontainer/README.md`](.devcontainer/README.md) for comprehensive docum
 - Debugging guide
 - Troubleshooting common issues
 
-### Note on Compatibility
-
-The dev container uses **Node.js 20 LTS** with a compatibility workaround (`NODE_OPTIONS=--openssl-legacy-provider`) that allows the existing 2022-era dependencies to work without any upgrades. This gives you a secure, modern development environment while maintaining full compatibility with the existing codebase.
-
 The standalone Docker setup (see "Running locally with Docker" below) is still available and fully supported.
 
 ## Running locally (in Dev Container)
@@ -136,20 +132,22 @@ This will start:
 - **Hosting Emulator**: `http://localhost:3400`
 - **Emulator UI**: `http://localhost:4000` (view all emulator data here)
 
-### 4. Start React Dev Server
+### 4. Start Vite Dev Server
 
-In a separate terminal, start the React development server:
+In a separate terminal, start the Vite development server:
 
 ```bash
 cd /workspaces/hexland/hexland-web
-PORT=5000 yarn react-scripts start
+yarn dev:vite
 ```
+
+Note: `dev:vite` includes `--host` to allow access from the host browser when running in the dev container.
 
 Or use the convenience script that runs both emulators and dev server in parallel:
 
 ```bash
 cd /workspaces/hexland/hexland-web
-yarn start  # Runs both dev:firebase and dev:react in parallel
+yarn start  # Runs both dev:firebase and dev:vite in parallel
 ```
 
 ### 5. Access the Application

@@ -14,9 +14,6 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 # Install Playwright system dependencies
 RUN npx playwright install-deps
 
-# Set environment for webpack 4 compatibility with Node 20
-ENV NODE_OPTIONS=--openssl-legacy-provider
-
 # Install global npm packages
 RUN npm install -g firebase-tools npm-run-all
 
