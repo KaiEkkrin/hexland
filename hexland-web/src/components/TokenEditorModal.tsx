@@ -13,7 +13,6 @@ import { ISprite } from '../data/sprite';
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
-import Row from 'react-bootstrap/Row';
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 
@@ -179,14 +178,14 @@ function TokenEditorModal(
               </Form.Group>
               <Form.Group>
                 <Form.Label htmlFor="tokenColour">Colour</Form.Label>
-                <Row>
+                <div>
                   <ColourSelection id="tokenColour"
                     hidden={false}
                     includeNegative={false}
                     isVertical={false}
                     selectedColour={colour}
                     setSelectedColour={setColour} />
-                </Row>
+                </div>
               </Form.Group>
               <TokenSizeSelection size={size} sizes={sizes} setSize={setSize} />
               <Form.Group>

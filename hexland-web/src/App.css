@@ -159,6 +159,24 @@
   font-weight: bold;
 }
 
+/* Bootstrap 5 dark theme border overrides - use consistent mid-grey for dividers */
+.card.bg-dark,
+.card.bg-dark .card-header,
+.card.bg-dark .card-footer {
+  border-color: #6c757d;
+}
+
+.card.bg-dark .list-group-item,
+.list-group-item.bg-dark {
+  border-color: #6c757d;
+}
+
+/* Accordion items in dark contexts */
+.accordion .card,
+.accordion .card .card-header {
+  border-color: #6c757d;
+}
+
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);

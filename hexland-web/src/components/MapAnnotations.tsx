@@ -5,7 +5,7 @@ import '../Map.css';
 import { IPositionedAnnotation } from '../data/annotation';
 
 import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
-import Popover, { PopoverProps } from 'react-bootstrap/Popover';
+import Popover from 'react-bootstrap/Popover';
 
 import { faMapMarker } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -17,24 +17,40 @@ export enum ShowAnnotationFlags {
   All = 3
 }
 
-interface IMapPopoverProps extends PopoverProps {
+interface IMapPopoverProps {
+  id: string;
   left: string;
   bottom: string;
+  children: React.ReactNode;
+  // react-bootstrap v2 injects these props
+  [key: string]: unknown;
 }
 
 // See https://react-bootstrap.github.io/components/overlays/#tooltips
 const UpdatingPopover = forwardRef<HTMLDivElement, IMapPopoverProps>(
-  ({ popper, children, left, bottom, ...props }, ref) => {
-    useEffect(() => {
-      popper?.scheduleUpdate?.();
-    }, [popper, left, bottom]);
-
+  ({ children, left, bottom, ...props }, ref) => {
     return (
       <Popover ref={ref} {...props}>
-        {children}
+        <Popover.Body>{children}</Popover.Body>
       </Popover>
     );
   }
+);
+
+// Wrapper for FontAwesomeIcon to support refs required by OverlayTrigger in react-bootstrap v2
+interface IRefIconProps {
+  icon: typeof faMapMarker;
+  color: string;
+  onClick: () => void;
+  style: React.CSSProperties;
+}
+
+const RefIcon = forwardRef<HTMLSpanElement, IRefIconProps>(
+  ({ icon, color, onClick, style }, ref) => (
+    <span ref={ref} onClick={onClick} style={style}>
+      <FontAwesomeIcon icon={icon} color={color} />
+    </span>
+  )
 );
 
 interface IMapAnnotationProps {
@@ -114,7 +130,7 @@ function MapAnnotation(props: IMapAnnotationProps) {
         {props.annotation.text}
       </UpdatingPopover>
     }>
-      <FontAwesomeIcon icon={faMapMarker} color={pinColour}
+      <RefIcon icon={faMapMarker} color={pinColour}
         onClick={() => setShowTooltip(!showTooltip)}
         style={{
           position: 'fixed',

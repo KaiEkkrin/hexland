@@ -97,14 +97,14 @@ function CharacterTokenEditorModal(
           </Form.Group>
           <Form.Group>
             <Form.Label htmlFor="tokenColour">Colour</Form.Label>
-            <Row>
+            <div>
               <ColourSelection id="tokenColour"
                 hidden={false}
                 includeNegative={false}
                 isVertical={false}
                 selectedColour={colour}
                 setSelectedColour={setColour} />
-            </Row>
+            </div>
           </Form.Group>
           <TokenSizeSelection size={size} sizes={sizes} setSize={setSize} />
         </Form>

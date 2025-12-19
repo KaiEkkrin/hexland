@@ -396,61 +396,61 @@ function Adventure({ adventureId }: IAdventureProps) {
       <Navigation>{title}</Navigation>
       <Container>
         {adventure !== undefined ?
-          <Row className="mt-4">
+          <Row className="mt-4 row-cols-1 row-cols-lg-2 g-4">
             <Col>
-              <div className="card-group">
-                <Card bg="dark" text="white">
-                  <ImageCardContent altName={adventure.record.name} imagePath={adventure.record.imagePath}>
-                    <div className="card-content-spaced">
-                      <div className="card-body-spaced">
-                        <div className="card-row-spaced">
-                          <Card.Title>{adventure.record.name}</Card.Title>
-                          {canEditAdventure === true ?
-                            <ButtonGroup className="ms-2">
-                              <Button variant="primary" onClick={handleShowEditAdventure}>Edit</Button>
-                              <Button variant="primary" onClick={() => handleShowImagePicker()}>
-                                <FontAwesomeIcon icon={faImage} color="white" />
-                              </Button>
-                            </ButtonGroup> :
-                            <div></div>
-                          }
-                        </div>
-                        <Card.Text>{adventure.record.description}</Card.Text>
-                      </div>
+              <Card className="h-100" bg="dark" text="white">
+                <ImageCardContent altName={adventure.record.name} imagePath={adventure.record.imagePath}>
+                  <div className="card-content-spaced">
+                    <div className="card-body-spaced">
                       <div className="card-row-spaced">
-                        {canEditAdventure !== true ? <div></div> : inviteLink === undefined ?
-                          <Button variant="primary" disabled={createInviteButtonDisabled}
-                            onClick={createInviteLink}
-                          >
-                            <BusyElement normal="Create invite link"
-                              busy="Creating invite link..." isBusy={createInviteButtonDisabled} />
-                          </Button> :
-                          <Link to={inviteLink}>Send this link to other players to invite them.</Link>
-                        }
+                        <Card.Title>{adventure.record.name}</Card.Title>
                         {canEditAdventure === true ?
-                          <Button variant="danger" onClick={() => setShowDeleteAdventure(true)}>Delete adventure</Button> :
-                          canLeaveAdventure === true ? <Button variant="warning" onClick={() => setShowLeaveAdventure(true)}>Leave adventure</Button> :
-                            <div></div>
+                          <ButtonGroup className="ms-2">
+                            <Button variant="primary" onClick={handleShowEditAdventure}>Edit</Button>
+                            <Button variant="primary" onClick={() => handleShowImagePicker()}>
+                              <FontAwesomeIcon icon={faImage} color="white" />
+                            </Button>
+                          </ButtonGroup> :
+                          <div></div>
                         }
                       </div>
+                      <Card.Text>{adventure.record.description}</Card.Text>
                     </div>
-                  </ImageCardContent>
-                </Card>
-                <Card bg="dark" text="white">
-                  <Card.Header className="card-header-spaced">
-                    <div>{playersTitle}</div>
-                    {showShowBlockedToggle ?
-                      <Button variant="secondary" onClick={toggleShowBlocked}>{showBlockedText}</Button> :
-                      <div></div>
-                    }
-                  </Card.Header>
-                  <PlayerInfoList ownerUid={ownerUid} players={players} tokens={[]}
-                    showBlockedPlayers={showBlocked}
-                    showBlockButtons={showBlockButtons}
-                    blockPlayer={handleShowBlockPlayer}
-                    unblockPlayer={handleShowUnblockPlayer} />
-                </Card>
-              </div>
+                    <div className="card-row-spaced">
+                      {canEditAdventure !== true ? <div></div> : inviteLink === undefined ?
+                        <Button variant="primary" disabled={createInviteButtonDisabled}
+                          onClick={createInviteLink}
+                        >
+                          <BusyElement normal="Create invite link"
+                            busy="Creating invite link..." isBusy={createInviteButtonDisabled} />
+                        </Button> :
+                        <Link to={inviteLink}>Send this link to other players to invite them.</Link>
+                      }
+                      {canEditAdventure === true ?
+                        <Button variant="danger" onClick={() => setShowDeleteAdventure(true)}>Delete adventure</Button> :
+                        canLeaveAdventure === true ? <Button variant="warning" onClick={() => setShowLeaveAdventure(true)}>Leave adventure</Button> :
+                          <div></div>
+                      }
+                    </div>
+                  </div>
+                </ImageCardContent>
+              </Card>
+            </Col>
+            <Col>
+              <Card className="h-100" bg="dark" text="white">
+                <Card.Header className="card-header-spaced">
+                  <div>{playersTitle}</div>
+                  {showShowBlockedToggle ?
+                    <Button variant="secondary" onClick={toggleShowBlocked}>{showBlockedText}</Button> :
+                    <div></div>
+                  }
+                </Card.Header>
+                <PlayerInfoList ownerUid={ownerUid} players={players} tokens={[]}
+                  showBlockedPlayers={showBlocked}
+                  showBlockButtons={showBlockButtons}
+                  blockPlayer={handleShowBlockPlayer}
+                  unblockPlayer={handleShowUnblockPlayer} />
+              </Card>
             </Col>
           </Row>
           : null

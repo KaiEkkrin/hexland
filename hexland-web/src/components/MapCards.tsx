@@ -1,7 +1,6 @@
 import { Fragment, useContext, useMemo, useState } from 'react';
 import '../App.css';
 
-import { CardStyle } from './AdventureCards';
 import ExpansionToggle from './ExpansionToggle';
 import { UserContext } from './UserContextProvider';
 import { IMapSummary } from '../data/adventure';
@@ -34,11 +33,13 @@ function NewMapCard({ collapsing, handleNewMapClick }: INewMapCardProps) {
       </Card.Header>
     </Card>
   ) : (
-    <Card className="mt-4" style={CardStyle} bg="dark" text="white">
-      <Card.Body>
-        <Button onClick={() => handleNewMapClick?.()}>New map</Button>
-      </Card.Body>
-    </Card>
+    <div className="col">
+      <Card className="h-100" bg="dark" text="white">
+        <Card.Body>
+          <Button onClick={() => handleNewMapClick?.()}>New map</Button>
+        </Card.Body>
+      </Card>
+    </div>
   );
 }
 
@@ -136,12 +137,14 @@ function MapCard({ collapsing, adventures, map, cloneMap, deleteMap, pickImage }
       </Accordion.Collapse>
     </Card>
   ) : (
-    <Card className="mt-4" style={CardStyle} bg="dark" text="white" key={map.id}>
-      <ImageCardContent altName={map.name} imagePath={map.imagePath}>
-        <Card.Title>{map.name}</Card.Title>
-        {content}
-      </ImageCardContent>
-    </Card>
+    <div className="col" key={map.id}>
+      <Card className="h-100" bg="dark" text="white">
+        <ImageCardContent altName={map.name} imagePath={map.imagePath}>
+          <Card.Title>{map.name}</Card.Title>
+          {content}
+        </ImageCardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -178,7 +181,7 @@ function MapCards(props: IMapCardsProps) {
         {cardList}
       </Accordion>
     ) : (
-      <div className="card-group">
+      <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mt-2">
         {cardList}
       </div>
     );

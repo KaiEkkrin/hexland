@@ -350,7 +350,7 @@ function NavLogin({ expanded }: { expanded: boolean }) {
   }, [handleModalClose, statusContext, user]);
 
   return user ? (
-    <div>
+    <div className="ms-2 me-2">
       <div className="d-flex">
         <ButtonGroup>
           {profileButton}
@@ -399,9 +399,11 @@ function NavLogin({ expanded }: { expanded: boolean }) {
       </Modal>
     </div>
   ) : (
-    <LinkContainer to="/login">
-      <Nav.Link>Sign up/Login</Nav.Link>
-    </LinkContainer>
+    <div className="ms-2 me-2">
+      <LinkContainer to="/login">
+        <Nav.Link>Sign up/Login</Nav.Link>
+      </LinkContainer>
+    </div>
   );
 }
 
@@ -437,8 +439,8 @@ function Navigation(props: INavigationProps) {
         <div ref={measureRef}>
           <Navbar bg="dark" expand="lg" variant="dark" sticky="top" onToggle={setExpanded}>
             <LinkContainer to="/">
-              <Navbar.Brand className="Navigation-brand">
-                <img src="/logo32.svg" alt="logo" height={32} />
+              <Navbar.Brand className="Navigation-brand me-3">
+                <img src="/logo32.svg" alt="logo" height={32} className="me-2" />
                 <div className="Navigation-brand-text">
                   <div className="Navigation-brand-main">
                     wall &amp; shadow

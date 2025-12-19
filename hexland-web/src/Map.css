@@ -54,7 +54,27 @@
 
 .Map-help-card {
   background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
   color: #c6c8ca;
+}
+
+.Map-help-card .card-header {
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0.5rem 0.75rem;
+}
+
+.Map-help-card .card-body {
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0.5rem 0.75rem;
+}
+
+/* Add divider line between help items, but not before first or after last */
+.Map-help-card + .Map-help-card {
+  border-top: 1px solid #6c757d !important;
 }
 
 .Map-info {
