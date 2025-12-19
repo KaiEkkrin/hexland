@@ -60,7 +60,7 @@ Major migrations to modern tooling:
 | React | 18.3.1 | ✅ Current |
 | Vite | 7.3.0 | ✅ Current |
 | Firebase SDK | 11.x | ✅ Current |
-| TypeScript | 5.7.x | ✅ Current |
+| TypeScript | 5.7.x | ✅ Current (6.0 not yet released) |
 | Three.js | 0.163.0 | ✅ Current |
 | React Router | 6.28.0 | ✅ Current |
 | Bootstrap | 5.3.0 | ✅ Current |
@@ -86,17 +86,22 @@ Major migrations to modern tooling:
 
 ### 3.1: Remaining Dependency Updates
 
-#### TypeScript (if newer version available)
+#### TypeScript 6.0 (Deferred - Not Yet Released)
 
-```json
-{
-  "devDependencies": {
-    "typescript": "^6.0.0"
-  }
-}
-```
+**Status**: TypeScript 6.0 is in development (58% complete as of Dec 2025). Target release: early 2026.
 
-**Test**: `yarn build` for both web and functions
+TypeScript 6.0 is a "bridge" release between 5.x and the native TypeScript 7.0 (rewritten in Go for 10x performance).
+
+**Blockers**:
+- `ts-jest` peer dependency: `>=4.3 <6` (no TS6 support)
+- `@typescript-eslint/*` peer dependency: `>=4.8.4 <6.0.0` (no TS6 support)
+
+**Breaking changes to prepare for**:
+- `moduleResolution: "node"` → `"bundler"` (web) or `"nodenext"` (functions)
+- `--strict` becomes default (already enabled - no impact)
+- `--target es5` removed (already using es6/ES2022 - no impact)
+
+**Action**: Wait for TS 6.0 release and ecosystem support before upgrading. Consider upgrading Jest 26 → 29 as preparatory work.
 
 #### Playwright (Latest)
 
@@ -376,7 +381,7 @@ The map share E2E test tests sharing maps between users. Needs fixes for Playwri
 
 ### Success Criteria - Phase 3 Complete
 
-- [ ] **All dependencies at latest stable**
+- [ ] **All dependencies at latest stable** (TypeScript 6.0 deferred until release)
 - [ ] **Code quality**:
   - [ ] ESLint 9.x passing
   - [ ] Prettier formatting applied
