@@ -167,6 +167,14 @@
   font-weight: bold;
 }
 
+/* Make ToggleButton hover behaviour match regular dark buttons.
+ * Bootstrap's .btn-check + .btn:hover resets to --bs-btn-bg, so we need
+ * to override those CSS variables for the hover state. */
+.btn-check + .btn-dark:hover {
+  --bs-btn-bg: #424649;
+  --bs-btn-border-color: #424649;
+}
+
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);

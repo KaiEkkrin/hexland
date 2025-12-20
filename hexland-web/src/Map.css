@@ -107,12 +107,16 @@
   min-width: 3rem;
 }
 
+/* Styling for MapInfoCard - only apply transparent bg to Card, not Button */
 .Map-info-card {
-  background-color: transparent;
   margin-right: 1rem;
   margin-top: 1rem;
   max-width: calc(25vw + 30rem);
   z-index: 4;
+}
+
+.Map-info-card.card {
+  background-color: transparent;
 }
 
 .Map-info-list-item {

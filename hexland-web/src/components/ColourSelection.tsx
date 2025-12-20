@@ -1,12 +1,55 @@
+import { useState } from 'react';
+
 import { hexColours } from '../models/featureColour';
 
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import ToggleButton from 'react-bootstrap/ToggleButton';
 
-// Bootstrap's default dark button colours for border toggle indication
-const BORDER_UNSELECTED = '#495057';  // darker grey when not selected
+// Use same colours as Bootstrap dark buttons for consistency
+const BORDER_UNSELECTED = '#212529';  // dark button default background
+const BORDER_HOVER = '#424649';       // dark button hover background
 const BORDER_SELECTED = '#0d6efd';    // primary blue when selected
 const BORDER_WIDTH = '6px';
+
+interface IColourButtonProps {
+  id: string;
+  value: number;
+  colour: string;  // background colour
+  isSelected: boolean;
+  onSelect: () => void;
+}
+
+// Individual colour button that manages its own hover state
+function ColourButton({ id, value, colour, isSelected, onSelect }: IColourButtonProps) {
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Border colour: selected always blue, otherwise hover or default
+  const borderColour = isSelected ? BORDER_SELECTED
+    : isHovered ? BORDER_HOVER
+    : BORDER_UNSELECTED;
+
+  const style: React.CSSProperties = {
+    '--bs-btn-bg': colour,
+    '--bs-btn-border-color': borderColour,
+    '--bs-btn-hover-bg': colour,
+    '--bs-btn-active-bg': colour,
+    '--bs-btn-active-border-color': BORDER_SELECTED,
+    borderWidth: BORDER_WIDTH,
+    minWidth: '2.5rem',
+    minHeight: '2.5rem',
+  } as React.CSSProperties;
+
+  return (
+    <ToggleButton id={id} type="radio" variant="dark" value={value}
+      checked={isSelected}
+      onChange={onSelect}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={style}>
+      {/* Empty - button background IS the colour */}
+    </ToggleButton>
+  );
+}
 
 interface INegativeColourProps {
   includeNegative: boolean;
@@ -19,29 +62,14 @@ function NegativeColour(props: INegativeColourProps & { parentId: string }) {
     return null;
   }
 
-  const isSelected = props.selectedColour === -1;
-  const borderColour = isSelected ? BORDER_SELECTED : BORDER_UNSELECTED;
-
-  // Black/erase button - dark interior, border shows selection state
-  const style: React.CSSProperties = {
-    '--bs-btn-bg': '#1a1a1a',
-    '--bs-btn-border-color': borderColour,
-    '--bs-btn-hover-bg': '#1a1a1a',
-    '--bs-btn-hover-border-color': BORDER_SELECTED,
-    '--bs-btn-active-bg': '#1a1a1a',
-    '--bs-btn-active-border-color': BORDER_SELECTED,
-    borderWidth: BORDER_WIDTH,
-    minWidth: '2.5rem',
-    minHeight: '2.5rem',
-  } as React.CSSProperties;
-
   return (
-    <ToggleButton id={`${props.parentId}-neg`} type="radio" variant="dark" key={-1} value={-1}
-      checked={isSelected}
-      onChange={(_e) => props.setSelectedColour(-1)}
-      style={style}>
-      {/* Empty - button background IS the colour */}
-    </ToggleButton>
+    <ColourButton
+      id={`${props.parentId}-neg`}
+      value={-1}
+      colour="#1a1a1a"
+      isSelected={props.selectedColour === -1}
+      onSelect={() => props.setSelectedColour(-1)}
+    />
   );
 }
 
@@ -56,32 +84,16 @@ interface IColourSelectionProps {
 }
 
 function ColourSelection(props: IColourSelectionProps) {
-  // Generate buttons with coloured interior and border that indicates selection
-  const colourButtons = hexColours.map((c, i) => {
-    const isSelected = props.selectedColour === i;
-    const borderColour = isSelected ? BORDER_SELECTED : BORDER_UNSELECTED;
-
-    const style: React.CSSProperties = {
-      '--bs-btn-bg': c,
-      '--bs-btn-border-color': borderColour,
-      '--bs-btn-hover-bg': c,  // Keep same colour on hover
-      '--bs-btn-hover-border-color': BORDER_SELECTED,
-      '--bs-btn-active-bg': c,  // Keep same colour when active
-      '--bs-btn-active-border-color': BORDER_SELECTED,
-      borderWidth: BORDER_WIDTH,
-      minWidth: '2.5rem',
-      minHeight: '2.5rem',
-    } as React.CSSProperties;
-
-    return (
-      <ToggleButton id={`${props.id}-${i}`} type="radio" variant="dark" key={i} value={i}
-        checked={isSelected}
-        onChange={_e => props.setSelectedColour(i)}
-        style={style}>
-        {/* Empty - button background IS the colour */}
-      </ToggleButton>
-    );
-  });
+  const colourButtons = hexColours.map((c, i) => (
+    <ColourButton
+      key={i}
+      id={`${props.id}-${i}`}
+      value={i}
+      colour={c}
+      isSelected={props.selectedColour === i}
+      onSelect={() => props.setSelectedColour(i)}
+    />
+  ));
 
   return (
     <ButtonGroup className={props.className} id={props.id} hidden={props.hidden} vertical={props.isVertical === true}>
