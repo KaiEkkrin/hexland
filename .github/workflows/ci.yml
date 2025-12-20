@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build-lint-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'yarn'
+          cache-dependency-path: |
+            hexland-web/yarn.lock
+            hexland-web/functions/yarn.lock
+
+      - name: Setup Java (for Firebase emulators)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install dependencies (web)
+        working-directory: hexland-web
+        run: yarn install --frozen-lockfile
+
+      - name: Install dependencies (functions)
+        working-directory: hexland-web/functions
+        run: yarn install --frozen-lockfile
+
+      - name: Build functions
+        working-directory: hexland-web/functions
+        run: yarn build
+
+      - name: Build web
+        working-directory: hexland-web
+        run: yarn build
+
+      - name: Lint web
+        working-directory: hexland-web
+        run: yarn lint
+
+      - name: Lint functions
+        working-directory: hexland-web/functions
+        run: yarn lint
+
+      - name: Create mock Firebase credentials
+        working-directory: hexland-web
+        run: |
+          echo '{"project_id": "hexland-test"}' > firebase-admin-credentials.json
+
+      - name: Start Firebase Emulators and Run Tests
+        working-directory: hexland-web
+        run: |
+          npx firebase emulators:exec \
+            --only auth,firestore,functions,storage \
+            --project hexland-test \
+            "yarn test"

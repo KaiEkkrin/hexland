@@ -276,7 +276,7 @@ If `firebase-admin-credentials.json` is missing, follow Step 2 in the Quick Star
 **Possible causes:**
 
 1. **Functions not built**: Run `cd hexland-web/functions && yarn build`
-2. **Java not found**: Run `java --version` (should show OpenJDK 17)
+2. **Java not found**: Run `java --version` (should show OpenJDK 21)
 3. **Port conflicts**: Check if ports 3400, 4000, 5000, 5001, 8080, 9099 are already in use on your host
 4. **Missing credentials**: Ensure `hexland-web/firebase-admin-credentials.json` exists (see Quick Start Step 2)
 
