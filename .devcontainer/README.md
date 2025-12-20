@@ -164,7 +164,7 @@ ls -la /dev/dri /dev/kfd
 | **Emulator UI** | http://localhost:4000 | Firebase emulator dashboard |
 | **Hosting** | http://localhost:3400 | Firebase hosting emulator |
 | **Functions** | http://localhost:5001 | Firebase Functions endpoint |
-| **Mock Storage** | http://localhost:7000 | WebDAV storage service |
+| **Storage** | localhost:9199 | Firebase Storage emulator |
 | **Firestore** | localhost:8080 | Firestore emulator |
 | **Auth** | localhost:9099 | Authentication emulator |
 | **Node Debug** | localhost:9229 | Node.js debugging port |
@@ -216,12 +216,11 @@ Creates optimized production build in `hexland-web/build/` directory.
 
 ### Services
 
-The dev container runs two Docker services:
+The dev container runs a single Docker service:
 
 1. **hexland-dev** - Main development environment with Node.js, Firebase tools, and all dependencies
-2. **mock-storage** - NGINX-based WebDAV server emulating Firebase Storage
 
-Both share a Docker network for seamless communication.
+The Firebase Storage emulator is included with the other Firebase emulators.
 
 ### Storage
 

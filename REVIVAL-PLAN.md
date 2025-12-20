@@ -4,7 +4,7 @@
 **Document Version**: 2.0
 **Date**: December 2025
 **Status**: Phase 1 & 2 complete, Phase 3 in progress
-**Last Updated**: Phase 3.2 ESLint and tsconfig modernization complete
+**Last Updated**: Phase 3.5 webdav/mock storage vulnerabilities resolved (removed entirely)
 
 ---
 
@@ -288,7 +288,7 @@ firebase deploy --only functions
 VITE_FIREBASE_API_KEY=your_api_key_here
 VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+VITE_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
 VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
 VITE_FIREBASE_APP_ID=1:123456789:web:abcdef
 VITE_FIREBASE_MEASUREMENT_ID=G-XXXXXXXXXX
@@ -333,10 +333,21 @@ jobs:
 | `@google-cloud/firestore` (4.2.0) | Moderate | Key logging (CVE-2023-6460) | Upgrade to 6.1.0+ or remove |
 | `node-forge` (transitive) | Critical/High | Multiple ASN.1 issues | Via @google-cloud/firestore upgrade |
 | `protobufjs` (transitive) | Critical | Prototype pollution | Via @google-cloud/firestore upgrade |
-| `axios` (via webdav) | Moderate | XSRF token exposure | Upgrade webdav to 5.x+ |
-| `fast-xml-parser` (via webdav) | Moderate | Prototype pollution | Upgrade webdav to 5.x+ |
+| ~~`axios` (via webdav)~~ | ~~Moderate~~ | ~~XSRF token exposure~~ | ✅ Removed (mock storage deleted) |
+| ~~`fast-xml-parser` (via webdav)~~ | ~~Moderate~~ | ~~Prototype pollution~~ | ✅ Removed (mock storage deleted) |
 
-#### Step 1: Assess @google-cloud/firestore Usage
+#### ✅ Step 1: WebDAV/Mock Storage (Complete)
+
+The mock storage system (which used webdav for local development) has been completely removed. The project now uses the Firebase Storage emulator for local development instead. This eliminates the axios and fast-xml-parser vulnerabilities.
+
+**Removed files**:
+- `mock-storage/` directory (nginx-based WebDAV server)
+- `hexland-web/src/services/mockStorage*.ts`
+- `hexland-web/src/services/webdav*.ts`
+- `hexland-web/functions/src/services/mockStorage*.ts`
+- `hexland-web/functions/src/services/webdav*.ts`
+
+#### Step 2: Assess @google-cloud/firestore Usage
 
 ```bash
 grep -r "@google-cloud/firestore" hexland-web/functions/src/
@@ -346,18 +357,6 @@ Options:
 1. **Upgrade to v7+** - Requires code changes
 2. **Remove if unused** - Check if `adminDataService.ts` is actively used
 3. **Accept risk** - Document and monitor
-
-#### Step 2: Upgrade webdav Package
-
-```json
-{
-  "dependencies": {
-    "webdav": "^5.8.0"
-  }
-}
-```
-
-**Test**: WebDAV image upload and retrieval still work.
 
 #### Step 3: Run Final Audit
 
@@ -406,7 +405,8 @@ The map share E2E test tests sharing maps between users. Needs fixes for Playwri
   - [ ] Bundle size optimized (<500KB main chunk)
   - [ ] Lighthouse score 90+
 - [ ] **Security** (3.5):
-  - [ ] No critical/high vulnerabilities
+  - [x] WebDAV/mock storage vulnerabilities removed
+  - [ ] @google-cloud/firestore vulnerabilities addressed
   - [ ] `yarn audit` clean
 - [ ] **Deployment**:
   - [ ] Can deploy to Firebase Hosting

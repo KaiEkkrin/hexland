@@ -28,6 +28,7 @@ x-hexland-common: &hexland-common
     - "8080:8080"  # Firestore emulator
     - "9005:9005"  # Firestore debug port
     - "9099:9099"  # Firebase Auth emulator
+    - "9199:9199"  # Firebase Storage emulator
     - "9229:9229"  # Node.js debug port for Functions
 
   networks:
@@ -72,17 +73,6 @@ services:
     group_add:
       - video
       - render
-
-  mock-storage:
-    build:
-      context: ../mock-storage
-      dockerfile: Dockerfile
-
-    ports:
-      - "7000:80"  # WebDAV storage service
-
-    networks:
-      - hexland-network
 
 networks:
   hexland-network:

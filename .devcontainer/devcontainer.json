@@ -62,10 +62,6 @@
       "label": "Firebase Functions",
       "onAutoForward": "notify"
     },
-    "7000": {
-      "label": "Mock Storage (WebDAV)",
-      "onAutoForward": "silent"
-    },
     "8080": {
       "label": "Firestore Emulator",
       "onAutoForward": "silent"
@@ -76,6 +72,10 @@
     },
     "9099": {
       "label": "Firebase Auth",
+      "onAutoForward": "silent"
+    },
+    "9199": {
+      "label": "Firebase Storage",
       "onAutoForward": "silent"
     },
     "9229": {

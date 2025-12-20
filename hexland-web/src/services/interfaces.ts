@@ -189,9 +189,6 @@ export interface IFunctionsService {
   // Deletes an image.
   deleteImage(path: string): Promise<void>;
 
-  // For mock storage use only -- not production.
-  handleMockStorageUpload(imageId: string, name: string): Promise<void>;
-
   // Creates and returns an adventure invite.
   inviteToAdventure(adventureId: string, policy?: IInviteExpiryPolicy | undefined): Promise<string>;
 
@@ -260,13 +257,4 @@ export interface IStorageReference {
 
   // Uploads a file here (from the filesystem.)
   upload(source: string, metadata: { contentType: string }): Promise<void>;
-}
-
-export interface IWebDAV {
-  // For the streams, I'm going to supply the absolute minimal interface to get working...
-  createReadStream(path: string): any;
-  createWriteStream(path: string, options: any): any; 
-  deleteFile(path: string): Promise<void>;
-  getFileDownloadLink(path: string): string;
-  putFileContents(path: string, file: any): Promise<boolean>;
 }

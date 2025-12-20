@@ -5,7 +5,6 @@ import * as Extensions from './services/extensions';
 import functionLogger from './services/functionLogger';
 import * as ImageExtensions from './services/imageExtensions';
 import { IStorage } from './services/interfaces';
-import { MockStorage } from './services/mockStorage';
 import * as Req from './services/request';
 import * as SpriteExtensions from './services/spriteExtensions';
 import { Storage } from './services/storage';
@@ -30,8 +29,7 @@ if (emulatorFunctionsDisabled) {
   functionLogger.logWarning("Emulator-only functions enabled");
 }
 
-const storage: IStorage = emulatorFunctionsDisabled ? new Storage(app) :
-  new MockStorage('http://mock-storage');
+const storage: IStorage = new Storage(app);
 
 // Helper function to conditionally apply region specification
 // In emulator mode, we don't use region specification because it causes issues with test libraries
@@ -187,25 +185,6 @@ async function deleteImage(uid: string, request: Req.DeleteImageRequest) {
   await ImageExtensions.deleteImage(dataService, storage, functionLogger, uid, request.path);
 }
 
-// == EMULATOR ONLY ==
-
-async function handleMockStorageUpload(uid: string, request: Req.HandleMockStorageUploadRequest) {
-  if (emulatorFunctionsDisabled) {
-    // This function is only valid in a local development environment -- allowing it
-    // in the real system would be a security hole :)
-    throw new functions.https.HttpsError('permission-denied', 'Nope');
-  }
-
-  if (!request.imageId || !request.name) {
-    throw new functions.https.HttpsError('invalid-argument', 'No image id or name supplied');
-  }
-
-  functions.logger.info(`Adding image ${request.imageId} with name ${request.name}`);
-  await ImageExtensions.addImage(
-    dataService, storage, functionLogger, request.name, request.imageId
-  );
-}
-
 // Handles most calls. Allocated a small amount of memory.
 // (Using a single Function rather than multiple reduces deployment time and hopefully,
 // also reduces the number of cold spin-up delays, without having significant other penalty
@@ -225,7 +204,6 @@ export const interact = getFunctionBuilder().https.onCall(async (data, context) 
     case 'createAdventure': return await createAdventure(uid, request);
     case 'createMap': return await createMap(uid, request);
     case 'deleteImage': await deleteImage(uid, request); return true;
-    case 'handleMockStorageUpload': await handleMockStorageUpload(uid, request); return true;
     case 'inviteToAdventure': return await inviteToAdventure(uid, request);
     case 'joinAdventure': return await joinAdventure(uid, request);
     default: throw new functions.https.HttpsError('invalid-argument', 'Unrecognised verb');

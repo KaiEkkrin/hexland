@@ -74,14 +74,6 @@ export class FunctionsService implements IFunctionsService {
     await this.interactCallable(request);
   }
 
-  async handleMockStorageUpload(imageId: string, name: string): Promise<void> {
-    const request: Req.HandleMockStorageUploadRequest = {
-      verb: 'handleMockStorageUpload',
-      imageId, name
-    };
-    await this.interactCallable(request);
-  }
-
   async deleteImage(path: string): Promise<void> {
     const request: Req.DeleteImageRequest = {
       verb: 'deleteImage', path

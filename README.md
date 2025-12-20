@@ -71,7 +71,7 @@ firebase deploy                   # Deploy everything (includes Functions)
 For deployment, configure CORS on your Firebase Storage bucket:
 
 ```bash
-gsutil cors set hexland-web/cors.json gs://projectname.appspot.com
+gsutil cors set hexland-web/cors.json gs://projectname.firebasestorage.app
 ```
 
 ## Alternative: Standalone Docker

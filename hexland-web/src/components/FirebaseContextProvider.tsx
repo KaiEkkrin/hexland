@@ -5,7 +5,7 @@ import { getAnalytics, logEvent as firebaseLogEvent } from 'firebase/analytics';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator, serverTimestamp } from 'firebase/firestore';
 import { getFunctions, Functions, connectFunctionsEmulator } from 'firebase/functions';
-import { getStorage, FirebaseStorage } from 'firebase/storage';
+import { getStorage, FirebaseStorage, connectStorageEmulator } from 'firebase/storage';
 import { IAnalytics } from '../services/interfaces';
 
 import { IContextProviderProps, IFirebaseContext, IFirebaseProps } from './interfaces';
@@ -48,7 +48,7 @@ async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => vo
       apiKey: "fake-api-key-for-emulator",
       authDomain: `${projectId}.firebaseapp.com`,
       projectId: projectId,
-      storageBucket: `${projectId}.appspot.com`,
+      storageBucket: `${projectId}.firebasestorage.app`,
       messagingSenderId: "123456789",
       appId: "1:123456789:web:abcdef"
     };
@@ -70,6 +70,8 @@ async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => vo
     // to avoid issues with test libraries (see functions/src/index.ts getFunctionBuilder)
     functions = getFunctions(app);
     connectFunctionsEmulator(functions, hostname, 5001);
+    storage = getStorage(app);
+    connectStorageEmulator(storage, hostname, 9199);
     usingLocalEmulators = true;
     console.debug("Running with local emulators");
   } else {

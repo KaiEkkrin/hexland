@@ -18,6 +18,7 @@ services:
             - 8080:8080
             - 9005:9005
             - 9099:9099
+            - 9199:9199
         security_opt:
             - seccomp:./hexland-web/docker/seccomp_profile.json
         stdin_open: true
@@ -25,7 +26,3 @@ services:
         volumes:
             - ./hexland-web:/usr/src/app/hexland-web
             - ./.usercache:/home/${USER}
-    mock-storage:
-        build: mock-storage
-        ports:
-            - 7000:80

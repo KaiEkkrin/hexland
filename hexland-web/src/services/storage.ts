@@ -45,7 +45,9 @@ export class StorageReference implements IStorageReference {
 
   async put(file: any, metadata: any) {
     // For now, I'll enumerate explicitly what metadata I expect here
+    // contentType is required for the onUpload trigger to recognize the file as an image
     await uploadBytes(this._ref, file, {
+      contentType: metadata.contentType ?? file.type,
       customMetadata: metadata.customMetadata
     });
   }

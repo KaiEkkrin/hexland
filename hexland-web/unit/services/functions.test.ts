@@ -3,7 +3,8 @@ import { DataService } from './dataService';
 import { deleteAdventure, deleteCharacter, deleteMap, editAdventure, editCharacter, editMap, ensureProfile, getAllMapChanges, leaveAdventure, registerAdventureAsRecent, registerMapAsRecent, removeAdventureFromRecent, removeMapFromRecent, updateProfile, watchChangesAndConsolidate } from './extensions';
 import { FunctionsService } from './functions';
 import { IDataService, IUser } from './interfaces';
-import { MockWebStorage } from './mockWebStorage';
+import { Storage } from './storage';
+import { getStorage, FirebaseStorage, connectStorageEmulator } from 'firebase/storage';
 import { IAdventure, summariseAdventure } from '../data/adventure';
 import { IAnnotation } from '../data/annotation';
 import { ChangeCategory, ChangeType, Changes, TokenAdd, TokenMove, WallAdd } from '../data/change';
@@ -71,6 +72,7 @@ interface IEmul {
   context: RulesTestContext;
   db: Firestore;
   functions: Functions;
+  storage: FirebaseStorage;
   app: FirebaseApp;
   auth: Auth;
 }
@@ -101,6 +103,19 @@ describe('test functions', () => {
         port: 8080,
         rules: rules,
       },
+      storage: {
+        host: 'localhost',
+        port: 9199,
+        // Use permissive rules for functional tests (not testing security rules here)
+        rules: `rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if true;
+    }
+  }
+}`,
+      },
     });
   });
 
@@ -117,15 +132,18 @@ describe('test functions', () => {
       apiKey: 'fake-api-key-for-emulator',
       projectId: projectId,
       authDomain: `${projectId}.firebaseapp.com`,
+      storageBucket: `${projectId}.firebasestorage.app`,
     }, appName);
 
     const functions = getFunctions(app);
     const appAuth = getAuth(app);
+    const appStorage = getStorage(app);
 
     // Only connect to emulators once per app
     if (!emulatorsConnected[appName]) {
       connectFunctionsEmulator(functions, 'localhost', 5001);
       connectAuthEmulator(appAuth, 'http://localhost:9099', { disableWarnings: true });
+      connectStorageEmulator(appStorage, 'localhost', 9199);
       emulatorsConnected[appName] = true;
     }
 
@@ -151,7 +169,7 @@ describe('test functions', () => {
     });
     const db = context.firestore() as unknown as Firestore;
 
-    emul[originalUid] = { context, db, functions, app, auth: appAuth };
+    emul[originalUid] = { context, db, functions, storage: appStorage, app, auth: appAuth };
     return emul[originalUid];
   }
 
@@ -1195,7 +1213,6 @@ describe('test functions', () => {
   // I expect this will be a bit heavy too
   describe('test images', () => {
     const readFile = promisify(fs.readFile);
-    const storageLocation = 'http://mock-storage';
     const testImages = [
       './test-images/st01.png',
       './test-images/st02.png',
@@ -1231,12 +1248,33 @@ describe('test functions', () => {
       })
     }
 
+    // Helper to wait for the storage trigger (onFinalize) to process an uploaded image
+    // The trigger updates Firestore, so we poll until the image record appears
+    async function waitForImageRecord(
+      dataService: IDataService,
+      uid: string,
+      expectedPath: string,
+      timeoutMs: number = 10000
+    ): Promise<void> {
+      const imagesRef = dataService.getImagesRef(uid);
+      const startTime = Date.now();
+      while (Date.now() - startTime < timeoutMs) {
+        const images = await dataService.get(imagesRef);
+        if (images?.images?.some(img => img.path === expectedPath)) {
+          return;
+        }
+        // Wait a bit before polling again
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      throw new Error(`Timed out waiting for image record at path ${expectedPath}`);
+    }
+
     test('add and delete one image', async () => {
       const owner = createTestUser('Owner', 'owner@example.com', 'google.com');
       const emul = await initializeEmul(owner);
       const dataService = new DataService(emul.db, serverTimestamp);
       const functionsService = new FunctionsService(emul.functions);
-      const storage = new MockWebStorage(functionsService, storageLocation);
+      const storage = new Storage(emul.storage);
 
       // Make sure the user has a profile
       await ensureProfile(dataService, owner, undefined);
@@ -1250,7 +1288,10 @@ describe('test functions', () => {
       // Upload an image for it
       const buffer = await readFile(testImages[0]);
       const path = `images/${owner.uid}/one`;
-      await storage.ref(path).put(buffer, { customMetadata: { originalName: 'st01.png' } });
+      await storage.ref(path).put(buffer, { contentType: 'image/png', customMetadata: { originalName: 'st01.png' } });
+
+      // Wait for the storage trigger (onFinalize) to process the upload
+      await waitForImageRecord(dataService, owner.uid, path);
 
       // I should now find it has an images entry:
       const imagesRef = dataService.getImagesRef(owner.uid);
@@ -1290,7 +1331,7 @@ describe('test functions', () => {
       const emul = await initializeEmul(owner);
       const dataService = new DataService(emul.db, serverTimestamp);
       const functionsService = new FunctionsService(emul.functions);
-      const storage = new MockWebStorage(functionsService, storageLocation);
+      const storage = new Storage(emul.storage);
 
       // Make sure the user has a profile
       await ensureProfile(dataService, owner, undefined);
@@ -1322,11 +1363,17 @@ describe('test functions', () => {
       // Upload both images
       const buffer01 = await readFile(testImages[0]);
       const path01 = `images/${owner.uid}/one`;
-      await storage.ref(path01).put(buffer01, { customMetadata: { originalName: 'st01.png' } });
+      await storage.ref(path01).put(buffer01, { contentType: 'image/png', customMetadata: { originalName: 'st01.png' } });
 
       const buffer02 = await readFile(testImages[1]);
       const path02 = `images/${owner.uid}/two`;
-      await storage.ref(path02).put(buffer02, { customMetadata: { originalName: 'st02.png' } });
+      await storage.ref(path02).put(buffer02, { contentType: 'image/png', customMetadata: { originalName: 'st02.png' } });
+
+      // Wait for the storage triggers to process both uploads
+      await Promise.all([
+        waitForImageRecord(dataService, owner.uid, path01),
+        waitForImageRecord(dataService, owner.uid, path02)
+      ]);
 
       // Sanity check
       const [d01, d02] = await Promise.all([path01, path02].map(async p => {
@@ -1407,7 +1454,7 @@ describe('test functions', () => {
       const emul = await initializeEmul(owner);
       const dataService = new DataService(emul.db, serverTimestamp);
       const functionsService = new FunctionsService(emul.functions);
-      const storage = new MockWebStorage(functionsService, storageLocation);
+      const storage = new Storage(emul.storage);
 
       // Make sure the user has a profile
       await ensureProfile(dataService, owner, undefined);
@@ -1421,7 +1468,10 @@ describe('test functions', () => {
       // Upload an image for it
       const buffer = await readFile(testImages[0]);
       const path = `images/${owner.uid}/one`;
-      await storage.ref(path).put(buffer, { customMetadata: { originalName: 'st01.png' } });
+      await storage.ref(path).put(buffer, { contentType: 'image/png', customMetadata: { originalName: 'st01.png' } });
+
+      // Wait for the storage trigger to process the upload
+      await waitForImageRecord(dataService, owner.uid, path);
 
       // Create a sprite of that image
       const sprite = await functionsService.addSprites(a1Id, "4x4", [path]);
@@ -1440,7 +1490,10 @@ describe('test functions', () => {
       // Upload another image
       const buffer2 = await readFile(testImages[1]);
       const path2 = `images/${owner.uid}/two`;
-      await storage.ref(path2).put(buffer2, { customMetadata: { originalName: 'st02.png' } });
+      await storage.ref(path2).put(buffer2, { contentType: 'image/png', customMetadata: { originalName: 'st02.png' } });
+
+      // Wait for the storage trigger to process the upload
+      await waitForImageRecord(dataService, owner.uid, path2);
 
       // Create a sprite of it
       // `addSprites` may return other sprites that it moved to a new spritesheet while

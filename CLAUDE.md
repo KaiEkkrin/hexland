@@ -165,7 +165,6 @@ Located in `hexland-web/functions/src/`:
 - `index.ts` - Function exports and routing
 - `services/adminDataService.ts` - Server-side Firestore access with admin SDK
 - `services/storage.ts` - Firebase Storage operations (image uploads, sprites)
-- `services/webdav.ts` - WebDAV integration for external storage
 - `services/spriteExtensions.ts` - Sprite sheet processing and manipulation
 
 Functions handle server-side operations like image processing, storage management, and data validation that require elevated permissions.
@@ -198,11 +197,9 @@ The coordinate system is abstracted to work with both hex and square grids.
 
 ### Image Storage
 
-Images can be stored in two ways:
-1. **Firebase Storage** - Default, uses Firebase Storage bucket
-2. **WebDAV** - Optional external storage via WebDAV protocol (configured per-user)
+Images are stored in Firebase Storage. In development, the Firebase Storage emulator is used.
 
-The storage abstraction is in `services/storage.ts` with mock implementations for local development.
+The storage abstraction is in `services/storage.ts`.
 
 ## Development Environment
 
@@ -210,8 +207,7 @@ The storage abstraction is in `services/storage.ts` with mock implementations fo
 
 The repository includes a VS Code dev container (`.devcontainer/`) that provides:
 - Node.js 20 LTS
-- All Firebase emulators pre-configured
-- Mock WebDAV storage service
+- All Firebase emulators pre-configured (including Storage emulator)
 - VS Code extensions for React/TypeScript development
 
 **Important**: Must clone repository into a named Docker volume (`hexland_workspace`) to avoid Windows/Linux permission conflicts. See `.devcontainer/README.md` for setup instructions.

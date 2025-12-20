@@ -10,8 +10,13 @@ import { Bucket } from '@google-cloud/storage';
 export class Storage implements IStorage {
   private readonly _bucket: Bucket;
 
-  constructor(app: admin.app.App) {
-    this._bucket = app.storage().bucket();
+  constructor(app: admin.app.App, bucketName?: string) {
+    // Use explicit bucket name if provided, otherwise use default
+    // The bucket name format should be `${projectId}.firebasestorage.app` for compatibility
+    // with the client SDK and Storage emulator
+    this._bucket = bucketName
+      ? app.storage().bucket(bucketName)
+      : app.storage().bucket();
   }
 
   ref(path: string): IStorageReference {
