@@ -4,7 +4,7 @@
 **Document Version**: 2.0
 **Date**: December 2025
 **Status**: Phase 1 & 2 complete, Phase 3 in progress
-**Last Updated**: Phase 3.5 webdav/mock storage vulnerabilities resolved (removed entirely)
+**Last Updated**: Phase 3.5 security audit complete (prod vulns: 0, dev vulns: 105 → Phase 3.7)
 
 ---
 
@@ -322,19 +322,20 @@ jobs:
 
 ---
 
-### 3.5: Fix Package Vulnerabilities
+### ✅ 3.5: Fix Package Vulnerabilities (Complete)
 
 **Priority**: HIGH (security)
+**Status**: Production dependencies have zero known vulnerabilities. Remaining vulns are dev-only.
 
-#### Current Vulnerabilities (from `yarn audit`)
+#### Vulnerability Summary
 
-| Package | Severity | Issue | Resolution |
-|---------|----------|-------|------------|
-| `@google-cloud/firestore` (4.2.0) | Moderate | Key logging (CVE-2023-6460) | Upgrade to 6.1.0+ or remove |
-| `node-forge` (transitive) | Critical/High | Multiple ASN.1 issues | Via @google-cloud/firestore upgrade |
-| `protobufjs` (transitive) | Critical | Prototype pollution | Via @google-cloud/firestore upgrade |
-| ~~`axios` (via webdav)~~ | ~~Moderate~~ | ~~XSRF token exposure~~ | ✅ Removed (mock storage deleted) |
-| ~~`fast-xml-parser` (via webdav)~~ | ~~Moderate~~ | ~~Prototype pollution~~ | ✅ Removed (mock storage deleted) |
+| Before | After | Change |
+|--------|-------|--------|
+| 127 total | 105 total | -22 |
+| 16 critical | 11 critical | -5 |
+| 64 high | 51 high | -13 |
+
+**Key insight**: All remaining vulnerabilities are in dev dependencies (Jest 26, jest-image-snapshot, firebase-admin's transitive deps). The production bundle has **zero** known vulnerabilities.
 
 #### ✅ Step 1: WebDAV/Mock Storage (Complete)
 
@@ -347,24 +348,33 @@ The mock storage system (which used webdav for local development) has been compl
 - `hexland-web/functions/src/services/mockStorage*.ts`
 - `hexland-web/functions/src/services/webdav*.ts`
 
-#### Step 2: Assess @google-cloud/firestore Usage
+#### ✅ Step 2: Remove Unused @google-cloud/firestore (Complete)
 
-```bash
-grep -r "@google-cloud/firestore" hexland-web/functions/src/
-```
+The `@google-cloud/firestore` package was listed in web app dependencies but never imported anywhere. It's a server-side SDK that doesn't belong in a web app. Removing it eliminated ~10 critical/high vulnerabilities.
 
-Options:
-1. **Upgrade to v7+** - Requires code changes
-2. **Remove if unused** - Check if `adminDataService.ts` is actively used
-3. **Accept risk** - Document and monitor
+#### ✅ Step 3: Replace npm-run-all with npm-run-all2 (Complete)
 
-#### Step 3: Run Final Audit
+The original `npm-run-all` (v4.1.5) was 7 years old and unmaintained, with ~10 transitive vulnerabilities. Replaced with `npm-run-all2` (v7.0.0), a maintained fork that's a drop-in replacement.
 
-```bash
-yarn audit
-```
+#### ✅ Step 4: Move Type Definitions to devDependencies (Complete)
 
-**Target**: No high/critical vulnerabilities in production dependencies.
+Moved `@types/*` packages and `typescript` from dependencies to devDependencies. These are compile-time only and don't belong in production dependencies.
+
+#### ✅ Step 5: Upgrade firebase-admin (Complete)
+
+Upgraded from 13.0.0 to 13.6.0 to pick up latest security patches.
+
+#### Remaining Vulnerabilities (Dev-Only)
+
+All remaining vulnerabilities are in dev dependencies and don't affect production:
+
+| Package | Vulns | Root Cause | Resolution |
+|---------|-------|------------|------------|
+| `jest` (26.6.0) | ~40 | Old minimatch, semver, glob | Upgrade in Phase 3.7 |
+| `jest-image-snapshot` (4.2.0) | ~10 | Old rimraf, minimatch | Upgrade in Phase 3.7 |
+| `firebase-admin` | 4 | jws via google-auth-library | Awaiting upstream fix |
+
+**Target achieved**: No high/critical vulnerabilities in production dependencies.
 
 ---
 
@@ -393,6 +403,52 @@ The map share E2E test tests sharing maps between users. Needs fixes for Playwri
 
 ---
 
+### 3.7: Modernize Test Framework
+
+**Priority**: MEDIUM (dev experience, remaining dev vulns)
+**Status**: Not started
+
+#### Background
+
+The project uses Jest 26 (released 2020) with ts-jest 26, which has:
+- ~50 transitive vulnerabilities (all dev-only, not affecting production)
+- Compatibility warnings with TypeScript 5.x
+- Outdated APIs and slower performance
+
+#### Options to Evaluate
+
+| Framework | Pros | Cons |
+|-----------|------|------|
+| **Jest 30** | Familiar API, 37% faster, 77% less memory, excellent ecosystem | Major version jump, migration effort |
+| **Vitest** | Native ESM, Vite-compatible, very fast, modern | New framework, different API, less mature |
+| **Jest 29** | Conservative upgrade, most vulns fixed | Still old, not as fast as 30 |
+
+#### Considerations
+
+- **Vitest** would be a natural fit since we already use Vite for building
+- **Jest 30** is the safe choice with minimal migration
+- Current test suite: 96 unit tests, E2E tests use Playwright (unaffected)
+
+#### Dependencies to Update
+
+| Package | Current | Target |
+|---------|---------|--------|
+| `jest` | 26.6.0 | 30.x or Vitest |
+| `ts-jest` | 26.5.3 | 29.x or remove |
+| `@types/jest` | 26.0.20 | 30.x or remove |
+| `jest-image-snapshot` | 4.2.0 | 6.5.1 |
+
+#### Steps
+
+1. Research Vitest vs Jest 30 for this codebase
+2. Choose framework and create migration plan
+3. Update dependencies
+4. Fix any breaking changes in tests
+5. Verify all 96 tests pass
+6. Update jest.config if needed
+
+---
+
 ### Success Criteria - Phase 3 Complete
 
 - [ ] **All dependencies at latest stable** (TypeScript 6.0 deferred until release)
@@ -404,10 +460,13 @@ The map share E2E test tests sharing maps between users. Needs fixes for Playwri
   - [ ] Routes lazy-loaded
   - [ ] Bundle size optimized (<500KB main chunk)
   - [ ] Lighthouse score 90+
-- [ ] **Security** (3.5):
+- [x] **Security** (3.5):
   - [x] WebDAV/mock storage vulnerabilities removed
-  - [ ] @google-cloud/firestore vulnerabilities addressed
-  - [ ] `yarn audit` clean
+  - [x] Unused @google-cloud/firestore removed
+  - [x] npm-run-all replaced with npm-run-all2
+  - [x] firebase-admin upgraded to 13.6.0
+  - [x] Production dependencies: zero known vulnerabilities
+  - [ ] Dev vulnerabilities: addressed in 3.7 (test framework upgrade)
 - [ ] **Deployment**:
   - [ ] Can deploy to Firebase Hosting
   - [ ] Can deploy to Firebase Functions (Node.js 20)

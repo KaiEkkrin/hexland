@@ -6,9 +6,12 @@ import { IDataAndReference, IDataReference, IDataService, IDataView, ILogger, IS
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 
-import { spawn } from 'child-process-promise';
 import { v4 as uuidv4 } from 'uuid';
+
+const execFileAsync = promisify(execFile);
 
 // For HttpsError.  It's a bit abstraction-breaking, but very convenient...
 import * as functions from 'firebase-functions/v1';
@@ -46,7 +49,7 @@ async function createMontage(
     const tileHeight = Math.floor(1024 / rows);
     logger.logInfo("spawning montage");
     const tmpSheetPath = path.join(tmp, `${uuidv4()}.png`);
-    await spawn('montage', [
+    await execFileAsync('montage', [
       '-geometry', `${tileWidth}x${tileHeight}`,
       '-tile', `${columns}x${rows}`,
       '-alpha', 'background',
