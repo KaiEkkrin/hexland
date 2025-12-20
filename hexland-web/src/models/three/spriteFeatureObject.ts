@@ -52,7 +52,7 @@ export class SpriteFeatureObject<
 
   private readonly _sub: Subscription;
   private readonly _material: THREE.ShaderMaterial;
-  private readonly _uniforms: any;
+  private readonly _uniforms: Record<string, THREE.IUniform>;
 
   private readonly _scratchMatrix1 = new THREE.Matrix4();
   private readonly _scratchMatrix2 = new THREE.Matrix4();

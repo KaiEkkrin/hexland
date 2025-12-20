@@ -39,7 +39,7 @@ export function TokenSizeSelection({ size, sizes, setSize }: ITokenSizeSelection
     <Form.Group>
       <Form.Label htmlFor="tokenSizeSelect">Size</Form.Label>
       <Form.Control id="tokenSizeSelect" as="select" value={sizeString}
-        onChange={e => handleSizeChange(e as any)}
+        onChange={e => handleSizeChange(e as unknown as React.FormEvent<HTMLSelectElement>)}
       >
         {sizeOptions}
       </Form.Control>

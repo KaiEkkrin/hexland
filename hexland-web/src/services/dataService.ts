@@ -84,7 +84,7 @@ class DataReference<T> extends DataReferenceBase implements IDataReference<T> {
     return parent ? new DataReference<U>(parent, converter) : undefined;
   }
 
-  convert(rawData: any): T {
+  convert(rawData: Record<string, unknown>): T {
     return this._converter.convert(rawData);
   }
 
@@ -160,9 +160,9 @@ export class DataService implements IDataService {
     return setDoc(dref, value as DocumentData);
   }
 
-  update<T>(r: IDataReference<T>, changes: any): Promise<void> {
+  update<T>(r: IDataReference<T>, changes: Partial<T>): Promise<void> {
     const dref = (r as DataReference<T>).dref;
-    return updateDoc(dref, changes);
+    return updateDoc(dref, changes as DocumentData);
   }
 
   // IDataService implementation
@@ -400,8 +400,8 @@ class TransactionalDataView implements IDataView {
     this._tr = this._tr.set(dref, value as DocumentData);
   }
 
-  async update<T>(r: IDataReference<T>, changes: any): Promise<void> {
+  async update<T>(r: IDataReference<T>, changes: Partial<T>): Promise<void> {
     const dref = (r as DataReference<T>).dref;
-    this._tr = this._tr.update(dref, changes);
+    this._tr = this._tr.update(dref, changes as DocumentData);
   }
 }

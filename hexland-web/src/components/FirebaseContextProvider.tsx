@@ -91,7 +91,7 @@ async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => vo
     createAnalytics: isLocalDevelopment ? undefined : (): IAnalytics => {
       const analytics = getAnalytics(app);
       return {
-        logEvent: (event: string, parameters: any) => firebaseLogEvent(analytics, event, parameters)
+        logEvent: (event: string, parameters: Record<string, unknown>) => firebaseLogEvent(analytics, event, parameters)
       };
     }
   });

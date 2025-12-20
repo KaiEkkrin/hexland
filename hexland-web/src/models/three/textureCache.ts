@@ -17,7 +17,7 @@ export class TextureCache {
   constructor(
     spriteManager: ISpriteManager,
     resolveImageUrl: (path: string) => Promise<string>,
-    logError: (message: string, e: any) => void
+    logError: (message: string, e: unknown) => void
   ) {
     this._spriteManager = spriteManager;
     this._resolveImageUrl = resolveImageUrl;

@@ -32,7 +32,7 @@ export class FunctionsService implements IFunctionsService {
         sources: sources.slice(i, Math.min(i + 10, sources.length))
       });
       if (Array.isArray(result.data)) {
-        sprites.push(...result.data.map((d: any) => spriteConverter.convert(d)));
+        sprites.push(...result.data.map((d: unknown) => spriteConverter.convert(d as Record<string, unknown>)));
       }
     }
 

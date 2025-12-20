@@ -131,7 +131,7 @@ export class User implements IUser {
     return sendEmailVerificationFn(this._user);
   }
 
-  updateProfile(p: any) {
+  updateProfile(p: { displayName?: string | null; photoURL?: string | null }) {
     return updateProfileFn(this._user, p);
   }
 }

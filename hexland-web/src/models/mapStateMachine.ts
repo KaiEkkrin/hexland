@@ -160,7 +160,7 @@ export class MapStateMachine {
     tokenGeometry: ITokenGeometry,
     colours: FeatureColour[],
     userPolicy: IUserPolicy | undefined,
-    logError: (message: string, e: any) => void,
+    logError: (message: string, e: unknown) => void,
     spriteManager: ISpriteManager,
     resolveImageUrl: (path: string) => Promise<string>
   ) {

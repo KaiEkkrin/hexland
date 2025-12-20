@@ -127,7 +127,7 @@ export class LoS extends Drawn {
   private readonly _featureMaterial: THREE.ShaderMaterial;
   private readonly _featureRenderTargets: THREE.WebGLRenderTarget[];
   private readonly _featureScene: THREE.Scene;
-  private readonly _featureUniforms: any;
+  private readonly _featureUniforms: Record<string, THREE.IUniform>;
 
   private readonly _composeClearColour: THREE.Color;
 

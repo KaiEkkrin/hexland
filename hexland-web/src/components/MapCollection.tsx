@@ -80,10 +80,10 @@ function MapCollection({ adventures, maps, showNewMap, deleteMap, pickImage }: I
     try {
       const id = await functionsService.createMap(adventureId, map.name, map.description, map.ty, map.ffa);
       navigate('/adventure/' + adventureId + '/map/' + id, { replace: true });
-    } catch (e: any) {
+    } catch (e: unknown) {
       handleModalClose();
       logError('Failed to create map', e);
-      const message = String(e.message);
+      const message = e instanceof Error ? e.message : String(e);
       if (message) {
         toasts.next({ id: uuidv4(), record: {
           title: "Error creating map", message: message

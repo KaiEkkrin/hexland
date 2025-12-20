@@ -355,7 +355,7 @@ export class HexGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   populateShaderUniforms(
-    uniforms: any, faceTex?: THREE.WebGLRenderTarget | undefined, tileOrigin?: THREE.Vector2 | undefined
+    uniforms: Record<string, THREE.IUniform>, faceTex?: THREE.WebGLRenderTarget | undefined, tileOrigin?: THREE.Vector2 | undefined
   ) {
     super.populateShaderUniforms(uniforms, faceTex, tileOrigin);
     uniforms['hexStep'].value = new THREE.Vector2(this._xStep, this._yStep);

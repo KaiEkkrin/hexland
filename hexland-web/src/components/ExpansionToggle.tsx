@@ -12,7 +12,7 @@ interface IExpansionToggleProps {
   children: React.ReactNode;
   direction: "up" | "down";
   eventKey: string;
-  callback?: any;
+  callback?: (eventKey: string) => void;
   rhs?: React.ReactNode | undefined;
 }
 

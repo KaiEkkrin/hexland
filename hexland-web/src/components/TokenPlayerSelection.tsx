@@ -27,7 +27,7 @@ function TokenPlayerSelection({ id, players, tokenPlayerIds, setTokenPlayerIds }
 
   return (
     <Form.Control id={id} as="select" multiple value={tokenPlayerIds}
-      onChange={e => handleChange(e as any)}>
+      onChange={e => handleChange(e as unknown as React.FormEvent<HTMLSelectElement>)}>
       {players.map(p =>
         <option key={p.playerId} value={p.playerId}>{p.playerName}</option>
       )}

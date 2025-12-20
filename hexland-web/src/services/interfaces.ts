@@ -29,7 +29,7 @@ export interface IAuth {
   ): () => void;
 }
 
-export type IAuthProvider = {};
+export type IAuthProvider = object;
 
 // A user.  (Exposes the things we want from `firebase.User` -- may need extending;
 // but needs to be hidden behind this interface to facilitate unit testing.)
@@ -43,18 +43,18 @@ export interface IUser {
 
   changePassword: (oldPassword: string, newPassword: string) => Promise<void>;
   sendEmailVerification: () => Promise<void>;
-  updateProfile: (p: any) => Promise<void>;
+  updateProfile: (p: { displayName?: string | null; photoURL?: string | null }) => Promise<void>;
 }
 
 // The analytics service.
 export interface IAnalytics {
-  logEvent(event: string, parameters: any): void;
+  logEvent(event: string, parameters: Record<string, unknown>): void;
 }
 
 // A reference to stored data.
 export interface IDataReference<T> {
   id: string;
-  convert(rawData: any): T;
+  convert(rawData: Record<string, unknown>): T;
   isEqual(other: IDataReference<T>): boolean;
 }
 
@@ -166,7 +166,7 @@ export interface IDataView {
   get<T>(r: IDataReference<T>): Promise<T | undefined>;
   set<T>(r: IDataReference<T>, value: T): Promise<void>; // call this with an explicit type so TypeScript
                                                          // can check you included all the right fields
-  update<T>(r: IDataReference<T>, changes: any): Promise<void>;
+  update<T>(r: IDataReference<T>, changes: Partial<T>): Promise<void>;
 }
 
 // Provides access to Firebase Functions.
@@ -198,9 +198,9 @@ export interface IFunctionsService {
 
 // Provides logging for the extensions.
 export interface ILogger {
-  logError(message: string, ...optionalParams: any[]): void;
-  logInfo(message: string, ...optionalParams: any[]): void;
-  logWarning(message: string, ...optionalParams: any[]): void;
+  logError(message: string, ...optionalParams: unknown[]): void;
+  logInfo(message: string, ...optionalParams: unknown[]): void;
+  logWarning(message: string, ...optionalParams: unknown[]): void;
 }
 
 // The object cache emits these.
@@ -253,7 +253,7 @@ export interface IStorageReference {
   getDownloadURL(): Promise<string>;
 
   // Uploads a file here.
-  put(file: any, metadata: any): Promise<void>;
+  put(file: Blob, metadata: { contentType?: string; customMetadata?: Record<string, string> }): Promise<void>;
 
   // Uploads a file here (from the filesystem.)
   upload(source: string, metadata: { contentType: string }): Promise<void>;

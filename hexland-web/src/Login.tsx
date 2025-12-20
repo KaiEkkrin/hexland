@@ -221,9 +221,9 @@ function Login() {
     }
   }, [navigate]);
 
-  const handleLoginError = useCallback((e: any) => {
+  const handleLoginError = useCallback((e: unknown) => {
     setLoginFailedVisible(true);
-    setLoginFailedText(String(e.message));
+    setLoginFailedText(e instanceof Error ? e.message : String(e));
     logError("Login failed", e);
   }, [logError, setLoginFailedVisible]);
 

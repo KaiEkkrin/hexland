@@ -58,7 +58,7 @@ const vertexHighlightAlpha = 0.35;
 // An orthographic implementation of IDrawing using THREE.js.
 export class DrawingOrtho implements IDrawing {
   private readonly _gridGeometry: IGridGeometry;
-  private readonly _logError: (message: string, e: any) => void;
+  private readonly _logError: (message: string, e: unknown) => void;
   private readonly _resolveImageUrl: (path: string) => Promise<string>;
 
   private readonly _camera: THREE.OrthographicCamera;
@@ -126,7 +126,7 @@ export class DrawingOrtho implements IDrawing {
     tokenGeometry: ITokenGeometry,
     colours: FeatureColour[],
     seeEverything: boolean,
-    logError: (message: string, e: any) => void,
+    logError: (message: string, e: unknown) => void,
     spriteManager: ISpriteManager,
     resolveImageUrl: (path: string) => Promise<string>
   ) {

@@ -38,7 +38,7 @@ export class PaletteColouredFeatureObject<K extends GridCoord, F extends IFeatur
   private readonly _geometry: THREE.InstancedBufferGeometry;
   private readonly _colours: number[]; // not instanced, but lets us change the palette
   private readonly _instanceColours: Float32Array;
-  private readonly _uniforms: any; // used by subclasses only
+  private readonly _uniforms: Record<string, THREE.IUniform>; // used by subclasses only
   private readonly _material: THREE.ShaderMaterial;
 
   private _palette: THREE.Color[];

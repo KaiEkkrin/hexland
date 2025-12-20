@@ -9,7 +9,7 @@ export interface ICacheItem<T> {
 
 interface ICacheEntry<T> {
   entryId: string; // to distinguish multiple fetches of the same thing
-  error?: { message: string, e: any } | undefined; // if undefined, we failed to fetch this
+  error?: { message: string, e: unknown } | undefined; // if undefined, we failed to fetch this
   obj?: ICacheItem<T> | undefined; // if undefined, wait for the subject
   subj: ReplaySubject<ICacheItem<T>>;
   refCount: number;
@@ -21,9 +21,9 @@ interface ICacheEntry<T> {
 // trying to minimise the number of fetches.
 export class ObjectCache<T> {
   private readonly _cache = new Map<string, ICacheEntry<T>>();
-  private readonly _logError: (message: string, e: any) => void;
+  private readonly _logError: (message: string, e: unknown) => void;
 
-  constructor(logError: (message: string, e: any) => void) {
+  constructor(logError: (message: string, e: unknown) => void) {
     this._logError = logError;
   }
 

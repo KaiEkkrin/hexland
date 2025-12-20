@@ -82,7 +82,7 @@ class GridColouredFeatureObject<K extends GridCoord, F extends IFeature<K>> exte
   private readonly _tileOrigin: THREE.Vector2;
   private readonly _isToken: boolean;
 
-  private _uniforms: any = null;
+  private _uniforms: Record<string, THREE.IUniform> | null = null;
   private _material: THREE.ShaderMaterial | undefined; // created when required
 
   constructor(

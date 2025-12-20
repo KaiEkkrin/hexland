@@ -137,16 +137,16 @@ export interface IGridGeometry {
   createShaderSnippet(): string[];
 
   // Emits the uniform declarations required by the shader snippet.
-  createShaderUniforms(): any;
+  createShaderUniforms(): Record<string, THREE.IUniform>;
 
   // Populates the shader uniforms.
   populateShaderUniforms(
-    uniforms: any, faceTex?: THREE.WebGLRenderTarget | undefined, tileOrigin?: THREE.Vector2 | undefined
+    uniforms: Record<string, THREE.IUniform>, faceTex?: THREE.WebGLRenderTarget | undefined, tileOrigin?: THREE.Vector2 | undefined
   ): void;
 
   // Clears any values from the shader uniforms that might be dangerous to keep around,
   // e.g. acquired textures.
-  clearShaderUniforms(uniforms: any): void;
+  clearShaderUniforms(uniforms: Record<string, THREE.IUniform>): void;
 }
 
 export class EdgeGeometry { // to help me share the edge code
@@ -482,7 +482,7 @@ export abstract class BaseGeometry {
   }
 
   populateShaderUniforms(
-    uniforms: any, faceTex?: THREE.WebGLRenderTarget | undefined, tileOrigin?: THREE.Vector2 | undefined
+    uniforms: Record<string, THREE.IUniform>, faceTex?: THREE.WebGLRenderTarget | undefined, tileOrigin?: THREE.Vector2 | undefined
   ) {
     if (faceTex !== undefined) {
       this._faceStep.set(0.25 / faceTex.width, 0.25 / faceTex.height);
@@ -499,7 +499,7 @@ export abstract class BaseGeometry {
     }
   }
 
-  clearShaderUniforms(uniforms: any) {
+  clearShaderUniforms(uniforms: Record<string, THREE.IUniform>) {
     uniforms['faceTex'].value = undefined;
   }
 

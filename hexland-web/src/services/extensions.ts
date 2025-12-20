@@ -31,7 +31,7 @@ export async function ensureProfile(
 
       // Keep the user's email in sync if required, and replace any default display name
       let profileNeedsUpdate = false;
-      const profileUpdates: any = {};
+      const profileUpdates: Partial<IProfile> = {};
       if ((profile.name === "" || profile.name === defaultDisplayName) && displayName !== undefined) {
         profile.name = displayName;
         profileUpdates.name = displayName;
@@ -629,8 +629,8 @@ export function watchChangesAndConsolidate(
   mapId: string,
   onNext: (chs: Changes) => boolean, // applies changes and returns true if successful, else false
   onReset: () => void, // reset the map state to blank (expect an onNext() right after)
-  onEvent: (event: string, parameters: any) => void, // GA events delegate
-  onError?: ((message: string, ...params: any) => void) | undefined,
+  onEvent: (event: string, parameters: Record<string, unknown>) => void, // GA events delegate
+  onError?: ((message: string, ...params: unknown[]) => void) | undefined,
   resyncIntervalMillis?: number | undefined
 ) {
   if (dataService === undefined || functionsService === undefined) {

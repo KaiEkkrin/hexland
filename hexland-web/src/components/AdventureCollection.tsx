@@ -43,10 +43,10 @@ function AdventureCollection(props: IAdventureCollectionProps) {
     try {
       const id = await functionsService.createAdventure(editName, editDescription);
       navigate('/adventure/' + id, { replace: true });
-    } catch (e: any) {
+    } catch (e: unknown) {
       setShowEditAdventure(false);
       analyticsContext.logError('Failed to create adventure', e);
-      const message = String(e.message);
+      const message = e instanceof Error ? e.message : String(e);
       if (message) {
         statusContext.toasts.next({ id: uuidv4(), record: {
           title: "Error creating adventure", message: message

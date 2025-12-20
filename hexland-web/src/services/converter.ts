@@ -16,7 +16,7 @@ import { v4 as uuidv4 } from 'uuid';
 // Converts raw data from Firestore to data matching the given interface,
 // filling in the missing properties with default values.
 export interface IConverter<T> {
-  convert(rawData: any): T;
+  convert(rawData: Record<string, unknown>): T;
 }
 
 // This is the simplest possible shallow conversion.
@@ -29,24 +29,24 @@ class ShallowConverter<T> implements IConverter<T> {
     this._defaultValue = defaultValue;
   }
 
-  convert(rawData: any): T {
-    return { ...this._defaultValue, ...rawData };
+  convert(rawData: Record<string, unknown>): T {
+    return { ...this._defaultValue, ...rawData } as T;
   }
 }
 
 // The recursing converter helps provide special-case conversion for named fields.
 class RecursingConverter<T> extends ShallowConverter<T> {
-  private readonly _specialCases: { [name: string]: (converted: T, raw: any) => T };
+  private readonly _specialCases: { [name: string]: (converted: T, raw: Record<string, unknown>) => T };
 
-  constructor(defaultValue: T, specialCases: { [name: string]: (converted: T, raw: any) => T }) {
+  constructor(defaultValue: T, specialCases: { [name: string]: (converted: T, raw: Record<string, unknown>) => T }) {
     super(defaultValue);
     this._specialCases = specialCases;
   }
 
-  convert(rawData: any): T {
+  convert(rawData: Record<string, unknown>): T {
     let converted = super.convert(rawData);
     for (const c in this._specialCases) {
-      const raw = c in rawData ? rawData[c] : {};
+      const raw = c in rawData ? (rawData[c] as Record<string, unknown>) : {};
       converted = this._specialCases[c](converted, raw);
     }
 
@@ -77,7 +77,7 @@ class AddTokenFeatureConverter extends RecursingConverter<IToken> {
     this._newTokenDict = newTokenDict;
   }
 
-  convert(rawData: any): IToken {
+  convert(rawData: Record<string, unknown>): IToken {
     const feature = super.convert(rawData);
     if (feature.id === defaultToken.id) {
       // This is an add; we generate a new id and add it to the dictionary.
@@ -112,7 +112,7 @@ class TokenMoveConverter extends RecursingConverter<TokenMove> {
     this._newTokenDict = newTokenDict;
   }
 
-  convert(rawData: any): TokenMove {
+  convert(rawData: Record<string, unknown>): TokenMove {
     const move = super.convert(rawData);
     if (move.tokenId === "") {
       // We should be able to find a token id for the old position in the new
@@ -146,7 +146,7 @@ class TokenRemoveConverter extends RecursingConverter<TokenRemove> {
     this._newTokenDict = newTokenDict;
   }
 
-  convert(rawData: any): TokenRemove {
+  convert(rawData: Record<string, unknown>): TokenRemove {
     const remove = super.convert(rawData);
     if (remove.tokenId === "") {
       // We should be able to find a token id for this position in the new
@@ -179,7 +179,7 @@ class ChangeConverter extends ShallowConverter<Change> {
     this._tokenRemoveConverter = new TokenRemoveConverter(newTokenDict);
   }
 
-  private convertArea(converted: Change, rawData: any): Change {
+  private convertArea(converted: Change, rawData: Record<string, unknown>): Change {
     switch (converted.ty) {
       case ChangeType.Add: return areaAddConverter.convert(rawData);
       case ChangeType.Remove: return areaRemoveConverter.convert(rawData);
@@ -187,7 +187,7 @@ class ChangeConverter extends ShallowConverter<Change> {
     }
   }
 
-  private convertPlayerArea(converted: Change, rawData: any): Change {
+  private convertPlayerArea(converted: Change, rawData: Record<string, unknown>): Change {
     switch (converted.ty) {
       case ChangeType.Add: return playerAreaAddConverter.convert(rawData);
       case ChangeType.Remove: return playerAreaRemoveConverter.convert(rawData);
@@ -195,7 +195,7 @@ class ChangeConverter extends ShallowConverter<Change> {
     }
   }
 
-  private convertImage(converted: Change, rawData: any): Change {
+  private convertImage(converted: Change, rawData: Record<string, unknown>): Change {
     switch (converted.ty) {
       case ChangeType.Add: return imageAddConverter.convert(rawData);
       case ChangeType.Remove: return imageRemoveConverter.convert(rawData);
@@ -203,7 +203,7 @@ class ChangeConverter extends ShallowConverter<Change> {
     }
   }
 
-  private convertNote(converted: Change, rawData: any): Change {
+  private convertNote(converted: Change, rawData: Record<string, unknown>): Change {
     switch (converted.ty) {
       case ChangeType.Add: return noteAddConverter.convert(rawData);
       case ChangeType.Remove: return noteRemoveConverter.convert(rawData);
@@ -211,7 +211,7 @@ class ChangeConverter extends ShallowConverter<Change> {
     }
   }
 
-  private convertToken(converted: Change, rawData: any): Change {
+  private convertToken(converted: Change, rawData: Record<string, unknown>): Change {
     switch (converted.ty) {
       case ChangeType.Add: return this._tokenAddConverter.convert(rawData);
       case ChangeType.Move: return this._tokenMoveConverter.convert(rawData);
@@ -220,7 +220,7 @@ class ChangeConverter extends ShallowConverter<Change> {
     }
   }
 
-  private convertWall(converted: Change, rawData: any): Change {
+  private convertWall(converted: Change, rawData: Record<string, unknown>): Change {
     switch (converted.ty) {
       case ChangeType.Add: return wallAddConverter.convert(rawData);
       case ChangeType.Remove: return wallRemoveConverter.convert(rawData);
@@ -228,7 +228,7 @@ class ChangeConverter extends ShallowConverter<Change> {
     }
   }
 
-  convert(rawData: any): Change {
+  convert(rawData: Record<string, unknown>): Change {
     const converted = super.convert(rawData);
     switch (converted.cat) {
       case ChangeCategory.Area: return this.convertArea(converted, rawData);
@@ -383,7 +383,7 @@ const wallConverter = new RecursingConverter<IFeature<GridEdge>>(defaultWall, {
 });
 
 class AnchorConverter extends ShallowConverter<Anchor> {
-  convert(rawData: any): Anchor {
+  convert(rawData: Record<string, unknown>): Anchor {
     const converted = super.convert(rawData);
     switch (converted.anchorType) {
       case 'vertex': return vertexAnchorConverter.convert(rawData);
