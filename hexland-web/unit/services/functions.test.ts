@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { createChangesConverter } from './converter';
 import { DataService } from './dataService';
 import { deleteAdventure, deleteCharacter, deleteMap, editAdventure, editCharacter, editMap, ensureProfile, getAllMapChanges, leaveAdventure, registerAdventureAsRecent, registerMapAsRecent, removeAdventureFromRecent, removeMapFromRecent, updateProfile, watchChangesAndConsolidate } from './extensions';
@@ -62,9 +63,9 @@ export function createTestUser(
     emailVerified: emailVerified ?? true,
     providerId: providerId,
     uid: uuidv4(),
-    changePassword: jest.fn(),
-    sendEmailVerification: jest.fn(),
-    updateProfile: jest.fn()
+    changePassword: vi.fn(),
+    sendEmailVerification: vi.fn(),
+    updateProfile: vi.fn()
   };
 }
 
@@ -844,12 +845,12 @@ service firebase.storage {
     }
 
     let resetCount = 0;
-    const onReset = jest.fn(() => {
+    const onReset = vi.fn(() => {
       changeTracker.clear();
       ++resetCount;
     });
-    const onEvent = jest.fn();
-    const onError = jest.fn();
+    const onEvent = vi.fn();
+    const onError = vi.fn();
 
     // We test with a 1 second resync interval because we want to hit it a few times
     const finish = watchChangesAndConsolidate(
@@ -993,7 +994,7 @@ service firebase.storage {
     } finally {
       finish?.();
     }
-  }, 10000); });
+  }); });
 
   test('clone a map', async () => {
     const moveCount = 5;

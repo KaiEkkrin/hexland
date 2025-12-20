@@ -12,6 +12,7 @@
 /e2e/screenshots
 /e2e/videos
 /**/test-results
+/unit/node_modules
 
 # production
 /build

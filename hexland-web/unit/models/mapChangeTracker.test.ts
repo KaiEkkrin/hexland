@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { MapColouring } from './colouring';
 import { HexGridGeometry } from './hexGridGeometry';
 import { MapChangeTracker } from './mapChangeTracker';
@@ -63,8 +64,8 @@ test('Unprivileged users cannot move other users\' tokens', () => {
   const notes = new FeatureDictionary<GridCoord, IAnnotation>(coordString);
   const images = new IdDictionary<IMapImage>();
 
-  const handleChangesApplied = jest.fn();
-  const handleChangesAborted = jest.fn();
+  const handleChangesApplied = vi.fn();
+  const handleChangesAborted = vi.fn();
   const changeTracker = new MapChangeTracker(
     areas, playerAreas, tokens, outlineTokens, walls, notes, images, undefined, undefined,
     handleChangesApplied, handleChangesAborted
@@ -173,8 +174,8 @@ test('Unprivileged tokens cannot escape from bounded areas', () => {
   const images = new IdDictionary<IMapImage>();
   const colouring = new MapColouring(new HexGridGeometry(100, 8));
 
-  const handleChangesApplied = jest.fn();
-  const handleChangesAborted = jest.fn();
+  const handleChangesApplied = vi.fn();
+  const handleChangesAborted = vi.fn();
   let changeTracker = new MapChangeTracker(
     areas, playerAreas, tokens, outlineTokens, walls, notes, images, undefined, colouring,
     handleChangesApplied, handleChangesAborted

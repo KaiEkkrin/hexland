@@ -1,16 +1,17 @@
+import { vi } from 'vitest';
 import { ICacheLease } from './interfaces';
 import { ObjectCache } from './objectCache';
 import { Subject } from 'rxjs';
 
 function createFetch() {
   const trigger = new Subject<string>();
-  const cleanup = jest.fn<void, [void]>();
+  const cleanup = vi.fn<() => void>();
   const promise = new Promise<string>((resolve, reject) => {
     trigger.subscribe(v => ({ value: resolve(v), cleanup: cleanup }), e => reject(e))
   });
   return {
     cleanup: cleanup,
-    func: jest.fn(async (id: string) => ({
+    func: vi.fn(async (id: string) => ({
       value: await promise, cleanup: () => cleanup()
     })),
     trigger: trigger,
@@ -18,7 +19,7 @@ function createFetch() {
 }
 
 test('Resolve one value immediately', async () => {
-  const logError = jest.fn();
+  const logError = vi.fn();
   const cache = new ObjectCache(logError);
 
   const f1 = createFetch();
@@ -75,7 +76,7 @@ test('Resolve one value immediately', async () => {
 });
 
 test('resolve one value with a delay, queueing requests', async () => {
-  const logError = jest.fn();
+  const logError = vi.fn();
   const cache = new ObjectCache(logError);
 
   const f1 = createFetch();
@@ -107,7 +108,7 @@ test('resolve one value with a delay, queueing requests', async () => {
 });
 
 test('resolve one value with an error the first time', async () => {
-  const logError = jest.fn();
+  const logError = vi.fn();
   const cache = new ObjectCache(logError);
 
   const f1 = createFetch();
@@ -135,7 +136,7 @@ test('resolve one value with an error the first time', async () => {
 });
 
 test('an accidental double release is ignored', async () => {
-  const logError = jest.fn();
+  const logError = vi.fn();
   const cache = new ObjectCache(logError);
 
   const f1 = createFetch();
@@ -164,7 +165,7 @@ test('an accidental double release is ignored', async () => {
 });
 
 test('multiple values can be loaded independently', async () => {
-  const logError = jest.fn();
+  const logError = vi.fn();
   const cache = new ObjectCache<string>(logError);
 
   const expectedValues = ['a', 'b', 'c', 'd'];

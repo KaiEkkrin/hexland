@@ -36,14 +36,14 @@ Alternative: `yarn start` runs both in parallel (less flexible).
 ### Testing
 
 ```bash
-# Unit tests (interactive watch mode)
+# Unit tests with Vitest (interactive watch mode)
 yarn test:unit
+
+# Unit tests (single run)
+yarn test
 
 # End-to-end tests with Playwright (requires dev server running)
 yarn test:e2e
-
-# Standard React test runner
-yarn test
 ```
 
 ### Building
@@ -220,7 +220,7 @@ Alternative Docker setup using `run_docker.sh` and `docker-compose.yml` in the r
 
 ### Unit Tests (`unit/`)
 
-Jest-based tests with React Testing Library. Configuration in `unit/jest.config.js`.
+Vitest-based tests. Configuration in `unit/vitest.config.ts`.
 
 ### E2E Tests (`e2e/`)
 

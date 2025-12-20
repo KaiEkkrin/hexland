@@ -1,8 +1,9 @@
+import { vi } from 'vitest';
 import { ExpiringStringCache } from './expiringStringCache';
 
 test('Entries are cached successfully', async () => {
   // We map string -> 'fetched_{string}'
-  const fetch = jest.fn<Promise<string>, [string]>(id => new Promise((resolve) => resolve(`fetched_${id}`)));
+  const fetch = vi.fn((id: string) => new Promise<string>((resolve) => resolve(`fetched_${id}`)));
 
   // We won't expire anything until this subject trips
   const cache = new ExpiringStringCache(10);
@@ -42,12 +43,12 @@ test('Entries are cached successfully', async () => {
 
 test('Failed entries do not stay in the cache', async () => {
   // Here's a canned failure
-  const failingFetch = jest.fn<Promise<string>, [string]>(
-    id => new Promise((resolve, reject) => reject('blah'))
+  const failingFetch = vi.fn(
+    (id: string) => new Promise<string>((resolve, reject) => reject('blah'))
   );
 
   // We map string -> 'fetched_{string}'
-  const successfulFetch = jest.fn<Promise<string>, [string]>(id => new Promise((resolve) => resolve(`fetched_${id}`)));
+  const successfulFetch = vi.fn((id: string) => new Promise<string>((resolve) => resolve(`fetched_${id}`)));
 
   // We won't expire anything until this subject trips
   const cache = new ExpiringStringCache(1000);

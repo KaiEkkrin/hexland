@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { DataService } from './dataService';
 import { ensureProfile } from './extensions';
 import { IUser } from './interfaces';
@@ -28,9 +29,9 @@ export function createTestUser(
     emailVerified: emailVerified ?? true,
     providerId: providerId,
     uid: uuidv4(),
-    changePassword: jest.fn(),
-    sendEmailVerification: jest.fn(),
-    updateProfile: jest.fn()
+    changePassword: vi.fn(),
+    sendEmailVerification: vi.fn(),
+    updateProfile: vi.fn()
   };
 }
 
