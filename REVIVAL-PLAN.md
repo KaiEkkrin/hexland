@@ -452,7 +452,7 @@ All 96 unit tests passing with Vitest. E2E tests (Playwright) unaffected.
   - [ ] Prettier formatting applied
   - [x] TypeScript strict mode enabled
 - [ ] **Performance**:
-  - [ ] Routes lazy-loaded
+  - [x] Routes lazy-loaded
   - [ ] Bundle size optimized (<500KB main chunk)
   - [ ] Lighthouse score 90+
 - [x] **Security** (3.5, 3.7):
