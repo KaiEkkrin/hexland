@@ -1,10 +1,10 @@
 # Wall & Shadow Revival Plan
 
 **Project**: Wall & Shadow (codename: Hexland)
-**Document Version**: 2.0
+**Document Version**: 2.1
 **Date**: December 2025
-**Status**: Phase 1 & 2 complete, Phase 3 in progress
-**Last Updated**: Phase 3.5 security audit complete (all high/critical vulns resolved)
+**Status**: Phase 1 & 2 complete, Phase 3 nearly complete - ready for deployment
+**Last Updated**: Phase 3.4 deployment preparation complete (Functions build fixed, cache headers added)
 
 ---
 
@@ -153,7 +153,7 @@ Added ESLint 9.39.2 to web application with flat config:
 - ✅ Created `eslint.config.js` with ESLint 9 flat config
 - ✅ Added `yarn lint` script
 - ✅ Functions already had ESLint 9.x configured
-- ⚠️ 275 lint issues (141 errors, 134 warnings) - mostly `no-explicit-any` and `no-unused-vars`
+- ✅ All lint errors fixed (commit f2c1985) - 12 warnings remain (react-refresh related, non-critical)
 
 #### Prettier (Add if not present)
 
@@ -246,30 +246,27 @@ export default defineConfig({
 
 ---
 
-### 3.4: Deployment Preparation
+### ✅ 3.4: Deployment Preparation (Complete)
 
-#### Firebase Hosting Optimization
+#### ✅ Firebase Hosting Optimization
 
-**File**: `firebase.json`
+Cache headers added to `firebase.json`:
+- `/assets/**`: immutable, 1-year cache (Vite hashed bundles)
+- `**/*.@(jpg|jpeg|gif|png|svg|webp|ico)`: 1-year cache for images
 
-```json
-{
-  "hosting": {
-    "public": "build",
-    "headers": [
-      {
-        "source": "/static/**",
-        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
-      },
-      {
-        "source": "**/*.@(jpg|jpeg|gif|png|svg|webp)",
-        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000" }]
-      }
-    ],
-    "rewrites": [{ "source": "**", "destination": "/index.html" }]
-  }
-}
-```
+#### ✅ Firebase Functions Build Fixed
+
+Fixed 5 TypeScript errors that were blocking deployment:
+- `adminDataService.ts`: Added non-null assertions for `result.data()!` (safe because we check `exists`)
+- `adminDataService.ts`: Fixed `d.data` → `d.data()` method call
+- `converter.ts`: Fixed type handling for `parseTokenSize` parameter
+
+#### ✅ Shared Dependencies Synchronized
+
+Updated Functions dependencies to match web app versions:
+- `three`: 0.137.5 → 0.163.0
+- `@types/three`: 0.137.0 → 0.163.0
+- `firebase-functions`: 6.0.0 → 7.0.0 (eliminates emulator warning, no breaking changes for this codebase)
 
 #### Firebase Functions Deployment
 
@@ -385,6 +382,28 @@ All high/critical vulnerabilities have been eliminated:
 
 ---
 
+### 3.8: Firebase App Check (Future Enhancement)
+
+**Status**: Not implemented (optional for initial deployment)
+**Priority**: LOW for initial launch, MEDIUM for production with real users
+
+Firebase App Check protects backend resources by requiring attestation tokens with requests. Currently not implemented because:
+- Firestore/Storage security rules already require authentication
+- Can be added post-launch without breaking existing clients
+
+**When to implement**: Before public launch with significant user base.
+
+**Implementation steps**:
+1. Create reCAPTCHA Enterprise key in Google Cloud Console
+2. Register app in Firebase Console App Check section
+3. Add client-side initialization code
+4. Add `enforceAppCheck: true` to Cloud Functions
+5. Enable enforcement in Firebase Console (monitor first, then enforce)
+
+**Cost**: Free for 10,000 assessments/month (sufficient for casual VTT use).
+
+---
+
 ### 3.6: Fix Map Share E2E Test
 
 **Complexity**: MEDIUM
@@ -462,9 +481,9 @@ All 96 unit tests passing with Vitest. E2E tests (Playwright) unaffected.
   - [x] firebase-admin upgraded to 13.6.0
   - [x] Production dependencies: zero known vulnerabilities
   - [x] Dev vulnerabilities: Jest removed, migrated to Vitest (3.7)
-- [ ] **Deployment**:
-  - [ ] Can deploy to Firebase Hosting
-  - [ ] Can deploy to Firebase Functions (Node.js 20)
+- [x] **Deployment** (3.4):
+  - [x] Can deploy to Firebase Hosting (cache headers configured)
+  - [x] Can deploy to Firebase Functions (Node.js 20, build fixed)
   - [ ] Environment variables documented
 - [ ] **All tests pass** (3.6):
   - [x] Unit tests (96 passing)

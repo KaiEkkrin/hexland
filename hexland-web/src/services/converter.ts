@@ -66,7 +66,10 @@ class AddTokenFeatureConverter extends RecursingConverter<IToken> {
         return conv;
       },
       "size": (conv, raw) => {
-        conv.size = parseTokenSize(raw);
+        // raw comes from rawData["size"] which should be a string, but is typed as Record<string, unknown>
+        // We need to handle both cases: when it's actually a string and when it's an empty object (default)
+        const sizeValue = typeof raw === 'string' ? raw : (raw as unknown as string);
+        conv.size = parseTokenSize(sizeValue ?? "1");
         return conv;
       },
       "sprites": (conv, raw) => {

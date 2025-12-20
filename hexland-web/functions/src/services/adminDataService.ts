@@ -147,7 +147,7 @@ export class AdminDataService implements IAdminDataService {
   async get<T>(r: IDataReference<T>): Promise<T | undefined> {
     const dref = (r as DataReference<T>).dref;
     const result = await dref.get();
-    return result.exists ? r.convert(result.data()) : undefined;
+    return result.exists ? r.convert(result.data()!) : undefined;
   }
 
   async set<T>(r: IDataReference<T>, value: T): Promise<void> {
@@ -320,7 +320,7 @@ export class AdminDataService implements IAdminDataService {
     onError?: ((error: Error) => void) | undefined
   ) {
     return (d as DataReference<T>).dref.onSnapshot(s => {
-      onNext(s.exists ? d.convert(s.data()) : undefined);
+      onNext(s.exists ? d.convert(s.data()!) : undefined);
     }, onError);
   }
 
@@ -396,7 +396,7 @@ export class AdminDataService implements IAdminDataService {
       .where("supersededBy", "==", "")
       .onSnapshot(s => {
         onNext(s.docs.map(d => new DataAndReference(
-          d.ref, Convert.spritesheetConverter.convert(d.data), Convert.spritesheetConverter
+          d.ref, Convert.spritesheetConverter.convert(d.data()), Convert.spritesheetConverter
         )));
       }, onError);
   }
@@ -417,7 +417,7 @@ class TransactionalDataView implements IDataView {
   async get<T>(r: IDataReference<T>): Promise<T | undefined> {
     const dref = (r as DataReference<T>).dref;
     const result = await this._tr.get(dref);
-    return result.exists ? r.convert(result.data()) : undefined;
+    return result.exists ? r.convert(result.data()!) : undefined;
   }
 
   async set<T>(r: IDataReference<T>, value: T): Promise<void> {
