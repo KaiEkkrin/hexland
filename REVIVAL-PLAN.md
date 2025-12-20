@@ -4,7 +4,7 @@
 **Document Version**: 2.0
 **Date**: December 2025
 **Status**: Phase 1 & 2 complete, Phase 3 in progress
-**Last Updated**: Phase 3.5 security audit complete (prod vulns: 0, dev vulns: 105 → Phase 3.7)
+**Last Updated**: Phase 3.5 security audit complete (all high/critical vulns resolved)
 
 ---
 
@@ -93,7 +93,7 @@ Major migrations to modern tooling:
 TypeScript 6.0 is a "bridge" release between 5.x and the native TypeScript 7.0 (rewritten in Go for 10x performance).
 
 **Blockers**:
-- `ts-jest` peer dependency: `>=4.3 <6` (no TS6 support)
+- ~~`ts-jest` peer dependency: `>=4.3 <6` (no TS6 support)~~ ✅ Removed (migrated to Vitest)
 - `@typescript-eslint/*` peer dependency: `>=4.8.4 <6.0.0` (no TS6 support)
 
 **Breaking changes to prepare for**:
@@ -101,14 +101,14 @@ TypeScript 6.0 is a "bridge" release between 5.x and the native TypeScript 7.0 (
 - `--strict` becomes default (already enabled - no impact)
 - ~~`--target es5` removed (already using es6/ES2022 - no impact)~~ ✅ Now using ES2022
 
-**Action**: Wait for TS 6.0 release and ecosystem support before upgrading. Consider upgrading Jest 26 → 29 as preparatory work.
+**Action**: Wait for TS 6.0 release and ecosystem support before upgrading.
 
 **Completed preparatory work**:
 - ✅ Updated `tsconfig.json`: `target` es6 → ES2022, `moduleResolution` node → bundler
 - ✅ Updated `e2e/tsconfig.json`: Added ES2022 target and bundler moduleResolution
 - ✅ Fixed ES module compatibility (`__dirname` → `import.meta.url` in e2e/oob.ts)
 - ✅ Added `"type": "module"` to package.json
-- ✅ Renamed Jest config files to `.cjs` for CommonJS compatibility
+- ✅ Migrated from Jest 26 to Vitest (removes ts-jest blocker)
 
 #### Playwright (Latest)
 
@@ -364,17 +364,24 @@ Moved `@types/*` packages and `typescript` from dependencies to devDependencies.
 
 Upgraded from 13.0.0 to 13.6.0 to pick up latest security patches.
 
-#### Remaining Vulnerabilities (Dev-Only)
+#### ✅ Remaining Vulnerabilities (All Resolved)
 
-All remaining vulnerabilities are in dev dependencies and don't affect production:
+All high/critical vulnerabilities have been eliminated:
 
 | Package | Vulns | Root Cause | Resolution |
 |---------|-------|------------|------------|
-| `jest` (26.6.0) | ~40 | Old minimatch, semver, glob | Upgrade in Phase 3.7 |
-| `jest-image-snapshot` (4.2.0) | ~10 | Old rimraf, minimatch | Upgrade in Phase 3.7 |
-| `firebase-admin` | 4 | jws via google-auth-library | Awaiting upstream fix |
+| ~~`jest` (26.6.0)~~ | ~~40~~ | ~~Old minimatch, semver, glob~~ | ✅ Removed (Vitest) |
+| ~~`jest-image-snapshot` (4.2.0)~~ | ~~10~~ | ~~Old rimraf, minimatch~~ | ✅ Removed (Vitest) |
+| ~~`firebase-admin` jws~~ | ~~4~~ | ~~jws 4.0.0 via google-auth-library~~ | ✅ Fixed with yarn resolutions (jws ^4.0.1) |
+| ~~`chroma-js` cross-spawn~~ | ~~1~~ | ~~cross-env → cross-spawn 7.0.3~~ | ✅ Upgraded chroma-js to 3.2.0 (zero deps) |
+| ~~`crypto-js`~~ | ~~1~~ | ~~PBKDF2 weakness~~ | ✅ Replaced with blueimp-md5 |
 
-**Target achieved**: No high/critical vulnerabilities in production dependencies.
+**Final audit status** (both hexland-web and functions):
+- 2 low-severity vulnerabilities (brace-expansion via eslint)
+- All are dev-only dependencies, not in production builds
+- Safe to deploy to production
+
+**Target achieved**: Zero high/critical vulnerabilities. All remaining issues are low-severity, dev-only.
 
 ---
 
@@ -403,49 +410,37 @@ The map share E2E test tests sharing maps between users. Needs fixes for Playwri
 
 ---
 
-### 3.7: Modernize Test Framework
+### ✅ 3.7: Modernize Test Framework (Complete)
 
 **Priority**: MEDIUM (dev experience, remaining dev vulns)
-**Status**: Not started
+**Status**: Complete
 
-#### Background
+#### Summary
 
-The project uses Jest 26 (released 2020) with ts-jest 26, which has:
-- ~50 transitive vulnerabilities (all dev-only, not affecting production)
-- Compatibility warnings with TypeScript 5.x
-- Outdated APIs and slower performance
+Migrated from Jest 26 to Vitest. Vitest was chosen because:
+- Native ESM support (matches our Vite build)
+- Vite-compatible configuration
+- Very fast test execution
+- Modern API with better TypeScript support
 
-#### Options to Evaluate
+#### Changes Made
 
-| Framework | Pros | Cons |
-|-----------|------|------|
-| **Jest 30** | Familiar API, 37% faster, 77% less memory, excellent ecosystem | Major version jump, migration effort |
-| **Vitest** | Native ESM, Vite-compatible, very fast, modern | New framework, different API, less mature |
-| **Jest 29** | Conservative upgrade, most vulns fixed | Still old, not as fast as 30 |
+| Package | Before | After |
+|---------|--------|-------|
+| `jest` | 26.6.0 | Removed |
+| `ts-jest` | 26.5.3 | Removed |
+| `@types/jest` | 26.0.20 | Removed |
+| `vitest` | - | 3.2.4 |
 
-#### Considerations
+**Files changed**:
+- Removed `unit/jest.config.cjs` and `unit/jest.setup.cjs`
+- Added `unit/vitest.config.ts` and `unit/vitest.setup.ts`
+- Updated test files to use Vitest imports (`describe`, `it`, `expect`, `vi`)
+- Updated `package.json` scripts: `test:unit` now runs `vitest`
 
-- **Vitest** would be a natural fit since we already use Vite for building
-- **Jest 30** is the safe choice with minimal migration
-- Current test suite: 96 unit tests, E2E tests use Playwright (unaffected)
+#### Test Results
 
-#### Dependencies to Update
-
-| Package | Current | Target |
-|---------|---------|--------|
-| `jest` | 26.6.0 | 30.x or Vitest |
-| `ts-jest` | 26.5.3 | 29.x or remove |
-| `@types/jest` | 26.0.20 | 30.x or remove |
-| `jest-image-snapshot` | 4.2.0 | 6.5.1 |
-
-#### Steps
-
-1. Research Vitest vs Jest 30 for this codebase
-2. Choose framework and create migration plan
-3. Update dependencies
-4. Fix any breaking changes in tests
-5. Verify all 96 tests pass
-6. Update jest.config if needed
+All 96 unit tests passing with Vitest. E2E tests (Playwright) unaffected.
 
 ---
 
@@ -460,13 +455,13 @@ The project uses Jest 26 (released 2020) with ts-jest 26, which has:
   - [ ] Routes lazy-loaded
   - [ ] Bundle size optimized (<500KB main chunk)
   - [ ] Lighthouse score 90+
-- [x] **Security** (3.5):
+- [x] **Security** (3.5, 3.7):
   - [x] WebDAV/mock storage vulnerabilities removed
   - [x] Unused @google-cloud/firestore removed
   - [x] npm-run-all replaced with npm-run-all2
   - [x] firebase-admin upgraded to 13.6.0
   - [x] Production dependencies: zero known vulnerabilities
-  - [ ] Dev vulnerabilities: addressed in 3.7 (test framework upgrade)
+  - [x] Dev vulnerabilities: Jest removed, migrated to Vitest (3.7)
 - [ ] **Deployment**:
   - [ ] Can deploy to Firebase Hosting
   - [ ] Can deploy to Firebase Functions (Node.js 20)

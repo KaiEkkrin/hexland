@@ -19,7 +19,7 @@ import {
   sendEmailVerification as sendEmailVerificationFn
 } from 'firebase/auth';
 
-import md5 from 'crypto-js/md5';
+import md5 from 'blueimp-md5';
 
 function createUser(user: FirebaseUser | null) {
   return user === null ? null : new User(user);
@@ -98,7 +98,7 @@ export class User implements IUser {
 
   constructor(user: FirebaseUser) {
     this._user = user;
-    const emailMd5 = (this._user.email === null) ? null : md5(this._user.email).toString();
+    const emailMd5 = (this._user.email === null) ? null : md5(this._user.email);
     this._userExtra = {
       emailMd5: emailMd5
     };

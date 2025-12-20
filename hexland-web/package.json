@@ -8,9 +8,9 @@
     "@fortawesome/free-solid-svg-icons": "^5.14.0",
     "@fortawesome/react-fontawesome": "^0.1.11",
     "@popperjs/core": "^2.11.8",
+    "blueimp-md5": "^2.19.0",
     "bootstrap": "^5.3.0",
-    "chroma-js": "^2.1.0",
-    "crypto-js": "^4.0.0",
+    "chroma-js": "^3.2.0",
     "dayjs": "^1.8.36",
     "firebase": "^11.0.0",
     "fluent-iterable": "^0.1.6",
@@ -30,7 +30,7 @@
     "dev:vite": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest --config ./unit/vitest.config.ts run",
     "test:unit": "vitest --config ./unit/vitest.config.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
@@ -41,7 +41,8 @@
   },
   "resolutions": {
     "@types/react": "^18.3.0",
-    "@types/react-dom": "^18.3.0"
+    "@types/react-dom": "^18.3.0",
+    "jws": "^4.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
@@ -51,8 +52,8 @@
     "@testing-library/jest-dom": "^6.0.0",
     "@testing-library/react": "^14.0.0",
     "@testing-library/user-event": "^14.0.0",
+    "@types/blueimp-md5": "^2.18.2",
     "@types/chroma-js": "^2.0.0",
-    "@types/crypto-js": "^4.0.1",
     "@types/node": "^20.0.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",

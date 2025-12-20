@@ -10,7 +10,7 @@ import {
 } from '@firebase/rules-unit-testing';
 
 import { v4 as uuidv4 } from 'uuid';
-import md5 from 'crypto-js/md5';
+import md5 from 'blueimp-md5';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -25,7 +25,7 @@ export function createTestUser(
   return {
     displayName: displayName,
     email: email,
-    emailMd5: email ? md5(email).toString() : null,
+    emailMd5: email ? md5(email) : null,
     emailVerified: emailVerified ?? true,
     providerId: providerId,
     uid: uuidv4(),

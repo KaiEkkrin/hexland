@@ -35,7 +35,7 @@ import {
   RulesTestContext,
 } from '@firebase/rules-unit-testing';
 
-import md5 from 'crypto-js/md5';
+import md5 from 'blueimp-md5';
 import * as fs from 'fs';
 import * as http from 'http';
 import * as path from 'path';
@@ -59,7 +59,7 @@ export function createTestUser(
   return {
     displayName: displayName,
     email: uniqueEmail,
-    emailMd5: uniqueEmail ? md5(uniqueEmail).toString() : null,
+    emailMd5: uniqueEmail ? md5(uniqueEmail) : null,
     emailVerified: emailVerified ?? true,
     providerId: providerId,
     uid: uuidv4(),
