@@ -1,6 +1,26 @@
+/* Map annotation popovers - mid-grey background to stand out from map, low z-index */
 .popover {
-  background-color: rgba(255, 255, 255, 0.7) !important;
-  z-index: 2 !important;
+  --bs-popover-bg: #6c757d;
+  --bs-popover-border-color: #adb5bd;
+  z-index: 2;
+}
+
+.popover-arrow::before {
+  border-top-color: #adb5bd !important;
+}
+
+.popover-arrow::after {
+  border-top-color: #6c757d !important;
+}
+
+.bs-popover-bottom .popover-arrow::before,
+.bs-popover-auto[data-popper-placement^="bottom"] .popover-arrow::before {
+  border-bottom-color: #adb5bd !important;
+}
+
+.bs-popover-bottom .popover-arrow::after,
+.bs-popover-auto[data-popper-placement^="bottom"] .popover-arrow::after {
+  border-bottom-color: #6c757d !important;
 }
 
 .Map-container {

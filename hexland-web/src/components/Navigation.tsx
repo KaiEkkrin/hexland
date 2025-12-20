@@ -454,7 +454,7 @@ function Navigation(props: INavigationProps) {
 
   return (
     <div ref={measureRef}>
-      <Navbar bg="dark" expand="lg" variant="dark" sticky="top" onToggle={setExpanded}>
+      <Navbar bg="dark" expand="lg" sticky="top" onToggle={setExpanded}>
         <LinkContainer to="/">
           <Navbar.Brand className="Navigation-brand me-3">
             <img src="/logo32.svg" alt="logo" height={32} className="me-2" />

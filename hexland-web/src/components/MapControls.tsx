@@ -225,7 +225,7 @@ function MapControls({
   const stripeMenuItems = useMemo(
     () => ([1, 2, 3, 4]).map(s => (
       <Dropdown.Item key={s} onClick={() => setSelectedStripe(s)}>
-        <AreaIcon colour="black" stripe={s} />
+        <AreaIcon colour="white" stripe={s} />
       </Dropdown.Item>
     )),
     [setSelectedStripe]

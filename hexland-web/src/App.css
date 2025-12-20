@@ -1,3 +1,12 @@
+/* Z-index scale:
+ * 1-2: Map annotations, popovers
+ * 4: Map controls, nav, info cards, toast container
+ * 104: Status card overlay
+ * 202: Consent banner
+ * 1004: Throbber/loading overlay
+ * 2002: Context menus
+ */
+
 .App {
   background-color: #282c34;
   color: white;
@@ -153,28 +162,9 @@
   justify-content: space-between;
 }
 
+/* Custom toast styling - keep bold text */
 .toast-body {
-  background-color: lightgray;
-  color: #6c757d;
   font-weight: bold;
-}
-
-/* Bootstrap 5 dark theme border overrides - use consistent mid-grey for dividers */
-.card.bg-dark,
-.card.bg-dark .card-header,
-.card.bg-dark .card-footer {
-  border-color: #6c757d;
-}
-
-.card.bg-dark .list-group-item,
-.list-group-item.bg-dark {
-  border-color: #6c757d;
-}
-
-/* Accordion items in dark contexts */
-.accordion .card,
-.accordion .card .card-header {
-  border-color: #6c757d;
 }
 
 @keyframes App-logo-spin {
