@@ -17,8 +17,7 @@
         "ms-azuretools.vscode-docker",
         "toba.vsfire",
         "dsznajder.es7-react-js-snippets",
-        "ms-vscode.vscode-typescript-next",
-        "orta.vscode-jest",
+        "vitest.vitest-explorer",
         "ms-playwright.playwright",
         "eamodio.gitlens",
         "christian-kohler.path-intellisense"
