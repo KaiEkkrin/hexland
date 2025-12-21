@@ -42,7 +42,7 @@ import * as path from 'path';
 import { Subject, firstValueFrom } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { promisify } from 'util';
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 import adminCredentials from '../../firebase-admin-credentials.json';
 
@@ -54,7 +54,9 @@ export function createTestUser(
 ): IUser {
   // Generate a unique email by appending UUID to ensure each test gets a unique user
   // This is necessary because the Auth emulator assigns the same UID for the same email
-  const uniqueId = uuidv4().substring(0, 8);
+  // Note: With UUIDv7, the first 8 chars are timestamp-based and nearly identical for
+  // calls within the same millisecond. We use the last 12 chars which contain the random bits.
+  const uniqueId = uuidv7().slice(-12);
   const uniqueEmail = email ? email.replace('@', `+${uniqueId}@`) : null;
   return {
     displayName: displayName,
@@ -62,7 +64,7 @@ export function createTestUser(
     emailMd5: uniqueEmail ? md5(uniqueEmail) : null,
     emailVerified: emailVerified ?? true,
     providerId: providerId,
-    uid: uuidv4(),
+    uid: uuidv7(),
     changePassword: vi.fn(),
     sendEmailVerification: vi.fn(),
     updateProfile: vi.fn()
@@ -1079,7 +1081,7 @@ service firebase.storage {
   });
 
   async function createAndDeleteCharacters(dataService: IDataService, adventureId: string, uid: string) {
-    const [c1Id, c2Id] = [uuidv4(), uuidv4()];
+    const [c1Id, c2Id] = [uuidv7(), uuidv7()];
     await editCharacter(dataService, adventureId, uid, {
       id: c1Id,
       name: "One",

@@ -6,7 +6,7 @@ import { IMapImage } from "./image";
 import { IMap } from "./map";
 import { IUserPolicy } from "./policy";
 
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 import fluent from "fluent-iterable";
 import { IIdDictionary } from "./identified";
 
@@ -208,7 +208,7 @@ export class SimpleChangeTracker implements IChangeTracker {
       // `undefined` isn't supported in Firestore, so correct any token without
       // an id now
       if (f.id === undefined) {
-        f.id = uuidv4();
+        f.id = uuidv7();
       }
 
       return all.push(createTokenAdd(f));

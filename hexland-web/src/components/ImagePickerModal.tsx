@@ -24,7 +24,7 @@ import Modal from 'react-bootstrap/Modal';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronLeft, faChevronRight, faTimes } from '@fortawesome/free-solid-svg-icons';
 import { from } from 'rxjs';
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 interface IImageStatusProps {
   message: string;
@@ -65,7 +65,7 @@ export function ImagePickerForm({ show, setActiveImage, setImageCount, handleDel
       return;
     }
 
-    const path = "/images/" + user.uid + "/" + uuidv4();
+    const path = "/images/" + user.uid + "/" + uuidv7();
     const file = e.target.files?.[0];
     if (!file) {
       return;

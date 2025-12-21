@@ -1,6 +1,6 @@
 import { GridCoord, defaultGridCoord, GridEdge, GridVertex, defaultGridEdge } from './coord';
 import { ISprite } from './sprite';
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 // Describes an instanced feature:
 // (Must be possible to copy this with Object.assign)
@@ -40,7 +40,7 @@ export interface ITokenProperties {
 
 export const defaultTokenProperties: ITokenProperties = {
   colour: 0,
-  id: uuidv4(),
+  id: uuidv7(),
   players: [],
   size: "1",
   text: "",

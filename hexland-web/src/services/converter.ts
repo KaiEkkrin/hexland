@@ -11,7 +11,7 @@ import { IAdventureSummary, IProfile } from '../data/profile';
 import { UserLevel } from '../data/policy';
 import { defaultSpriteGeometry, ISprite, ISpritesheet, toSpriteGeometryString } from '../data/sprite';
 
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 // Converts raw data from Firestore to data matching the given interface,
 // filling in the missing properties with default values.
@@ -84,7 +84,7 @@ class AddTokenFeatureConverter extends RecursingConverter<IToken> {
     const feature = super.convert(rawData);
     if (feature.id === defaultToken.id) {
       // This is an add; we generate a new id and add it to the dictionary.
-      feature.id = uuidv4();
+      feature.id = uuidv7();
       this._newTokenDict.add(feature);
     }
 

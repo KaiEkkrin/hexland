@@ -27,7 +27,7 @@ import { LinkContainer } from 'react-router-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck } from '@fortawesome/free-solid-svg-icons';
 
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 interface IChangePasswordModalProps {
   shown: boolean;
@@ -307,7 +307,7 @@ function NavLogin({ expanded }: { expanded: boolean }) {
     setCanResendEmailVerification(false);
     user?.sendEmailVerification()
       .then(() => statusContext.toasts.next({
-        id: uuidv4(),
+        id: uuidv7(),
         record: { title: "Email/password login", message: "A verification email has been sent to " + user?.email }
       }))
       .catch(e => logError("Resend email verification error", e));
@@ -359,11 +359,11 @@ function NavLogin({ expanded }: { expanded: boolean }) {
     handleModalClose();
     user?.changePassword(oldPassword, newPassword)
     .then(() => statusContext.toasts.next({
-      id: uuidv4(),
+      id: uuidv7(),
       record: { title: "Password changed", message: "Password change was successful" }
     }))
     .catch(_e => statusContext.toasts.next({
-      id: uuidv4(),
+      id: uuidv7(),
       record: { title: "Password change failed", message: "Check your old password was entered correctly." }
     }));
   }, [handleModalClose, statusContext, user]);

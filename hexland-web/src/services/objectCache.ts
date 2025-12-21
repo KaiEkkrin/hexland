@@ -1,6 +1,6 @@
 import { ICacheLease } from './interfaces';
 import { ReplaySubject, firstValueFrom } from 'rxjs';
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 export interface ICacheItem<T> {
   value: T;
@@ -111,7 +111,7 @@ export class ObjectCache<T> {
 
     // If we don't have an entry, fetch a new one:
     const newEntry: ICacheEntry<T> = {
-      entryId: uuidv4(),
+      entryId: uuidv7(),
       subj: new ReplaySubject<ICacheItem<T>>(1),
       refCount: 0
     };

@@ -38,7 +38,7 @@ import { Link } from 'react-router-dom';
 
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 // The map component is rather large because of all the state that got pulled into it...
 function Map() {
@@ -253,7 +253,7 @@ function Map() {
       try {
         ui?.addChanges(stateMachine.flipToken(here));
       } catch (e: unknown) {
-        statusContext.toasts.next({ id: uuidv4(), record: {
+        statusContext.toasts.next({ id: uuidv7(), record: {
           title: "Cannot flip token",
           message: e instanceof Error ? e.message : String(e)
         }});

@@ -13,7 +13,7 @@ import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
 import Row from 'react-bootstrap/Row';
 
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 interface ICharacterTokenEditorModalProps {
   selectedColour: number;
@@ -59,7 +59,7 @@ function CharacterTokenEditorModal(
     handleSave({
       colour: colour,
       // If this was a new token, make a new id for it
-      id: token === undefined ? uuidv4() : token.id,
+      id: token === undefined ? uuidv7() : token.id,
       text: "", // sychronised with the character
       players: players.filter(p => p.characters.find(c => c.id === characterId) !== undefined)
         .map(p => p.playerId),

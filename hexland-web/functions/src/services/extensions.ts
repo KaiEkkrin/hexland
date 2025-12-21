@@ -19,7 +19,7 @@ import { updateProfileAdventures, updateProfileMaps, updateAdventureMaps } from 
 import { IDataService, IDataView, IDataReference, IDataAndReference, ILogger } from './interfaces';
 
 import * as dayjs from 'dayjs';
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 // For HttpsError.  It's a bit abstraction-breaking, but very convenient...
 import * as functions from 'firebase-functions/v1';
@@ -77,7 +77,7 @@ export async function createAdventure(dataService: IDataService, uid: string, na
   const currentAdventures = await dataService.getMyAdventures(uid);
 
   // ...and a ref for the new one, along with the new owner's player record
-  const id = uuidv4();
+  const id = uuidv7();
   const newAdventureRef = dataService.getAdventureRef(id);
   const newPlayerRef = dataService.getPlayerRef(id, uid);
   await dataService.runTransaction(tr => createAdventureTransaction(
@@ -157,7 +157,7 @@ export async function createMap(
   const profileRef = dataService.getProfileRef(uid);
   const adventureRef = dataService.getAdventureRef(adventureId);
 
-  const id = uuidv4();
+  const id = uuidv7();
   const newMapRef = dataService.getMapRef(adventureId, id);
   await dataService.runTransaction(tr => createMapTransaction(
     tr, profileRef, adventureRef, newMapRef, {
@@ -191,7 +191,7 @@ export async function cloneMap(
   const adventureRef = dataService.getAdventureRef(adventureId);
   const existingMapRef = dataService.getMapRef(adventureId, mapId);
 
-  const id = uuidv4();
+  const id = uuidv7();
   const newMapRef = dataService.getMapRef(adventureId, id);
 
   const existingMap = await dataService.get(existingMapRef);
@@ -412,7 +412,7 @@ export async function inviteToAdventure(
   }
 
   // If we couldn't, make a new one and return that
-  const id = uuidv4();
+  const id = uuidv7();
   const inviteRef = dataService.getInviteRef(id);
   await dataService.set(inviteRef, {
     adventureId: adventure.id,

@@ -10,7 +10,7 @@ import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
 
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 interface IMapImageEditorProps {
   show: boolean;
@@ -73,7 +73,7 @@ function MapImageEditorModal(
     }
 
     handleSave({
-      id: mapImage === undefined ? uuidv4() : mapImage.id,
+      id: mapImage === undefined ? uuidv7() : mapImage.id,
       image: image,
       rotation: rotation
     });

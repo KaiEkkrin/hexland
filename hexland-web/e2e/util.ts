@@ -1,7 +1,7 @@
 import * as path from 'path';
 
 import { Page, expect } from '@playwright/test';
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 import { SCREENSHOTS_PATH } from './globals';
 
@@ -100,7 +100,7 @@ export async function signUp(page: Page, deviceName: string, prefix?: string | u
   const n = ++signupNumber;
   const user = {
     displayName: `${prefix ?? "Test"} ${n}`,
-    email: `${prefix ?? "Test"}${n}-${uuidv4()}@example.com`.toLowerCase(),
+    email: `${prefix ?? "Test"}${n}-${uuidv7()}@example.com`.toLowerCase(),
     number: n,
     password: `${prefix ?? "Test"}_password${n}`
   };

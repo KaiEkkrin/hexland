@@ -14,7 +14,7 @@ import { IInvite } from './data/invite';
 import Button from 'react-bootstrap/Button';
 
 import { useParams, useNavigate } from 'react-router-dom';
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 interface IInvitePageProps {
   inviteId: string;
@@ -62,7 +62,7 @@ function Invite({ inviteId }: IInvitePageProps) {
         analyticsContext.logError("Failed to join using invite " + inviteId, e);
         const message = String(e.message);
         if (message) {
-          statusContext.toasts.next({ id: uuidv4(), record: {
+          statusContext.toasts.next({ id: uuidv7(), record: {
             title: "Error joining adventure", message: message
           }});
         }

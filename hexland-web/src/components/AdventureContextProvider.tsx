@@ -14,7 +14,7 @@ import { SpriteManager } from '../services/spriteManager';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Observable } from 'rxjs';
 import { shareReplay } from 'rxjs/operators';
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 // Providing an adventure context like this lets us maintain the same watchers
 // while the user navigates between maps in the adventure, etc.
@@ -56,7 +56,7 @@ function AdventureContextProvider(props: IContextProviderProps) {
       }
 
       toasts.next({
-        id: uuidv4(),
+        id: uuidv7(),
         record: { title: 'Error loading adventure', message: message }
       });
 

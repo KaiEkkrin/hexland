@@ -9,7 +9,7 @@ import {
   RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
 
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 import md5 from 'blueimp-md5';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -28,7 +28,7 @@ export function createTestUser(
     emailMd5: email ? md5(email) : null,
     emailVerified: emailVerified ?? true,
     providerId: providerId,
-    uid: uuidv4(),
+    uid: uuidv7(),
     changePassword: vi.fn(),
     sendEmailVerification: vi.fn(),
     updateProfile: vi.fn()

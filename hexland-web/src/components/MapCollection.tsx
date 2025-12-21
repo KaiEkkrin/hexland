@@ -16,7 +16,7 @@ import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 import { useNavigate } from 'react-router-dom';
 
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 import fluent from 'fluent-iterable';
 
 interface IMapCollectionProps {
@@ -85,7 +85,7 @@ function MapCollection({ adventures, maps, showNewMap, deleteMap, pickImage }: I
       logError('Failed to create map', e);
       const message = e instanceof Error ? e.message : String(e);
       if (message) {
-        toasts.next({ id: uuidv4(), record: {
+        toasts.next({ id: uuidv7(), record: {
           title: "Error creating map", message: message
         }});
       }

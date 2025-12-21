@@ -16,7 +16,7 @@ import Modal from 'react-bootstrap/Modal';
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 interface ITokenSizeSelectionProps {
   size: TokenSize;
@@ -83,7 +83,7 @@ function TokenEditorModal(
   const newToken = useMemo(() => ({
     colour: colour,
     // If this was a new token, make a new id for it
-    id: token === undefined ? uuidv4() : token.id,
+    id: token === undefined ? uuidv7() : token.id,
     text: text,
     players: playerIds,
     size: size,

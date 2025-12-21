@@ -14,7 +14,7 @@ import { IDataService, IFunctionsService } from "../services/interfaces";
 
 import { Subject } from 'rxjs';
 import * as THREE from 'three';
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 // This class manages a variety of map UI related state changes with side effects
 // that I don't trust React to do properly (React `useReducer` may dispatch actions
@@ -120,7 +120,7 @@ export class MapUi {
 
   private addToast(title: string, message: string, id?: string | undefined) {
     this._toasts.next({
-      id: id ?? uuidv4(),
+      id: id ?? uuidv7(),
       record: { title: title, message: message }
     });
   }

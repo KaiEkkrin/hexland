@@ -9,7 +9,7 @@ import * as path from 'path';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 const execFileAsync = promisify(execFile);
 
@@ -37,7 +37,7 @@ async function createMontage(
       if (s === "") {
         return "null:"; // the imagemagick marker for "no image here"
       }
-      const tmpPath = path.join(tmp, uuidv4()); // TODO eurgh do I need file extensions?
+      const tmpPath = path.join(tmp, uuidv7()); // TODO eurgh do I need file extensions?
       await storage.ref(s).download(tmpPath);
       return tmpPath;
     }));
@@ -48,7 +48,7 @@ async function createMontage(
     const tileWidth = Math.floor(1024 / columns);
     const tileHeight = Math.floor(1024 / rows);
     logger.logInfo("spawning montage");
-    const tmpSheetPath = path.join(tmp, `${uuidv4()}.png`);
+    const tmpSheetPath = path.join(tmp, `${uuidv7()}.png`);
     await execFileAsync('montage', [
       '-geometry', `${tileWidth}x${tileHeight}`,
       '-tile', `${columns}x${rows}`,
@@ -198,7 +198,7 @@ async function allocateNewSpritesToSheets(
     logger.logInfo(`trying to extend ${s.id} (${freeSpaces} free)`);
     const allocated: IAllocatedSprites = {
       sources: [...s.data.sprites], oldSheet: s,
-      newSheet: dataService.getSpritesheetRef(adventureId, uuidv4())
+      newSheet: dataService.getSpritesheetRef(adventureId, uuidv7())
     };
 
     while (freeSpaces > 0) {
@@ -231,7 +231,7 @@ async function allocateNewSpritesToSheets(
   if (toAllocate.length > 0) {
     allAllocated.push({
       sources: toAllocate, oldSheet: undefined,
-      newSheet: dataService.getSpritesheetRef(adventureId, uuidv4())
+      newSheet: dataService.getSpritesheetRef(adventureId, uuidv7())
     });
   }
 

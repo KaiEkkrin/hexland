@@ -10,7 +10,7 @@ import { UserContext } from './UserContextProvider';
 import { IAdventureSummary } from '../data/profile';
 
 import { useNavigate } from 'react-router-dom';
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 interface IAdventureCollectionProps {
   uid: string | undefined;
@@ -48,7 +48,7 @@ function AdventureCollection(props: IAdventureCollectionProps) {
       analyticsContext.logError('Failed to create adventure', e);
       const message = e instanceof Error ? e.message : String(e);
       if (message) {
-        statusContext.toasts.next({ id: uuidv4(), record: {
+        statusContext.toasts.next({ id: uuidv7(), record: {
           title: "Error creating adventure", message: message
         } });
       }

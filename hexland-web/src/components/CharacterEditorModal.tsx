@@ -10,7 +10,7 @@ import Modal from 'react-bootstrap/Modal';
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 import TokenImageEditor from './TokenImageEditor';
 
 interface ICharacterEditorModalProps {
@@ -50,7 +50,7 @@ function CharacterEditorModal(
 
   const doHandleSave = useCallback(() => {
     handleSave({
-      id: character?.id ?? uuidv4(),
+      id: character?.id ?? uuidv7(),
       name: name,
       text: text,
       sprites: sprites

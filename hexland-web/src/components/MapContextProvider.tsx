@@ -18,7 +18,7 @@ import { UserContext } from './UserContextProvider';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { from, Observable } from 'rxjs';
 import { first, map, scan, share, switchMap } from 'rxjs/operators';
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 export const MapContext = createContext<IMapContext>({
   mapState: createDefaultState()
@@ -82,7 +82,7 @@ function MapContextProvider(props: IContextProviderProps) {
       }
 
       toasts.next({
-        id: uuidv4(),
+        id: uuidv7(),
         record: { title: 'Error loading map', message: message }
       });
 

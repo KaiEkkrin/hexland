@@ -17,7 +17,7 @@ import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 
 import { useNavigate } from 'react-router-dom';
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 interface ILoginMessageProps {
   isVisible: boolean;
@@ -206,7 +206,7 @@ function Login() {
       if (!user.emailVerified) {
         await user.sendEmailVerification();
         toasts.next({
-          id: uuidv4(),
+          id: uuidv7(),
           record: { title: "Email/password login", message: "A verification email has been sent to " + user.email }
         });
       }
