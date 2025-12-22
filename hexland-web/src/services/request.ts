@@ -9,8 +9,7 @@ export type FunctionRequest =
   ConsolidateMapChangesRequest |
   InviteToAdventureRequest |
   JoinAdventureRequest |
-  DeleteImageRequest |
-  HandleMockStorageUploadRequest;
+  DeleteImageRequest;
 
 export type CreateAdventureRequest = {
   verb?: 'createAdventure';
@@ -73,8 +72,3 @@ export type AddSpritesRequest = {
   sources?: string[];
 };
 
-export type HandleMockStorageUploadRequest = {
-  verb?: 'handleMockStorageUpload';
-  imageId?: string;
-  name?: string;
-};

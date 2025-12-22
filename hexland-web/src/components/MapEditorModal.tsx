@@ -77,7 +77,7 @@ function MapEditorModal({ show, adventures, map, handleClose, handleSave }: IMap
         description: description,
         ffa: ffa
       }).then(() => console.debug("edited map " + map?.id))
-        .catch(e => setIsSaving(false));
+        .catch(_e => setIsSaving(false));
       return;
     }
 
@@ -98,7 +98,7 @@ function MapEditorModal({ show, adventures, map, handleClose, handleSave }: IMap
       ffa: ffa,
       imagePath: ""
     }).then(() => console.debug("created new map"))
-      .catch(e => setIsSaving(false));
+      .catch(_e => setIsSaving(false));
   }, [adventures, map, handleSave, adventureId, description, ffa, name, setIsSaving, ty, user]);
 
   return (

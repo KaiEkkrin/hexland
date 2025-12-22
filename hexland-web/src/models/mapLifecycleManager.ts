@@ -24,7 +24,7 @@ const squareTokenGeometry = getTokenGeometry(MapType.Square);
 export class MapLifecycleManager {
   private readonly _dataService: IDataService;
   private readonly _functionsService: IFunctionsService;
-  private readonly _logError: (message: string, e: any) => void;
+  private readonly _logError: (message: string, e: unknown) => void;
   private readonly _resolveImageUrl: (path: string) => Promise<string>;
   private readonly _uid: string;
 
@@ -34,7 +34,7 @@ export class MapLifecycleManager {
   constructor(
     dataService: IDataService,
     functionsService: IFunctionsService,
-    logError: (message: string, e: any) => void,
+    logError: (message: string, e: unknown) => void,
     resolveImageUrl: (path: string) => Promise<string>,
     uid: string
   ) {

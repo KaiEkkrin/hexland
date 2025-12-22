@@ -1,4 +1,25 @@
-import firebase from 'firebase/app';
+import {
+  Firestore,
+  DocumentReference,
+  DocumentData,
+  Transaction,
+  FieldValue,
+  collection,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  addDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit as limitFn,
+  collectionGroup,
+  onSnapshot,
+  runTransaction
+} from 'firebase/firestore';
 
 import * as Convert from './converter';
 import { IDataService, IDataReference, IDataView, IDataAndReference, IChildDataReference } from './interfaces';
@@ -25,15 +46,15 @@ const spritesheets = "spritesheets";
 // A non-generic base data reference helps our isEqual implementation.
 
 class DataReferenceBase {
-  private readonly _dref: firebase.firestore.DocumentReference<firebase.firestore.DocumentData>;
+  private readonly _dref: DocumentReference<DocumentData>;
 
   constructor(
-    dref: firebase.firestore.DocumentReference<firebase.firestore.DocumentData>,
+    dref: DocumentReference<DocumentData>,
   ) {
     this._dref = dref;
   }
 
-  get dref(): firebase.firestore.DocumentReference<firebase.firestore.DocumentData> {
+  get dref(): DocumentReference<DocumentData> {
     return this._dref;
   }
 
@@ -42,7 +63,8 @@ class DataReferenceBase {
   }
 
   protected isEqualTo<T>(other: IDataReference<T>): boolean {
-    return (other instanceof DataReferenceBase) ? this._dref.isEqual(other._dref) : false;
+    // In Firebase v11, isEqual is removed - compare paths instead
+    return (other instanceof DataReferenceBase) ? this._dref.path === other._dref.path : false;
   }
 }
 
@@ -50,19 +72,19 @@ class DataReference<T> extends DataReferenceBase implements IDataReference<T> {
   private readonly _converter: Convert.IConverter<T>
 
   constructor(
-    dref: firebase.firestore.DocumentReference<firebase.firestore.DocumentData>,
+    dref: DocumentReference<DocumentData>,
     converter: Convert.IConverter<T>
   ) {
     super(dref);
     this._converter = converter;
   }
-  
+
   protected getParentDref<U>(converter: Convert.IConverter<U>): IDataReference<U> | undefined {
     const parent = this.dref.parent.parent;
     return parent ? new DataReference<U>(parent, converter) : undefined;
   }
 
-  convert(rawData: any): T {
+  convert(rawData: Record<string, unknown>): T {
     return this._converter.convert(rawData);
   }
 
@@ -75,7 +97,7 @@ class ChildDataReference<T, U> extends DataReference<T> implements IChildDataRef
   private readonly _parentConverter: Convert.IConverter<U>;
 
   constructor(
-    dref: firebase.firestore.DocumentReference<firebase.firestore.DocumentData>,
+    dref: DocumentReference<DocumentData>,
     converter: Convert.IConverter<T>,
     parentConverter: Convert.IConverter<U>
   ) {
@@ -91,11 +113,11 @@ class ChildDataReference<T, U> extends DataReference<T> implements IChildDataRef
 // TODO #149 To avoid the nasty cobweb of inheritance, instead make DataAndReference a
 // double return value (reference, data).
 class DataAndReference<T> extends DataReference<T> implements IDataAndReference<T> {
-  private readonly _data: firebase.firestore.DocumentData;
+  private readonly _data: DocumentData;
 
   constructor(
-    dref: firebase.firestore.DocumentReference<firebase.firestore.DocumentData>,
-    data: firebase.firestore.DocumentData,
+    dref: DocumentReference<DocumentData>,
+    data: DocumentData,
     converter: Convert.IConverter<T>
   ) {
     super(dref, converter);
@@ -109,12 +131,12 @@ class DataAndReference<T> extends DataReference<T> implements IDataAndReference<
 
 // This service is for datastore-related operations for the current user.
 export class DataService implements IDataService {
-  private readonly _db: firebase.firestore.Firestore;
-  private readonly _timestampProvider: () => firebase.firestore.FieldValue;
+  private readonly _db: Firestore;
+  private readonly _timestampProvider: () => FieldValue;
 
   constructor(
-    db: firebase.firestore.Firestore,
-    timestampProvider: () => firebase.firestore.FieldValue
+    db: Firestore,
+    timestampProvider: () => FieldValue
   ) {
     this._db = db;
     this._timestampProvider = timestampProvider;
@@ -124,29 +146,30 @@ export class DataService implements IDataService {
 
   delete<T>(r: IDataReference<T>): Promise<void> {
     const dref = (r as DataReference<T>).dref;
-    return dref.delete();
+    return deleteDoc(dref);
   }
 
   async get<T>(r: IDataReference<T>): Promise<T | undefined> {
     const dref = (r as DataReference<T>).dref;
-    const result = await dref.get();
-    return result.exists ? r.convert(result.data()) : undefined;
+    const result = await getDoc(dref);
+    return result.exists() ? r.convert(result.data()) : undefined;
   }
 
   set<T>(r: IDataReference<T>, value: T): Promise<void> {
     const dref = (r as DataReference<T>).dref;
-    return dref.set(value);
+    return setDoc(dref, value as DocumentData);
   }
 
-  update<T>(r: IDataReference<T>, changes: any): Promise<void> {
+  update<T>(r: IDataReference<T>, changes: Partial<T>): Promise<void> {
     const dref = (r as DataReference<T>).dref;
-    return dref.update(changes);
+    return updateDoc(dref, changes as DocumentData);
   }
 
   // IDataService implementation
 
   async addChanges(adventureId: string, uid: string, mapId: string, chs: Change[]): Promise<void> {
-    await this._db.collection(adventures).doc(adventureId).collection(maps).doc(mapId).collection(changes).add({
+    const changesCol = collection(this._db, adventures, adventureId, maps, mapId, changes);
+    await addDoc(changesCol, {
       chs: chs,
       timestamp: this._timestampProvider(),
       incremental: true,
@@ -155,93 +178,100 @@ export class DataService implements IDataService {
   }
 
   async getAdventureMapRefs(adventureId: string): Promise<IDataAndReference<IMap>[]> {
-    const m = await this._db.collection(adventures).doc(adventureId).collection(maps).get();
+    const mapsCol = collection(this._db, adventures, adventureId, maps);
+    const m = await getDocs(mapsCol);
     return m.docs.map(d => new DataAndReference(
       d.ref, Convert.mapConverter.convert(d.data()), Convert.mapConverter
     ));
   }
 
   getAdventureRef(id: string): IDataReference<IAdventure> {
-    const d = this._db.collection(adventures).doc(id);
+    const d = doc(this._db, adventures, id);
     return new DataReference<IAdventure>(d, Convert.adventureConverter);
   }
 
   getImagesRef(uid: string): IDataReference<IImages> {
-    const d = this._db.collection(images).doc(uid);
+    const d = doc(this._db, images, uid);
     return new DataReference<IImages>(d, Convert.imagesConverter);
   }
 
   getInviteRef(id: string): IDataReference<IInvite> {
-    const d = this._db.collection(invites).doc(id);
+    const d = doc(this._db, invites, id);
     return new DataReference<IInvite>(d, Convert.inviteConverter);
   }
 
   getMapRef(adventureId: string, id: string): IChildDataReference<IMap, IAdventure> {
-    const d = this._db.collection(adventures).doc(adventureId).collection(maps).doc(id);
+    const d = doc(this._db, adventures, adventureId, maps, id);
     return new ChildDataReference<IMap, IAdventure>(d, Convert.mapConverter, Convert.adventureConverter);
   }
 
   getMapBaseChangeRef(adventureId: string, id: string, converter: Convert.IConverter<Changes>): IDataReference<Changes> {
-    const d = this._db.collection(adventures).doc(adventureId)
-      .collection(maps).doc(id).collection(changes).doc(baseChange);
+    const d = doc(this._db, adventures, adventureId, maps, id, changes, baseChange);
     return new DataReference<Changes>(d, converter);
   }
 
-  async getMapIncrementalChangesRefs(adventureId: string, id: string, limit: number, converter: Convert.IConverter<Changes>): Promise<IDataAndReference<Changes>[] | undefined> {
-    const s = await this._db.collection(adventures).doc(adventureId)
-      .collection(maps).doc(id).collection(changes)
-      .where("incremental", "==", true)
-      .orderBy("timestamp")
-      .limit(limit)
-      .get();
+  async getMapIncrementalChangesRefs(adventureId: string, id: string, limitCount: number, converter: Convert.IConverter<Changes>): Promise<IDataAndReference<Changes>[] | undefined> {
+    const changesCol = collection(this._db, adventures, adventureId, maps, id, changes);
+    const q = query(changesCol,
+      where("incremental", "==", true),
+      orderBy("timestamp"),
+      limitFn(limitCount)
+    );
+    const s = await getDocs(q);
     return s.empty ? undefined : s.docs.map(d => new DataAndReference(d.ref, d.data(), converter));
   }
 
   async getMyAdventures(uid: string): Promise<IDataAndReference<IAdventure>[]> {
-    const a = await this._db.collection(adventures).where("owner", "==", uid).get();
+    const adventuresCol = collection(this._db, adventures);
+    const q = query(adventuresCol, where("owner", "==", uid));
+    const a = await getDocs(q);
     return a.docs.map(d => new DataAndReference(
       d.ref, Convert.adventureConverter.convert(d.data()), Convert.adventureConverter
     ));
   }
 
   async getMyPlayerRecords(uid: string): Promise<IDataAndReference<IPlayer>[]> {
-    const p = await this._db.collectionGroup(players).where("playerId", "==", uid).get();
+    const playersGroup = collectionGroup(this._db, players);
+    const q = query(playersGroup, where("playerId", "==", uid));
+    const p = await getDocs(q);
     return p.docs.map(d => new DataAndReference(
       d.ref, Convert.playerConverter.convert(d.data()), Convert.playerConverter
     ));
   }
 
   getPlayerRef(adventureId: string, uid: string): IDataReference<IPlayer> {
-    const d = this._db.collection(adventures).doc(adventureId).collection(players).doc(uid);
+    const d = doc(this._db, adventures, adventureId, players, uid);
     return new DataReference<IPlayer>(d, Convert.playerConverter);
   }
 
   async getPlayerRefs(adventureId: string): Promise<IDataAndReference<IPlayer>[]> {
-    const s = await this._db.collection(adventures).doc(adventureId).collection(players).get();
+    const playersCol = collection(this._db, adventures, adventureId, players);
+    const s = await getDocs(playersCol);
     return s.docs.map(d => new DataAndReference(
       d.ref, Convert.playerConverter.convert(d.data()), Convert.playerConverter
     ));
   }
 
   getProfileRef(uid: string): IDataReference<IProfile> {
-    const d = this._db.collection(profiles).doc(uid);
+    const d = doc(this._db, profiles, uid);
     return new DataReference<IProfile>(d, Convert.profileConverter);
   }
 
   async getSpritesheetsBySource(adventureId: string, geometry: string, sources: string[]): Promise<IDataAndReference<ISpritesheet>[]> {
-    const s = await this._db.collection(adventures).doc(adventureId)
-      .collection(spritesheets)
-      .where("geometry", "==", geometry)
-      .where("supersededBy", "==", "")
-      .where("sprites", "array-contains-any", sources)
-      .get();
+    const spritesheetsCol = collection(this._db, adventures, adventureId, spritesheets);
+    const q = query(spritesheetsCol,
+      where("geometry", "==", geometry),
+      where("supersededBy", "==", ""),
+      where("sprites", "array-contains-any", sources)
+    );
+    const s = await getDocs(q);
     return s.docs.map(d => new DataAndReference(
       d.ref, Convert.spritesheetConverter.convert(d.data()), Convert.spritesheetConverter
     ));
   }
 
   runTransaction<T>(fn: (dataView: IDataView) => Promise<T>): Promise<T> {
-    return this._db.runTransaction(tr => {
+    return runTransaction(this._db, tr => {
       const tdv = new TransactionalDataView(tr);
       return fn(tdv);
     });
@@ -253,30 +283,30 @@ export class DataService implements IDataService {
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ) {
-    return (d as DataReference<T>).dref.onSnapshot(s => {
-      onNext(s.exists ? d.convert(s.data()) : undefined);
+    return onSnapshot((d as DataReference<T>).dref, s => {
+      onNext(s.exists() ? d.convert(s.data()) : undefined);
     }, onError, onCompletion);
   }
 
   watchAdventures(
     uid: string,
-    onNext: (adventures: IIdentified<IAdventure>[]) => void,
+    onNext: (adventuresList: IIdentified<IAdventure>[]) => void,
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ) {
-    return this._db.collection(adventures).where("owner", "==", uid)
-      .orderBy("name")
-      .onSnapshot(s => {
-        const adventures: IIdentified<IAdventure>[] = [];
-        s.forEach((d) => {
-          const data = d.data();
-          if (data !== null) {
-            const adventure = Convert.adventureConverter.convert(data);
-            adventures.push({ id: d.id, record: adventure });
-          }
-        });
-        onNext(adventures);
-      }, onError, onCompletion);
+    const adventuresCol = collection(this._db, adventures);
+    const q = query(adventuresCol, where("owner", "==", uid), orderBy("name"));
+    return onSnapshot(q, s => {
+      const adventuresList: IIdentified<IAdventure>[] = [];
+      s.forEach((d) => {
+        const data = d.data();
+        if (data !== null) {
+          const adventure = Convert.adventureConverter.convert(data);
+          adventuresList.push({ id: d.id, record: adventure });
+        }
+      });
+      onNext(adventuresList);
+    }, onError, onCompletion);
   }
 
   watchChanges(
@@ -287,66 +317,70 @@ export class DataService implements IDataService {
     onCompletion?: (() => void) | undefined
   ) {
     const converter = Convert.createChangesConverter();
-    const baseChangeRef = this._db.collection(adventures).doc(adventureId)
-      .collection(maps).doc(mapId).collection(changes).doc(baseChange);
-    return this._db.collection(adventures).doc(adventureId)
-      .collection(maps).doc(mapId).collection(changes)
-      .orderBy("incremental") // base change must always be first even if it has a later timestamp
-      .orderBy("timestamp")
-      .onSnapshot(s => {
-        s.docChanges().forEach(d => {
-          // We're interested in the following:
-          // - newly added documents -- these are new changes for the map
-          // - updates to the base change *only*, to act on a resync
-          if (d.doc.exists && (d.doc.ref.isEqual(baseChangeRef) || d.oldIndex === -1)) {
-            const chs = converter.convert(d.doc.data());
-            onNext(chs);
-          }
-        });
-      }, onError, onCompletion);
+    const baseChangeRef = doc(this._db, adventures, adventureId, maps, mapId, changes, baseChange);
+    const changesCol = collection(this._db, adventures, adventureId, maps, mapId, changes);
+    const q = query(changesCol,
+      orderBy("incremental"), // base change must always be first even if it has a later timestamp
+      orderBy("timestamp")
+    );
+    return onSnapshot(q, s => {
+      s.docChanges().forEach(d => {
+        // We're interested in the following:
+        // - newly added documents -- these are new changes for the map
+        // - updates to the base change *only*, to act on a resync
+        // In Firebase v11, isEqual is removed - compare paths instead
+        if (d.doc.exists() && (d.doc.ref.path === baseChangeRef.path || d.oldIndex === -1)) {
+          const chs = converter.convert(d.doc.data());
+          onNext(chs);
+        }
+      });
+    }, onError, onCompletion);
   }
 
   watchPlayers(
     adventureId: string,
-    onNext: (players: IPlayer[]) => void,
+    onNext: (playersList: IPlayer[]) => void,
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ) {
-    return this._db.collection(adventures).doc(adventureId).collection(players).onSnapshot(s => {
+    const playersCol = collection(this._db, adventures, adventureId, players);
+    return onSnapshot(playersCol, s => {
       onNext(s.docs.map(d => Convert.playerConverter.convert(d.data())));
     }, onError, onCompletion);
   }
 
   watchSharedAdventures(
     uid: string,
-    onNext: (adventures: IPlayer[]) => void,
+    onNext: (adventuresList: IPlayer[]) => void,
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ) {
-    return this._db.collectionGroup(players).where("playerId", "==", uid).onSnapshot(s => {
+    const playersGroup = collectionGroup(this._db, players);
+    const q = query(playersGroup, where("playerId", "==", uid));
+    return onSnapshot(q, s => {
       onNext(s.docs.map(d => Convert.playerConverter.convert(d.data())));
     }, onError, onCompletion);
   }
 
   watchSpritesheets(
     adventureId: string,
-    onNext: (spritesheets: IDataAndReference<ISpritesheet>[]) => void,
+    onNext: (spritesheetsList: IDataAndReference<ISpritesheet>[]) => void,
     onError?: ((error: Error) => void) | undefined,
     onCompletion?: (() => void) | undefined
   ) {
-    return this._db.collection(adventures).doc(adventureId).collection(spritesheets)
-      .onSnapshot(s => {
-        onNext(s.docs.map(d => new DataAndReference(
-          d.ref, Convert.spritesheetConverter.convert(d.data()), Convert.spritesheetConverter
-        )));
-      }, onError, onCompletion);
+    const spritesheetsCol = collection(this._db, adventures, adventureId, spritesheets);
+    return onSnapshot(spritesheetsCol, s => {
+      onNext(s.docs.map(d => new DataAndReference(
+        d.ref, Convert.spritesheetConverter.convert(d.data()), Convert.spritesheetConverter
+      )));
+    }, onError, onCompletion);
   }
 }
 
 class TransactionalDataView implements IDataView {
-  private _tr: firebase.firestore.Transaction;
+  private _tr: Transaction;
 
-  constructor(tr: firebase.firestore.Transaction) {
+  constructor(tr: Transaction) {
     this._tr = tr;
   }
 
@@ -358,16 +392,16 @@ class TransactionalDataView implements IDataView {
   async get<T>(r: IDataReference<T>): Promise<T | undefined> {
     const dref = (r as DataReference<T>).dref;
     const result = await this._tr.get(dref);
-    return result.exists ? r.convert(result.data()) : undefined;
+    return result.exists() ? r.convert(result.data()) : undefined;
   }
 
   async set<T>(r: IDataReference<T>, value: T): Promise<void> {
     const dref = (r as DataReference<T>).dref;
-    this._tr = this._tr.set(dref, value);
+    this._tr = this._tr.set(dref, value as DocumentData);
   }
 
-  async update<T>(r: IDataReference<T>, changes: any): Promise<void> {
+  async update<T>(r: IDataReference<T>, changes: Partial<T>): Promise<void> {
     const dref = (r as DataReference<T>).dref;
-    this._tr = this._tr.update(dref, changes);
+    this._tr = this._tr.update(dref, changes as DocumentData);
   }
 }

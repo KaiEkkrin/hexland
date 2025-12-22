@@ -47,7 +47,7 @@ export class MapColourVisualisation extends InstancedFeatures<GridCoord, IFeatur
         });
 
         this._colourCount = colours.length;
-        for (let o of this.featureObjects) {
+        for (const o of this.featureObjects) {
           if (o instanceof PaletteColouredFeatureObject) {
             o.setPalette(colours);
           }

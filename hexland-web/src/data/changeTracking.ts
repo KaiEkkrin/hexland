@@ -6,7 +6,7 @@ import { IMapImage } from "./image";
 import { IMap } from "./map";
 import { IUserPolicy } from "./policy";
 
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 import fluent from "fluent-iterable";
 import { IIdDictionary } from "./identified";
 
@@ -124,7 +124,7 @@ export class SimpleChangeTracker implements IChangeTracker {
     return this.policyRemove(() => this._playerAreas.remove(position));
   }
 
-  tokenAdd(map: IMap, user: string, feature: IToken, oldPosition: GridCoord | undefined) {
+  tokenAdd(_map: IMap, _user: string, feature: IToken, _oldPosition: GridCoord | undefined) {
     // Identify the right dictionary
     const dict = feature.outline ? this._outlineTokens : this._tokens;
 
@@ -208,7 +208,7 @@ export class SimpleChangeTracker implements IChangeTracker {
       // `undefined` isn't supported in Firestore, so correct any token without
       // an id now
       if (f.id === undefined) {
-        f.id = uuidv4();
+        f.id = uuidv7();
       }
 
       return all.push(createTokenAdd(f));
@@ -324,7 +324,7 @@ function trackChange(map: IMap, tracker: IChangeTracker, ch: Change, user: strin
   }
 }
 
-function trackAreaChange(map: IMap, tracker: IChangeTracker, ch: AreaAdd | AreaRemove, user: string): IChangeApplication | undefined {
+function trackAreaChange(_map: IMap, tracker: IChangeTracker, ch: AreaAdd | AreaRemove, _user: string): IChangeApplication | undefined {
   switch (ch.ty) {
     case ChangeType.Add:
       return {
@@ -339,7 +339,7 @@ function trackAreaChange(map: IMap, tracker: IChangeTracker, ch: AreaAdd | AreaR
         }
       };
 
-    case ChangeType.Remove:
+    case ChangeType.Remove: {
       const removed = tracker.areaRemove(ch.position);
       return removed === undefined ? undefined : {
         revert: function () {
@@ -347,12 +347,13 @@ function trackAreaChange(map: IMap, tracker: IChangeTracker, ch: AreaAdd | AreaR
         },
         continue: function () { return doNothing; }
       };
+    }
 
     default: return undefined;
   }
 }
 
-function trackPlayerAreaChange(map: IMap, tracker: IChangeTracker, ch: PlayerAreaAdd | PlayerAreaRemove, user: string): IChangeApplication | undefined {
+function trackPlayerAreaChange(_map: IMap, tracker: IChangeTracker, ch: PlayerAreaAdd | PlayerAreaRemove, _user: string): IChangeApplication | undefined {
   switch (ch.ty) {
     case ChangeType.Add:
       return {
@@ -367,7 +368,7 @@ function trackPlayerAreaChange(map: IMap, tracker: IChangeTracker, ch: PlayerAre
         }
       };
 
-    case ChangeType.Remove:
+    case ChangeType.Remove: {
       const removed = tracker.playerAreaRemove(ch.position);
       return removed === undefined ? undefined : {
         revert: function () {
@@ -375,6 +376,7 @@ function trackPlayerAreaChange(map: IMap, tracker: IChangeTracker, ch: PlayerAre
         },
         continue: function () { return doNothing; }
       };
+    }
 
     default: return undefined;
   }
@@ -395,7 +397,7 @@ function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: TokenAdd | Tok
         }
       } : undefined;
 
-    case ChangeType.Remove:
+    case ChangeType.Remove: {
       if (!canDoAnything(map, user)) {
         return undefined;
       }
@@ -406,8 +408,9 @@ function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: TokenAdd | Tok
         },
         continue: function () { return doNothing; }
       }
+    }
 
-    case ChangeType.Move:
+    case ChangeType.Move: {
       const moved = tracker.tokenRemove(map, user, ch.oldPosition, ch.tokenId);
       return moved === undefined ? undefined : {
         revert: function () {
@@ -428,6 +431,7 @@ function trackTokenChange(map: IMap, tracker: IChangeTracker, ch: TokenAdd | Tok
           } : undefined;
         }
       };
+    }
 
     default: return undefined;
   }
@@ -448,7 +452,7 @@ function trackWallChange(tracker: IChangeTracker, ch: WallAdd | WallRemove): ICh
         }
       }
 
-    case ChangeType.Remove:
+    case ChangeType.Remove: {
       const removed = tracker.wallRemove(ch.position);
       return removed === undefined ? undefined : {
         revert: function () {
@@ -456,6 +460,7 @@ function trackWallChange(tracker: IChangeTracker, ch: WallAdd | WallRemove): ICh
         },
         continue: function () { return doNothing; }
       }
+    }
 
     default: return undefined;
   }
@@ -476,7 +481,7 @@ function trackNoteChange(tracker: IChangeTracker, ch: NoteAdd | NoteRemove): ICh
         }
       }
 
-    case ChangeType.Remove:
+    case ChangeType.Remove: {
       const removed = tracker.noteRemove(ch.position);
       return removed === undefined ? undefined : {
         revert: function () {
@@ -484,6 +489,7 @@ function trackNoteChange(tracker: IChangeTracker, ch: NoteAdd | NoteRemove): ICh
         },
         continue: function () { return doNothing; }
       };
+    }
 
     default: return undefined;
   }
@@ -504,7 +510,7 @@ function trackImageChange(tracker: IChangeTracker, ch: ImageAdd | ImageRemove): 
         }
       }
 
-    case ChangeType.Remove:
+    case ChangeType.Remove: {
       const removed = tracker.imageRemove(ch.id);
       return removed === undefined ? undefined : {
         revert: function() {
@@ -512,6 +518,7 @@ function trackImageChange(tracker: IChangeTracker, ch: ImageAdd | ImageRemove): 
         },
         continue: function() { return doNothing; }
       };
+    }
 
     default: return undefined;
   }

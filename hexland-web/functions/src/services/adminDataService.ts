@@ -1,4 +1,5 @@
 import * as admin from 'firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
 
 import * as Convert from './converter';
 import { IAdminDataService, ICollectionGroupQueryResult } from './extraInterfaces';
@@ -31,7 +32,7 @@ class DataReferenceBase {
   private readonly _dref: FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>;
 
   constructor(
-    dref: FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>,
+    dref: FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>
   ) {
     this._dref = dref;
   }
@@ -133,7 +134,7 @@ export class AdminDataService implements IAdminDataService {
 
   constructor(app: admin.app.App) {
     this._db = admin.firestore(app);
-    this._timestampProvider = admin.firestore.Timestamp.now;
+    this._timestampProvider = Timestamp.now;
   }
 
   // IDataView implementation
@@ -146,12 +147,12 @@ export class AdminDataService implements IAdminDataService {
   async get<T>(r: IDataReference<T>): Promise<T | undefined> {
     const dref = (r as DataReference<T>).dref;
     const result = await dref.get();
-    return result.exists ? r.convert(result.data()) : undefined;
+    return result.exists ? r.convert(result.data()!) : undefined;
   }
 
   async set<T>(r: IDataReference<T>, value: T): Promise<void> {
     const dref = (r as DataReference<T>).dref;
-    await dref.set(value);
+    await dref.set(value as admin.firestore.WithFieldValue<admin.firestore.DocumentData>);
   }
 
   async update<T>(r: IDataReference<T>, chs: any): Promise<void> {
@@ -319,7 +320,7 @@ export class AdminDataService implements IAdminDataService {
     onError?: ((error: Error) => void) | undefined
   ) {
     return (d as DataReference<T>).dref.onSnapshot(s => {
-      onNext(s.exists ? d.convert(s.data()) : undefined);
+      onNext(s.exists ? d.convert(s.data()!) : undefined);
     }, onError);
   }
 
@@ -395,7 +396,7 @@ export class AdminDataService implements IAdminDataService {
       .where("supersededBy", "==", "")
       .onSnapshot(s => {
         onNext(s.docs.map(d => new DataAndReference(
-          d.ref, Convert.spritesheetConverter.convert(d.data), Convert.spritesheetConverter
+          d.ref, Convert.spritesheetConverter.convert(d.data()), Convert.spritesheetConverter
         )));
       }, onError);
   }
@@ -416,12 +417,12 @@ class TransactionalDataView implements IDataView {
   async get<T>(r: IDataReference<T>): Promise<T | undefined> {
     const dref = (r as DataReference<T>).dref;
     const result = await this._tr.get(dref);
-    return result.exists ? r.convert(result.data()) : undefined;
+    return result.exists ? r.convert(result.data()!) : undefined;
   }
 
   async set<T>(r: IDataReference<T>, value: T): Promise<void> {
     const dref = (r as DataReference<T>).dref;
-    this._tr = this._tr.set(dref, value);
+    this._tr = this._tr.set(dref, value as admin.firestore.WithFieldValue<admin.firestore.DocumentData>);
   }
 
   async update<T>(r: IDataReference<T>, chs: any): Promise<void> {

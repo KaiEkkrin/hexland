@@ -38,7 +38,7 @@ function CharacterItem({
     <React.Fragment>
       {character.name}
       {character.sprites.length > 0 ? (
-        <SpriteImage className="ml-2" sprite={character.sprites[0]} altName=""
+        <SpriteImage className="ms-2" sprite={character.sprites[0]} altName=""
           size={32} border="1px solid" borderColour="grey" />
       ) : null}
     </React.Fragment>
@@ -57,7 +57,7 @@ function CharacterItem({
         <div>{desc}</div>
         {pn}
         {canEdit === true ? (
-          <ButtonGroup className="ml-2">
+          <ButtonGroup className="ms-2">
             <Button variant="primary" onClick={() => handleEdit?.(character)}>
               <FontAwesomeIcon icon={faEdit} color="white" />
             </Button>

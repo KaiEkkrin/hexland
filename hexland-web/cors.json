@@ -4,8 +4,10 @@
       "https://wallandshadow.io",
       "https://hexland.firebaseapp.com",
       "https://hexland-test.firebaseapp.com",
+      "https://hexland-test-25.firebaseapp.com",
       "https://hexland.web.app",
       "https://hexland-test.web.app",
+      "https://hexland-test-25.web.app",
       "http://localhost:5000"
     ],
     "method": ["GET"],

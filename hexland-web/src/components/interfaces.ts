@@ -4,7 +4,9 @@ import { IMap } from '../data/map';
 import { MapState, MapStateMachine } from '../models/mapStateMachine';
 import { IDataService, IUser, IAuth, IAuthProvider, IAnalytics, IFunctionsService, IStorage, ISpriteManager } from '../services/interfaces';
 
-import firebase from 'firebase/app';
+import { Firestore, FieldValue } from 'firebase/firestore';
+import { Functions } from 'firebase/functions';
+import { FirebaseStorage } from 'firebase/storage';
 import { Subject } from 'rxjs';
 import { IProfile } from '../data/profile';
 
@@ -14,11 +16,11 @@ export interface IContextProviderProps {
  
 export interface IFirebaseContext {
   auth?: IAuth | undefined;
-  db?: firebase.firestore.Firestore | undefined;
-  functions?: firebase.functions.Functions | undefined;
+  db?: Firestore | undefined;
+  functions?: Functions | undefined;
   googleAuthProvider?: IAuthProvider | undefined;
-  storage?: firebase.storage.Storage | undefined;
-  timestampProvider?: (() => firebase.firestore.FieldValue) | undefined;
+  storage?: FirebaseStorage | undefined;
+  timestampProvider?: (() => FieldValue) | undefined;
   usingLocalEmulators?: boolean | undefined;
 
   // Creates an Analytics provider
@@ -54,8 +56,8 @@ export interface IAnalyticsContext {
   analytics: IAnalytics | undefined;
   enabled: boolean | undefined; // Residing in local storage, this signals consent.
   setEnabled: (enabled: boolean | undefined) => void;
-  logError: (message: string, e: any, fatal?: boolean | undefined) => void; // Use this error helper to track errors in GA where possible.
-  logEvent: (event: string, parameters: any) => void;
+  logError: (message: string, e: unknown, fatal?: boolean | undefined) => void; // Use this error helper to track errors in GA where possible.
+  logEvent: (event: string, parameters: Record<string, unknown>) => void;
 }
 
 export interface IToast {

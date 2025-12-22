@@ -16,8 +16,8 @@ import Modal from 'react-bootstrap/Modal';
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 
-import { useHistory } from 'react-router-dom';
-import { v4 as uuidv4 } from 'uuid';
+import { useNavigate } from 'react-router-dom';
+import { v7 as uuidv7 } from 'uuid';
 
 interface ILoginMessageProps {
   isVisible: boolean;
@@ -179,7 +179,7 @@ function Login() {
   const { profile, expectNewUser } = useContext(ProfileContext);
   const { logError } = useContext(AnalyticsContext);
   const { toasts } = useContext(StatusContext);
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [loginFailedVisible, setLoginFailedVisible] = useState(false);
@@ -206,7 +206,7 @@ function Login() {
       if (!user.emailVerified) {
         await user.sendEmailVerification();
         toasts.next({
-          id: uuidv4(),
+          id: uuidv7(),
           record: { title: "Email/password login", message: "A verification email has been sent to " + user.email }
         });
       }
@@ -217,17 +217,13 @@ function Login() {
 
   const finishLogin = useCallback((success: boolean) => {
     if (success) {
-      if (history.length > 0) {
-        history.goBack();
-      } else {
-        history.replace("/");
-      }
+      navigate(-1);
     }
-  }, [history]);
+  }, [navigate]);
 
-  const handleLoginError = useCallback((e: any) => {
+  const handleLoginError = useCallback((e: unknown) => {
     setLoginFailedVisible(true);
-    setLoginFailedText(String(e.message));
+    setLoginFailedText(e instanceof Error ? e.message : String(e));
     logError("Login failed", e);
   }, [logError, setLoginFailedVisible]);
 

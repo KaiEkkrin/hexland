@@ -47,7 +47,7 @@ function Home() {
 
   // We keep the change list state here
   const [changeCount, toggleChangeCount] = useReducer(
-    (state: number | undefined, action: void) => state === undefined ? 1 : undefined,
+    (state: number | undefined, _action: void) => state === undefined ? 1 : undefined,
     1
   );
 

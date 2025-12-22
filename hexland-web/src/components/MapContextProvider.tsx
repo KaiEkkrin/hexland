@@ -15,10 +15,10 @@ import { ProfileContext } from './ProfileContextProvider';
 import { StatusContext } from './StatusContextProvider';
 import { UserContext } from './UserContextProvider';
 
-import { useHistory, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { from, Observable } from 'rxjs';
 import { first, map, scan, share, switchMap } from 'rxjs/operators';
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 export const MapContext = createContext<IMapContext>({
   mapState: createDefaultState()
@@ -31,7 +31,7 @@ function MapContextProvider(props: IContextProviderProps) {
   const { toasts } = useContext(StatusContext);
   const { spriteManager } = useContext(AdventureContext);
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
 
   // We need to re-create the map lifecycle manager only when the user login changes
@@ -57,27 +57,37 @@ function MapContextProvider(props: IContextProviderProps) {
   // We'll try not to depend on `dataService` in here to avoid repeated calls
   const [mapContext, setMapContext] = useState<IMapContext>({ mapState: createDefaultState() });
   useEffect(() => {
+    console.log('[MapContextProvider] useEffect running, pathname:', location?.pathname);
     const matches = /^\/adventure\/([^/]+)\/map\/([^/]+)$/.exec(location?.pathname);
+    console.log('[MapContextProvider] regex matches:', matches ? 'YES' : 'NO');
+    console.log('[MapContextProvider] lcm:', lcm ? 'DEFINED' : 'UNDEFINED');
+    console.log('[MapContextProvider] profile:', profile ? 'DEFINED' : 'UNDEFINED');
+    console.log('[MapContextProvider] spriteManager:', spriteManager ? 'DEFINED' : 'UNDEFINED');
+
     if (!lcm || !matches || !profile || !spriteManager) {
+      console.log('[MapContextProvider] Early return - missing dependencies');
       return undefined;
     }
 
     const [adventureId, mapId] = [matches[1], matches[2]];
+    console.log('[MapContextProvider] Setting up map watch for:', adventureId, mapId);
     const mapRef = lcm.dataService.getMapRef(adventureId, mapId);
 
     // How to handle a map load failure.
     function couldNotLoad(message: string) {
+      console.log('[MapContextProvider] couldNotLoad called with message:', message);
       if (lcm && mapRef) {
         removeMapFromRecent(lcm.dataService, lcm.uid, mapRef.id)
           .catch(e => logError("Error removing map from recent", e));
       }
 
       toasts.next({
-        id: uuidv4(),
+        id: uuidv7(),
         record: { title: 'Error loading map', message: message }
       });
 
-      history.replace('/');
+      console.log('[MapContextProvider] Navigating back to home due to error');
+      navigate('/', { replace: true });
     }
 
     // We're going to do several things with this.
@@ -85,7 +95,7 @@ function MapContextProvider(props: IContextProviderProps) {
     // underlying stop function
     let stopWatchingMap: (() => void) | undefined = undefined;
     const watchMap = new Observable<IAdventureIdentified<IMap>>(sub => {
-      const stopWatchingMap = lcm.dataService.watch(
+      stopWatchingMap = lcm.dataService.watch(
         mapRef,
         m => {
           if (m === undefined) {
@@ -171,7 +181,7 @@ function MapContextProvider(props: IContextProviderProps) {
       stopWatchingMap?.();
     };
   }, [
-    analytics, history, lcm, location, logError, logEvent,
+    analytics, navigate, lcm, location, logError, logEvent,
     profile, setMapContext, spriteManager, toasts
   ]);
 

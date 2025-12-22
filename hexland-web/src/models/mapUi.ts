@@ -14,7 +14,7 @@ import { IDataService, IFunctionsService } from "../services/interfaces";
 
 import { Subject } from 'rxjs';
 import * as THREE from 'three';
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 // This class manages a variety of map UI related state changes with side effects
 // that I don't trust React to do properly (React `useReducer` may dispatch actions
@@ -98,7 +98,7 @@ export class MapUi {
   private readonly _stateMachine: MapStateMachine | undefined;
   private readonly _setState: (state: MapUiState) => void;
   private readonly _getClientPosition: (x: number, y: number) => THREE.Vector3 | undefined;
-  private readonly _logError: (message: string, e: any, fatal?: boolean | undefined) => void;
+  private readonly _logError: (message: string, e: unknown, fatal?: boolean | undefined) => void;
   private readonly _toasts: Subject<IIdentified<IToast | undefined>>;
 
   private _state = createDefaultUiState();
@@ -107,7 +107,7 @@ export class MapUi {
     stateMachine: MapStateMachine | undefined,
     setState: (state: MapUiState) => void,
     getClientPosition: (x: number, y: number) => THREE.Vector3 | undefined,
-    logError: (message: string, e: any, fatal?: boolean | undefined) => void,
+    logError: (message: string, e: unknown, fatal?: boolean | undefined) => void,
     toasts: Subject<IIdentified<IToast | undefined>>
   ) {
     this._stateMachine = stateMachine;
@@ -120,7 +120,7 @@ export class MapUi {
 
   private addToast(title: string, message: string, id?: string | undefined) {
     this._toasts.next({
-      id: id ?? uuidv4(),
+      id: id ?? uuidv7(),
       record: { title: title, message: message }
     });
   }
@@ -171,7 +171,7 @@ export class MapUi {
           break;
 
         case EditMode.Token:
-        case EditMode.CharacterToken:
+        case EditMode.CharacterToken: {
           newState.tokenToEdit = this._stateMachine?.getToken(cp);
           newState.tokenToEditPosition = cp;
 
@@ -180,6 +180,7 @@ export class MapUi {
           newState.showCharacterTokenEditor = showCharacterTokenEditor;
           newState.showTokenEditor = showTokenEditor;
           break;
+        }
 
         case EditMode.Notes:
           newState.showNoteEditor = true;
@@ -504,7 +505,7 @@ export class MapUi {
     functionsService: IFunctionsService | undefined,
     map: IAdventureIdentified<IMap> | undefined,
     updated: IMap,
-    logError: (message: string, e: any) => void
+    logError: (message: string, e: unknown) => void
   ) {
     if (!this._state.showMapEditor) {
       return;
@@ -546,11 +547,11 @@ export class MapUi {
     if (this._state.mapImageToEditPosition !== undefined) {
       try {
         this.addChanges(this._stateMachine?.setMapImage(this._state.mapImageToEditPosition, properties));
-      } catch (e: any) {
-        this.addToast('Failed to save map image', String(e.message));
+      } catch (e: unknown) {
+        this.addToast('Failed to save map image', e instanceof Error ? e.message : String(e));
       }
     }
-    
+
     this.modalClose();
   }
 
@@ -696,8 +697,8 @@ export class MapUi {
     if (this._state.tokenToEditPosition !== undefined) {
       try {
         this.addChanges(this._stateMachine?.setToken(this._state.tokenToEditPosition, undefined));
-      } catch (e: any) {
-        this.addToast('Failed to delete token', String(e.message));
+      } catch (e: unknown) {
+        this.addToast('Failed to delete token', e instanceof Error ? e.message : String(e));
       }
     }
 
@@ -708,8 +709,8 @@ export class MapUi {
     if (this._state.tokenToEditPosition !== undefined) {
       try {
         this.addChanges(this._stateMachine?.setToken(this._state.tokenToEditPosition, properties));
-      } catch (e: any) {
-        this.addToast('Failed to save token', String(e.message));
+      } catch (e: unknown) {
+        this.addToast('Failed to save token', e instanceof Error ? e.message : String(e));
       }
     }
 

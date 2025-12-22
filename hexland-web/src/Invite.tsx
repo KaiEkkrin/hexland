@@ -13,8 +13,8 @@ import { IInvite } from './data/invite';
 
 import Button from 'react-bootstrap/Button';
 
-import { RouteComponentProps, useHistory } from 'react-router-dom';
-import { v4 as uuidv4 } from 'uuid';
+import { useParams, useNavigate } from 'react-router-dom';
+import { v7 as uuidv7 } from 'uuid';
 
 interface IInvitePageProps {
   inviteId: string;
@@ -25,7 +25,7 @@ function Invite({ inviteId }: IInvitePageProps) {
   const { profile } = useContext(ProfileContext);
   const analyticsContext = useContext(AnalyticsContext);
   const statusContext = useContext(StatusContext);
-  const history = useHistory();
+  const navigate = useNavigate();
 
   // Because the `joinAdventure` function is likely to be cold-started and may take a
   // little while to run, we change the button to "Joining..." while it's happening:
@@ -39,7 +39,7 @@ function Invite({ inviteId }: IInvitePageProps) {
   const [invite, setInvite] = useState(undefined as IInvite | undefined);
   useEffect(() => {
     if (userContext.dataService !== undefined) {
-      let inviteRef = userContext.dataService.getInviteRef(inviteId);
+      const inviteRef = userContext.dataService.getInviteRef(inviteId);
       userContext.dataService.get(inviteRef)
         .then(i => setInvite(i))
         .catch(e => analyticsContext.logError("Failed to fetch invite " + inviteId, e));
@@ -55,19 +55,19 @@ function Invite({ inviteId }: IInvitePageProps) {
     userContext.functionsService?.joinAdventure(inviteId)
       .then(adventureId => {
         analyticsContext.analytics?.logEvent("join_group", { "group_id": adventureId });
-        history.replace("/adventure/" + adventureId);
+        navigate("/adventure/" + adventureId, { replace: true });
       })
       .catch(e => {
         setButtonDisabled(false);
         analyticsContext.logError("Failed to join using invite " + inviteId, e);
         const message = String(e.message);
         if (message) {
-          statusContext.toasts.next({ id: uuidv4(), record: {
+          statusContext.toasts.next({ id: uuidv7(), record: {
             title: "Error joining adventure", message: message
           }});
         }
       });
-  }, [analyticsContext, userContext, inviteId, history, setButtonDisabled, statusContext]);
+  }, [analyticsContext, userContext, inviteId, navigate, setButtonDisabled, statusContext]);
 
   return (
     <div>
@@ -82,10 +82,11 @@ function Invite({ inviteId }: IInvitePageProps) {
   );
 }
 
-function InvitePage(props: RouteComponentProps<IInvitePageProps>) {
+function InvitePage() {
+  const { inviteId } = useParams<{ inviteId: string }>();
   return (
     <RequireLoggedIn>
-      <Invite inviteId={props.match.params.inviteId} />
+      <Invite inviteId={inviteId ?? ''} />
     </RequireLoggedIn>
   );
 }

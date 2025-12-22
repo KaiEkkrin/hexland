@@ -1,0 +1,104 @@
+{
+  "name": "Hexland Development",
+  "dockerComposeFile": "docker-compose.yml",
+
+  // GPU support: Service name must match active profile (see README.md)
+  // Default connects to hexland-dev (no GPU)
+  // Create .devcontainer/.env to activate GPU profiles
+  "service": "hexland-dev",
+  "workspaceFolder": "/workspaces/hexland",
+  "shutdownAction": "stopCompose",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker",
+        "toba.vsfire",
+        "dsznajder.es7-react-js-snippets",
+        "vitest.vitest-explorer",
+        "ms-playwright.playwright",
+        "eamodio.gitlens",
+        "christian-kohler.path-intellisense"
+      ],
+      "settings": {
+        "editor.tabSize": 2,
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "typescript.tsdk": "hexland-web/node_modules/typescript/lib",
+        "eslint.workingDirectories": [
+          "hexland-web",
+          "hexland-web/functions"
+        ],
+        "files.exclude": {
+          "**/.git": true,
+          "**/.DS_Store": true,
+          "**/node_modules": true,
+          "**/.usercache": true
+        },
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+
+  "forwardPorts": [3400, 4000, 5000, 5001, 7000, 8080, 9005, 9099, 9229],
+
+  "portsAttributes": {
+    "3400": {
+      "label": "Firebase Hosting",
+      "onAutoForward": "notify"
+    },
+    "4000": {
+      "label": "Firebase Emulator UI",
+      "onAutoForward": "openBrowser"
+    },
+    "5000": {
+      "label": "React Dev Server",
+      "onAutoForward": "openBrowser"
+    },
+    "5001": {
+      "label": "Firebase Functions",
+      "onAutoForward": "notify"
+    },
+    "8080": {
+      "label": "Firestore Emulator",
+      "onAutoForward": "silent"
+    },
+    "9005": {
+      "label": "Firestore Debug",
+      "onAutoForward": "silent"
+    },
+    "9099": {
+      "label": "Firebase Auth",
+      "onAutoForward": "silent"
+    },
+    "9199": {
+      "label": "Firebase Storage",
+      "onAutoForward": "silent"
+    },
+    "9229": {
+      "label": "Node Debug",
+      "onAutoForward": "silent"
+    }
+  },
+
+  "postCreateCommand": "bash .devcontainer/scripts/post-create.sh",
+  "postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder} && bash .devcontainer/scripts/post-start.sh",
+
+  "remoteUser": "node",
+
+  // Forward SSH agent into container for git operations
+  "mounts": [
+    "type=bind,source=${localEnv:SSH_AUTH_SOCK},target=/tmp/ssh-auth.sock"
+  ],
+
+  "containerEnv": {
+    "SSH_AUTH_SOCK": "/tmp/ssh-auth.sock"
+  },
+
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  }
+}

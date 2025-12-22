@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import * as React from 'react';
 import '../App.css';
 
@@ -9,12 +9,12 @@ import { IAdventureSummary } from '../data/profile';
 import Accordion from 'react-bootstrap/Accordion';
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
-import CardDeck from 'react-bootstrap/CardDeck';
 
 import { LinkContainer } from 'react-router-bootstrap';
-import Measure from 'react-measure';
+import useMeasure from 'react-use-measure';
 import ImageCardContent from './ImageCardContent';
 
+// CardStyle is exported for use by other components that need consistent card sizing
 export const CardStyle: React.CSSProperties = {
   minWidth: '16rem', maxWidth: '24rem'
 };
@@ -52,12 +52,14 @@ const AdventureCard = ({ adventure, collapsing }: IAdventureCardProps) => {
     );
   } else {
     return (
-      <Card className="mt-4" style={CardStyle} bg="dark" text="white">
-        <ImageCardContent altName={adventure.name} imagePath={adventure.imagePath}>
-          <Card.Title className="h5">{adventure.name}</Card.Title>
-          {content}
-        </ImageCardContent>
-      </Card>
+      <div className="col">
+        <Card className="h-100" bg="dark" text="white">
+          <ImageCardContent altName={adventure.name} imagePath={adventure.imagePath}>
+            <Card.Title className="h5">{adventure.name}</Card.Title>
+            {content}
+          </ImageCardContent>
+        </Card>
+      </div>
     );
   }
 }
@@ -102,11 +104,13 @@ const AdventureCardsLarge = ({ showNewAdventureCard, handleCreate, adventures }:
 
     if (showNewAdventureCard) {
       cardList.splice(0, 0, (
-        <Card className="mt-4" style={CardStyle} bg="dark" text="white" key="new">
-          <Card.Body>
-            <Button onClick={handleCreate}>New adventure</Button>
-          </Card.Body>
-        </Card>
+        <div className="col" key="new">
+          <Card className="h-100" bg="dark" text="white">
+            <Card.Body>
+              <Button onClick={handleCreate}>New adventure</Button>
+            </Card.Body>
+          </Card>
+        </div>
       ));
     }
 
@@ -114,30 +118,26 @@ const AdventureCardsLarge = ({ showNewAdventureCard, handleCreate, adventures }:
   }, [showNewAdventureCard, handleCreate, adventures]);
 
   return (
-    <CardDeck>
+    <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mt-2">
       {cards}
-    </CardDeck>
+    </div>
   );
 }
 
 function AdventureCards(props: IAdventureCardsProps) {
-  const [width, setWidth] = useState<number | undefined>(undefined);
+  const [measureRef, bounds] = useMeasure();
   const cards = useMemo(
-    () => width === undefined || width <= 400 ? (
+    () => bounds.width === 0 || bounds.width <= 400 ? (
       <AdventureCardsCollapsing {...props} />
     ) : (
       <AdventureCardsLarge {...props} />
-    ), [props, width]
+    ), [props, bounds.width]
   );
 
   return (
-    <Measure bounds onResize={r => setWidth(r.bounds?.width)}>
-      {({ measureRef }) => (
-        <div ref={measureRef}>
-          {cards}
-        </div>
-      )}
-    </Measure>
+    <div ref={measureRef}>
+      {cards}
+    </div>
   );
 }
 

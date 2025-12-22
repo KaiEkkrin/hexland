@@ -7,7 +7,7 @@ import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
 
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 interface INoteEditorModalProps {
   show: boolean;
@@ -25,7 +25,7 @@ function NoteEditorModal({ show, note, handleClose, handleDelete, handleSave }: 
 
   useEffect(() => {
     if (show) {
-      setId(note?.id ?? uuidv4());
+      setId(note?.id ?? uuidv7());
       setColour(note?.colour ?? 0);
       setText(note?.text ?? "");
       setVisibleToPlayers(note?.visibleToPlayers ?? false);

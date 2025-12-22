@@ -24,7 +24,7 @@ import Modal from 'react-bootstrap/Modal';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronLeft, faChevronRight, faTimes } from '@fortawesome/free-solid-svg-icons';
 import { from } from 'rxjs';
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 interface IImageStatusProps {
   message: string;
@@ -60,13 +60,13 @@ export function ImagePickerForm({ show, setActiveImage, setImageCount, handleDel
 
   // File uploads
 
-  const handleFileChange = useCallback((e: any) => {
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (!storageService || !user) {
       return;
     }
 
-    const path = "/images/" + user.uid + "/" + uuidv4();
-    const file = e.target.files[0] as File;
+    const path = "/images/" + user.uid + "/" + uuidv7();
+    const file = e.target.files?.[0];
     if (!file) {
       return;
     }
@@ -81,8 +81,8 @@ export function ImagePickerForm({ show, setActiveImage, setImageCount, handleDel
         });
         setStatus({ message: `Processing ${file.name}...` }); // will be replaced when the onUpload function finishes
       }
-      catch (e: any) {
-        setStatus({ message: `Upload failed: ${e.message}`, isError: true });
+      catch (e: unknown) {
+        setStatus({ message: `Upload failed: ${e instanceof Error ? e.message : String(e)}`, isError: true });
         logError("Upload failed", e);
       }
     };

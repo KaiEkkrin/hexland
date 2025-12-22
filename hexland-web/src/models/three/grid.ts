@@ -82,7 +82,7 @@ class GridColouredFeatureObject<K extends GridCoord, F extends IFeature<K>> exte
   private readonly _tileOrigin: THREE.Vector2;
   private readonly _isToken: boolean;
 
-  private _uniforms: any = null;
+  private _uniforms: Record<string, THREE.IUniform> | null = null;
   private _material: THREE.ShaderMaterial | undefined; // created when required
 
   constructor(
@@ -357,7 +357,7 @@ export class Grid extends Drawn {
   }
 
   private *getGridSamples(width: number, height: number) {
-    let cp = new THREE.Vector3(Math.floor(width * 0.5), Math.floor(height * 0.5), 0);
+    const cp = new THREE.Vector3(Math.floor(width * 0.5), Math.floor(height * 0.5), 0);
     yield this.getGridCoordAt(cp);
 
     cp.set(0, 0, 0);

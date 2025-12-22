@@ -1,147 +1,78 @@
 # Hexland
 
-This project contains the source code for Wall & Shadow.  It is available under the terms of the [Apache License, version 2.0](http://www.apache.org/licenses/LICENSE-2.0) -- see the LICENSE file.  Versions of the source code prior to the creation of the LICENSE file (made when the repository was private) are retroactively covered by that license too.
+This project contains the source code for Wall & Shadow. It is available under the terms of the [Apache License, version 2.0](http://www.apache.org/licenses/LICENSE-2.0) -- see the LICENSE file.
 
-Wall & Shadow itself is now mothballed because I don't have enough free time to maintain it. It may reappear at some point in the future. I'm leaving this repository here for posterity.
+## Stack
 
-## Building it
+- **React 18** + TypeScript + Vite
+- **Firebase v11** (Firestore, Functions, Auth, Hosting, Storage)
+- **Three.js** for 3D map rendering
+- **Bootstrap 5** with react-bootstrap
 
-You will need:
+## Development with VS Code Dev Container (Recommended)
 
-- Node.js 12, Yarn.
-- The Google Firebase toolchain, and a Firebase project to host Hexland in.  I recommend following the [Firebase setup instructions](https://firebase.google.com/docs/web/setup).  The project will need to have the following enabled:
-  - Authentication: Email/password, Google.
-  - Firestore.
-  - Functions, with Node.js 12 support -- this means you need to upgrade your project to "Blaze" level from "Spark", and create yourself a billing account if you don't have one already.  (You're quite unlikely to actually incur a bill.  The free quotas are plenty for most development usage.)
-  - Google Analytics (optionally, I think.)
-  - Hosting.
-- The Firebase emulator suite.
-- gsutil, installed as per the [gsutil setup instructions](https://cloud.google.com/storage/docs/gsutil_install#linux).
+The easiest way to get started is with the VS Code dev container:
 
-I develop using WSL 2 and Visual Studio Code, I can't vouch for the effectiveness of anything else ;)
+### Prerequisites
 
-## Running tests
+1. [Docker Desktop](https://www.docker.com/products/docker-desktop) installed and running
+2. [Visual Studio Code](https://code.visualstudio.com/) with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 
-First time setup: ensure you have the Firebase emulators ready
+### Quick Start
+
+1. Open this repository in VS Code
+2. Press `F1` and select **"Dev Containers: Reopen in Container"**
+3. Wait for the container to build (5-10 minutes first time)
+4. Set up Firebase credentials (see [`.devcontainer/README.md`](.devcontainer/README.md))
+5. Build Firebase Functions:
+   ```bash
+   cd hexland-web/functions
+   yarn build
+   ```
+6. Start developing:
+   ```bash
+   cd hexland-web
+
+   # Terminal 1: Start Firebase emulators
+   yarn dev:firebase
+
+   # Terminal 2: Start Vite dev server
+   yarn dev:vite
+   ```
+7. Open http://localhost:5000 in your browser
+
+Running emulators and dev server separately is recommended - you can restart the app without restarting the emulators.
+
+See [`.devcontainer/README.md`](.devcontainer/README.md) for comprehensive documentation.
+
+## Running Tests
 
 ```bash
-firebase init emulators
+cd hexland-web
+
+# Unit tests (watch mode)
+yarn test:unit
+
+# End-to-end tests (requires dev server running)
+yarn test:e2e
 ```
 
-The following command is set up to load a Firebase emulator with Firestore and Functions support:
+## Deployment
 
+For production deployment instructions, see **[DEPLOY.md](DEPLOY.md)**.
+
+Quick deploy (after initial setup):
 ```bash
-cd functions && yarn serve
-```
-
-Having left that running you can now do
-
-```bash
-yarn test
-```
-
-The expected execution time of some of the tests is quite close to the timeout value.  If you encounter spurious timeouts, try adding longer timeout values to the `test(...)` declarations.
-
-## First time setup: enabling the CORS policy on your project's storage bucket (needed for deployment only)
-
-Make sure that `hexland-web/cors.json` contains the correct origin(s) for your project and then run
-
-```bash
-gsutil cors set cors.json gs://projectname.appspot.com
-```
-
-(replacing `projectname` with your project name).
-
-## Deploying
-
-```bash
-yarn install
+cd hexland-web
 yarn build
-firebase deploy
+firebase deploy --only hosting    # Web app only (fast)
+firebase deploy                   # Everything (includes Functions)
 ```
 
-If you have only made changes to the web application and not to anything else (Functions or Firestore security rules) I *strongly* recommend replacing that second command with
+## Alternative: Standalone Docker
 
-```bash
-firebase deploy --only hosting
-```
+A standalone Docker setup is available via `run_docker.sh` and `docker-compose.yml`. This is less integrated with VS Code but works for command-line development. See the script for usage.
 
-to avoid incurring the extra wait time (and potentially even bill!) of the server-side Functions build.
+## License
 
-## Running locally with Docker
-
-### Setup
-
-Docker can be used to run the web application locally with emulators for Firebase Functions and
-Firestore. With this development flow, the Firebase project associated with the application only
-needs to be set to the "Spark" level rather than the "Blaze" level.
-
-To start, run the following:
-
-```bash
-./run_docker.sh
-```
-
-This will build a Docker image containing build tools and the emulators, and then start a
-container that runs the emulators and builds the web application (rebuilding when source file
-changes are detected).
-
-If you get a permissions error, run this and try again
-
-```bash
-sudo chown -R $USER .usercache
-```
-
-When running, the web application can then be accessed at:
-
-[http://localhost:5000](http://localhost:5000)
-
-Note that the web application may take a minute or more to build, although subsequent source file
-changes should result in a much faster rebuild.
-
-The first time this script is run, you will have to follow the generated browser link in order to
-authorise the Firebase CLI to access Firebase resources via your Google account. After
-successful authorisation, the script will create a default Firebase project with the name
-`hexland-test-<username>` and create an associated Firebase web app resource. You will then see
-the message:
-
-```shell
-Error: Failed to read credentials from file /usr/src/app/hexland-web/firebase-admin-credentials.json
-```
-
-This means that you must supply Firebase admin SDK service account credentials for the Firebase
-Function and Firestore emulators. You can provide these by accessing the
-[Firebase console](https://console.firebase.google.com/), navigating to "Project settings"
-(found by clicking the cog-wheel at the top-left of the Firebase console page) and selecting the
-"Service accounts" tab. Make sure the "Firebase Admin SDK" is selected and then click "Generate
-new private key". Save the generated JSON file to:
-
-```
-hexland-web/firebase-admin-credentials.json
-```
-
-Then re-run `run_docker.sh` (Ctrl-C any existing run first) to use the credentials.
-
-### Running unit tests
-
-To run unit tests inside the container, run:
-
-```shell
-./run_docker.sh test:unit
-```
-
-### Running end-to-end tests
-
-To run end-to-end tests inside the container, run:
-
-```shell
-./run_docker.sh test:e2e
-```
-
-### Debugging via a shell
-
-To run a bash shell for debugging inside the container, run:
-
-```shell
-./run_docker.sh shell
-```
+Apache License, version 2.0

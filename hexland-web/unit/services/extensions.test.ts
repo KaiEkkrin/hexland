@@ -1,15 +1,20 @@
+import { vi } from 'vitest';
 import { DataService } from './dataService';
 import { ensureProfile } from './extensions';
 import { IUser } from './interfaces';
 
-import firebase from 'firebase/app';
-import 'firebase/firestore';
+import { Firestore, serverTimestamp } from 'firebase/firestore';
+import {
+  initializeTestEnvironment,
+  RulesTestEnvironment,
+} from '@firebase/rules-unit-testing';
 
-import { clearFirestoreData, initializeTestApp } from '@firebase/rules-unit-testing';
+import { v7 as uuidv7 } from 'uuid';
+import md5 from 'blueimp-md5';
+import * as fs from 'fs';
+import * as path from 'path';
 
-import { v4 as uuidv4 } from 'uuid';
-import fluent from 'fluent-iterable';
-import md5 from 'crypto-js/md5';
+import adminCredentials from '../../firebase-admin-credentials.json';
 
 export function createTestUser(
   displayName: string | null,
@@ -20,63 +25,53 @@ export function createTestUser(
   return {
     displayName: displayName,
     email: email,
-    emailMd5: email ? md5(email).toString() : null,
+    emailMd5: email ? md5(email) : null,
     emailVerified: emailVerified ?? true,
     providerId: providerId,
-    uid: uuidv4(),
-    changePassword: jest.fn(),
-    sendEmailVerification: jest.fn(),
-    updateProfile: jest.fn()
+    uid: uuidv7(),
+    changePassword: vi.fn(),
+    sendEmailVerification: vi.fn(),
+    updateProfile: vi.fn()
   };
 }
 
 describe('test extensions', () => {
-  const projectIds: string[] = [];
-  const emul: { [uid: string]: firebase.app.App } = {};
+  const projectId = String(adminCredentials?.project_id ?? 'hexland-test');
+  let testEnv: RulesTestEnvironment;
 
-  function initializeEmul(auth: IUser) {
-    const projectId = fluent(projectIds).last();
-    if (projectId === undefined) {
-      throw Error("No project");
-    }
+  beforeAll(async () => {
+    // Read the Firestore rules
+    const rulesPath = path.join(__dirname, '../../firestore.rules');
+    const rules = fs.readFileSync(rulesPath, 'utf8');
 
-    if (auth.uid in emul) {
-      return emul[auth.uid];
-    }
-
-    const e = initializeTestApp({
+    testEnv = await initializeTestEnvironment({
       projectId: projectId,
-      auth: { ...auth, email: auth.email ?? undefined }
+      firestore: {
+        host: 'localhost',
+        port: 8080,
+        rules: rules,
+      },
     });
-    emul[auth.uid] = e;
-    return e;
-  }
-
-  beforeEach(() => {
-    const id = uuidv4();
-    projectIds.push(id);
-  });
-
-  afterEach(async () => {
-    const toDelete: string[] = [];
-    for (let uid in emul) {
-      toDelete.push(uid);
-    }
-
-    for (let uid of toDelete) {
-      await emul[uid].delete();
-      delete emul[uid];
-    }
   });
 
   afterAll(async () => {
-    await Promise.all(projectIds.map(id => clearFirestoreData({ projectId: id })));
+    await testEnv?.cleanup();
+  });
+
+  beforeEach(async () => {
+    await testEnv?.clearFirestore();
   });
 
   test('create a new profile entry', async () => {
     const user = createTestUser('Owner', 'owner@example.com', 'google.com');
-    const db = initializeEmul(user).firestore();
-    const dataService = new DataService(db, firebase.firestore.FieldValue.serverTimestamp);
+
+    // Get an authenticated Firestore context for this user
+    const context = testEnv.authenticatedContext(user.uid, {
+      email: user.email ?? undefined,
+      email_verified: user.emailVerified,
+    });
+    const db = context.firestore() as unknown as Firestore;
+    const dataService = new DataService(db, serverTimestamp);
     const profile = await ensureProfile(dataService, user, undefined);
 
     expect(profile?.name).toBe('Owner');

@@ -21,14 +21,13 @@ import Modal from 'react-bootstrap/Modal';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 
-import { useAsyncTask, useAsyncRun } from 'react-hooks-async';
-import Measure from 'react-measure';
+import useMeasure from 'react-use-measure';
 import { LinkContainer } from 'react-router-bootstrap';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck } from '@fortawesome/free-solid-svg-icons';
 
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 interface IChangePasswordModalProps {
   shown: boolean;
@@ -92,16 +91,20 @@ function NavPageLinks() {
   );
 
   return (
-    <Nav className="mr-auto">
+    <Nav className="me-auto">
       <LinkContainer to="/">
         <Nav.Link>Home</Nav.Link>
       </LinkContainer>
-      <LinkContainer to="/all" hidden={loggedInItemsHidden}>
-        <Nav.Link>My adventures</Nav.Link>
-      </LinkContainer>
-      <LinkContainer to="/shared" hidden={loggedInItemsHidden}>
-        <Nav.Link>Shared with me</Nav.Link>
-      </LinkContainer>
+      {!loggedInItemsHidden && (
+        <LinkContainer to="/all">
+          <Nav.Link>My adventures</Nav.Link>
+        </LinkContainer>
+      )}
+      {!loggedInItemsHidden && (
+        <LinkContainer to="/shared">
+          <Nav.Link>Shared with me</Nav.Link>
+        </LinkContainer>
+      )}
     </Nav>
   );
 }
@@ -133,18 +136,34 @@ const fetchAvatar = async (abortController: AbortController, profile: IUser | nu
 
 function Avatar(props: { children?: React.ReactNode }) {
   const { user } = useContext(UserContext);
+  const [avatarDataUrl, setAvatarDataUrl] = useState<string>("");
 
-  // We show an avatar (based on the hash of the user's email address) if one is available
-  const fetchAvatarTask = useAsyncTask(fetchAvatar);
-  useAsyncRun(fetchAvatarTask, user);
+  // Fetch avatar using native useEffect with abort controller for cleanup
+  useEffect(() => {
+    const abortController = new AbortController();
+
+    fetchAvatar(abortController, user)
+      .then(dataUrl => {
+        if (!abortController.signal.aborted) {
+          setAvatarDataUrl(dataUrl);
+        }
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') {
+          console.error('Avatar fetch failed:', err);
+        }
+      });
+
+    return () => abortController.abort();
+  }, [user]);
 
   const profileImgUrl = useMemo(() => {
-    const dataUrl = fetchAvatarTask.result;
+    const dataUrl = avatarDataUrl;
     const cachedDataUrl = localStorage.getItem("profile.image");
     const emailMd5 = user?.emailMd5;
     const cachedEmailMd5 = localStorage.getItem("profile.emailMd5");
 
-    const dataUrlValid = dataUrl !== undefined && dataUrl !== null;
+    const dataUrlValid = dataUrl !== undefined && dataUrl !== null && dataUrl !== "";
     const cachedDataUrlValid = cachedDataUrl !== undefined && cachedDataUrl !== null;
     const emailMd5Valid = emailMd5 !== undefined && emailMd5 !== null;
 
@@ -157,7 +176,7 @@ function Avatar(props: { children?: React.ReactNode }) {
     } else {
       return "";
     }
-  }, [fetchAvatarTask.result, user]);
+  }, [avatarDataUrl, user]);
 
   const title = useMemo(
     () => user?.emailVerified === true ? `${user.displayName} (Verified)` :
@@ -266,7 +285,7 @@ function NavLogin({ expanded }: { expanded: boolean }) {
   const verifiedIcon = useMemo(() => {
     if (user?.emailVerified === true) {
       return (
-        <FontAwesomeIcon className="ml-1" icon={faCheck} color="white" />
+        <FontAwesomeIcon className="ms-1" icon={faCheck} color="white" />
       );
     } else {
       return undefined;
@@ -288,7 +307,7 @@ function NavLogin({ expanded }: { expanded: boolean }) {
     setCanResendEmailVerification(false);
     user?.sendEmailVerification()
       .then(() => statusContext.toasts.next({
-        id: uuidv4(),
+        id: uuidv7(),
         record: { title: "Email/password login", message: "A verification email has been sent to " + user?.email }
       }))
       .catch(e => logError("Resend email verification error", e));
@@ -315,7 +334,7 @@ function NavLogin({ expanded }: { expanded: boolean }) {
               {displayName}{verifiedIcon}
             </Avatar>
           </Dropdown.Toggle>
-          <Dropdown.Menu alignRight={!expanded}>
+          <Dropdown.Menu align={!expanded ? "end" : undefined}>
             <Dropdown.Item onClick={handleEditProfile}>Edit profile</Dropdown.Item>
             <Dropdown.Item onClick={handleChangePassword}>Change password</Dropdown.Item>
             {resendVerificationItem}
@@ -340,23 +359,23 @@ function NavLogin({ expanded }: { expanded: boolean }) {
     handleModalClose();
     user?.changePassword(oldPassword, newPassword)
     .then(() => statusContext.toasts.next({
-      id: uuidv4(),
+      id: uuidv7(),
       record: { title: "Password changed", message: "Password change was successful" }
     }))
-    .catch(e => statusContext.toasts.next({
-      id: uuidv4(),
+    .catch(_e => statusContext.toasts.next({
+      id: uuidv7(),
       record: { title: "Password change failed", message: "Check your old password was entered correctly." }
     }));
   }, [handleModalClose, statusContext, user]);
 
   return user ? (
-    <div>
-      <Form inline>
+    <div className="ms-2 me-2">
+      <div className="d-flex">
         <ButtonGroup>
           {profileButton}
           <Button variant="outline-primary" onClick={handleSignOut}>Log out</Button>
         </ButtonGroup>
-      </Form>
+      </div>
       <ChangePasswordModal shown={showChangePassword} handleClose={handleModalClose}
         handleChange={handleChangePasswordSave} />
       <Modal show={showEditProfile} onHide={handleModalClose}>
@@ -399,9 +418,11 @@ function NavLogin({ expanded }: { expanded: boolean }) {
       </Modal>
     </div>
   ) : (
-    <LinkContainer to="/login">
-      <Nav.Link>Sign up/Login</Nav.Link>
-    </LinkContainer>
+    <div className="ms-2 me-2">
+      <LinkContainer to="/login">
+        <Nav.Link>Sign up/Login</Nav.Link>
+      </LinkContainer>
+    </div>
   );
 }
 
@@ -411,13 +432,13 @@ interface INavigationProps {
 
 function Navigation(props: INavigationProps) {
   const [expanded, setExpanded] = useState(false);
-  const [width, setWidth] = useState<number | undefined>(undefined);
+  const [measureRef, bounds] = useMeasure();
 
   // We don't want the children causing the nav bar to spill into extra lines, because those can
   // easily devour the available map space on a small screen:
   const childrenHidden = useMemo(
-    () => expanded === false && width !== undefined && width < 700,
-    [expanded, width]
+    () => expanded === false && bounds.width > 0 && bounds.width < 700,
+    [expanded, bounds.width]
   );
 
   // Delete the firebase emulator warning, which is all well and good but
@@ -432,35 +453,31 @@ function Navigation(props: INavigationProps) {
   }, []);
 
   return (
-    <Measure bounds onResize={r => setWidth(r.bounds?.width)}>
-      {({ measureRef }) => (
-        <div ref={measureRef}>
-          <Navbar bg="dark" expand="lg" variant="dark" sticky="top" onToggle={setExpanded}>
-            <LinkContainer to="/">
-              <Navbar.Brand className="Navigation-brand">
-                <img src="/logo32.svg" alt="logo" height={32} />
-                <div className="Navigation-brand-text">
-                  <div className="Navigation-brand-main">
-                    wall &amp; shadow
-                  </div>
-                  <div className="Navigation-brand-shadow">
-                    wall &amp; shadow
-                  </div>
-                </div>
-              </Navbar.Brand>
-            </LinkContainer>
-            <Navbar.Collapse id="basic-navbar-nav">
-              <NavPageLinks />
-            </Navbar.Collapse>
-            <Navbar.Text className="justify-content-center" hidden={childrenHidden}>{props.children}</Navbar.Text>
-            <Navbar.Collapse id="basic-navbar-nav" className="justify-content-end">
-              <NavLogin expanded={expanded} />
-            </Navbar.Collapse>
-            <Navbar.Toggle aria-controls="basic-navbar-nav" />
-          </Navbar>
-        </div>
-      )}
-    </Measure>
+    <div ref={measureRef}>
+      <Navbar bg="dark" expand="lg" sticky="top" onToggle={setExpanded}>
+        <LinkContainer to="/">
+          <Navbar.Brand className="Navigation-brand me-3">
+            <img src="/logo32.svg" alt="logo" height={32} className="me-2" />
+            <div className="Navigation-brand-text">
+              <div className="Navigation-brand-main">
+                wall &amp; shadow
+              </div>
+              <div className="Navigation-brand-shadow">
+                wall &amp; shadow
+              </div>
+            </div>
+          </Navbar.Brand>
+        </LinkContainer>
+        <Navbar.Collapse id="basic-navbar-nav">
+          <NavPageLinks />
+        </Navbar.Collapse>
+        <Navbar.Text className="justify-content-center" hidden={childrenHidden}>{props.children}</Navbar.Text>
+        <Navbar.Collapse id="basic-navbar-nav" className="justify-content-end">
+          <NavLogin expanded={expanded} />
+        </Navbar.Collapse>
+        <Navbar.Toggle aria-controls="basic-navbar-nav" />
+      </Navbar>
+    </div>
   );
 }
 

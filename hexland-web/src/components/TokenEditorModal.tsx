@@ -16,7 +16,7 @@ import Modal from 'react-bootstrap/Modal';
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 interface ITokenSizeSelectionProps {
   size: TokenSize;
@@ -39,7 +39,7 @@ export function TokenSizeSelection({ size, sizes, setSize }: ITokenSizeSelection
     <Form.Group>
       <Form.Label htmlFor="tokenSizeSelect">Size</Form.Label>
       <Form.Control id="tokenSizeSelect" as="select" value={sizeString}
-        onChange={e => handleSizeChange(e as any)}
+        onChange={e => handleSizeChange(e as unknown as React.FormEvent<HTMLSelectElement>)}
       >
         {sizeOptions}
       </Form.Control>
@@ -83,7 +83,7 @@ function TokenEditorModal(
   const newToken = useMemo(() => ({
     colour: colour,
     // If this was a new token, make a new id for it
-    id: token === undefined ? uuidv4() : token.id,
+    id: token === undefined ? uuidv7() : token.id,
     text: text,
     players: playerIds,
     size: size,
@@ -178,14 +178,14 @@ function TokenEditorModal(
               </Form.Group>
               <Form.Group>
                 <Form.Label htmlFor="tokenColour">Colour</Form.Label>
-                <Form.Row>
+                <div>
                   <ColourSelection id="tokenColour"
                     hidden={false}
                     includeNegative={false}
                     isVertical={false}
                     selectedColour={colour}
                     setSelectedColour={setColour} />
-                </Form.Row>
+                </div>
               </Form.Group>
               <TokenSizeSelection size={size} sizes={sizes} setSize={setSize} />
               <Form.Group>

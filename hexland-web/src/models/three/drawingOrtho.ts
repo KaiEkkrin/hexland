@@ -58,7 +58,7 @@ const vertexHighlightAlpha = 0.35;
 // An orthographic implementation of IDrawing using THREE.js.
 export class DrawingOrtho implements IDrawing {
   private readonly _gridGeometry: IGridGeometry;
-  private readonly _logError: (message: string, e: any) => void;
+  private readonly _logError: (message: string, e: unknown) => void;
   private readonly _resolveImageUrl: (path: string) => Promise<string>;
 
   private readonly _camera: THREE.OrthographicCamera;
@@ -126,7 +126,7 @@ export class DrawingOrtho implements IDrawing {
     tokenGeometry: ITokenGeometry,
     colours: FeatureColour[],
     seeEverything: boolean,
-    logError: (message: string, e: any) => void,
+    logError: (message: string, e: unknown) => void,
     spriteManager: ISpriteManager,
     resolveImageUrl: (path: string) => Promise<string>
   ) {
@@ -165,7 +165,7 @@ export class DrawingOrtho implements IDrawing {
     this._fixedHighlightScene = new THREE.Scene();
     this._overlayScene = new THREE.Scene();
 
-    this._canvasClearColour = new THREE.Color(0.1, 0.1, 0.1);
+    this._canvasClearColour = new THREE.Color(0.01, 0.01, 0.01);
     this._renderer.autoClear = false;
     this._textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
 
@@ -431,8 +431,8 @@ export class DrawingOrtho implements IDrawing {
     // (Careful -- don't chain these method calls up with ||, it's important
     // I actually call each one and don't skip later ones if an early one returned
     // true)
-    let needsRedraw = this._needsRedraw.needsRedraw();
-    let gridNeedsRedraw = this._gridNeedsRedraw.needsRedraw();
+    const needsRedraw = this._needsRedraw.needsRedraw();
+    const gridNeedsRedraw = this._gridNeedsRedraw.needsRedraw();
     if (gridNeedsRedraw) {
       this._grid.render(this._renderer, this._camera);
     }
@@ -604,7 +604,7 @@ export class DrawingOrtho implements IDrawing {
     if (this._mount !== undefined) {
       try {
         this._mount.removeChild(this._renderer.domElement);
-      } catch (e) {
+      } catch (_e) {
         console.warn("failed to unmount renderer dom element");
       }
     }

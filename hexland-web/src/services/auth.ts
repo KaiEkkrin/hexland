@@ -1,10 +1,27 @@
 import { IAuth, IAuthProvider, IUser } from "./interfaces";
 
-import firebase from 'firebase/app';
+import {
+  Auth,
+  User as FirebaseUser,
+  AuthProvider,
+  GoogleAuthProvider,
+  EmailAuthProvider,
+  createUserWithEmailAndPassword as createUserWithEmailAndPasswordFn,
+  signInWithEmailAndPassword as signInWithEmailAndPasswordFn,
+  signInWithPopup as signInWithPopupFn,
+  signOut as signOutFn,
+  onAuthStateChanged as onAuthStateChangedFn,
+  fetchSignInMethodsForEmail as fetchSignInMethodsForEmailFn,
+  sendPasswordResetEmail as sendPasswordResetEmailFn,
+  reauthenticateWithCredential,
+  updatePassword as updatePasswordFn,
+  updateProfile as updateProfileFn,
+  sendEmailVerification as sendEmailVerificationFn
+} from 'firebase/auth';
 
-import md5 from 'crypto-js/md5';
+import md5 from 'blueimp-md5';
 
-function createUser(user: firebase.User | null) {
+function createUser(user: FirebaseUser | null) {
   return user === null ? null : new User(user);
 }
 
@@ -12,14 +29,14 @@ function createUser(user: firebase.User | null) {
 // into our IAuth abstraction.
 
 export class FirebaseAuth implements IAuth {
-  private readonly _auth: firebase.auth.Auth;
+  private readonly _auth: Auth;
 
-  constructor(auth: firebase.auth.Auth) {
+  constructor(auth: Auth) {
     this._auth = auth;
   }
 
   async createUserWithEmailAndPassword(email: string, password: string, displayName: string) {
-    const credential = await this._auth.createUserWithEmailAndPassword(email, password);
+    const credential = await createUserWithEmailAndPasswordFn(this._auth, email, password);
     const user = createUser(credential.user);
     if (user) {
       await user.updateProfile({ displayName: displayName });
@@ -29,21 +46,21 @@ export class FirebaseAuth implements IAuth {
   }
 
   fetchSignInMethodsForEmail(email: string) {
-    return this._auth.fetchSignInMethodsForEmail(email);
+    return fetchSignInMethodsForEmailFn(this._auth, email);
   }
 
   sendPasswordResetEmail(email: string) {
-    return this._auth.sendPasswordResetEmail(email);
+    return sendPasswordResetEmailFn(this._auth, email);
   }
 
   async signInWithEmailAndPassword(email: string, password: string) {
-    let credential = await this._auth.signInWithEmailAndPassword(email, password);
+    const credential = await signInWithEmailAndPasswordFn(this._auth, email, password);
     return createUser(credential.user);
   }
 
   async signInWithPopup(provider: IAuthProvider | undefined) {
     if (provider instanceof PopupAuthProviderWrapper) {
-      let credential = await provider.signInWithPopup(this._auth);
+      const credential = await signInWithPopupFn(this._auth, provider.provider);
       return createUser(credential.user);
     }
 
@@ -51,11 +68,12 @@ export class FirebaseAuth implements IAuth {
   }
 
   signOut() {
-    return this._auth.signOut();
+    return signOutFn(this._auth);
   }
 
   onAuthStateChanged(onNext: (user: IUser | null) => void, onError?: ((e: Error) => void) | undefined) {
-    return this._auth.onAuthStateChanged(
+    return onAuthStateChangedFn(
+      this._auth,
       u => onNext(createUser(u)),
       e => onError?.(new Error(e.message))
     );
@@ -63,25 +81,24 @@ export class FirebaseAuth implements IAuth {
 }
 
 class PopupAuthProviderWrapper implements IAuthProvider {
-  private readonly _provider: firebase.auth.AuthProvider;
+  private readonly _provider: AuthProvider;
 
-  constructor(provider: firebase.auth.AuthProvider) {
+  constructor(provider: AuthProvider) {
     this._provider = provider;
   }
 
-  signInWithPopup(auth: firebase.auth.Auth) {
-    const credential = auth.signInWithPopup(this._provider);
-    return credential;
+  get provider(): AuthProvider {
+    return this._provider;
   }
 }
 
 export class User implements IUser {
-  private readonly _user: firebase.User;
+  private readonly _user: FirebaseUser;
   private readonly _userExtra: { emailMd5: string | null };
 
-  constructor(user: firebase.User) {
+  constructor(user: FirebaseUser) {
     this._user = user;
-    const emailMd5 = (this._user.email === null) ? null : md5(this._user.email).toString();
+    const emailMd5 = (this._user.email === null) ? null : md5(this._user.email);
     this._userExtra = {
       emailMd5: emailMd5
     };
@@ -100,24 +117,23 @@ export class User implements IUser {
     }
 
     // We always re-authenticate first to make sure we're not stale
-    const updated = await this._user.reauthenticateWithCredential(
-      firebase.auth.EmailAuthProvider.credential(this._user.email, oldPassword)
-    );
+    const credential = EmailAuthProvider.credential(this._user.email, oldPassword);
+    const updated = await reauthenticateWithCredential(this._user, credential);
 
     if (updated.user === null) {
       throw Error("Unable to reauthenticate (wrong password?)");
     }
 
-    await updated.user?.updatePassword(newPassword);
+    await updatePasswordFn(updated.user, newPassword);
   }
 
   sendEmailVerification() {
-    return this._user.sendEmailVerification();
+    return sendEmailVerificationFn(this._user);
   }
 
-  updateProfile(p: any) {
-    return this._user.updateProfile(p);
+  updateProfile(p: { displayName?: string | null; photoURL?: string | null }) {
+    return updateProfileFn(this._user, p);
   }
 }
 
-export const googleAuthProviderWrapper = new PopupAuthProviderWrapper(new firebase.auth.GoogleAuthProvider());
+export const googleAuthProviderWrapper = new PopupAuthProviderWrapper(new GoogleAuthProvider());

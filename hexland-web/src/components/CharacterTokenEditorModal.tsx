@@ -11,8 +11,9 @@ import { TokenSizeSelection } from './TokenEditorModal';
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
+import Row from 'react-bootstrap/Row';
 
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 interface ICharacterTokenEditorModalProps {
   selectedColour: number;
@@ -58,7 +59,7 @@ function CharacterTokenEditorModal(
     handleSave({
       colour: colour,
       // If this was a new token, make a new id for it
-      id: token === undefined ? uuidv4() : token.id,
+      id: token === undefined ? uuidv7() : token.id,
       text: "", // sychronised with the character
       players: players.filter(p => p.characters.find(c => c.id === characterId) !== undefined)
         .map(p => p.playerId),
@@ -80,10 +81,10 @@ function CharacterTokenEditorModal(
         <Form>
           <Form.Group>
             <Form.Label htmlFor="tokenCharacter">Character</Form.Label>
-            <Form.Row>
+            <Row>
               <CharacterList activeId={characterId} players={players} setActiveId={setCharacterId}
                 showPlayerNames={true} style={{ width: '100%' }} />
-            </Form.Row>
+            </Row>
           </Form.Group>
           <Form.Group>
             <Form.Label htmlFor="tokenNoteText">Note text</Form.Label>
@@ -96,14 +97,14 @@ function CharacterTokenEditorModal(
           </Form.Group>
           <Form.Group>
             <Form.Label htmlFor="tokenColour">Colour</Form.Label>
-            <Form.Row>
+            <div>
               <ColourSelection id="tokenColour"
                 hidden={false}
                 includeNegative={false}
                 isVertical={false}
                 selectedColour={colour}
                 setSelectedColour={setColour} />
-            </Form.Row>
+            </div>
           </Form.Group>
           <TokenSizeSelection size={size} sizes={sizes} setSize={setSize} />
         </Form>

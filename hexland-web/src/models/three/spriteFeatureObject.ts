@@ -52,7 +52,7 @@ export class SpriteFeatureObject<
 
   private readonly _sub: Subscription;
   private readonly _material: THREE.ShaderMaterial;
-  private readonly _uniforms: any;
+  private readonly _uniforms: Record<string, THREE.IUniform>;
 
   private readonly _scratchMatrix1 = new THREE.Matrix4();
   private readonly _scratchMatrix2 = new THREE.Matrix4();
@@ -102,7 +102,12 @@ export class SpriteFeatureObject<
   }
 
   protected createMesh(maxInstances: number): THREE.InstancedMesh {
-    return new THREE.InstancedMesh(this._geometry, this._material, maxInstances);
+    // Disable frustum culling: instances are scattered across the map, so the
+    // bounding sphere would encompass the entire visible area anyway. The real
+    // optimization is the instanced rendering itself, not culling the mesh.
+    const mesh = new THREE.InstancedMesh(this._geometry, this._material, maxInstances);
+    mesh.frustumCulled = false;
+    return mesh;
   }
 
   protected addFeature(f: F) {

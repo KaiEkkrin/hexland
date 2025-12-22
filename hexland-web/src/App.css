@@ -1,3 +1,12 @@
+/* Z-index scale:
+ * 1-2: Map annotations, popovers
+ * 4: Map controls, nav, info cards, toast container
+ * 104: Status card overlay
+ * 202: Consent banner
+ * 1004: Throbber/loading overlay
+ * 2002: Context menus
+ */
+
 .App {
   background-color: #282c34;
   color: white;
@@ -153,10 +162,17 @@
   justify-content: space-between;
 }
 
+/* Custom toast styling - keep bold text */
 .toast-body {
-  background-color: lightgray;
-  color: #6c757d;
   font-weight: bold;
+}
+
+/* Make ToggleButton hover behaviour match regular dark buttons.
+ * Bootstrap's .btn-check + .btn:hover resets to --bs-btn-bg, so we need
+ * to override those CSS variables for the hover state. */
+.btn-check + .btn-dark:hover {
+  --bs-btn-bg: #424649;
+  --bs-btn-border-color: #424649;
 }
 
 @keyframes App-logo-spin {

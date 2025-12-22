@@ -11,10 +11,10 @@ import { registerAdventureAsRecent, removeAdventureFromRecent } from '../service
 import { ISpriteManager } from '../services/interfaces';
 import { SpriteManager } from '../services/spriteManager';
 
-import { useHistory, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Observable } from 'rxjs';
 import { shareReplay } from 'rxjs/operators';
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 // Providing an adventure context like this lets us maintain the same watchers
 // while the user navigates between maps in the adventure, etc.
@@ -28,7 +28,7 @@ function AdventureContextProvider(props: IContextProviderProps) {
   const { analytics, logError } = useContext(AnalyticsContext);
   const { toasts } = useContext(StatusContext);
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
 
   const adventureId = useMemo(() => {
@@ -56,11 +56,11 @@ function AdventureContextProvider(props: IContextProviderProps) {
       }
 
       toasts.next({
-        id: uuidv4(),
+        id: uuidv7(),
         record: { title: 'Error loading adventure', message: message }
       });
 
-      history.replace('/');
+      navigate('/', { replace: true });
     }
 
     // Check this adventure exists and can be fetched (the watch doesn't do this for us)
@@ -88,7 +88,7 @@ function AdventureContextProvider(props: IContextProviderProps) {
     return dataService?.watch(d,
       a => setAdventure(a === undefined ? undefined : { id: adventureId, record: a }),
       e => logError("Error watching adventure " + adventureId + ": ", e));
-  }, [adventureId, analytics, dataService, history, logError, toasts, user]);
+  }, [adventureId, analytics, dataService, navigate, logError, toasts, user]);
   
   const [players, setPlayers] = useState<IPlayer[]>([]);
 

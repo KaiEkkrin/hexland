@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 export interface IShader {
-  uniforms: any;
+  uniforms: Record<string, THREE.IUniform>;
   vertexShader: string;
   fragmentShader: string;
 }
@@ -14,7 +14,7 @@ export class ShaderFilter {
   private readonly _bufferGeometry: THREE.BufferGeometry;
   private readonly _material: THREE.ShaderMaterial;
   private readonly _mesh: THREE.Mesh;
-  private readonly _uniforms: any;
+  private readonly _uniforms: Record<string, THREE.IUniform>;
 
   private _isDisposed = false;
 
@@ -30,7 +30,7 @@ export class ShaderFilter {
       new THREE.Vector3(1, -1, z)
     ]);
     
-    this._uniforms = THREE.UniformsUtils.clone(shaderParameters?.uniforms);
+    this._uniforms = THREE.UniformsUtils.clone(shaderParameters?.uniforms ?? {});
     this._material = new THREE.ShaderMaterial({ ...shaderParameters, side: THREE.DoubleSide, uniforms: this._uniforms });
 
     this._mesh = new THREE.Mesh(this._bufferGeometry, this._material);

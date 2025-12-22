@@ -10,7 +10,7 @@ import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
 
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 // The map clone modal is like the map editor modal but intentionally more limited.
 // We only expect to be integrated into the adventure page, so we don't need to
@@ -26,7 +26,7 @@ interface IMapCloneModalProps {
 function MapCloneModal({ show, adventure, sourceMap, handleClose }: IMapCloneModalProps) {
   const { logError } = useContext(AnalyticsContext);
   const { functionsService } = useContext(UserContext);
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [isSaving, setIsSaving] = useState(false);
   useEffect(() => {
@@ -62,14 +62,14 @@ function MapCloneModal({ show, adventure, sourceMap, handleClose }: IMapCloneMod
 
     setIsSaving(true);
     functionsService.cloneMap(adventure.id, sourceMap.id, name, description)
-      .then(mapId => history.replace('/adventure/' + adventure?.id + '/map/' + mapId))
+      .then(mapId => navigate('/adventure/' + adventure?.id + '/map/' + mapId, { replace: true }))
       .catch(e => {
         handleClose();
         setIsSaving(false);
         logError("Failed to clone map " + sourceMap?.name, e);
       });
   }, [
-    logError, description, history, name, setIsSaving, functionsService,
+    logError, description, navigate, name, setIsSaving, functionsService,
     adventure, handleClose, sourceMap
   ]);
 

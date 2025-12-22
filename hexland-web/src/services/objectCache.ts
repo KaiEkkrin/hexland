@@ -1,7 +1,6 @@
 import { ICacheLease } from './interfaces';
-import { ReplaySubject } from 'rxjs';
-import { first } from 'rxjs/operators';
-import { v4 as uuidv4 } from 'uuid';
+import { ReplaySubject, firstValueFrom } from 'rxjs';
+import { v7 as uuidv7 } from 'uuid';
 
 export interface ICacheItem<T> {
   value: T;
@@ -10,7 +9,7 @@ export interface ICacheItem<T> {
 
 interface ICacheEntry<T> {
   entryId: string; // to distinguish multiple fetches of the same thing
-  error?: { message: string, e: any } | undefined; // if undefined, we failed to fetch this
+  error?: { message: string, e: unknown } | undefined; // if undefined, we failed to fetch this
   obj?: ICacheItem<T> | undefined; // if undefined, wait for the subject
   subj: ReplaySubject<ICacheItem<T>>;
   refCount: number;
@@ -22,9 +21,9 @@ interface ICacheEntry<T> {
 // trying to minimise the number of fetches.
 export class ObjectCache<T> {
   private readonly _cache = new Map<string, ICacheEntry<T>>();
-  private readonly _logError: (message: string, e: any) => void;
+  private readonly _logError: (message: string, e: unknown) => void;
 
-  constructor(logError: (message: string, e: any) => void) {
+  constructor(logError: (message: string, e: unknown) => void) {
     this._logError = logError;
   }
 
@@ -39,7 +38,7 @@ export class ObjectCache<T> {
       return { value: entry.obj.value, release: this.createRelease(id, entry) };
     }
 
-    const obj = await entry.subj.pipe(first()).toPromise();
+    const obj = await firstValueFrom(entry.subj);
     return { value: obj.value, release: this.createRelease(id, entry) };
   }
 
@@ -58,7 +57,7 @@ export class ObjectCache<T> {
       if (--entry.refCount === 0) {
         this.removeEntry(id, entry);
         try {
-          (await entry.subj.pipe(first()).toPromise()).cleanup();
+          (await firstValueFrom(entry.subj)).cleanup();
         } catch (e) {
           this._logError(`Error cleaning up ${id}`, e);
         }
@@ -100,7 +99,7 @@ export class ObjectCache<T> {
     while (entry !== undefined) {
       try {
         return await this.acquireEntry(id, entry);
-      } catch (e) {
+      } catch (_e) {
         // Remove invalid entries so we can try again
         this.removeEntry(id, entry);
 
@@ -112,7 +111,7 @@ export class ObjectCache<T> {
 
     // If we don't have an entry, fetch a new one:
     const newEntry: ICacheEntry<T> = {
-      entryId: uuidv4(),
+      entryId: uuidv7(),
       subj: new ReplaySubject<ICacheItem<T>>(1),
       refCount: 0
     };
@@ -143,10 +142,10 @@ export class ObjectCache<T> {
     for (const [id, entry] of toDispose) {
       // It should be okay to start this dispose and let it go:
       if (entry.refCount > 0) {
-      entry.subj.pipe(first()).toPromise()
-        .then(o => o.cleanup())
-        .then(() => console.debug(`disposed ${id}`))
-        .catch(e => this._logError(`Error disposing ${id}`, e));
+        firstValueFrom(entry.subj)
+          .then(o => o.cleanup())
+          .then(() => console.debug(`disposed ${id}`))
+          .catch(e => this._logError(`Error disposing ${id}`, e));
       }
     }
   }

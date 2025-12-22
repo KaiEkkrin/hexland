@@ -1,7 +1,6 @@
-import { Fragment, useContext, useMemo, useState } from 'react';
+import { Fragment, useContext, useMemo } from 'react';
 import '../App.css';
 
-import { CardStyle } from './AdventureCards';
 import ExpansionToggle from './ExpansionToggle';
 import { UserContext } from './UserContextProvider';
 import { IMapSummary } from '../data/adventure';
@@ -11,11 +10,10 @@ import Accordion from 'react-bootstrap/Accordion';
 import Button from 'react-bootstrap/Button';
 import ButtonGroup from 'react-bootstrap/ButtonGroup';
 import Card from 'react-bootstrap/Card';
-import CardDeck from 'react-bootstrap/CardDeck';
 import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import Tooltip from 'react-bootstrap/Tooltip';
 
-import Measure from 'react-measure';
+import useMeasure from 'react-use-measure';
 import { LinkContainer } from 'react-router-bootstrap';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -35,11 +33,13 @@ function NewMapCard({ collapsing, handleNewMapClick }: INewMapCardProps) {
       </Card.Header>
     </Card>
   ) : (
-    <Card className="mt-4" style={CardStyle} bg="dark" text="white">
-      <Card.Body>
-        <Button onClick={() => handleNewMapClick?.()}>New map</Button>
-      </Card.Body>
-    </Card>
+    <div className="col">
+      <Card className="h-100" bg="dark" text="white">
+        <Card.Body>
+          <Button onClick={() => handleNewMapClick?.()}>New map</Button>
+        </Card.Body>
+      </Card>
+    </div>
   );
 }
 
@@ -137,12 +137,14 @@ function MapCard({ collapsing, adventures, map, cloneMap, deleteMap, pickImage }
       </Accordion.Collapse>
     </Card>
   ) : (
-    <Card className="mt-4" style={CardStyle} bg="dark" text="white" key={map.id}>
-      <ImageCardContent altName={map.name} imagePath={map.imagePath}>
-        <Card.Title>{map.name}</Card.Title>
-        {content}
-      </ImageCardContent>
-    </Card>
+    <div className="col" key={map.id}>
+      <Card className="h-100" bg="dark" text="white">
+        <ImageCardContent altName={map.name} imagePath={map.imagePath}>
+          <Card.Title>{map.name}</Card.Title>
+          {content}
+        </ImageCardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -157,8 +159,8 @@ export interface IMapCardsProps {
 }
 
 function MapCards(props: IMapCardsProps) {
-  const [width, setWidth] = useState<number | undefined>(undefined);
-  const collapsing = useMemo(() => width === undefined || width <= 400, [width]);
+  const [measureRef, bounds] = useMeasure();
+  const collapsing = useMemo(() => bounds.width === 0 || bounds.width <= 400, [bounds.width]);
 
   // don't offer the option to clone a map if we wouldn't offer the option of a new map
   const cloneMap = useMemo(() => props.showNewMapCard ? props.cloneMap : undefined, [props]);
@@ -179,20 +181,16 @@ function MapCards(props: IMapCardsProps) {
         {cardList}
       </Accordion>
     ) : (
-      <CardDeck>
+      <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mt-2">
         {cardList}
-      </CardDeck>
+      </div>
     );
   }, [props, cloneMap, collapsing]);
 
   return (
-    <Measure bounds onResize={r => setWidth(r.bounds?.width)}>
-      {({ measureRef }) => (
-        <div ref={measureRef}>
-          {cards}
-        </div>
-      )}
-    </Measure>
+    <div ref={measureRef}>
+      {cards}
+    </div>
   );
 }
 

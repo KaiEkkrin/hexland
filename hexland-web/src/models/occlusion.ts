@@ -64,7 +64,7 @@ export class RectangleOcclusion {
   // (If you use a number of points other than four it will do weird stuff...)
   constructor(epsilon: number, points: THREE.Vector3[]) {
     this._planes = points.map((p, i) => {
-      let next = points[(i + 1) % points.length];
+      const next = points[(i + 1) % points.length];
       return new PlanarOcclusion(
         next.clone().sub(p).normalize(),
         p,
@@ -74,7 +74,7 @@ export class RectangleOcclusion {
   }
 
   test(point: THREE.Vector3) {
-    for (let p of this._planes) {
+    for (const p of this._planes) {
       if (!p.test(point)) {
         return false;
       }
@@ -118,7 +118,7 @@ export class TestVertexCollection {
     this._geometry = geometry;
     this._z = z;
 
-    for (let v of geometry.createOcclusionTestVertices(
+    for (const v of geometry.createOcclusionTestVertices(
       { x: 0, y: 0 }, z, alpha
     )) {
       this._atZero.push(v);

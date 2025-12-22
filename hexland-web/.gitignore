@@ -11,6 +11,8 @@
 /e2e/logs
 /e2e/screenshots
 /e2e/videos
+/**/test-results
+/unit/node_modules
 
 # production
 /build
@@ -32,5 +34,5 @@ yarn-error.log*
 /firebase-debug.log*
 /firestore-debug.log*
 
-# firebase admin credentials for emulators
-firebase-admin-credentials.json
+# firebase admin credentials for emulators (but not the symlink in public/)
+/firebase-admin-credentials.json

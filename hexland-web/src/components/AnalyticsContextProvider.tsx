@@ -7,18 +7,20 @@ import { IAnalytics } from '../services/interfaces';
 export const AnalyticsContext = createContext<IAnalyticsContext>({
   analytics: undefined,
   enabled: undefined,
-  setEnabled: (enabled: boolean | undefined) => {},
-  logError: (message: string, e: any, fatal?: boolean | undefined) => {},
-  logEvent: (event: string, parameters: any) => {}
+  setEnabled: (_enabled: boolean | undefined) => {},
+  logError: (_message: string, _e: unknown, _fatal?: boolean | undefined) => {},
+  logEvent: (_event: string, _parameters: unknown) => {}
 });
 
 const enabledKey = "analyticsEnabled";
 
-function getExMessage(e: any): string {
+function getExMessage(e: unknown): string {
   if (typeof(e) === 'string') {
     return e;
+  } else if (e instanceof Error) {
+    return e.message;
   } else {
-    return String(e?.message);
+    return String(e);
   }
 }
 
@@ -52,7 +54,7 @@ export function AnalyticsContextProvider({ children, getItem, setItem }: IContex
     analytics: enabled ? analytics : undefined,
     enabled: enabled,
     setEnabled: setEnabled,
-    logError: (message: string, e: any, fatal?: boolean | undefined) => {
+    logError: (message: string, e: unknown, fatal?: boolean | undefined) => {
       console.error("Analytics error:", message, e);
       if (enabled) {
         console.info("logging to analytics with error: " + getExMessage(e));
@@ -63,7 +65,7 @@ export function AnalyticsContextProvider({ children, getItem, setItem }: IContex
         });
       }
     },
-    logEvent: (event: string, parameters: any) => {
+    logEvent: (event: string, parameters: Record<string, unknown>) => {
       if (enabled) {
         analytics?.logEvent(event, parameters);
       }

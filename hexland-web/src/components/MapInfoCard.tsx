@@ -34,7 +34,7 @@ function MapInfoCard(props: IMapInfoCardProps) {
             <h5>{props.title}</h5>
           </Nav.Item>
           <Nav.Item>
-            <Button className="ml-2" variant={buttonVariant} onClick={() => setIsCollapsed(true)}>
+            <Button className="ms-2" variant={buttonVariant} onClick={() => setIsCollapsed(true)}>
               {props.buttonContent}
             </Button>
           </Nav.Item>

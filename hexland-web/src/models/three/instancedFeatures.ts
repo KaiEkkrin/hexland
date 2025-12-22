@@ -37,7 +37,7 @@ export class InstancedFeatures<K extends GridCoord, F extends IFeature<K>> exten
   }
 
   private pushFeatureObject() {
-    let c = this._createFeatureObject(this._maxInstances);
+    const c = this._createFeatureObject(this._maxInstances);
     this._featureObjects.push(c);
 
     if (this._scene !== undefined) {
@@ -84,7 +84,7 @@ export class InstancedFeatures<K extends GridCoord, F extends IFeature<K>> exten
     // Use the first mesh collection with a free space, or add a new one if we've
     // run out entirely
     let usedExistingCollection = false;
-    for (let c of this._featureObjects) {
+    for (const c of this._featureObjects) {
       if (c.add(f)) {
         usedExistingCollection = true;
         break;

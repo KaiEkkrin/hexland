@@ -5,7 +5,6 @@ import { IContextProviderProps, ISignInMethodsContext, IUserContext } from './in
 
 import { DataService } from '../services/dataService';
 import { FunctionsService } from '../services/functions';
-import { MockWebStorageWeb } from '../services/mockWebStorageWeb';
 import { Storage } from '../services/storage';
 import { IStorage } from '../services/interfaces';
 import { ExpiringStringCache } from '../services/expiringStringCache';
@@ -42,11 +41,8 @@ function UserContextProvider(props: IContextProviderProps) {
       new Storage(storage);
 
     return auth?.onAuthStateChanged(u => {
-      // Create the relevant storage service (if any.)  If webpack hot-plugging is enabled,
-      // we use the mock storage service because there isn't an emulator
-      const storageService = functionsService === undefined || !u ? undefined :
-        ('webpackHotUpdate' in window) ? new MockWebStorageWeb(functionsService, 'http://localhost:7000') :
-        realStorageService;
+      // Create the relevant storage service (if any.)
+      const storageService = functionsService === undefined || !u ? undefined : realStorageService;
 
       setUserContext({
         user: u,

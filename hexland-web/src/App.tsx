@@ -1,26 +1,31 @@
 import './App.css';
 
+import { lazy, Suspense } from 'react';
+
 import AdventureContextProvider from './components/AdventureContextProvider';
-import AdventurePage from './Adventure';
-import All from './All';
 import { AnalyticsContextProvider } from './components/AnalyticsContextProvider';
 import Consent from './components/Consent';
 import FirebaseContextProvider from './components/FirebaseContextProvider';
 import Home from './Home';
-import InvitePage from './Invite';
-import Login from './Login';
-import MapPage from './Map';
 import MapContextProvider from './components/MapContextProvider';
 import ProfileContextProvider from './components/ProfileContextProvider';
 import Routing from './components/Routing';
 import { IRoutingProps, IFirebaseProps, IAnalyticsProps } from './components/interfaces';
-import Shared from './Shared';
 import Status from './components/Status';
 import StatusContextProvider from './components/StatusContextProvider';
+import Throbber from './components/Throbber';
 import ToastCollection from './components/ToastCollection';
 import UserContextProvider from './components/UserContextProvider';
 
-import { Route, Switch } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
+
+// Lazy-loaded route components for code splitting
+const AdventurePage = lazy(() => import('./Adventure'));
+const All = lazy(() => import('./All'));
+const InvitePage = lazy(() => import('./Invite'));
+const Login = lazy(() => import('./Login'));
+const MapPage = lazy(() => import('./Map'));
+const Shared = lazy(() => import('./Shared'));
 
 function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
   return (
@@ -33,15 +38,17 @@ function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
                 <Routing {...props}>
                   <AdventureContextProvider>
                     <MapContextProvider>
-                      <Switch>
-                        <Route exact path="/" component={Home} />
-                        <Route exact path="/all" component={All} />
-                        <Route exact path="/adventure/:adventureId" component={AdventurePage} />
-                        <Route exact path="/adventure/:adventureId/map/:mapId" component={MapPage} />
-                        <Route exact path="/invite/:inviteId" component={InvitePage} />
-                        <Route exact path="/login" component={Login} />
-                        <Route exact path="/shared" component={Shared} />
-                      </Switch>
+                      <Suspense fallback={<Throbber />}>
+                        <Routes>
+                          <Route path="/" element={<Home />} />
+                          <Route path="/all" element={<All />} />
+                          <Route path="/adventure/:adventureId" element={<AdventurePage />} />
+                          <Route path="/adventure/:adventureId/map/:mapId" element={<MapPage />} />
+                          <Route path="/invite/:inviteId" element={<InvitePage />} />
+                          <Route path="/login" element={<Login />} />
+                          <Route path="/shared" element={<Shared />} />
+                        </Routes>
+                      </Suspense>
                     </MapContextProvider>
                   </AdventureContextProvider>
                 </Routing>

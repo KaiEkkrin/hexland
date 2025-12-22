@@ -39,23 +39,40 @@ interface IModeButtonProps<T> {
   children: React.ReactNode;
   mode: T; // the currently selected mode
   setMode(value: T): void;
+  name: string; // radio group name for react-bootstrap v2
 }
 
-function ModeButton<T>({ value, icon, children, mode, setMode }: IModeButtonProps<T>) {
+function ModeButton<T>({ value, icon, children, mode, setMode, name }: IModeButtonProps<T>) {
   // Deal with a strange `readonly string[]` possibility for type T
   const valueProperty = useMemo(
     () => typeof(value) === 'number' ? value : `${value}`,
     [value]
   );
+  const buttonId = `mode-btn-${valueProperty}`;
+
+  // In react-bootstrap v2, ToggleButton renders as input + label.
+  // The onChange event doesn't reliably fire in all cases (particularly
+  // when buttons are dynamically added/removed based on layer switching).
+  // We use onClick on the wrapper span to ensure mode changes are captured.
+  // See: https://github.com/react-bootstrap/react-bootstrap/issues/5429
+  const handleClick = useCallback(() => {
+    if (mode !== value) {
+      setMode(value);
+    }
+  }, [mode, value, setMode]);
+
   return (
     <OverlayTrigger placement="right" overlay={
       <Tooltip id={value + "-tooltip"}>{children}</Tooltip>
     }>
-      <ToggleButton type="radio" variant="dark" value={valueProperty}
-        checked={mode === value}
-        onChange={e => setMode(value)}>
-        {icon}
-      </ToggleButton>
+      <span className="d-block w-100" onClick={handleClick}>
+        <ToggleButton id={buttonId} type="radio" variant="dark" value={valueProperty}
+          name={name}
+          checked={mode === value}
+          className="w-100">
+          {icon}
+        </ToggleButton>
+      </span>
     </OverlayTrigger>
   );
 }
@@ -104,13 +121,13 @@ function MapControls({
       return [
         <ModeButton key={Layer.Image} value={Layer.Image}
           icon={<FontAwesomeIcon icon={faImages} color="white" />}
-          mode={layer} setMode={setLayer}
+          mode={layer} setMode={setLayer} name="layer-select"
         >
           Image layer
         </ModeButton>,
         <ModeButton key={Layer.Object} value={Layer.Object}
           icon={<FontAwesomeIcon icon={faCubes} color="white" />}
-          mode={layer} setMode={setLayer}
+          mode={layer} setMode={setLayer} name="layer-select"
         >
           Object layer
         </ModeButton>
@@ -120,11 +137,15 @@ function MapControls({
     }
   }, [canDoAnything, layer, setLayer]);
 
+  // Use layer-specific radio group names to avoid browser radio state conflicts
+  // when switching between layers (unmounted buttons can leave stale radio state)
+  const editModeRadioName = `edit-mode-${layer}`;
+
   const modeButtons = useMemo(() => {
     const buttons = [
       <ModeButton key={EditMode.Select} value={EditMode.Select}
         icon={<FontAwesomeIcon icon={faMousePointer} color="white" />}
-        mode={editMode} setMode={setEditMode}
+        mode={editMode} setMode={setEditMode} name={editModeRadioName}
       >
         <u>S</u>elect and move tokens
       </ModeButton>
@@ -135,7 +156,7 @@ function MapControls({
         buttons.push(
           <ModeButton key={EditMode.Image} value={EditMode.Image}
             icon={<FontAwesomeIcon icon={faImage} color="white" />}
-            mode={editMode} setMode={setEditMode}
+            mode={editMode} setMode={setEditMode} name={editModeRadioName}
           >
             Add and edit <u>i</u>mages
         </ModeButton>
@@ -144,25 +165,25 @@ function MapControls({
         buttons.push(...[
           <ModeButton key={EditMode.Token} value={EditMode.Token}
             icon={<FontAwesomeIcon icon={faPlus} color="white" />}
-            mode={editMode} setMode={setEditMode}
+            mode={editMode} setMode={setEditMode} name={editModeRadioName}
           >
             Add and edit <u>t</u>okens
         </ModeButton>,
           <ModeButton key={EditMode.CharacterToken} value={EditMode.CharacterToken}
             icon={<FontAwesomeIcon icon={faUser} color="white" />}
-            mode={editMode} setMode={setEditMode}
+            mode={editMode} setMode={setEditMode} name={editModeRadioName}
           >
             Add and edit <u>c</u>haracter tokens
         </ModeButton>,
           <ModeButton key={EditMode.Notes} value={EditMode.Notes}
             icon={<FontAwesomeIcon icon={faMapMarker} color="white" />}
-            mode={editMode} setMode={setEditMode}
+            mode={editMode} setMode={setEditMode} name={editModeRadioName}
           >
             Add and edit map <u>n</u>otes
         </ModeButton>,
           <ModeButton key={EditMode.Area} value={EditMode.Area}
             icon={<FontAwesomeIcon icon={faSquare} color="white" />}
-            mode={editMode} setMode={setEditMode}
+            mode={editMode} setMode={setEditMode} name={editModeRadioName}
           >
             Paint solid <u>a</u>reas.  Shift-drag to paint a rectangle.
         </ModeButton>
@@ -174,7 +195,7 @@ function MapControls({
       buttons.push(
         <ModeButton key={EditMode.PlayerArea} value={EditMode.PlayerArea}
           icon={<AreaIcon colour="white" stripe={selectedStripe} />}
-          mode={editMode} setMode={setEditMode}
+          mode={editMode} setMode={setEditMode} name={editModeRadioName}
         >
           Paint striped <u>a</u>reas.  Shift-drag to paint a rectangle.
           </ModeButton>
@@ -185,13 +206,13 @@ function MapControls({
       buttons.push(...[
         <ModeButton key={EditMode.Wall} value={EditMode.Wall}
           icon={<FontAwesomeIcon icon={faDrawPolygon} color="white" />}
-          mode={editMode} setMode={setEditMode}
+          mode={editMode} setMode={setEditMode} name={editModeRadioName}
         >
           Paint <u>w</u>alls.  Shift-drag to paint rectangles of walls.
         </ModeButton>,
         <ModeButton key={EditMode.Room} value={EditMode.Room}
           icon={<FontAwesomeIcon icon={faVectorSquare} color="white" />}
-          mode={editMode} setMode={setEditMode}
+          mode={editMode} setMode={setEditMode} name={editModeRadioName}
         >
           Paint the union of <u>r</u>ooms.  Shift-drag to paint the difference of rooms.
         </ModeButton>,
@@ -199,12 +220,12 @@ function MapControls({
     }
 
     return buttons;
-  }, [canDoAnything, editMode, layer, selectedStripe, setEditMode]);
+  }, [canDoAnything, editMode, editModeRadioName, layer, selectedStripe, setEditMode]);
 
   const stripeMenuItems = useMemo(
     () => ([1, 2, 3, 4]).map(s => (
       <Dropdown.Item key={s} onClick={() => setSelectedStripe(s)}>
-        <AreaIcon colour="black" stripe={s} />
+        <AreaIcon colour="white" stripe={s} />
       </Dropdown.Item>
     )),
     [setSelectedStripe]
@@ -216,8 +237,8 @@ function MapControls({
 
   return (
     <div className="Map-controls">
-      <ButtonGroup className="Map-control" toggle vertical>{layerButtons}</ButtonGroup>
-      <ButtonGroup className="Map-control" toggle vertical>{modeButtons}</ButtonGroup>
+      <ButtonGroup className="Map-control" vertical>{layerButtons}</ButtonGroup>
+      <ButtonGroup className="Map-control" vertical>{modeButtons}</ButtonGroup>
       <ButtonGroup className="Map-control" vertical>
         <OverlayTrigger placement="right" overlay={
           <Tooltip id="zoomin-tooltip">Zoom in</Tooltip>
@@ -240,7 +261,7 @@ function MapControls({
             <FontAwesomeIcon icon={faDotCircle} color="white" />
           </Button>
         </OverlayTrigger>
-        <Dropdown as={ButtonGroup} drop="right">
+        <Dropdown as={ButtonGroup} drop="end">
           <Dropdown.Toggle variant="dark">
             <FontAwesomeIcon icon={faMapMarker} color="white" />
           </Dropdown.Toggle>
@@ -251,7 +272,7 @@ function MapControls({
             <Dropdown.Item onClick={() => setShowAnnotationFlags(ShowAnnotationFlags.All)}>All notes visible</Dropdown.Item>
           </Dropdown.Menu>
         </Dropdown>
-        <Dropdown as={ButtonGroup} drop="right">
+        <Dropdown as={ButtonGroup} drop="end">
           <Dropdown.Toggle variant="dark">
             <AreaIcon colour="white" stripe={selectedStripe} />
           </Dropdown.Toggle>
@@ -266,14 +287,16 @@ function MapControls({
         isVertical={true}
         selectedColour={selectedColour}
         setSelectedColour={setSelectedColour} />
-      <ButtonGroup className="Map-control" hidden={hideExtraControls} toggle vertical>
+      <ButtonGroup className="Map-control" hidden={hideExtraControls} vertical>
         <ModeButton value={MapColourVisualisationMode.Areas}
           icon={<FontAwesomeIcon icon={faSquare} color="white" />}
           mode={mapColourVisualisationMode} setMode={setMapColourVisualisationMode}
+          name="colour-visualisation"
         >Show painted area colours</ModeButton>
         <ModeButton value={MapColourVisualisationMode.Connectivity}
           icon={<FontAwesomeIcon icon={faSuitcase} color="white" />}
           mode={mapColourVisualisationMode} setMode={setMapColourVisualisationMode}
+          name="colour-visualisation"
         >Show each room in a different colour</ModeButton>
       </ButtonGroup>
       <ButtonGroup className="Map-control" hidden={isNotOwner} vertical>

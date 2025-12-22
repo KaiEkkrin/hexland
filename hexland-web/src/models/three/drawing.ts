@@ -52,7 +52,7 @@ export function createDrawing(
   tokenGeometry: ITokenGeometry,
   colours: FeatureColour[],
   seeEverything: boolean,
-  logError: (message: string, e: any) => void,
+  logError: (message: string, e: unknown) => void,
   spriteManager: ISpriteManager,
   resolveImageUrl: (path: string) => Promise<string>
 ): IDrawing {

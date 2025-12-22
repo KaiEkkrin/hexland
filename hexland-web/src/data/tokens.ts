@@ -103,7 +103,7 @@ export class SimpleTokenDrawing extends BaseTokenDrawing<
     super(
       faces ?? new FeatureDictionary<GridCoord, ITokenFace>(coordString),
       fillEdges ?? new FeatureDictionary<GridEdge, ITokenFillEdge>(edgeString),
-      fillVertices ?? new FeatureDictionary<GridVertex, ITokenFillVertex>(vertexString),
+      fillVertices ?? new FeatureDictionary<GridVertex, ITokenFillVertex>(vertexString)
     );
   }
 }

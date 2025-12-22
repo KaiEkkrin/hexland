@@ -1,6 +1,26 @@
+/* Map annotation popovers - mid-grey background to stand out from map, low z-index */
 .popover {
-  background-color: rgba(255, 255, 255, 0.7) !important;
-  z-index: 2 !important;
+  --bs-popover-bg: #6c757d;
+  --bs-popover-border-color: #adb5bd;
+  z-index: 2;
+}
+
+.popover-arrow::before {
+  border-top-color: #adb5bd !important;
+}
+
+.popover-arrow::after {
+  border-top-color: #6c757d !important;
+}
+
+.bs-popover-bottom .popover-arrow::before,
+.bs-popover-auto[data-popper-placement^="bottom"] .popover-arrow::before {
+  border-bottom-color: #adb5bd !important;
+}
+
+.bs-popover-bottom .popover-arrow::after,
+.bs-popover-auto[data-popper-placement^="bottom"] .popover-arrow::after {
+  border-bottom-color: #6c757d !important;
 }
 
 .Map-container {
@@ -54,7 +74,27 @@
 
 .Map-help-card {
   background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
   color: #c6c8ca;
+}
+
+.Map-help-card .card-header {
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0.5rem 0.75rem;
+}
+
+.Map-help-card .card-body {
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0.5rem 0.75rem;
+}
+
+/* Add divider line between help items, but not before first or after last */
+.Map-help-card + .Map-help-card {
+  border-top: 1px solid #6c757d !important;
 }
 
 .Map-info {
@@ -67,12 +107,16 @@
   min-width: 3rem;
 }
 
+/* Styling for MapInfoCard - only apply transparent bg to Card, not Button */
 .Map-info-card {
-  background-color: transparent;
   margin-right: 1rem;
   margin-top: 1rem;
   max-width: calc(25vw + 30rem);
   z-index: 4;
+}
+
+.Map-info-card.card {
+  background-color: transparent;
 }
 
 .Map-info-list-item {

@@ -70,15 +70,15 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   protected createEdgeGeometry(coord: GridEdge, alpha: number, z: number): EdgeGeometry {
-    let centre = this.createCoordCentre(new THREE.Vector3(), coord, z);
-    let otherCentre = this.createCoordCentre(
+    const centre = this.createCoordCentre(new THREE.Vector3(), coord, z);
+    const otherCentre = this.createCoordCentre(
       new THREE.Vector3(),
       coord.edge === 0 ? coordAdd(coord, { x: -1, y: 0 }) :
       coordAdd(coord, { x: 0, y: -1 }),
       z
     );
 
-    let [tip1, tip2] = [new THREE.Vector3(), new THREE.Vector3()];
+    const [tip1, tip2] = [new THREE.Vector3(), new THREE.Vector3()];
     this.createEdgeVertices(tip1, tip2, centre, coord.edge);
     return new EdgeGeometry(tip1, tip2, centre, otherCentre, alpha);
   }
@@ -105,9 +105,9 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   createEdgeOcclusion(coord: GridCoord, edge: GridEdge, z: number): EdgeOcclusion {
-    let [edgeA, edgeB] = [new THREE.Vector3(), new THREE.Vector3()];
+    const [edgeA, edgeB] = [new THREE.Vector3(), new THREE.Vector3()];
 
-    let centre = this.createCentre(new THREE.Vector3(), edge.x, edge.y, z);
+    const centre = this.createCentre(new THREE.Vector3(), edge.x, edge.y, z);
     this.createEdgeVertices(edgeA, edgeB, centre, edge.edge);
 
     this.createCoordCentre(centre, coord, z);
@@ -115,7 +115,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   *createOcclusionTestVertices(coord: GridCoord, z: number, alpha: number): Iterable<THREE.Vector3> {
-    let centre = new THREE.Vector3();
+    const centre = new THREE.Vector3();
     yield this.createCoordCentre(centre, coord, z);
 
     const invAlpha = 1 - alpha;
@@ -126,7 +126,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   *createSolidVertices(tile: THREE.Vector2, alpha: number, z: number): Iterable<THREE.Vector3> {
-    let centre = new THREE.Vector3();
+    const centre = new THREE.Vector3();
     const invAlpha = 1 - alpha;
     for (let y = 0; y < this.tileDim; ++y) {
       for (let x = 0; x < this.tileDim; ++x) {
@@ -145,7 +145,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
     for (let y = 0; y < this.tileDim; ++y) {
       for (let x = 0; x < this.tileDim; ++x) {
         // For some reason Three.js uses triangles rather than triangle strips, grr
-        let baseIndex = y * this.tileDim * 4 + x * 4;
+        const baseIndex = y * this.tileDim * 4 + x * 4;
         yield* this.getSquareIndices(baseIndex);
       }
     }
@@ -285,7 +285,7 @@ export class SquareGridGeometry extends BaseGeometry implements IGridGeometry {
   }
 
   populateShaderUniforms(
-    uniforms: any, faceTex?: THREE.WebGLRenderTarget | undefined, tileOrigin?: THREE.Vector2 | undefined
+    uniforms: Record<string, THREE.IUniform>, faceTex?: THREE.WebGLRenderTarget | undefined, tileOrigin?: THREE.Vector2 | undefined
   ) {
     super.populateShaderUniforms(uniforms, faceTex, tileOrigin);
     uniforms['squareSize'].value = this._squareSize;

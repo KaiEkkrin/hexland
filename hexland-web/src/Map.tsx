@@ -38,7 +38,7 @@ import { Link } from 'react-router-dom';
 
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
-import { v4 as uuidv4 } from 'uuid';
+import { v7 as uuidv7 } from 'uuid';
 
 // The map component is rather large because of all the state that got pulled into it...
 function Map() {
@@ -64,10 +64,17 @@ function Map() {
 
   // Create a suitable title
   const title = useMemo(() => {
+    // DEBUG: Log which values are undefined
+    console.log('[Map.tsx] title useMemo - map:', map !== undefined ? 'DEFINED' : 'UNDEFINED');
+    console.log('[Map.tsx] title useMemo - mapState:', mapState !== undefined ? 'DEFINED' : 'UNDEFINED');
+    console.log('[Map.tsx] title useMemo - profile:', profile !== undefined ? 'DEFINED' : 'UNDEFINED');
+
     if (map === undefined || mapState === undefined || profile === undefined) {
+      console.log('[Map.tsx] title useMemo - returning undefined (missing dependencies)');
       return undefined;
     }
 
+    console.log('[Map.tsx] title useMemo - rendering breadcrumb for map:', map.record.name);
     const adventureLink = "/adventure/" + map.adventureId;
     const mapLink = `/adventure/${map.adventureId}/map/${map.id}`;
     const objectsString = (userPolicy === undefined || mapState.objectCount === undefined) ?
@@ -117,7 +124,7 @@ function Map() {
   // This helps us focus somewhere useful when the map becomes visible
   useEffect(() => {
     if (canSeeAnything === false) {
-      let removeToast = addToast(statusContext, {
+      const removeToast = addToast(statusContext, {
         title: "No tokens available",
         message: "The map owner has not assigned you any tokens, so you will not see any of the map yet.  If you remain on this page until they do, it will update."
       });
@@ -245,10 +252,10 @@ function Map() {
     if (here !== undefined) {
       try {
         ui?.addChanges(stateMachine.flipToken(here));
-      } catch (e: any) {
-        statusContext.toasts.next({ id: uuidv4(), record: {
+      } catch (e: unknown) {
+        statusContext.toasts.next({ id: uuidv7(), record: {
           title: "Cannot flip token",
-          message: String(e.message)
+          message: e instanceof Error ? e.message : String(e)
         }});
       }
     }
@@ -256,8 +263,8 @@ function Map() {
 
   const editImageFromMenu = useCallback(() => ui?.editImage(), [ui]);
   const editNoteFromMenu = useCallback(() => ui?.editNote(), [ui]);
-  const editTokenFromMenu = useCallback(id => ui?.editToken(id), [ui]);
-  const editCharacterTokenFromMenu = useCallback((id) => ui?.editToken(id, true), [ui]);
+  const editTokenFromMenu = useCallback((id: string | undefined) => ui?.editToken(id), [ui]);
+  const editCharacterTokenFromMenu = useCallback((id: string | undefined) => ui?.editToken(id, true), [ui]);
 
   const flipTokenFromMenu = useCallback(() => {
     console.debug("called flipToken with x " + uiState.contextMenuX + ", y " + uiState.contextMenuY);
@@ -270,7 +277,7 @@ function Map() {
   }, [flipToken, getClientPosition, uiState.contextMenuX, uiState.contextMenuY]);
 
   const handleContextMenu = useCallback((e: MouseEvent) => {
-    let bounds = drawingRef.current?.getBoundingClientRect();
+    const bounds = drawingRef.current?.getBoundingClientRect();
     if (bounds === undefined) {
       return;
     }
@@ -320,7 +327,7 @@ function Map() {
     }
   }, [stateMachine, anEditorIsOpen]);
 
-  const handleWindowResize = useCallback((ev: UIEvent) => { stateMachine?.resize(); }, [stateMachine]);
+  const handleWindowResize = useCallback((_ev: UIEvent) => { stateMachine?.resize(); }, [stateMachine]);
 
   // We need an event listener for the window resize so that we can update the drawing,
   // and for the keyboard and wheel events so that we can implement UI functionality with them.

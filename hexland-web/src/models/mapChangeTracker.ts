@@ -63,7 +63,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
   }
 
   tokenRemove(map: IMap, user: string, position: GridCoord, tokenId: string | undefined) {
-    let removed = super.tokenRemove(map, user, position, tokenId);
+    const removed = super.tokenRemove(map, user, position, tokenId);
     if (removed !== undefined) {
       this._haveTokensChanged = true;
     }
@@ -72,7 +72,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
   }
 
   wallAdd(feature: IFeature<GridEdge>) {
-    let added = super.wallAdd(feature);
+    const added = super.wallAdd(feature);
     if (added) {
       this._colouring?.setWall(feature.position, true);
     }
@@ -81,7 +81,7 @@ export class MapChangeTracker extends SimpleChangeTracker {
   }
 
   wallRemove(position: GridEdge) {
-    let removed = super.wallRemove(position);
+    const removed = super.wallRemove(position);
     if (removed !== undefined) {
       this._colouring?.setWall(position, false);
     }

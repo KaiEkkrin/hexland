@@ -1,6 +1,6 @@
 {
   "projects": {
-    "default": "hexland-test",
+    "default": "hexland-test-25",
     "production": "hexland"
   }
 }
