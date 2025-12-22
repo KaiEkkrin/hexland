@@ -253,6 +253,19 @@ jobs:
         run: yarn build
 
       # -----------------------------------------------------------------------
+      # Create mock Firebase credentials for build
+      # -----------------------------------------------------------------------
+      # The web app looks for firebase-admin-credentials.json during build
+      # (there's a symlink in public/ pointing to this file).
+      # In production, the app uses Firebase Hosting's auto-config instead.
+      # We create a minimal mock file here just to satisfy the build process.
+      #
+      - name: Create mock Firebase credentials
+        working-directory: hexland-web
+        run: |
+          echo '{"project_id": "demo-project"}' > firebase-admin-credentials.json
+
+      # -----------------------------------------------------------------------
       # Build web application
       # -----------------------------------------------------------------------
       - name: Build web application
