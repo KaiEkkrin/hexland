@@ -286,9 +286,24 @@ jobs:
           echo "✅ Service account credentials decoded"
 
       # -----------------------------------------------------------------------
+      # Cache npm (for firebase-tools)
+      # -----------------------------------------------------------------------
+      - name: Cache npm (for firebase-tools)
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-firebase-tools-${{ env.FIREBASE_TOOLS_VERSION }}
+
+      # -----------------------------------------------------------------------
+      # Install Firebase CLI
+      # -----------------------------------------------------------------------
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@${{ env.FIREBASE_TOOLS_VERSION }}
+
+      # -----------------------------------------------------------------------
       # Deploy to Firebase
       # -----------------------------------------------------------------------
-      # This uses the w9jds/firebase-action to deploy all Firebase services:
+      # Deploy all Firebase services:
       #   - Hosting (web app)
       #   - Cloud Functions
       #   - Firestore security rules
@@ -299,11 +314,10 @@ jobs:
       # CLI where to find the service account credentials.
       #
       - name: Deploy to Firebase
-        uses: w9jds/firebase-action@master
-        with:
-          args: deploy --project ${{ secrets.FIREBASE_PROJECT_ID }}
+        working-directory: hexland-web
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/hexland-web/firebase-service-account.json
+        run: firebase deploy --project ${{ secrets.FIREBASE_PROJECT_ID }}
 
       # -----------------------------------------------------------------------
       # Cleanup
