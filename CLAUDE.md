@@ -64,11 +64,19 @@ yarn build         # Compile TypeScript to lib/
 
 ### Deployment
 
+See **[DEPLOY.md](../DEPLOY.md)** for comprehensive deployment instructions including:
+- Firebase project setup and Blaze plan requirements
+- Build verification steps
+- Deployment commands for different scenarios
+- Post-deployment verification
+- Troubleshooting common issues
+
+Quick reference:
 ```bash
 cd hexland-web
 yarn build
-firebase deploy --only hosting    # Deploy web app only (recommended)
-firebase deploy                   # Deploy everything (slower, includes Functions)
+firebase deploy --only hosting    # Web app only (fast)
+firebase deploy                   # Everything (includes Functions)
 ```
 
 ## Architecture

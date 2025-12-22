@@ -57,21 +57,16 @@ yarn test:unit
 yarn test:e2e
 ```
 
-## Building and Deploying
+## Deployment
 
+For production deployment instructions, see **[DEPLOY.md](DEPLOY.md)**.
+
+Quick deploy (after initial setup):
 ```bash
 cd hexland-web
 yarn build
-firebase deploy --only hosting    # Deploy web app only (recommended)
-firebase deploy                   # Deploy everything (includes Functions)
-```
-
-## First Time Setup: CORS Policy
-
-For deployment, configure CORS on your Firebase Storage bucket:
-
-```bash
-gsutil cors set hexland-web/cors.json gs://projectname.firebasestorage.app
+firebase deploy --only hosting    # Web app only (fast)
+firebase deploy                   # Everything (includes Functions)
 ```
 
 ## Alternative: Standalone Docker
