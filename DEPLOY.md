@@ -192,12 +192,34 @@ Combine services with comma-separated list.
    - See [Prerequisites](#enable-required-firebase-services) for details
 
 3. **Configure CORS for Cloud Storage**:
+
+   **Authenticate with Google Cloud SDK:**
+   ```bash
+   gcloud auth login
+   ```
+
+   This opens a browser window for authentication; sign in with the Google account that has access to your Firebase project.
+
+   **Apply CORS configuration:**
    ```bash
    cd hexland-web
    gsutil cors set cors.json gs://YOUR_PROJECT_ID.firebasestorage.app
    ```
 
    Replace `YOUR_PROJECT_ID` with your actual Firebase project ID.
+
+   **Bucket URL format:**
+   - **New buckets** (created after Oct 2024): `gs://PROJECT_ID.firebasestorage.app`
+   - **Old buckets** (created before Oct 2024): `gs://PROJECT_ID.appspot.com`
+
+   Check your Firebase Console Storage page to confirm which format your bucket uses.
+
+   **Verify CORS configuration:**
+   ```bash
+   gsutil cors get gs://YOUR_PROJECT_ID.firebasestorage.app
+   ```
+
+   You should see the CORS policy JSON output confirming the configuration was applied.
 
 4. **Select Project**:
    ```bash
