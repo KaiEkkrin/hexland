@@ -198,7 +198,7 @@ Combine services with comma-separated list.
    gcloud auth login
    ```
 
-   This opens a browser window for authentication. Sign in with the Google account that has access to your Firebase project.
+   This opens a browser window for authentication; sign in with the Google account that has access to your Firebase project.
 
    **Apply CORS configuration:**
    ```bash
