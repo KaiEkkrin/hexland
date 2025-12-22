@@ -284,13 +284,23 @@ export class MapControlPoints extends Drawn implements IMapControlPointDictionar
 
     this._material = createHighlightMaterial();
     this._invalidMaterial = createInvalidHighlightMaterial();
+    // Disable frustum culling: instances are scattered across the map, so the
+    // bounding sphere would encompass the entire visible area anyway.
     this._mesh = new InstanceCountedMesh(
       maxInstances ?? 100,
-      maxInstances => new THREE.InstancedMesh(this._bufferGeometry, this._material, maxInstances)
+      maxInstances => {
+        const mesh = new THREE.InstancedMesh(this._bufferGeometry, this._material, maxInstances);
+        mesh.frustumCulled = false;
+        return mesh;
+      }
     );
     this._invalidMesh = new InstanceCountedMesh(
       maxInstances ?? 100,
-      maxInstances => new THREE.InstancedMesh(this._bufferGeometry, this._invalidMaterial, maxInstances)
+      maxInstances => {
+        const mesh = new THREE.InstancedMesh(this._bufferGeometry, this._invalidMaterial, maxInstances);
+        mesh.frustumCulled = false;
+        return mesh;
+      }
     );
 
     this._scene = scene;
