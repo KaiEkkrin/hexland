@@ -53,7 +53,7 @@ export function AnalyticsContextProvider({ children, getItem, setItem }: IContex
     enabled: enabled,
     setEnabled: setEnabled,
     logError: (message: string, e: any, fatal?: boolean | undefined) => {
-      console.error(message, e);
+      console.error("Analytics error:", message, e);
       if (enabled) {
         console.info("logging to analytics with error: " + getExMessage(e));
         analytics?.logEvent("exception", {
