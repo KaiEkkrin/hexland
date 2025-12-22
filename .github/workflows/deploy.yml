@@ -34,14 +34,29 @@
 #
 # REQUIRED PERMISSIONS:
 # ---------------------
-# The service account should have the "Firebase Develop Admin" role, which includes:
-# - Firebase Hosting Admin
-# - Cloud Functions Developer
-# - Firebase Rules Admin
-# - Cloud Datastore Index Admin
-# - Service Account User
+# The service account needs the following roles to deploy all Firebase services:
+# - Firebase Admin SDK Administrator Service Agent (default for firebase-adminsdk accounts)
+# - Service Account User (REQUIRED - must be added manually!)
 #
-# This role is automatically assigned to the default Firebase Admin SDK service account.
+# ⚠️  IMPORTANT: "Service Account User" role is NOT assigned by default!
+#
+# WHY NEEDED:
+# - Service Account User provides the iam.serviceAccounts.actAs permission
+# - This permission is required to deploy Cloud Functions (attaches runtime service account)
+# - Without it, deployment will fail with "Missing permissions" error
+#
+# HOW TO ADD SERVICE ACCOUNT USER ROLE:
+# --------------------------------------
+# 1. Go to: https://console.cloud.google.com/iam-admin/iam?project=YOUR_PROJECT_ID
+# 2. Find your Firebase Admin SDK service account:
+#    firebase-adminsdk-xxxxx@YOUR-PROJECT-ID.iam.gserviceaccount.com
+# 3. Click the ✏️ (pencil/edit) icon next to it
+# 4. Click "Add Another Role"
+# 5. Search for and select: "Service Account User"
+# 6. Click "Save"
+#
+# NOTE: This is different from "Service Account Token Creator" - you need "Service Account User"
+# specifically for the iam.serviceAccounts.actAs permission.
 #
 # HOW TO MANAGE EXISTING KEYS (View, Delete, Check Last Used):
 # --------------------------------------------------------------
