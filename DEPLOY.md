@@ -25,8 +25,28 @@ This guide covers deploying Wall & Shadow (Hexland) to Firebase.
 4. Choose a location for your default bucket (e.g., `europe-west2` to match Cloud Functions)
 5. Click **"Done"**
 
-**Firebase Authentication** (Auto-enabled on first use):
-- No manual setup required - will be enabled automatically when you first deploy
+**Firebase Authentication** (Required - enable before first use):
+
+1. Visit: https://console.firebase.google.com/project/YOUR_PROJECT_ID/authentication/providers
+2. Click **"Get started"** if prompted
+3. Enable **Email/Password** provider:
+   - Click "Email/Password" → Toggle "Enable" → Save
+4. Enable **Google** provider:
+   - Click "Add new provider" → "Google" → Toggle "Enable"
+   - Enter project support email → Save
+
+**Register Web App** (Required - enables Analytics and complete Firebase config):
+
+1. Visit: https://console.firebase.google.com/project/YOUR_PROJECT_ID/settings/general
+2. Scroll down to **"Your apps"** section
+3. Click the **`</>`** icon (Web icon) to add a web app
+4. **App nickname**: Enter a name (e.g., "Wall & Shadow Web")
+5. **Firebase Hosting**: Check "Also set up Firebase Hosting for this app" ✅
+6. **Choose hosting site**: Select `YOUR_PROJECT_ID` from the dropdown
+7. Click **"Register app"**
+8. Click **"Continue to console"** (skip the SDK setup instructions shown)
+
+**Why this is needed**: Registering the web app adds the `appId` and `measurementId` to Firebase Hosting's auto-configuration, which is required for Firebase Analytics and prevents initialization errors.
 
 **Firestore Database** (Auto-enabled on first deployment):
 - No manual setup required - rules and indexes will be deployed automatically
@@ -364,6 +384,48 @@ and click 'Get Started' to set up Firebase Storage.
 6. Retry deployment: `firebase deploy`
 
 See [Prerequisites → Enable Required Firebase Services](#enable-required-firebase-services) for details.
+
+### Error: "auth/configuration-not-found" When Signing Up
+
+**Symptom:** Users get "Firebase: Error (auth/configuration-not-found)" when trying to sign up or log in.
+
+**Cause:** Firebase Authentication providers (Email/Password, Google) are not enabled in the Firebase Console.
+
+**Solution:**
+1. Visit: https://console.firebase.google.com/project/YOUR_PROJECT_ID/authentication/providers
+2. Click "Get started" if this is your first time
+3. Enable Email/Password provider:
+   - Click "Email/Password" → Toggle "Enable" → Click "Save"
+4. Enable Google provider:
+   - Click "Add new provider" → "Google" → Toggle "Enable"
+   - Enter project support email → Click "Save"
+5. Refresh your web app and try signing up again
+
+### Error: "Missing App configuration value: appId" (Analytics Error)
+
+**Full error:**
+```
+FirebaseError: Installations: Missing App configuration value: "appId"
+(installations/missing-app-config-values).
+```
+
+**Symptom:** Error appears when accepting cookies or initializing Firebase Analytics in production.
+
+**Cause:** Web app not registered with Firebase Hosting, so the auto-config endpoint (`/__/firebase/init.json`) is missing the `appId` field.
+
+**Solution:**
+1. Visit: https://console.firebase.google.com/project/YOUR_PROJECT_ID/settings/general
+2. Scroll to "Your apps" section
+3. Click the `</>` (Web) icon
+4. Enter app nickname (e.g., "Wall & Shadow Web")
+5. Check "Also set up Firebase Hosting for this app"
+6. Select your hosting site from dropdown
+7. Click "Register app" → "Continue to console"
+8. Redeploy hosting: `firebase deploy --only hosting`
+9. **Clear browser cache** (Ctrl+Shift+Delete) or test in incognito
+10. Error should be resolved
+
+See [Prerequisites → Register Web App](#register-web-app-required---enables-analytics-and-complete-firebase-config) for details.
 
 ### Functions Deployment is Slow
 
