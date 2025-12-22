@@ -34,49 +34,32 @@
 #
 # REQUIRED PERMISSIONS:
 # ---------------------
-# The service account needs the following roles to deploy all Firebase services:
-# 1. Firebase Admin SDK Administrator Service Agent (default for firebase-adminsdk accounts)
-# 2. Service Account User (REQUIRED - must be added manually!)
-# 3. Service Usage Consumer (REQUIRED - must be added manually!)
+# Add the "Firebase Admin" role to the service account for full deployment access.
 #
-# ⚠️  IMPORTANT: Roles #2 and #3 are NOT assigned by default and must be added!
-#
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Role #2: Service Account User                                           │
-# └─────────────────────────────────────────────────────────────────────────┘
-#
-# WHY NEEDED:
-# - Provides the iam.serviceAccounts.actAs permission
-# - Required to deploy Cloud Functions (attaches runtime service account)
-# - Without it: deployment fails with "Missing permissions required for functions deploy"
-#
-# HOW TO ADD:
+# HOW TO ADD FIREBASE ADMIN ROLE:
+# --------------------------------
 # 1. Go to: https://console.cloud.google.com/iam-admin/iam?project=YOUR_PROJECT_ID
-# 2. Find: firebase-adminsdk-xxxxx@YOUR-PROJECT-ID.iam.gserviceaccount.com
+# 2. Find your Firebase Admin SDK service account:
+#    firebase-adminsdk-xxxxx@YOUR-PROJECT-ID.iam.gserviceaccount.com
 # 3. Click the ✏️ (pencil/edit) icon
 # 4. Click "Add Another Role"
-# 5. Search for and select: "Service Account User"
-# 6. Click "Save"
-#
-# NOTE: Different from "Service Account Token Creator" - you need "Service Account User"
-#
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Role #3: Service Usage Consumer                                         │
-# └─────────────────────────────────────────────────────────────────────────┘
-#
-# WHY NEEDED:
-# - Provides the serviceusage.services.get permission
-# - Required for Firebase CLI to verify APIs are enabled before deployment
-# - Without it: deployment fails with "Permission denied to get service [firebasestorage.googleapis.com]"
-#
-# HOW TO ADD:
-# 1. Go to: https://console.cloud.google.com/iam-admin/iam?project=YOUR_PROJECT_ID
-# 2. Find: firebase-adminsdk-xxxxx@YOUR-PROJECT-ID.iam.gserviceaccount.com
-# 3. Click the ✏️ (pencil/edit) icon
-# 4. Click "Add Another Role"
-# 5. Search for and select: "Service Usage Consumer"
+# 5. Search for and select: "Firebase Admin"
 # 6. Click "Save"
 # 7. Wait 2-5 minutes for IAM changes to propagate
+#
+# This role provides full access to all Firebase services (Hosting, Functions,
+# Firestore, Storage, etc.) and is suitable for small projects with trusted
+# contributors.
+#
+# ALTERNATIVE (More Secure, More Complex):
+# If you need granular permissions for production security, add these roles instead:
+# - Service Account User
+# - Service Usage Consumer
+# - Cloud Storage for Firebase Viewer
+# - Firebase Hosting Admin
+# - Cloud Functions Admin
+# - Firebase Rules Admin
+# - Cloud Datastore Index Admin
 #
 # HOW TO MANAGE EXISTING KEYS (View, Delete, Check Last Used):
 # --------------------------------------------------------------
