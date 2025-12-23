@@ -13,7 +13,7 @@ import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import ToggleButton from 'react-bootstrap/ToggleButton';
 import Tooltip from 'react-bootstrap/Tooltip';
 
-import { faDotCircle, faDrawPolygon, faMousePointer, faPlus, faSquare, faCog, faSuitcase, faMapMarker, faVectorSquare, faSearchPlus, faSearchMinus, faUser, faImage, faImages, faCubes } from '@fortawesome/free-solid-svg-icons';
+import { faDotCircle, faDrawPolygon, faMousePointer, faPlus, faSquare, faCog, faSuitcase, faMapMarker, faSearchPlus, faSearchMinus, faUser, faImage, faImages, faCubes, faBezierCurve } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 // We make the children the tooltip contents, to allow for convenient formatting
@@ -189,13 +189,13 @@ function MapControls({
     if (canDoAnything && layer === Layer.Object) {
       buttons.push(...[
         <ModeButton key={EditMode.Wall} value={EditMode.Wall}
-          icon={<FontAwesomeIcon icon={faDrawPolygon} color="white" />}
+          icon={<FontAwesomeIcon icon={faBezierCurve} color="white" />}
           mode={editMode} setMode={setEditMode} name={editModeRadioName}
         >
           Paint <u>w</u>alls.  Shift-drag to paint rectangles of walls.
         </ModeButton>,
         <ModeButton key={EditMode.Room} value={EditMode.Room}
-          icon={<FontAwesomeIcon icon={faVectorSquare} color="white" />}
+          icon={<FontAwesomeIcon icon={faDrawPolygon} color="white" />}
           mode={editMode} setMode={setEditMode} name={editModeRadioName}
         >
           Paint the union of <u>r</u>ooms.  Shift-drag to paint the difference of rooms.
