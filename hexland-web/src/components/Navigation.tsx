@@ -487,14 +487,14 @@ function Navigation(props: INavigationProps) {
             </div>
           </Navbar.Brand>
         </LinkContainer>
+        <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
           <NavPageLinks />
+          <Navbar.Text className="justify-content-center" hidden={childrenHidden}>{props.children}</Navbar.Text>
+          <Nav className="justify-content-end">
+            <NavLogin expanded={expanded} />
+          </Nav>
         </Navbar.Collapse>
-        <Navbar.Text className="justify-content-center" hidden={childrenHidden}>{props.children}</Navbar.Text>
-        <Navbar.Collapse id="basic-navbar-nav" className="justify-content-end">
-          <NavLogin expanded={expanded} />
-        </Navbar.Collapse>
-        <Navbar.Toggle aria-controls="basic-navbar-nav" />
       </Navbar>
     </div>
   );

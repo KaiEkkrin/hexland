@@ -69,18 +69,24 @@ export function isPhone(deviceName: string) {
 export async function ensureNavbarExpanded(page: Page, deviceName: string) {
   // On phones we'll get the collapsed hamburger thingy
   if (isPhone(deviceName)) {
-    await expect(page.locator('.navbar-toggler')).toBeVisible();
-    await page.click('.navbar-toggler');
+    // Click the navbar toggle
+    await page.click('[aria-controls="basic-navbar-nav"]');
+    // Wait for the navbar to actually expand by checking for a link inside it
+    await expect(page.locator('#basic-navbar-nav .nav-link').first()).toBeVisible({ timeout: 5000 });
   }
 }
 
 export async function whileNavbarExpanded(page: Page, deviceName: string, fn: () => Promise<void>) {
   // Likewise
   if (isPhone(deviceName)) {
-    await expect(page.locator('.navbar-toggler')).toBeVisible();
-    await page.click('.navbar-toggler');
+    // Click the navbar toggle
+    await page.click('[aria-controls="basic-navbar-nav"]');
+    // Wait for the navbar to actually expand by checking for a link inside it
+    await expect(page.locator('#basic-navbar-nav .nav-link').first()).toBeVisible({ timeout: 5000 });
+
     await fn();
-    await page.click('.navbar-toggler'); // collapse it back down again
+
+    await page.click('[aria-controls="basic-navbar-nav"]'); // collapse it back down again
   } else {
     await fn();
   }
@@ -89,7 +95,9 @@ export async function whileNavbarExpanded(page: Page, deviceName: string, fn: ()
 export type User = { displayName: string, email: string, number: number, password: string };
 let signupNumber = 0;
 
-export async function signIn(page: Page, user: User) {
+export async function signIn(page: Page, user: User, deviceName: string) {
+  await ensureNavbarExpanded(page, deviceName);
+
   // Go through the login page
   await page.click('text="Sign up/Login"');
   await expect(page.locator('.App-login-text').first()).toBeVisible();
@@ -101,8 +109,8 @@ export async function signIn(page: Page, user: User) {
   await page.fill('[id=passwordInput]', user.password);
   await page.click('button >> text=/^Sign in$/'); // regexp to avoid matching the "Sign in with..." buttons below the modal on the login page
 
-  // Wait for the front page to come back
-  await expect(page.locator('.Introduction-image')).toBeVisible();
+  // Wait for the home page to load (shows Latest maps/adventures when logged in)
+  await expect(page.locator('h5 >> text="Latest maps"')).toBeVisible();
 }
 
 export async function signUp(page: Page, deviceName: string, prefix?: string | undefined): Promise<User> {
@@ -131,8 +139,8 @@ export async function signUp(page: Page, deviceName: string, prefix?: string | u
   // Sign up
   await page.click('button >> text="Sign up"');
 
-  // Wait for the front page to come back
-  await expect(page.locator('.Introduction-image')).toBeVisible();
+  // Wait for the home page to load (shows Latest maps/adventures when logged in)
+  await expect(page.locator('h5 >> text="Latest maps"')).toBeVisible();
 
   // A verification email should have been sent (click the toast off)
   await expect(page.locator(`text="A verification email has been sent to ${user.email}"`)).toBeVisible();
