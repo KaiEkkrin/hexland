@@ -9,6 +9,7 @@ import FirebaseContextProvider from './components/FirebaseContextProvider';
 import Home from './Home';
 import MapContextProvider from './components/MapContextProvider';
 import ProfileContextProvider from './components/ProfileContextProvider';
+import RootRedirect from './RootRedirect';
 import Routing from './components/Routing';
 import { IRoutingProps, IFirebaseProps, IAnalyticsProps } from './components/interfaces';
 import Status from './components/Status';
@@ -41,7 +42,7 @@ function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
                     <MapContextProvider>
                       <Suspense fallback={<Throbber />}>
                         <Routes>
-                          <Route path="/" element={<Home />} />
+                          <Route path="/" element={<RootRedirect />} />
                           <Route path="/app" element={<Home />} />
                           <Route path="/all" element={<All />} />
                           <Route path="/adventure/:adventureId" element={<AdventurePage />} />

@@ -16,7 +16,9 @@ export function RequireLoggedIn(props: IRequireLoggedInProps) {
   useEffect(() => {
     if (user === null) {
       console.debug("Not logged in.  Redirecting to login page");
-      navigate("/login");
+      // Use replace: true to avoid creating a history entry, so the back button
+      // from the login page goes to the previous page instead of looping back to login
+      navigate("/login", { replace: true });
     }
   }, [user, navigate]);
 

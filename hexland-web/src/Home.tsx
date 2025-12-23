@@ -18,9 +18,11 @@ function Home() {
   const navigate = useNavigate();
 
   // Redirect to login if not logged in
+  // Use replace: true to avoid creating a history entry, so the back button
+  // from the login page goes to the previous page instead of looping back to login
   useEffect(() => {
     if (user === null) {
-      navigate('/login');
+      navigate('/login', { replace: true });
     }
   }, [user, navigate]);
 
