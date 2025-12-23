@@ -54,15 +54,15 @@ function MapContextProvider(props: IContextProviderProps) {
   // We'll try not to depend on `dataService` in here to avoid repeated calls
   const [mapContext, setMapContext] = useState<IMapContext>({ mapState: createDefaultState() });
   useEffect(() => {
-    console.debug('[MapContextProvider] useEffect running, pathname:', location?.pathname);
+    //console.debug('[MapContextProvider] useEffect running, pathname:', location?.pathname);
     const matches = /^\/adventure\/([^/]+)\/map\/([^/]+)$/.exec(location?.pathname);
-    console.debug('[MapContextProvider] regex matches:', matches ? 'YES' : 'NO');
-    console.debug('[MapContextProvider] lcm:', lcm ? 'DEFINED' : 'UNDEFINED');
-    console.debug('[MapContextProvider] profile:', profile ? 'DEFINED' : 'UNDEFINED');
-    console.debug('[MapContextProvider] spriteManager:', spriteManager ? 'DEFINED' : 'UNDEFINED');
+    //console.debug('[MapContextProvider] regex matches:', matches ? 'YES' : 'NO');
+    //console.debug('[MapContextProvider] lcm:', lcm ? 'DEFINED' : 'UNDEFINED');
+    //console.debug('[MapContextProvider] profile:', profile ? 'DEFINED' : 'UNDEFINED');
+    //console.debug('[MapContextProvider] spriteManager:', spriteManager ? 'DEFINED' : 'UNDEFINED');
 
     if (!lcm || !matches || !profile || !spriteManager) {
-      console.debug('[MapContextProvider] Early return - missing dependencies');
+      //console.debug('[MapContextProvider] Early return - missing dependencies');
       return undefined;
     }
 

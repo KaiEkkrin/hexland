@@ -25,7 +25,10 @@ export default defineConfig({
   // Reporter configuration
   reporter: [
     ['list'],
-    ['html', { outputFolder: 'e2e/test-results/html' }],
+    ['html', {
+      outputFolder: 'e2e/test-results/html',
+      host: '0.0.0.0',  // Bind to all interfaces for Docker port forwarding
+    }],
   ],
 
   // Shared settings for all tests
@@ -47,20 +50,24 @@ export default defineConfig({
   // Note: GPU flags (--use-gl=desktop, etc) are only compatible with Chromium and Firefox
   // Webkit browsers (including iPhone 7 which uses webkit as defaultBrowserType) don't support these flags
   projects: [
-    {
-      name: 'chromium-iphone7',
-      use: {
-        ...devices['iPhone 7'],
-        // iPhone 7 uses webkit as defaultBrowserType, so no GPU flags
-      },
-    },
+    // TODO: Re-enable WebKit projects when we develop a WebKit testing strategy
+    // WebKit doesn't support SwANGLE flags and requires ANGLE_instanced_arrays extension
+    // which may only be available in --headed mode. For now, focusing on Chromium and Firefox.
+    // {
+    //   name: 'chromium-iphone7',
+    //   use: {
+    //     ...devices['iPhone 7'],
+    //     // iPhone 7 uses webkit as defaultBrowserType, so no GPU flags
+    //   },
+    // },
     {
       name: 'chromium-pixel2',
       use: {
         ...devices['Pixel 2'],
         launchOptions: {
           args: [
-            '--use-gl=desktop',       // Use desktop OpenGL (NVIDIA GPU)
+            '--use-gl=angle',          // Use ANGLE for WebGL
+            '--use-angle=swiftshader-webgl', // Use SwiftShader software rendering for WebGL
             '--enable-gpu',            // Enable GPU hardware acceleration
             '--ignore-gpu-blocklist',  // Bypass GPU blocklist
           ],
@@ -73,7 +80,8 @@ export default defineConfig({
         viewport: { width: 1366, height: 768 },
         launchOptions: {
           args: [
-            '--use-gl=desktop',       // Use desktop OpenGL (NVIDIA GPU)
+            '--use-gl=angle',          // Use ANGLE for WebGL
+            '--use-angle=swiftshader-webgl', // Use SwiftShader software rendering for WebGL
             '--enable-gpu',            // Enable GPU hardware acceleration
             '--ignore-gpu-blocklist',  // Bypass GPU blocklist
           ],
@@ -86,7 +94,8 @@ export default defineConfig({
         viewport: { width: 1920, height: 1080 },
         launchOptions: {
           args: [
-            '--use-gl=desktop',       // Use desktop OpenGL (NVIDIA GPU)
+            '--use-gl=angle',          // Use ANGLE for WebGL
+            '--use-angle=swiftshader-webgl', // Use SwiftShader software rendering for WebGL
             '--enable-gpu',            // Enable GPU hardware acceleration
             '--ignore-gpu-blocklist',  // Bypass GPU blocklist
           ],
@@ -100,7 +109,8 @@ export default defineConfig({
         viewport: { width: 1366, height: 768 },
         launchOptions: {
           args: [
-            '--use-gl=desktop',       // Use desktop OpenGL (NVIDIA GPU)
+            '--use-gl=angle',          // Use ANGLE for WebGL
+            '--use-angle=swiftshader-webgl', // Use SwiftShader software rendering for WebGL
             '--enable-gpu',            // Enable GPU hardware acceleration
             '--ignore-gpu-blocklist',  // Bypass GPU blocklist
           ],
@@ -114,28 +124,29 @@ export default defineConfig({
         viewport: { width: 1920, height: 1080 },
         launchOptions: {
           args: [
-            '--use-gl=desktop',       // Use desktop OpenGL (NVIDIA GPU)
+            '--use-gl=angle',          // Use ANGLE for WebGL
+            '--use-angle=swiftshader-webgl', // Use SwiftShader software rendering for WebGL
             '--enable-gpu',            // Enable GPU hardware acceleration
             '--ignore-gpu-blocklist',  // Bypass GPU blocklist
           ],
         },
       },
     },
-    {
-      name: 'webkit-laptop',
-      use: {
-        ...devices['Desktop Safari'],
-        viewport: { width: 1366, height: 768 },
-        // Webkit doesn't support GPU launch options
-      },
-    },
-    {
-      name: 'webkit-desktop',
-      use: {
-        ...devices['Desktop Safari'],
-        viewport: { width: 1920, height: 1080 },
-        // Webkit doesn't support GPU launch options
-      },
-    },
+    // {
+    //   name: 'webkit-laptop',
+    //   use: {
+    //     ...devices['Desktop Safari'],
+    //     viewport: { width: 1366, height: 768 },
+    //     // Webkit doesn't support GPU launch options
+    //   },
+    // },
+    // {
+    //   name: 'webkit-desktop',
+    //   use: {
+    //     ...devices['Desktop Safari'],
+    //     viewport: { width: 1920, height: 1080 },
+    //     // Webkit doesn't support GPU launch options
+    //   },
+    // },
   ],
 });

@@ -30,9 +30,13 @@ x-hexland-common: &hexland-common
     - "9099:9099"  # Firebase Auth emulator
     - "9199:9199"  # Firebase Storage emulator
     - "9229:9229"  # Node.js debug port for Functions
+    - "9323:9323"  # Playwright test results
 
   networks:
     - hexland-network
+
+  # Use host IPC namespace for shared memory (fixes WebGL rendering in Docker)
+  ipc: host
 
   # Keep container running
   command: sleep infinity
