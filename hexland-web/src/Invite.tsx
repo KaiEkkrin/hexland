@@ -1,13 +1,13 @@
 import { useState, useEffect, useContext, useMemo, useCallback } from 'react';
 import './App.css';
 
-import { AnalyticsContext } from './components/AnalyticsContextProvider';
+import { AnalyticsContext } from './components/AnalyticsContext';
 import BusyElement from './components/BusyElement';
 import Navigation from './components/Navigation';
-import { ProfileContext } from './components/ProfileContextProvider';
+import { ProfileContext } from './components/ProfileContext';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
-import { StatusContext } from './components/StatusContextProvider';
-import { UserContext } from './components/UserContextProvider';
+import { StatusContext } from './components/StatusContext';
+import { UserContext } from './components/UserContext';
 
 import { IInvite } from './data/invite';
 

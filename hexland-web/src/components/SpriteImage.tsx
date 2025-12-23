@@ -1,8 +1,8 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
 import * as React from 'react';
 
-import { AdventureContext } from './AdventureContextProvider';
-import { AnalyticsContext } from './AnalyticsContextProvider';
+import { AdventureContext } from './AdventureContext';
+import { AnalyticsContext } from './AnalyticsContext';
 
 import { ITokenProperties } from '../data/feature';
 import { fromSpriteGeometryString, ISprite } from '../data/sprite';

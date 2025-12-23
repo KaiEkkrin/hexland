@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { initializeApp } from 'firebase/app';
 import { getAnalytics, logEvent as firebaseLogEvent } from 'firebase/analytics';
@@ -8,12 +8,11 @@ import { getFunctions, Functions, connectFunctionsEmulator } from 'firebase/func
 import { getStorage, FirebaseStorage, connectStorageEmulator } from 'firebase/storage';
 import { IAnalytics } from '../services/interfaces';
 
+import { FirebaseContext } from './FirebaseContext';
 import { IContextProviderProps, IFirebaseContext, IFirebaseProps } from './interfaces';
 import * as Auth from '../services/auth';
 
 const region = 'europe-west2';
-
-export const FirebaseContext = createContext<IFirebaseContext>({});
 
 async function configureFirebase(setFirebaseContext: (c: IFirebaseContext) => void) {
   let config;

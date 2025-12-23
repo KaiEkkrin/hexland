@@ -2,10 +2,10 @@ import { useContext, useState, useCallback } from 'react';
 import '../App.css';
 
 import AdventureCards from './AdventureCards';
-import { AnalyticsContext } from './AnalyticsContextProvider';
+import { AnalyticsContext } from './AnalyticsContext';
 import AdventureModal from './AdventureModal';
-import { StatusContext } from './StatusContextProvider';
-import { UserContext } from './UserContextProvider';
+import { StatusContext } from './StatusContext';
+import { UserContext } from './UserContext';
 
 import { IAdventureSummary } from '../data/profile';
 

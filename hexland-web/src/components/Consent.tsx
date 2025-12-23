@@ -1,7 +1,7 @@
 import { useCallback, useContext, useMemo } from 'react';
 import * as React from 'react';
 
-import { AnalyticsContext } from './AnalyticsContextProvider';
+import { AnalyticsContext } from './AnalyticsContext';
 import ExpansionToggle from './ExpansionToggle';
 
 import Accordion from 'react-bootstrap/Accordion';

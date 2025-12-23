@@ -2,7 +2,8 @@ import { useCallback, useMemo } from 'react';
 import * as React from 'react';
 
 import ColourSelection from './ColourSelection';
-import { ShowAnnotationFlags } from './MapAnnotations';
+import { ShowAnnotationFlags } from './MapAnnotations.types';
+import { EditMode, MapColourVisualisationMode } from './MapControls.types';
 import { Layer } from '../models/interfaces';
 
 import Button from 'react-bootstrap/Button';
@@ -14,23 +15,6 @@ import Tooltip from 'react-bootstrap/Tooltip';
 
 import { faDotCircle, faDrawPolygon, faMousePointer, faPlus, faSquare, faCog, faSuitcase, faMapMarker, faVectorSquare, faSearchPlus, faSearchMinus, faUser, faImage, faImages, faCubes } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-
-export enum EditMode {
-  Select = "select",
-  Token = "token",
-  CharacterToken = "characterToken",
-  Notes = "notes",
-  Area = "area",
-  PlayerArea = "playerArea",
-  Wall = "wall",
-  Room = "room",
-  Image = "image"
-}
-
-export enum MapColourVisualisationMode {
-  Areas = "areas",
-  Connectivity = "connectivity"
-}
 
 // We make the children the tooltip contents, to allow for convenient formatting
 interface IModeButtonProps<T> {

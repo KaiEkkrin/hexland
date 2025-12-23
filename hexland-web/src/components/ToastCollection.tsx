@@ -1,6 +1,6 @@
 import { useContext, useReducer, useEffect } from 'react';
 import '../App.css';
-import { StatusContext } from './StatusContextProvider';
+import { StatusContext } from './StatusContext';
 import { IToast } from './interfaces';
 import { IIdentified } from '../data/identified';
 

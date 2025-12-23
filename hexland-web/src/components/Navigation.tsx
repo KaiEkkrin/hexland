@@ -3,12 +3,13 @@ import * as React from 'react';
 
 import './Navigation.css';
 
-import { AnalyticsContext } from './AnalyticsContextProvider';
-import { FirebaseContext } from './FirebaseContextProvider';
-import { ProfileContext } from './ProfileContextProvider';
+import { AnalyticsContext } from './AnalyticsContext';
+import { FirebaseContext } from './FirebaseContext';
+import { ProfileContext } from './ProfileContext';
 import * as Policy from '../data/policy';
-import { StatusContext } from './StatusContextProvider';
-import { SignInMethodsContext, UserContext } from './UserContextProvider';
+import { StatusContext } from './StatusContext';
+import { SignInMethodsContext } from './SignInMethodsContext';
+import { UserContext } from './UserContext';
 import { updateProfile } from '../services/extensions';
 import { IUser } from '../services/interfaces';
 

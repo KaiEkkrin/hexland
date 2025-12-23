@@ -1,8 +1,8 @@
 import { useContext, useEffect, useState, useMemo } from 'react';
 import * as React from 'react';
 
-import { AnalyticsContext } from './AnalyticsContextProvider';
-import { UserContext } from './UserContextProvider';
+import { AnalyticsContext } from './AnalyticsContext';
+import { UserContext } from './UserContext';
 
 import Card from 'react-bootstrap/Card';
 import { from } from 'rxjs';

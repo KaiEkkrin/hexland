@@ -1,7 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import * as React from 'react';
 
-import { EditMode } from './MapControls'; // TODO remove it from there entirely and prune some?
+import { EditMode } from './MapControls.types'; // TODO remove it from there entirely and prune some?
 import { IAnnotation } from '../data/annotation';
 import { ITokenProperties } from '../data/feature';
 import { IMapImageProperties } from '../data/image';

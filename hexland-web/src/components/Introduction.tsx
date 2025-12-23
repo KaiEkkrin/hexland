@@ -1,7 +1,7 @@
 import { useContext } from 'react';
 import './Introduction.css';
 
-import { FirebaseContext } from './FirebaseContextProvider';
+import { FirebaseContext } from './FirebaseContext';
 
 import { Link } from 'react-router-dom';
 

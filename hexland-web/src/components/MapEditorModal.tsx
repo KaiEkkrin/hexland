@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, useContext, useMemo } from 'react';
 import * as React from 'react';
 
 import BusyElement from './BusyElement';
-import { UserContext } from './UserContextProvider';
+import { UserContext } from './UserContext';
 
 import { IAdventureIdentified } from '../data/identified';
 import { IMap, MapType } from '../data/map';

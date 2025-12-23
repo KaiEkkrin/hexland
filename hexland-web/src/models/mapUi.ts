@@ -1,5 +1,5 @@
 import { IToast } from "../components/interfaces";
-import { EditMode } from "../components/MapControls";
+import { EditMode } from "../components/MapControls.types";
 import { IAnnotation } from "../data/annotation";
 import { Change, ChangeCategory, ChangeType } from "../data/change";
 import { ITokenProperties } from "../data/feature";

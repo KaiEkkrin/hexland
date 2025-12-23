@@ -1,21 +1,15 @@
-import { createContext, useEffect, useState, useContext } from 'react';
+import { useEffect, useState, useContext } from 'react';
 
-import { FirebaseContext } from './FirebaseContextProvider';
-import { IContextProviderProps, ISignInMethodsContext, IUserContext } from './interfaces';
+import { FirebaseContext } from './FirebaseContext';
+import { UserContext } from './UserContext';
+import { SignInMethodsContext } from './SignInMethodsContext';
+import { IContextProviderProps } from './interfaces';
 
 import { DataService } from '../services/dataService';
 import { FunctionsService } from '../services/functions';
 import { Storage } from '../services/storage';
 import { IStorage } from '../services/interfaces';
 import { ExpiringStringCache } from '../services/expiringStringCache';
-
-export const UserContext = createContext<IUserContext>({
-  user: undefined,
-});
-
-export const SignInMethodsContext = createContext<ISignInMethodsContext>({
-  signInMethods: []
-});
 
 function createResolveImageUrl(storageService: IStorage | undefined): ((path: string) => Promise<string>) | undefined {
   if (storageService === undefined) {

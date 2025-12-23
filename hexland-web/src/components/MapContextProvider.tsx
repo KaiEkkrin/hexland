@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState, useContext, useReducer } from 'react';
+import { useEffect, useState, useContext, useReducer } from 'react';
 
 import { trackChanges } from '../data/changeTracking';
 import { IAdventureIdentified } from '../data/identified';
@@ -8,21 +8,18 @@ import { createDefaultState, MapStateMachine } from '../models/mapStateMachine';
 import { networkStatusTracker } from '../models/networkStatusTracker';
 import { registerMapAsRecent, removeMapFromRecent, watchChangesAndConsolidate } from '../services/extensions';
 
-import { AdventureContext } from './AdventureContextProvider';
-import { AnalyticsContext } from './AnalyticsContextProvider';
-import { IContextProviderProps, IMapContext } from './interfaces';
-import { ProfileContext } from './ProfileContextProvider';
-import { StatusContext } from './StatusContextProvider';
-import { UserContext } from './UserContextProvider';
+import { AdventureContext } from './AdventureContext';
+import { AnalyticsContext } from './AnalyticsContext';
+import { MapContext } from './MapContext';
+import { IContextProviderProps } from './interfaces';
+import { ProfileContext } from './ProfileContext';
+import { StatusContext } from './StatusContext';
+import { UserContext } from './UserContext';
 
 import { useNavigate, useLocation } from 'react-router-dom';
 import { from, Observable } from 'rxjs';
 import { first, map, scan, share, switchMap } from 'rxjs/operators';
 import { v7 as uuidv7 } from 'uuid';
-
-export const MapContext = createContext<IMapContext>({
-  mapState: createDefaultState()
-});
 
 function MapContextProvider(props: IContextProviderProps) {
   const { analytics, logError, logEvent } = useContext(AnalyticsContext);
