@@ -490,11 +490,11 @@ function Navigation(props: INavigationProps) {
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
           <NavPageLinks />
-          <Navbar.Text className="justify-content-center" hidden={childrenHidden}>{props.children}</Navbar.Text>
           <Nav className="justify-content-end">
             <NavLogin expanded={expanded} />
           </Nav>
         </Navbar.Collapse>
+        <Navbar.Text className="justify-content-center" hidden={childrenHidden}>{props.children}</Navbar.Text>
       </Navbar>
     </div>
   );

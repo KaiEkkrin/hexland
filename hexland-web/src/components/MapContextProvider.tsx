@@ -84,7 +84,7 @@ function MapContextProvider(props: IContextProviderProps) {
       });
 
       console.warn('[MapContextProvider] Navigating back to home due to error');
-      navigate('/', { replace: true });
+      navigate('/app', { replace: true });
     }
 
     // We're going to do several things with this.

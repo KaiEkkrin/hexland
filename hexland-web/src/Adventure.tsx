@@ -310,7 +310,7 @@ function Adventure({ adventureId }: IAdventureProps) {
     deleteAdventure(dataService, user?.uid, adventureId)
       .then(() => {
         console.debug("Adventure " + adventureId + " successfully deleted");
-        navigate("/", { replace: true });
+        navigate("/app", { replace: true });
       })
       .catch(e => logError("Error deleting adventure " + adventureId, e));
   }, [dataService, user, adventureId, navigate, handleModalClose, logError]);
@@ -320,7 +320,7 @@ function Adventure({ adventureId }: IAdventureProps) {
     leaveAdventure(dataService, user?.uid, adventureId)
       .then(() => {
         console.debug("Successfully left adventure " + adventureId);
-        navigate("/", { replace: true });
+        navigate("/app", { replace: true });
       })
       .catch(e => logError("Error leaving adventure " + adventureId, e));
   }, [dataService, user, logError, adventureId, handleModalClose, navigate]);
