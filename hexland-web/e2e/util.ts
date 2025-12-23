@@ -7,6 +7,25 @@ import { SCREENSHOTS_PATH } from './globals';
 
 // Various utility functions for testing.
 
+/**
+ * Accepts the cookie consent banner by clicking the Accept button and waiting for it to disappear.
+ * Uses precise mouse positioning to avoid clicks being intercepted by the Firebase emulator warning.
+ */
+export async function acceptCookieConsent(page: Page) {
+  // Click on the top-left of the Accept button to avoid the Firebase emulator warning banner
+  const acceptButton = page.locator('.App-consent-card .btn-success');
+  const buttonBox = await acceptButton.boundingBox();
+  if (buttonBox) {
+    // Click 10px from left, 8px from top (top half of button)
+    await page.mouse.click(buttonBox.x + 10, buttonBox.y + 8);
+  } else {
+    throw new Error('Accept button not found');
+  }
+
+  // Wait for consent banner to hide after accepting (localStorage must save before we navigate)
+  await expect(page.locator('.App-consent-container')).not.toBeVisible({ timeout: 3000 });
+}
+
 // Helper to extract device name from project name (e.g., "chromium-iphone7" -> "iPhone 7")
 export function getDeviceNameFromProject(projectName: string): string {
   if (projectName.includes('iphone7')) return 'iPhone 7';
@@ -163,9 +182,8 @@ export async function verifyMap(
   page: Page, browserName: string, deviceName: string,
   adventureName: string, adventureDescription: string, mapName: string, message: string
 ) {
-  // TODO On Firefox, I get "error creating WebGL context"; on Webkit, I get
-  // "no ANGLE_instanced_arrays"
-  if (browserName !== 'firefox' && browserName !== 'webkit') {
+  // TODO On Webkit, I get "no ANGLE_instanced_arrays"
+  if (browserName !== 'webkit') {
     // TODO On Safari, no error but no grid shows (investigate?)
     await expect(page.locator('.Map-content')).toBeVisible();
 

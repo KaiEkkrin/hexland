@@ -4,7 +4,7 @@ import * as Oob from './oob';
 import * as Util from './util';
 
 // Tests automatically run across all projects defined in playwright.config.ts
-// Each test runs against all 8 browser/device combinations
+// Each test runs against 5 browser/device combinations (Chromium and Firefox only)
 //
 // To run a single test on a single browser/device (fastest way to reproduce failures):
 // yarn test:e2e --project chromium-desktop --grep "share adventure and map from home"
@@ -14,8 +14,15 @@ import * as Util from './util';
 //   yarn test:e2e --project firefox-laptop --grep "create account and login"
 //   yarn test:e2e --project chromium-desktop --grep "share adventure and map from home"
 //
-// Available projects: chromium-iphone7, chromium-pixel2, chromium-laptop, chromium-desktop,
-//                     firefox-laptop, firefox-desktop, webkit-laptop, webkit-desktop
+// Available projects: chromium-pixel2, chromium-laptop, chromium-desktop,
+//                     firefox-laptop, firefox-desktop
+// Note: WebKit projects (chromium-iphone7, webkit-laptop, webkit-desktop) are disabled
+//       pending development of a WebKit testing strategy
+//
+// To regenerate expected screenshots (e.g., after UI changes):
+// yarn test:e2e --update-snapshots                           # Update all screenshots for all projects
+// yarn test:e2e --project chromium-desktop --update-snapshots # Update screenshots for one project
+// yarn test:e2e --grep "view front page" --update-snapshots   # Update screenshots for one test
 
 test.describe('Basic tests', () => {
   test.beforeEach(async ({ page }) => {
@@ -30,8 +37,7 @@ test.describe('Basic tests', () => {
     // Navigate to home page and accept cookies before each test
     await page.goto('/');
     await expect(page.locator('.Introduction-image')).toBeVisible();
-    // Use force: true because Firebase emulator warning banner can overlap the consent card
-    await page.click('.App-consent-card .btn-success', { force: true });
+    await Util.acceptCookieConsent(page);
   });
 
   test('view front page', async ({ page }, testInfo) => {
@@ -106,8 +112,11 @@ test.describe('Basic tests', () => {
         // Set up second page
         await page2.goto('/');
         await expect(page2.locator('.Introduction-image')).toBeVisible();
-        // Use force: true because Firebase emulator warning banner can overlap the consent card
-        await page2.click('.App-consent-card .btn-success', { force: true });
+        await Util.acceptCookieConsent(page2);
+
+        // Debug: Check if localStorage was set
+        const analyticsEnabled = await page2.evaluate(() => localStorage.getItem('analyticsEnabled'));
+        console.log('After accepting consent, analyticsEnabled in localStorage:', analyticsEnabled);
 
         // Sign up a new user
         const user = await Util.signUp(page, deviceName, 'User');
@@ -150,6 +159,13 @@ test.describe('Basic tests', () => {
         // Sign up a second user, who will join the adventure
         const user2 = await Util.signUp(page2, deviceName, 'User');
 
+        // Debug: Check if localStorage is still set after signUp
+        const analyticsEnabledAfterSignup = await page2.evaluate(() => localStorage.getItem('analyticsEnabled'));
+        console.log('After signUp, analyticsEnabled in localStorage:', analyticsEnabledAfterSignup);
+
+        // Wait for consent banner to be hidden after signUp returns to home page
+        await expect(page2.locator('.App-consent-container')).not.toBeVisible();
+
         // Go to the invite link and click.  There should be a suitable greeting
         await page2.goto("http://localhost:5000" + inviteLink);
         await expect(page2.locator('text=Test adventure')).toBeVisible();
@@ -174,8 +190,8 @@ test.describe('Basic tests', () => {
         await Util.takeScreenshot(page2, browserName, deviceName, 'share-joined-adventure-owner');
 
         // Check that user 2 can open the map, but gets the "no tokens" warning toast
-        // TODO Firefox and Webkit WebGL error as in Util.verifyMap
-        if (browserName !== 'firefox' && browserName !== 'webkit') {
+        // TODO Webkit WebGL error as in Util.verifyMap
+        if (browserName !== 'webkit') {
           // Expand accordion on phones
           if (Util.isPhone(deviceName)) {
             const mapAccordion = await page2.waitForSelector('text="Test map"');
@@ -189,6 +205,10 @@ test.describe('Basic tests', () => {
 
           // Make sure this map looks right too
           await expect(page2.locator('text=The map owner has not assigned you any tokens')).toBeVisible();
+
+          // Wait for consent banner to be hidden (localStorage loads after initial render)
+          await expect(page2.locator('.App-consent-container')).not.toBeVisible();
+
           await Util.takeAndVerifyScreenshot(page2, browserName, deviceName, 'share-joined-map');
           await page2.click('.toast-header .btn-close');
 

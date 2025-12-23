@@ -67,16 +67,16 @@ function Map() {
   // Create a suitable title
   const title = useMemo(() => {
     // DEBUG: Log which values are undefined
-    console.debug('[Map.tsx] title useMemo - map:', map !== undefined ? 'DEFINED' : 'UNDEFINED');
-    console.debug('[Map.tsx] title useMemo - mapState:', mapState !== undefined ? 'DEFINED' : 'UNDEFINED');
-    console.debug('[Map.tsx] title useMemo - profile:', profile !== undefined ? 'DEFINED' : 'UNDEFINED');
+    //console.debug('[Map.tsx] title useMemo - map:', map !== undefined ? 'DEFINED' : 'UNDEFINED');
+    //console.debug('[Map.tsx] title useMemo - mapState:', mapState !== undefined ? 'DEFINED' : 'UNDEFINED');
+    //console.debug('[Map.tsx] title useMemo - profile:', profile !== undefined ? 'DEFINED' : 'UNDEFINED');
 
     if (map === undefined || mapState === undefined || profile === undefined) {
-      console.debug('[Map.tsx] title useMemo - returning undefined (missing dependencies)');
+      //console.debug('[Map.tsx] title useMemo - returning undefined (missing dependencies)');
       return undefined;
     }
 
-    console.debug('[Map.tsx] title useMemo - rendering breadcrumb for map:', map.record.name);
+    //console.debug('[Map.tsx] title useMemo - rendering breadcrumb for map:', map.record.name);
     const adventureLink = "/adventure/" + map.adventureId;
     const mapLink = `/adventure/${map.adventureId}/map/${map.id}`;
     const objectsString = (userPolicy === undefined || mapState.objectCount === undefined) ?
@@ -269,7 +269,7 @@ function Map() {
   const editCharacterTokenFromMenu = useCallback((id: string | undefined) => ui?.editToken(id, true), [ui]);
 
   const flipTokenFromMenu = useCallback(() => {
-    console.debug("called flipToken with x " + uiState.contextMenuX + ", y " + uiState.contextMenuY);
+    //console.debug("called flipToken with x " + uiState.contextMenuX + ", y " + uiState.contextMenuY);
     const cp = getClientPosition(uiState.contextMenuX, uiState.contextMenuY);
     if (cp === undefined) {
       return;
