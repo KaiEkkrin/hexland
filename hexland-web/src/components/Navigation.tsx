@@ -34,9 +34,10 @@ interface IChangePasswordModalProps {
   shown: boolean;
   handleClose: () => void;
   handleChange: (oldPassword: string, newPassword: string) => void;
+  username?: string;
 }
 
-function ChangePasswordModal({ shown, handleClose, handleChange }: IChangePasswordModalProps) {
+function ChangePasswordModal({ shown, handleClose, handleChange, username }: IChangePasswordModalProps) {
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -47,7 +48,10 @@ function ChangePasswordModal({ shown, handleClose, handleChange }: IChangePasswo
   );
 
   const doHandleChange = useCallback(
-    () => handleChange(oldPassword, newPassword),
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      handleChange(oldPassword, newPassword);
+    },
     [handleChange, oldPassword, newPassword]
   );
 
@@ -56,30 +60,44 @@ function ChangePasswordModal({ shown, handleClose, handleChange }: IChangePasswo
       <Modal.Header closeButton>
         <Modal.Title>Change password</Modal.Title>
       </Modal.Header>
-      <Modal.Body>
-        <Form.Group>
-          <Form.Label htmlFor="oldPasswordInput">Old password</Form.Label>
-          <Form.Control id="oldPasswordInput" type="password" value={oldPassword}
-            onChange={e => setOldPassword(e.target.value)} />
-        </Form.Group>
-        <Form.Group>
-          <Form.Label htmlFor="newPasswordInput">New password</Form.Label>
-          <Form.Control id="newPasswordInput" type="password" value={newPassword}
-            onChange={e => setNewPassword(e.target.value)} />
-          <Form.Text className="text-muted">
-            Your password must be at least 8 characters long and contain at least one letter and one number.
-          </Form.Text>
-        </Form.Group>
-        <Form.Group>
-          <Form.Label htmlFor="confirmPasswordInput">Confirm new password</Form.Label>
-          <Form.Control id="confirmPasswordInput" type="password" value={confirmPassword}
-            onChange={e => setConfirmPassword(e.target.value)} />
-        </Form.Group>
-      </Modal.Body>
-      <Modal.Footer>
-        <Button variant="secondary" onClick={handleClose}>Close</Button>
-        <Button variant="primary" disabled={changeDisabled} onClick={doHandleChange}>Change password</Button>
-      </Modal.Footer>
+      <Form onSubmit={doHandleChange}>
+        <Modal.Body>
+          {/* Hidden username field for accessibility and password managers */}
+          <input
+            type="text"
+            autoComplete="username"
+            value={username || ''}
+            readOnly
+            style={{ display: 'none' }}
+            aria-hidden="true"
+          />
+          <Form.Group>
+            <Form.Label htmlFor="oldPasswordInput">Old password</Form.Label>
+            <Form.Control id="oldPasswordInput" type="password" value={oldPassword}
+              autoComplete="current-password"
+              onChange={e => setOldPassword(e.target.value)} />
+          </Form.Group>
+          <Form.Group>
+            <Form.Label htmlFor="newPasswordInput">New password</Form.Label>
+            <Form.Control id="newPasswordInput" type="password" value={newPassword}
+              autoComplete="new-password"
+              onChange={e => setNewPassword(e.target.value)} />
+            <Form.Text className="text-muted">
+              Your password must be at least 8 characters long and contain at least one letter and one number.
+            </Form.Text>
+          </Form.Group>
+          <Form.Group>
+            <Form.Label htmlFor="confirmPasswordInput">Confirm new password</Form.Label>
+            <Form.Control id="confirmPasswordInput" type="password" value={confirmPassword}
+              autoComplete="new-password"
+              onChange={e => setConfirmPassword(e.target.value)} />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleClose}>Close</Button>
+          <Button variant="primary" type="submit" disabled={changeDisabled}>Change password</Button>
+        </Modal.Footer>
+      </Form>
     </Modal>
   );
 }
@@ -378,7 +396,7 @@ function NavLogin({ expanded }: { expanded: boolean }) {
         </ButtonGroup>
       </div>
       <ChangePasswordModal shown={showChangePassword} handleClose={handleModalClose}
-        handleChange={handleChangePasswordSave} />
+        handleChange={handleChangePasswordSave} username={user?.email || undefined} />
       <Modal show={showEditProfile} onHide={handleModalClose}>
         <Modal.Header closeButton>
           <Modal.Title>User profile settings ({signInMethods})</Modal.Title>
