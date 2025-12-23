@@ -458,7 +458,6 @@ function Adventure({ adventureId }: IAdventureProps) {
         <Row className="mt-4">
           {myPlayer !== undefined ? (
             <Col>
-              <div className="App-divider" />
               <h5>{myCharactersTitle}</h5>
               <Card className="mt-4" bg="dark" text="white">
                 <Card.Header>
@@ -472,7 +471,6 @@ function Adventure({ adventureId }: IAdventureProps) {
             </Col>
           ) : null}
           {showOtherCharacters ? (<Col>
-            <div className="App-divider" />
             <h5>Other Characters</h5>
             <Card className="mt-4" bg="dark" text="white">
               <CharacterList players={otherPlayers} showPlayerNames={true} itemClassName="Map-info-list-item" />
@@ -481,7 +479,6 @@ function Adventure({ adventureId }: IAdventureProps) {
         </Row>
         <Row className="mt-4">
           <Col>
-            <div className="App-divider" />
             <h5>{mapsTitle}</h5>
             <MapCollection
               adventures={adventures}
