@@ -67,16 +67,16 @@ function Map() {
   // Create a suitable title
   const title = useMemo(() => {
     // DEBUG: Log which values are undefined
-    console.log('[Map.tsx] title useMemo - map:', map !== undefined ? 'DEFINED' : 'UNDEFINED');
-    console.log('[Map.tsx] title useMemo - mapState:', mapState !== undefined ? 'DEFINED' : 'UNDEFINED');
-    console.log('[Map.tsx] title useMemo - profile:', profile !== undefined ? 'DEFINED' : 'UNDEFINED');
+    console.debug('[Map.tsx] title useMemo - map:', map !== undefined ? 'DEFINED' : 'UNDEFINED');
+    console.debug('[Map.tsx] title useMemo - mapState:', mapState !== undefined ? 'DEFINED' : 'UNDEFINED');
+    console.debug('[Map.tsx] title useMemo - profile:', profile !== undefined ? 'DEFINED' : 'UNDEFINED');
 
     if (map === undefined || mapState === undefined || profile === undefined) {
-      console.log('[Map.tsx] title useMemo - returning undefined (missing dependencies)');
+      console.debug('[Map.tsx] title useMemo - returning undefined (missing dependencies)');
       return undefined;
     }
 
-    console.log('[Map.tsx] title useMemo - rendering breadcrumb for map:', map.record.name);
+    console.debug('[Map.tsx] title useMemo - rendering breadcrumb for map:', map.record.name);
     const adventureLink = "/adventure/" + map.adventureId;
     const mapLink = `/adventure/${map.adventureId}/map/${map.id}`;
     const objectsString = (userPolicy === undefined || mapState.objectCount === undefined) ?
