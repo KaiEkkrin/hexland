@@ -5,6 +5,17 @@ import * as Util from './util';
 
 // Tests automatically run across all projects defined in playwright.config.ts
 // Each test runs against all 8 browser/device combinations
+//
+// To run a single test on a single browser/device (fastest way to reproduce failures):
+// yarn test:e2e --project chromium-desktop --grep "share adventure and map from home"
+//
+// Examples:
+//   yarn test:e2e --project chromium-desktop --grep "view front page"
+//   yarn test:e2e --project firefox-laptop --grep "create account and login"
+//   yarn test:e2e --project chromium-desktop --grep "share adventure and map from home"
+//
+// Available projects: chromium-iphone7, chromium-pixel2, chromium-laptop, chromium-desktop,
+//                     firefox-laptop, firefox-desktop, webkit-laptop, webkit-desktop
 
 test.describe('Basic tests', () => {
   test.beforeEach(async ({ page }) => {

@@ -25,7 +25,10 @@ export default defineConfig({
   // Reporter configuration
   reporter: [
     ['list'],
-    ['html', { outputFolder: 'e2e/test-results/html' }],
+    ['html', {
+      outputFolder: 'e2e/test-results/html',
+      host: '0.0.0.0',  // Bind to all interfaces for Docker port forwarding
+    }],
   ],
 
   // Shared settings for all tests
@@ -60,7 +63,8 @@ export default defineConfig({
         ...devices['Pixel 2'],
         launchOptions: {
           args: [
-            '--use-gl=desktop',       // Use desktop OpenGL (NVIDIA GPU)
+            '--use-gl=angle',          // Use ANGLE for WebGL
+            '--use-angle=swiftshader-webgl', // Use SwiftShader software rendering for WebGL
             '--enable-gpu',            // Enable GPU hardware acceleration
             '--ignore-gpu-blocklist',  // Bypass GPU blocklist
           ],
@@ -73,7 +77,8 @@ export default defineConfig({
         viewport: { width: 1366, height: 768 },
         launchOptions: {
           args: [
-            '--use-gl=desktop',       // Use desktop OpenGL (NVIDIA GPU)
+            '--use-gl=angle',          // Use ANGLE for WebGL
+            '--use-angle=swiftshader-webgl', // Use SwiftShader software rendering for WebGL
             '--enable-gpu',            // Enable GPU hardware acceleration
             '--ignore-gpu-blocklist',  // Bypass GPU blocklist
           ],
@@ -86,7 +91,8 @@ export default defineConfig({
         viewport: { width: 1920, height: 1080 },
         launchOptions: {
           args: [
-            '--use-gl=desktop',       // Use desktop OpenGL (NVIDIA GPU)
+            '--use-gl=angle',          // Use ANGLE for WebGL
+            '--use-angle=swiftshader-webgl', // Use SwiftShader software rendering for WebGL
             '--enable-gpu',            // Enable GPU hardware acceleration
             '--ignore-gpu-blocklist',  // Bypass GPU blocklist
           ],

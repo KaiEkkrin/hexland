@@ -42,7 +42,7 @@
     }
   },
 
-  "forwardPorts": [3400, 4000, 5000, 5001, 7000, 8080, 9005, 9099, 9229],
+  "forwardPorts": [3400, 4000, 5000, 5001, 7000, 8080, 9005, 9099, 9229, 9323],
 
   "portsAttributes": {
     "3400": {
@@ -80,6 +80,10 @@
     "9229": {
       "label": "Node Debug",
       "onAutoForward": "silent"
+    },
+    "9323": {
+      "label": "Playwright Report",
+      "onAutoForward": "notify"
     }
   },
 
