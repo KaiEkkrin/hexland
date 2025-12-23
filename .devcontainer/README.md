@@ -91,8 +91,11 @@ yarn dev:vite
 
 Running these separately is recommended - you can restart the app without restarting the emulators.
 
-- Vite dev server: http://localhost:5000
+- **Firebase Hosting emulator: http://localhost:3400** (recommended - includes static landing page and routing)
+- Vite dev server: http://localhost:5000 (for development with hot reload)
 - Firebase Emulator UI: http://localhost:4000
+
+**Note**: To test the static landing page and Firebase Hosting rewrites, use port 3400 after running `yarn build`. The Vite dev server (port 5000) is for active development with hot module reloading.
 
 Alternative: `yarn start` runs both in parallel (less flexible).
 
@@ -160,9 +163,10 @@ ls -la /dev/dri /dev/kfd
 
 | Service | URL | Description |
 |---------|-----|-------------|
-| **React App** | http://localhost:5000 | Main web application |
+| **React App** | http://localhost:3400 | Main web application (Firebase Hosting emulator - recommended) |
+| **Dev Server** | http://localhost:5000 | Vite dev server (for development with hot reload) |
 | **Emulator UI** | http://localhost:4000 | Firebase emulator dashboard |
-| **Hosting** | http://localhost:3400 | Firebase hosting emulator |
+| **Hosting** | http://localhost:3400 | Firebase hosting emulator (same as React App) |
 | **Functions** | http://localhost:5001 | Firebase Functions endpoint |
 | **Storage** | localhost:9199 | Firebase Storage emulator |
 | **Firestore** | localhost:8080 | Firestore emulator |

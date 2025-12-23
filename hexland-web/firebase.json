@@ -28,8 +28,36 @@
     ],
     "rewrites": [
       {
-        "source": "**",
-        "destination": "/index.html"
+        "source": "/app",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/app/**",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/adventure/**",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/map/**",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/invite/**",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/shared",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/all",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/login",
+        "destination": "/app.html"
       }
     ]
   },

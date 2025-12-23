@@ -28,8 +28,11 @@ yarn dev:vite
 
 Running these separately is recommended - you can restart the app without restarting the emulators.
 
-- Vite dev server: http://localhost:5000
+- **Firebase Hosting emulator: http://localhost:3400** (recommended - includes static landing page and routing)
+- Vite dev server: http://localhost:5000 (for development with hot reload)
 - Firebase Emulator UI: http://localhost:4000
+
+**Note**: To test the static landing page and Firebase Hosting rewrites, use port 3400 after running `yarn build`. The Vite dev server (port 5000) is for active development with hot module reloading.
 
 Alternative: `yarn start` runs both in parallel (less flexible).
 

@@ -111,7 +111,7 @@ function NavPageLinks() {
 
   return (
     <Nav className="me-auto">
-      <LinkContainer to="/">
+      <LinkContainer to="/app">
         <Nav.Link>Home</Nav.Link>
       </LinkContainer>
       {!loggedInItemsHidden && (
@@ -474,7 +474,7 @@ function Navigation(props: INavigationProps) {
   return (
     <div ref={measureRef}>
       <Navbar bg="dark" expand="lg" sticky="top" onToggle={setExpanded}>
-        <LinkContainer to="/">
+        <LinkContainer to="/app">
           <Navbar.Brand className="Navigation-brand me-3">
             <img src="/logo32.svg" alt="logo" height={32} className="me-2" />
             <div className="Navigation-brand-text">

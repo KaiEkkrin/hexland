@@ -217,7 +217,7 @@ function Login() {
 
   const finishLogin = useCallback((success: boolean) => {
     if (success) {
-      navigate(-1);
+      navigate('/app');
     }
   }, [navigate]);
 

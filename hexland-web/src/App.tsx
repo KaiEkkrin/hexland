@@ -16,6 +16,7 @@ import StatusContextProvider from './components/StatusContextProvider';
 import Throbber from './components/Throbber';
 import ToastCollection from './components/ToastCollection';
 import UserContextProvider from './components/UserContextProvider';
+import VersionBadge from './components/VersionBadge';
 
 import { Route, Routes } from 'react-router-dom';
 
@@ -41,6 +42,7 @@ function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
                       <Suspense fallback={<Throbber />}>
                         <Routes>
                           <Route path="/" element={<Home />} />
+                          <Route path="/app" element={<Home />} />
                           <Route path="/all" element={<All />} />
                           <Route path="/adventure/:adventureId" element={<AdventurePage />} />
                           <Route path="/adventure/:adventureId/map/:mapId" element={<MapPage />} />
@@ -55,6 +57,7 @@ function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
                 <Consent />
                 <Status />
                 <ToastCollection />
+                <VersionBadge />
               </StatusContextProvider>
             </ProfileContextProvider>
           </AnalyticsContextProvider>

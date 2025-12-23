@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <link rel="canonical" href="https://wallandshadow.io" />
+  <link rel="icon" href="/favicon.ico" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#000000" />
+  <meta
+    name="description"
+    content="Wall & Shadow helps you create, share and play on encounter maps for your favourite tabletop roleplaying games, quickly and easily."
+  />
+  <meta name="keywords" content="battle,encounter,map,roleplay,roleplaying,share,tabletop,ttrpg" />
+  <meta name="msvalidate.01" content="DFBDB40AE78262E13D063FE728B606AE" />
+  <link rel="apple-touch-icon" href="/logo192.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <title>Wall &amp; Shadow: Virtual encounter maps for roleplaying games</title>
+
+  <!-- Inline critical CSS for immediate rendering -->
+  <style>
+    html {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    body {
+      box-sizing: border-box;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background-color: #282c34;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 800px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 2rem 0;
+      gap: 2rem;
+    }
+
+    .logo-img {
+      width: 128px;
+      height: 128px;
+    }
+
+    .logo-text-container {
+      display: inline-block;
+      position: relative;
+      font-family: 'Princess Sofia', cursive;
+      font-size: 6rem;
+      line-height: 1;
+    }
+
+    .logo-text-main {
+      color: #ed8a17;
+      left: 0px;
+      position: relative;
+      top: 0.2rem;
+    }
+
+    .logo-text-shadow {
+      color: black;
+      left: 0px;
+      position: relative;
+      top: -1rem;
+      transform: skew(45deg, 0deg) scaleY(-1) translateX(1.2rem);
+    }
+
+    .cta-container {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin: 2rem 0;
+      flex-wrap: wrap;
+    }
+
+    .cta-button {
+      display: inline-block;
+      padding: 12px 32px;
+      font-size: 1.1rem;
+      font-weight: 500;
+      text-decoration: none;
+      border-radius: 4px;
+      transition: background-color 0.2s, transform 0.1s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .cta-button-primary {
+      background-color: #0d6efd;
+      color: white;
+    }
+
+    .cta-button-primary:hover {
+      background-color: #0b5ed7;
+      transform: translateY(-1px);
+    }
+
+    .version-badge {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      padding: 0.5rem 1rem;
+      background-color: #0dcaf0;
+      color: #000;
+      text-decoration: none;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+
+    .version-badge:hover {
+      background-color: #31d2f2;
+      color: #000;
+    }
+
+    @media (max-width: 768px) {
+      .logo-container {
+        gap: 1rem;
+      }
+
+      .logo-text-container {
+        font-size: 3rem;
+      }
+
+      .logo-img {
+        width: 64px;
+        height: 64px;
+      }
+
+      .logo-text-shadow {
+        top: -0.5rem;
+        transform: skew(45deg, 0deg) scaleY(-1) translateX(0.6rem);
+      }
+
+      .cta-container {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .cta-button {
+        width: 100%;
+        max-width: 300px;
+      }
+    }
+  </style>
+
+  <!-- Preconnect to Firebase CDN for faster auth check -->
+  <link rel="preconnect" href="https://www.gstatic.com">
+
+  <!-- Load Google Font for logo -->
+  <link href="https://fonts.googleapis.com/css?family=Princess+Sofia" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <div class="logo-container">
+      <img class="logo-img" src="/logo32.svg" alt="Wall &amp; Shadow logo" />
+      <div class="logo-text-container">
+        <div class="logo-text-main">wall &amp; shadow</div>
+        <div class="logo-text-shadow">wall &amp; shadow</div>
+      </div>
+    </div>
+
+    <div class="cta-container">
+      <a href="/app" class="cta-button cta-button-primary">Get Started</a>
+    </div>
+  </div>
+
+  <a href="https://github.com/KaiEkkrin/hexland" class="version-badge" target="_blank" rel="noopener noreferrer">
+    v1.4.0
+  </a>
+
+  <!-- Minimal auth check - only loads Firebase Auth SDK if already logged in -->
+  <script type="module">
+    // Check if we have a cached auth state before loading Firebase
+    const hasSession = document.cookie.includes('__session');
+
+    // Only check auth if user might be logged in and came directly to root
+    if (hasSession && window.location.pathname === '/') {
+      // Fetch Firebase config from hosting (same as main app)
+      fetch('/__/firebase/init.json?v=2')
+        .then(response => response.json())
+        .then(config => {
+          // Load Firebase SDK and check auth state
+          return Promise.all([
+            import('https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js'),
+            import('https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js')
+          ]).then(([{ initializeApp }, { getAuth, onAuthStateChanged }]) => {
+            const app = initializeApp(config);
+            const auth = getAuth(app);
+
+            // If user is logged in, redirect to app
+            onAuthStateChanged(auth, (user) => {
+              if (user && window.location.pathname === '/') {
+                window.location.href = '/app';
+              }
+            });
+          });
+        })
+        .catch(err => {
+          // Silently fail - user can still navigate manually
+          console.debug('Auth check skipped:', err);
+        });
+    }
+  </script>
+</body>
+</html>
