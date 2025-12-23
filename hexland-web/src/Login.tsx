@@ -1,12 +1,12 @@
 import { useCallback, useContext, useState, useEffect, useMemo } from 'react';
 import './App.css';
 
-import { AnalyticsContext } from './components/AnalyticsContextProvider';
-import { FirebaseContext } from './components/FirebaseContextProvider';
+import { AnalyticsContext } from './components/AnalyticsContext';
+import { FirebaseContext } from './components/FirebaseContext';
 import Navigation from './components/Navigation';
 import * as Policy from './data/policy';
-import { ProfileContext } from './components/ProfileContextProvider';
-import { StatusContext } from './components/StatusContextProvider';
+import { ProfileContext } from './components/ProfileContext';
+import { StatusContext } from './components/StatusContext';
 
 import { IUser } from './services/interfaces';
 

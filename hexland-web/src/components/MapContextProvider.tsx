@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState, useContext, useReducer } from 'react';
+import { useEffect, useState, useContext, useReducer } from 'react';
 
 import { trackChanges } from '../data/changeTracking';
 import { IAdventureIdentified } from '../data/identified';
@@ -8,21 +8,18 @@ import { createDefaultState, MapStateMachine } from '../models/mapStateMachine';
 import { networkStatusTracker } from '../models/networkStatusTracker';
 import { registerMapAsRecent, removeMapFromRecent, watchChangesAndConsolidate } from '../services/extensions';
 
-import { AdventureContext } from './AdventureContextProvider';
-import { AnalyticsContext } from './AnalyticsContextProvider';
+import { AdventureContext } from './AdventureContext';
+import { AnalyticsContext } from './AnalyticsContext';
+import { MapContext } from './MapContext';
 import { IContextProviderProps, IMapContext } from './interfaces';
-import { ProfileContext } from './ProfileContextProvider';
-import { StatusContext } from './StatusContextProvider';
-import { UserContext } from './UserContextProvider';
+import { ProfileContext } from './ProfileContext';
+import { StatusContext } from './StatusContext';
+import { UserContext } from './UserContext';
 
 import { useNavigate, useLocation } from 'react-router-dom';
 import { from, Observable } from 'rxjs';
 import { first, map, scan, share, switchMap } from 'rxjs/operators';
 import { v7 as uuidv7 } from 'uuid';
-
-export const MapContext = createContext<IMapContext>({
-  mapState: createDefaultState()
-});
 
 function MapContextProvider(props: IContextProviderProps) {
   const { analytics, logError, logEvent } = useContext(AnalyticsContext);
@@ -57,25 +54,25 @@ function MapContextProvider(props: IContextProviderProps) {
   // We'll try not to depend on `dataService` in here to avoid repeated calls
   const [mapContext, setMapContext] = useState<IMapContext>({ mapState: createDefaultState() });
   useEffect(() => {
-    console.log('[MapContextProvider] useEffect running, pathname:', location?.pathname);
+    console.debug('[MapContextProvider] useEffect running, pathname:', location?.pathname);
     const matches = /^\/adventure\/([^/]+)\/map\/([^/]+)$/.exec(location?.pathname);
-    console.log('[MapContextProvider] regex matches:', matches ? 'YES' : 'NO');
-    console.log('[MapContextProvider] lcm:', lcm ? 'DEFINED' : 'UNDEFINED');
-    console.log('[MapContextProvider] profile:', profile ? 'DEFINED' : 'UNDEFINED');
-    console.log('[MapContextProvider] spriteManager:', spriteManager ? 'DEFINED' : 'UNDEFINED');
+    console.debug('[MapContextProvider] regex matches:', matches ? 'YES' : 'NO');
+    console.debug('[MapContextProvider] lcm:', lcm ? 'DEFINED' : 'UNDEFINED');
+    console.debug('[MapContextProvider] profile:', profile ? 'DEFINED' : 'UNDEFINED');
+    console.debug('[MapContextProvider] spriteManager:', spriteManager ? 'DEFINED' : 'UNDEFINED');
 
     if (!lcm || !matches || !profile || !spriteManager) {
-      console.log('[MapContextProvider] Early return - missing dependencies');
+      console.debug('[MapContextProvider] Early return - missing dependencies');
       return undefined;
     }
 
     const [adventureId, mapId] = [matches[1], matches[2]];
-    console.log('[MapContextProvider] Setting up map watch for:', adventureId, mapId);
+    console.debug('[MapContextProvider] Setting up map watch for:', adventureId, mapId);
     const mapRef = lcm.dataService.getMapRef(adventureId, mapId);
 
     // How to handle a map load failure.
     function couldNotLoad(message: string) {
-      console.log('[MapContextProvider] couldNotLoad called with message:', message);
+      console.warn('[MapContextProvider] couldNotLoad called with message:', message);
       if (lcm && mapRef) {
         removeMapFromRecent(lcm.dataService, lcm.uid, mapRef.id)
           .catch(e => logError("Error removing map from recent", e));
@@ -86,7 +83,7 @@ function MapContextProvider(props: IContextProviderProps) {
         record: { title: 'Error loading map', message: message }
       });
 
-      console.log('[MapContextProvider] Navigating back to home due to error');
+      console.warn('[MapContextProvider] Navigating back to home due to error');
       navigate('/', { replace: true });
     }
 

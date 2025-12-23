@@ -14,11 +14,6 @@ import { LinkContainer } from 'react-router-bootstrap';
 import useMeasure from 'react-use-measure';
 import ImageCardContent from './ImageCardContent';
 
-// CardStyle is exported for use by other components that need consistent card sizing
-export const CardStyle: React.CSSProperties = {
-  minWidth: '16rem', maxWidth: '24rem'
-};
-
 interface IAdventureCardProps {
   adventure: IAdventureSummary;
   collapsing: boolean;

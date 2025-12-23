@@ -3,19 +3,13 @@ import '../App.css';
 import '../Map.css';
 
 import { IPositionedAnnotation } from '../data/annotation';
+import { ShowAnnotationFlags } from './MapAnnotations.types';
 
 import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import Popover from 'react-bootstrap/Popover';
 
 import { faMapMarker } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-
-export enum ShowAnnotationFlags {
-  None = 0,
-  MapNotes = 1,
-  TokenNotes = 2,
-  All = 3
-}
 
 interface IMapPopoverProps {
   id: string;

@@ -1,9 +1,9 @@
 import { useContext, useEffect, useReducer, useState, useMemo, useCallback } from 'react';
 import './App.css';
 
-import { AdventureContext } from './components/AdventureContextProvider';
+import { AdventureContext } from './components/AdventureContext';
 import AdventureModal from './components/AdventureModal';
-import { AnalyticsContext } from './components/AnalyticsContextProvider';
+import { AnalyticsContext } from './components/AnalyticsContext';
 import BusyElement from './components/BusyElement';
 import CharacterDeletionModal from './components/CharacterDeletionModal';
 import CharacterEditorModal from './components/CharacterEditorModal';
@@ -14,9 +14,9 @@ import ImagePickerModal from './components/ImagePickerModal';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
 import PlayerInfoList from './components/PlayerInfoList';
-import { ProfileContext } from './components/ProfileContextProvider';
+import { ProfileContext } from './components/ProfileContext';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
-import { UserContext } from './components/UserContextProvider';
+import { UserContext } from './components/UserContext';
 
 import { IAdventure, summariseAdventure, IPlayer, IMapSummary } from './data/adventure';
 import { ICharacter, maxCharacters } from './data/character';

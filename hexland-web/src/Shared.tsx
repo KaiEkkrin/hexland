@@ -2,10 +2,10 @@ import { useContext, useEffect, useState } from 'react';
 import './App.css';
 
 import AdventureCollection from './components/AdventureCollection';
-import { AnalyticsContext } from './components/AnalyticsContextProvider';
+import { AnalyticsContext } from './components/AnalyticsContext';
 import Navigation from './components/Navigation';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
-import { UserContext } from './components/UserContextProvider';
+import { UserContext } from './components/UserContext';
 
 import { IPlayer } from './data/adventure';
 

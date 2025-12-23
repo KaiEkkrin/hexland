@@ -2,7 +2,7 @@ import { Fragment, useContext, useMemo } from 'react';
 import '../App.css';
 
 import ExpansionToggle from './ExpansionToggle';
-import { UserContext } from './UserContextProvider';
+import { UserContext } from './UserContext';
 import { IMapSummary } from '../data/adventure';
 import { IAdventureSummary } from '../data/profile';
 

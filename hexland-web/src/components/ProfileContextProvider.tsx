@@ -1,14 +1,13 @@
-import { createContext, useCallback, useEffect, useMemo, useState, useContext } from 'react';
+import { useCallback, useEffect, useMemo, useState, useContext } from 'react';
 
 import { IProfile } from '../data/profile';
 
-import { AnalyticsContext } from './AnalyticsContextProvider';
-import { UserContext } from './UserContextProvider';
-import { IContextProviderProps, IProfileContext } from './interfaces';
+import { AnalyticsContext } from './AnalyticsContext';
+import { ProfileContext } from './ProfileContext';
+import { UserContext } from './UserContext';
+import { IContextProviderProps } from './interfaces';
 import { ensureProfile } from '../services/extensions';
 import { IDataReference } from '../services/interfaces';
-
-export const ProfileContext = createContext<IProfileContext>({});
 
 // This provides the profile context, and can be wrapped around individual components
 // for unit testing.

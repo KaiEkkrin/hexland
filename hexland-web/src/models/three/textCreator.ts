@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-// Font moved to examples/jsm in Three.js 0.133+
-import { Font, FontLoader } from 'three/examples/jsm/loaders/FontLoader';
+// Font moved to examples/jsm in Three.js 0.133+, now using addons path for better type support
+import { Font, FontLoader } from 'three/addons/loaders/FontLoader.js';
 
 export class TextCreator {
   private _font: Font | undefined;

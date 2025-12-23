@@ -6,8 +6,8 @@ import ChangeList from './components/ChangeList';
 import Introduction from './components/Introduction';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
-import { ProfileContext } from './components/ProfileContextProvider';
-import { UserContext } from './components/UserContextProvider';
+import { ProfileContext } from './components/ProfileContext';
+import { UserContext } from './components/UserContext';
 
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';

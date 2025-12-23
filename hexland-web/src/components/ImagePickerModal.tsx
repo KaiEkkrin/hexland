@@ -9,10 +9,10 @@ import {
 } from 'react';
 import * as React from 'react';
 
-import { AnalyticsContext } from './AnalyticsContextProvider';
+import { AnalyticsContext } from './AnalyticsContext';
 import ImageCollectionItem from './ImageCollectionItem';
-import { ProfileContext } from './ProfileContextProvider';
-import { UserContext } from './UserContextProvider';
+import { ProfileContext } from './ProfileContext';
+import { UserContext } from './UserContext';
 
 import { IImage } from '../data/image';
 import { getUserPolicy } from '../data/policy';

@@ -1,12 +1,12 @@
 import { useCallback, useContext, useMemo, useState } from 'react';
 import '../App.css';
 
-import { AnalyticsContext } from './AnalyticsContextProvider';
+import { AnalyticsContext } from './AnalyticsContext';
 import MapCards from './MapCards';
 import MapCloneModal from './MapCloneModal';
 import MapEditorModal from './MapEditorModal';
-import { StatusContext } from './StatusContextProvider';
-import { UserContext } from './UserContextProvider';
+import { StatusContext } from './StatusContext';
+import { UserContext } from './UserContext';
 
 import { IMapSummary } from '../data/adventure';
 import { IMap } from '../data/map';

@@ -1,11 +1,11 @@
 import { Fragment, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import { AnalyticsContext } from './AnalyticsContextProvider';
+import { AnalyticsContext } from './AnalyticsContext';
 import BusyElement from './BusyElement';
 import { ImagePickerForm } from './ImagePickerModal';
-import { ProfileContext } from './ProfileContextProvider';
+import { ProfileContext } from './ProfileContext';
 import SpriteImage from './SpriteImage';
-import { UserContext } from './UserContextProvider';
+import { UserContext } from './UserContext';
 
 import { IImage } from '../data/image';
 import { getUserPolicy } from '../data/policy';

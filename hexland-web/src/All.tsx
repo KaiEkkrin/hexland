@@ -2,11 +2,11 @@ import { useContext, useState, useEffect, useMemo } from 'react';
 import './App.css';
 
 import AdventureCollection from './components/AdventureCollection';
-import { AnalyticsContext } from './components/AnalyticsContextProvider';
+import { AnalyticsContext } from './components/AnalyticsContext';
 import Navigation from './components/Navigation';
-import { ProfileContext } from './components/ProfileContextProvider';
+import { ProfileContext } from './components/ProfileContext';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
-import { UserContext } from './components/UserContextProvider';
+import { UserContext } from './components/UserContext';
 
 import { IAdventure, summariseAdventure } from './data/adventure';
 import { IIdentified } from './data/identified';

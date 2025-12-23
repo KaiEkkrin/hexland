@@ -1,6 +1,6 @@
 import { useContext, useEffect } from 'react';
 import * as React from 'react';
-import { UserContext } from './UserContextProvider';
+import { UserContext } from './UserContext';
 import { useNavigate } from 'react-router-dom';
 
 // This is a simple helper component that requires you to be logged in

@@ -1,9 +1,10 @@
-import { createContext, useEffect, useMemo, useState, useContext, useReducer } from 'react';
+import { useEffect, useMemo, useState, useContext, useReducer } from 'react';
 
-import { UserContext } from './UserContextProvider';
-import { AnalyticsContext } from './AnalyticsContextProvider';
+import { UserContext } from './UserContext';
+import { AnalyticsContext } from './AnalyticsContext';
+import { AdventureContext } from './AdventureContext';
 import { IAdventureContext, IContextProviderProps } from './interfaces';
-import { StatusContext } from './StatusContextProvider';
+import { StatusContext } from './StatusContext';
 
 import { IAdventure, IPlayer } from '../data/adventure';
 import { IIdentified } from '../data/identified';
@@ -15,13 +16,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Observable } from 'rxjs';
 import { shareReplay } from 'rxjs/operators';
 import { v7 as uuidv7 } from 'uuid';
-
-// Providing an adventure context like this lets us maintain the same watchers
-// while the user navigates between maps in the adventure, etc.
-
-export const AdventureContext = createContext<IAdventureContext>({
-  players: [],
-});
 
 function AdventureContextProvider(props: IContextProviderProps) {
   const { dataService, resolveImageUrl, user } = useContext(UserContext);

@@ -1,16 +1,9 @@
-import { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
+import { useContext, useEffect, useState, useMemo, useCallback } from 'react';
 
-import { FirebaseContext } from './FirebaseContextProvider';
-import { IAnalyticsContext, IAnalyticsProps, IContextProviderProps } from './interfaces';
+import { FirebaseContext } from './FirebaseContext';
+import { AnalyticsContext } from './AnalyticsContext';
+import { IAnalyticsProps, IContextProviderProps } from './interfaces';
 import { IAnalytics } from '../services/interfaces';
-
-export const AnalyticsContext = createContext<IAnalyticsContext>({
-  analytics: undefined,
-  enabled: undefined,
-  setEnabled: (_enabled: boolean | undefined) => {},
-  logError: (_message: string, _e: unknown, _fatal?: boolean | undefined) => {},
-  logEvent: (_event: string, _parameters: unknown) => {}
-});
 
 const enabledKey = "analyticsEnabled";
 

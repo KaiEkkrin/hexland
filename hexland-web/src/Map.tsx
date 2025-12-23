@@ -3,27 +3,29 @@ import * as React from 'react';
 import './App.css';
 import './Map.css';
 
-import { AdventureContext } from './components/AdventureContextProvider';
-import { AnalyticsContext } from './components/AnalyticsContextProvider';
+import { AdventureContext } from './components/AdventureContext';
+import { AnalyticsContext } from './components/AnalyticsContext';
 import CharacterTokenEditorModal from './components/CharacterTokenEditorModal';
 import { addToast } from './components/extensions';
 import ImageDeletionModal from './components/ImageDeletionModal';
-import { MapContext } from './components/MapContextProvider';
+import { MapContext } from './components/MapContext';
 import MapContextMenu from './components/MapContextMenu';
-import MapControls, { MapColourVisualisationMode } from './components/MapControls';
-import MapAnnotations, { ShowAnnotationFlags } from './components/MapAnnotations';
+import MapControls from './components/MapControls';
+import { MapColourVisualisationMode } from './components/MapControls.types';
+import MapAnnotations from './components/MapAnnotations';
+import { ShowAnnotationFlags } from './components/MapAnnotations.types';
 import MapEditorModal from './components/MapEditorModal';
 import MapImageEditorModal from './components/MapImageEditorModal';
 import MapInfo from './components/MapInfo';
 import Navigation from './components/Navigation';
 import NoteEditorModal from './components/NoteEditorModal';
-import { ProfileContext } from './components/ProfileContextProvider';
+import { ProfileContext } from './components/ProfileContext';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
-import { StatusContext } from './components/StatusContextProvider';
+import { StatusContext } from './components/StatusContext';
 import Throbber from './components/Throbber';
 import TokenDeletionModal from './components/TokenDeletionModal';
 import TokenEditorModal from './components/TokenEditorModal';
-import { UserContext } from './components/UserContextProvider';
+import { UserContext } from './components/UserContext';
 
 import { ITokenProperties } from './data/feature';
 import { IImage, IMapImageProperties } from './data/image';
@@ -65,16 +67,16 @@ function Map() {
   // Create a suitable title
   const title = useMemo(() => {
     // DEBUG: Log which values are undefined
-    console.log('[Map.tsx] title useMemo - map:', map !== undefined ? 'DEFINED' : 'UNDEFINED');
-    console.log('[Map.tsx] title useMemo - mapState:', mapState !== undefined ? 'DEFINED' : 'UNDEFINED');
-    console.log('[Map.tsx] title useMemo - profile:', profile !== undefined ? 'DEFINED' : 'UNDEFINED');
+    console.debug('[Map.tsx] title useMemo - map:', map !== undefined ? 'DEFINED' : 'UNDEFINED');
+    console.debug('[Map.tsx] title useMemo - mapState:', mapState !== undefined ? 'DEFINED' : 'UNDEFINED');
+    console.debug('[Map.tsx] title useMemo - profile:', profile !== undefined ? 'DEFINED' : 'UNDEFINED');
 
     if (map === undefined || mapState === undefined || profile === undefined) {
-      console.log('[Map.tsx] title useMemo - returning undefined (missing dependencies)');
+      console.debug('[Map.tsx] title useMemo - returning undefined (missing dependencies)');
       return undefined;
     }
 
-    console.log('[Map.tsx] title useMemo - rendering breadcrumb for map:', map.record.name);
+    console.debug('[Map.tsx] title useMemo - rendering breadcrumb for map:', map.record.name);
     const adventureLink = "/adventure/" + map.adventureId;
     const mapLink = `/adventure/${map.adventureId}/map/${map.id}`;
     const objectsString = (userPolicy === undefined || mapState.objectCount === undefined) ?

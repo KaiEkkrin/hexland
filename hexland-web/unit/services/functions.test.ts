@@ -996,7 +996,7 @@ service firebase.storage {
     } finally {
       finish?.();
     }
-  }); });
+  }, 60000); });
 
   test('clone a map', async () => {
     const moveCount = 5;

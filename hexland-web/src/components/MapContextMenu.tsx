@@ -1,7 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import * as React from 'react';
 
-import { EditMode } from './MapControls'; // TODO remove it from there entirely and prune some?
+import { EditMode } from './MapControls.types'; // TODO remove it from there entirely and prune some?
 import { IAnnotation } from '../data/annotation';
 import { ITokenProperties } from '../data/feature';
 import { IMapImageProperties } from '../data/image';
@@ -10,7 +10,7 @@ import Card from 'react-bootstrap/Card';
 import ListGroup from 'react-bootstrap/ListGroup';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faMapMarker, faSquare, faDrawPolygon, faVectorSquare, faArrowsAltH, faImage, faUser } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faMapMarker, faSquare, faDrawPolygon, faArrowsAltH, faImage, faUser, faBezierCurve } from '@fortawesome/free-solid-svg-icons';
 
 interface IMapContextMenuItemProps {
   visible?: boolean | undefined;
@@ -186,10 +186,10 @@ function MapContextMenu(
           <FontAwesomeIcon className="me-1" icon={faSquare} color="white" />Paint <u>a</u>rea
         </MapContextMenuItem>
         <MapContextMenuItem onClick={setWallMode}>
-          <FontAwesomeIcon className="me-1" icon={faDrawPolygon} color="white" />Paint <u>w</u>all
+          <FontAwesomeIcon className="me-1" icon={faBezierCurve} color="white" />Paint <u>w</u>all
         </MapContextMenuItem>
         <MapContextMenuItem onClick={setRoomMode}>
-          <FontAwesomeIcon className="me-1" icon={faVectorSquare} color="white" />Paint <u>r</u>oom
+          <FontAwesomeIcon className="me-1" icon={faDrawPolygon} color="white" />Paint <u>r</u>oom
         </MapContextMenuItem>
       </ListGroup>
     </Card>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, useContext, useMemo } from 'react';
 
-import { AnalyticsContext } from './AnalyticsContextProvider';
-import { UserContext } from './UserContextProvider';
+import { AnalyticsContext } from './AnalyticsContext';
+import { UserContext } from './UserContext';
 
 import { IMapSummary } from '../data/adventure';
 import { IAdventureSummary } from '../data/profile';
