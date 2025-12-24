@@ -30,32 +30,47 @@ function LoginFailedMessage(props: ILoginMessageProps) {
 
 interface INewUserFormProps {
   shown: boolean;
+  initialTab: "new" | "existing";
   handleClose: () => void;
   handleSignIn: (email: string, password: string) => void;
   handleSignUp: (displayName: string, email: string, password: string) => void;
+  handleGoogleSignUp: (displayName: string) => void;
+  handleGoogleSignIn: () => void;
 }
 
-function EmailPasswordModal({ shown, handleClose, handleSignIn, handleSignUp }: INewUserFormProps) {
+function EmailPasswordModal({ shown, initialTab, handleClose, handleSignIn, handleSignUp, handleGoogleSignUp, handleGoogleSignIn }: INewUserFormProps) {
   const { auth } = useContext(FirebaseContext);
   const { logError } = useContext(AnalyticsContext);
 
-  const [key, setKey] = useState("new");
+  const [key, setKey] = useState<"new" | "existing">("new");
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordResetTarget, setPasswordResetTarget] = useState<string | undefined>(undefined);
+  const [authMethod, setAuthMethod] = useState<'email' | 'google'>('email');
 
-  // reset the password fields when the shown status changes
+  // reset the password fields, auth method, and tab when the shown status changes
   useEffect(() => {
     if (shown === true) {
+      setKey(initialTab);
       setPassword("");
       setConfirmPassword("");
       setPasswordResetTarget(undefined);
+      setAuthMethod('email');
     }
-  }, [shown]);
+  }, [shown, initialTab]);
 
   const signInDisabled = useMemo(() => {
+    // For Google auth, only require display name for new users
+    if (authMethod === 'google') {
+      if (key === 'new') {
+        return displayName.length === 0;
+      }
+      return false; // Existing users with Google don't need anything pre-filled
+    }
+
+    // For email/password auth, validate email and password
     if (!Policy.emailIsValid(email) || !Policy.passwordIsValid(password)) {
       return true;
     }
@@ -65,17 +80,25 @@ function EmailPasswordModal({ shown, handleClose, handleSignIn, handleSignUp }: 
     }
 
     return false;
-  }, [displayName, email, key, password, confirmPassword]);
+  }, [authMethod, displayName, email, key, password, confirmPassword]);
 
   const signInText = useMemo(() => key === 'new' ? 'Sign up' : 'Sign in', [key]);
 
   const handleSave = useCallback(() => {
-    if (key === 'new') {
-      handleSignUp(displayName, email, password);
+    if (authMethod === 'google') {
+      if (key === 'new') {
+        handleGoogleSignUp(displayName);
+      } else {
+        handleGoogleSignIn();
+      }
     } else {
-      handleSignIn(email, password);
+      if (key === 'new') {
+        handleSignUp(displayName, email, password);
+      } else {
+        handleSignIn(email, password);
+      }
     }
-  }, [displayName, email, key, password, handleSignIn, handleSignUp]);
+  }, [authMethod, displayName, email, key, password, handleSignIn, handleSignUp, handleGoogleSignUp, handleGoogleSignIn]);
 
   // The password reset helpers
   const handleResetPassword = useCallback(() => {
@@ -112,10 +135,10 @@ function EmailPasswordModal({ shown, handleClose, handleSignIn, handleSignUp }: 
   return (
     <Modal show={shown} onHide={handleClose}>
       <Modal.Header closeButton>
-        <Modal.Title>Sign in with an email address and password</Modal.Title>
+        <Modal.Title>Sign in to Wall &amp; Shadow</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        <Tabs activeKey={key} onSelect={k => setKey(k ?? "new")} id="signIn">
+        <Tabs activeKey={key} onSelect={k => setKey((k as "new" | "existing") ?? "new")} id="signIn">
           <Tab eventKey="new" title="New user">
             <Form>
               <Form.Group>
@@ -127,41 +150,87 @@ function EmailPasswordModal({ shown, handleClose, handleSignIn, handleSignUp }: 
                 </Form.Text>
               </Form.Group>
               <Form.Group>
-                <Form.Label htmlFor="newEmailInput">Email address</Form.Label>
-                <Form.Control id="newEmailInput" type="text" value={email}
-                  onChange={e => setEmail(e.target.value)} />
-                <Form.Text className="text-muted">
-                  Other users of Wall &amp; Shadow will not see your email address.
-                </Form.Text>
+                <Form.Label>Authentication method</Form.Label>
+                <Form.Check
+                  type="radio"
+                  id="newUserEmailRadio"
+                  name="newUserAuthMethod"
+                  label="Email address and password"
+                  checked={authMethod === 'email'}
+                  onChange={() => setAuthMethod('email')}
+                />
+                <Form.Check
+                  type="radio"
+                  id="newUserGoogleRadio"
+                  name="newUserAuthMethod"
+                  label="Google account"
+                  checked={authMethod === 'google'}
+                  onChange={() => setAuthMethod('google')}
+                />
               </Form.Group>
-              <Form.Group>
-                <Form.Label htmlFor="newPasswordInput">Password</Form.Label>
-                <Form.Control id="newPasswordInput" type="password" value={password}
-                  onChange={e => setPassword(e.target.value)} />
-                <Form.Text className="text-muted">
-                  Your password must be at least 8 characters long and contain at least one letter and one number.
-                </Form.Text>
-              </Form.Group>
-              <Form.Group>
-                <Form.Label htmlFor="confirmPasswordInput">Confirm password</Form.Label>
-                <Form.Control id="confirmPasswordInput" type="password" value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)} />
-              </Form.Group>
+              {authMethod === 'email' && (
+                <>
+                  <Form.Group>
+                    <Form.Label htmlFor="newEmailInput">Email address</Form.Label>
+                    <Form.Control id="newEmailInput" type="text" value={email}
+                      onChange={e => setEmail(e.target.value)} />
+                    <Form.Text className="text-muted">
+                      Other users of Wall &amp; Shadow will not see your email address.
+                    </Form.Text>
+                  </Form.Group>
+                  <Form.Group>
+                    <Form.Label htmlFor="newPasswordInput">Password</Form.Label>
+                    <Form.Control id="newPasswordInput" type="password" value={password}
+                      onChange={e => setPassword(e.target.value)} />
+                    <Form.Text className="text-muted">
+                      Your password must be at least 8 characters long and contain at least one letter and one number.
+                    </Form.Text>
+                  </Form.Group>
+                  <Form.Group>
+                    <Form.Label htmlFor="confirmPasswordInput">Confirm password</Form.Label>
+                    <Form.Control id="confirmPasswordInput" type="password" value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)} />
+                  </Form.Group>
+                </>
+              )}
             </Form>
           </Tab>
           <Tab eventKey="existing" title="Existing user">
             <Form>
               <Form.Group>
-                <Form.Label htmlFor="emailInput">Email address</Form.Label>
-                <Form.Control id="emailInput" type="text" value={email}
-                  onChange={e => setEmail(e.target.value)} />
+                <Form.Label>Authentication method</Form.Label>
+                <Form.Check
+                  type="radio"
+                  id="existingUserEmailRadio"
+                  name="existingUserAuthMethod"
+                  label="Email address and password"
+                  checked={authMethod === 'email'}
+                  onChange={() => setAuthMethod('email')}
+                />
+                <Form.Check
+                  type="radio"
+                  id="existingUserGoogleRadio"
+                  name="existingUserAuthMethod"
+                  label="Google account"
+                  checked={authMethod === 'google'}
+                  onChange={() => setAuthMethod('google')}
+                />
               </Form.Group>
-              <Form.Group>
-                <Form.Label htmlFor="passwordInput">Password</Form.Label>
-                <Form.Control id="passwordInput" type="password" value={password}
-                  onChange={e => setPassword(e.target.value)} />
-                {passwordResetComponent}
-              </Form.Group>
+              {authMethod === 'email' && (
+                <>
+                  <Form.Group>
+                    <Form.Label htmlFor="emailInput">Email address</Form.Label>
+                    <Form.Control id="emailInput" type="text" value={email}
+                      onChange={e => setEmail(e.target.value)} />
+                  </Form.Group>
+                  <Form.Group>
+                    <Form.Label htmlFor="passwordInput">Password</Form.Label>
+                    <Form.Control id="passwordInput" type="password" value={password}
+                      onChange={e => setPassword(e.target.value)} />
+                    {passwordResetComponent}
+                  </Form.Group>
+                </>
+              )}
             </Form>
           </Tab>
         </Tabs>
@@ -182,6 +251,7 @@ function Login() {
   const navigate = useNavigate();
 
   const [showEmailForm, setShowEmailForm] = useState(false);
+  const [initialTab, setInitialTab] = useState<"new" | "existing">("new");
   const [loginFailedVisible, setLoginFailedVisible] = useState(false);
   const [loginFailedText, setLoginFailedText] = useState("");
 
@@ -250,11 +320,26 @@ function Login() {
       .catch(handleLoginError);
   }, [auth, finishLogin, handleLoginError, handleLoginResult, setLoginFailedVisible, setShowEmailForm]);
 
-  const handleEmailLoginClick = useCallback(() => {
-    setShowEmailForm(true);
-  }, [setShowEmailForm]);
+  const handleGoogleSignUp = useCallback((displayName: string) => {
+    setShowEmailForm(false);
+    setLoginFailedVisible(false);
+    if (googleAuthProvider !== undefined) {
+      auth?.signInWithPopup(googleAuthProvider)
+        .then(async (user) => {
+          // Update the user's display name if they're a new user
+          if (user && displayName) {
+            await user.updateProfile({ displayName });
+          }
+          return user;
+        })
+        .then(handleLoginResult)
+        .then(finishLogin)
+        .catch(handleLoginError);
+    }
+  }, [auth, googleAuthProvider, finishLogin, handleLoginError, handleLoginResult, setLoginFailedVisible, setShowEmailForm]);
 
-  const handleGoogleLoginClick = useCallback(() => {
+  const handleGoogleSignIn = useCallback(() => {
+    setShowEmailForm(false);
     setLoginFailedVisible(false);
     if (googleAuthProvider !== undefined) {
       auth?.signInWithPopup(googleAuthProvider)
@@ -262,7 +347,17 @@ function Login() {
         .then(finishLogin)
         .catch(handleLoginError);
     }
-  }, [finishLogin, auth, googleAuthProvider, handleLoginError, handleLoginResult, setLoginFailedVisible]);
+  }, [finishLogin, auth, googleAuthProvider, handleLoginError, handleLoginResult, setLoginFailedVisible, setShowEmailForm]);
+
+  const handleSignUpClick = useCallback(() => {
+    setInitialTab("new");
+    setShowEmailForm(true);
+  }, []);
+
+  const handleLoginClick = useCallback(() => {
+    setInitialTab("existing");
+    setShowEmailForm(true);
+  }, []);
 
   return (
     <div>
@@ -271,17 +366,15 @@ function Login() {
         <div className="App-login-text">
           Sign in to get started with Wall &amp; Shadow.
         </div>
-        <Button onClick={handleEmailLoginClick}>Sign in with an email address and password</Button>
-        <Button className="mt-2" onClick={handleGoogleLoginClick}>Sign in with Google</Button>
+        <Button onClick={handleSignUpClick}>Sign up new user</Button>
+        <Button className="mt-2" onClick={handleLoginClick}>Login existing user</Button>
         <LoginFailedMessage isVisible={loginFailedVisible} text={loginFailedText} />
-        <div className="App-login-text">
-          Your account is used to create a unique player identifier for you.
-          After signing in, you can click on your name button at the top right to change the name shown to other players.
-        </div>
       </header>
-      <EmailPasswordModal shown={showEmailForm} handleClose={handleEmailFormClose}
+      <EmailPasswordModal shown={showEmailForm} initialTab={initialTab} handleClose={handleEmailFormClose}
         handleSignIn={handleEmailFormSignIn}
-        handleSignUp={handleEmailFormSignUp} />
+        handleSignUp={handleEmailFormSignUp}
+        handleGoogleSignUp={handleGoogleSignUp}
+        handleGoogleSignIn={handleGoogleSignIn} />
     </div>
   );
 }

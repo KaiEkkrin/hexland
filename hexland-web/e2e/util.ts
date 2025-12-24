@@ -101,13 +101,19 @@ export async function signIn(page: Page, user: User, deviceName: string) {
   // Go through the login page
   await page.click('text="Sign up/Login"');
   await expect(page.locator('.App-login-text').first()).toBeVisible();
-  await page.click('.App-header .btn-primary');
-  await page.click('[id=signIn-tab-existing]');
 
-  // Fill in the form
+  // Click the "Login existing user" button and wait for it to be clickable
+  const loginButton = page.locator('button >> text="Login existing user"');
+  await loginButton.waitFor({ state: 'visible' });
+  await loginButton.click();
+
+  // Wait for the modal to open and the form fields to be visible
+  await expect(page.locator('[id=emailInput]')).toBeVisible();
+
+  // Fill in the form (email/password radio is selected by default)
   await page.fill('[id=emailInput]', user.email);
   await page.fill('[id=passwordInput]', user.password);
-  await page.click('button >> text=/^Sign in$/'); // regexp to avoid matching the "Sign in with..." buttons below the modal on the login page
+  await page.click('button >> text=/^Sign in$/');
 
   // Wait for the home page to load (shows Latest maps/adventures when logged in)
   await expect(page.locator('h5 >> text="Latest maps"')).toBeVisible();
@@ -119,8 +125,14 @@ export async function signUp(page: Page, deviceName: string, prefix?: string | u
   // Go through the login page
   await page.click('text="Sign up/Login"');
   await expect(page.locator('.App-login-text').first()).toBeVisible();
-  await page.click('.App-header .btn-primary');
-  await expect(page.locator('.modal .tab-pane').first()).toBeVisible();
+
+  // Click the "Sign up new user" button and wait for it to be clickable
+  const signUpButton = page.locator('button >> text="Sign up new user"');
+  await signUpButton.waitFor({ state: 'visible' });
+  await signUpButton.click();
+
+  // Wait for the modal to open and the form fields to be visible
+  await expect(page.locator('[id=nameInput]')).toBeVisible();
 
   // Fill in the form.  Take care to create unique email addresses because
   // we may be re-using the authentication emulator instance from another run
@@ -132,6 +144,7 @@ export async function signUp(page: Page, deviceName: string, prefix?: string | u
     password: `${prefix ?? "Test"}_password${n}`
   };
   await page.fill('[id=nameInput]', user.displayName);
+  // Email/password radio is selected by default, so fill in email/password fields
   await page.fill('[id=newEmailInput]', user.email);
   await page.fill('[id=newPasswordInput]', user.password);
   await page.fill('[id=confirmPasswordInput]', user.password);
