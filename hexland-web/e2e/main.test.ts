@@ -47,6 +47,7 @@ test.describe('Basic tests', () => {
   test('redirect to login when not authenticated', async ({ page }) => {
     // Verify that accessing home page without authentication redirects to /login
     await expect(page).toHaveURL(/\/login$/);
+    // Verify that the login page content is visible
     await expect(page.locator('.App-login-text').first()).toBeVisible();
   });
 
