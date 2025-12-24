@@ -1,6 +1,6 @@
 import './App.css';
 
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 
 import AdventureContextProvider from './components/AdventureContextProvider';
 import { AnalyticsContextProvider } from './components/AnalyticsContextProvider';
@@ -18,6 +18,7 @@ import Throbber from './components/Throbber';
 import ToastCollection from './components/ToastCollection';
 import UserContextProvider from './components/UserContextProvider';
 import VersionBadge from './components/VersionBadge';
+import { getEnvironmentColors } from './utils/environment';
 
 import { Route, Routes } from 'react-router-dom';
 
@@ -30,6 +31,13 @@ const MapPage = lazy(() => import('./Map'));
 const Shared = lazy(() => import('./Shared'));
 
 function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
+  // Set environment-specific CSS custom properties on mount
+  useEffect(() => {
+    const colors = getEnvironmentColors();
+    document.documentElement.style.setProperty('--env-background', colors.background);
+    document.documentElement.style.setProperty('--env-navbar-bg', colors.navbar);
+  }, []);
+
   return (
     <div className="App">
       <FirebaseContextProvider {...props}>

@@ -135,6 +135,8 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Build web application
         working-directory: hexland-web
+        env:
+          VITE_DEPLOY_ENV: ${{ inputs.environment }}
         run: yarn build
 
       # -----------------------------------------------------------------------
@@ -178,11 +180,20 @@ jobs:
       # The GOOGLE_APPLICATION_CREDENTIALS environment variable tells Firebase
       # CLI where to find the service account credentials.
       #
+      # Environment-specific configuration:
+      #   - Test environment uses firebase.test.json (includes X-Robots-Tag headers)
+      #   - Production uses firebase.json (default, no X-Robots-Tag)
+      #
       - name: Deploy to Firebase
         working-directory: hexland-web
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/hexland-web/firebase-service-account.json
-        run: firebase deploy --project ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          if [ "${{ inputs.environment }}" = "test" ]; then
+            firebase deploy --config firebase.test.json --project ${{ secrets.FIREBASE_PROJECT_ID }}
+          else
+            firebase deploy --project ${{ secrets.FIREBASE_PROJECT_ID }}
+          fi
 
       # -----------------------------------------------------------------------
       # Cleanup
