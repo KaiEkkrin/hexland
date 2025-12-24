@@ -75,7 +75,7 @@ export const isDevelopment = (): boolean => getEnvironment() === 'development';
  * Returns colors for navbar and background based on current environment:
  * - Production: Dark grey (current design)
  * - Test: Navy blue (distinctive for staging)
- * - Development: Forest green (distinctive for local dev)
+ * - Development: Dark green (distinctive for local dev)
  */
 export const getEnvironmentColors = () => {
   const env = getEnvironment();
@@ -86,12 +86,12 @@ export const getEnvironmentColors = () => {
       background: '#282c34',  // Dark grey (slightly lighter than navbar)
     },
     test: {
-      navbar: '#001f3e',      // Navy blue (matched perceptual brightness)
-      background: '#001f3e',  // Navy blue (matched perceptual brightness)
+      navbar: '#001f3e',      // Navy blue
+      background: '#001f3e',  // Navy blue
     },
     development: {
-      navbar: '#062706',      // Very dark forest green (halfway to black)
-      background: '#062706',  // Very dark forest green (halfway to black)
+      navbar: '#062706',      // Dark green
+      background: '#062706',  // Dark green
     },
   };
 
