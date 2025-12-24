@@ -1,0 +1,12 @@
+# robots.txt for Test/Staging Environment
+# Blocks all search engines from crawling and indexing
+
+# This is a test/staging environment and should NOT appear in search results
+User-agent: *
+Disallow: /
+
+# Note: This file works in conjunction with:
+# 1. X-Robots-Tag HTTP header (set in firebase.test.json)
+# 2. <meta name="robots" content="noindex, nofollow"> tags in HTML
+#
+# Defense in depth: Multiple layers ensure test environment is never indexed

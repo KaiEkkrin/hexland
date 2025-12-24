@@ -1,9 +1,7 @@
-import { useContext, useMemo, useReducer } from 'react';
+import { useContext, useEffect, useMemo } from 'react';
 import './App.css';
 
 import AdventureCollection from './components/AdventureCollection';
-import ChangeList from './components/ChangeList';
-import Introduction from './components/Introduction';
 import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
 import { ProfileContext } from './components/ProfileContext';
@@ -12,10 +10,21 @@ import { UserContext } from './components/UserContext';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
+import { useNavigate } from 'react-router-dom';
 
-function LatestColumn() {
+function Home() {
   const { user } = useContext(UserContext);
   const { profile } = useContext(ProfileContext);
+  const navigate = useNavigate();
+
+  // Redirect to login if not logged in
+  // Use replace: true to avoid creating a history entry, so the back button
+  // from the login page goes to the previous page instead of looping back to login
+  useEffect(() => {
+    if (user === null) {
+      navigate('/login', { replace: true });
+    }
+  }, [user, navigate]);
 
   const myAdventures = useMemo(
     () => profile?.adventures?.filter(a => a.owner === user?.uid) ?? [],
@@ -28,65 +37,27 @@ function LatestColumn() {
 
   return (
     <div>
-      <h5 className="mt-4">Latest maps</h5>
-      <MapCollection
-        adventures={myAdventures}
-        maps={latestMaps}
-        showNewMap={showNewMap}
-        />
-      <h5 className="mt-4">Latest adventures</h5>
-      <AdventureCollection
-        uid={user?.uid}
-        adventures={adventures} showNewAdventure={true} />
-    </div>
-  );
-}
-
-function Home() {
-  const { user } = useContext(UserContext);
-
-  // We keep the change list state here
-  const [changeCount, toggleChangeCount] = useReducer(
-    (state: number | undefined, _action: void) => state === undefined ? 1 : undefined,
-    1
-  );
-
-  // If we're logged in, we show both the introduction and our latest maps and adventures
-  // in side-by-side columns.  Otherwise, we show just the introduction.
-  const columns = useMemo(() => {
-    const columnArray = [
-      <Col key="intro">
-        <ChangeList count={changeCount} toggleCount={() => toggleChangeCount()} />
-        <Introduction />
-      </Col>
-    ];
-
-    if (user) {
-      columnArray.splice(0, 0,
-        <Col key="latest" xl={{ order: 'last' }}
-          lg={{ order: 'last', span: 4 }}
-          md={{ order: 'first', span: 12 }}
-          sm={{ order: 'first', span: 12 }}
-          xs={{ order: 'first', span: 12 }}>
-          <LatestColumn />
-        </Col >
-      );
-    }
-
-    return columnArray;
-  }, [changeCount, toggleChangeCount, user]);
-
-  // Changing the container fluidity lets us take up more of the screen when we have two
-  // TODO On narrower screens, make the latest column collapse into a side bar instead,
-  // with a pull-out to expand it to the whole window and disappear the introduction?
-  const containerFluid = useMemo(() => user ? true : undefined, [user]);
-
-  return (
-    <div>
       <Navigation />
-      <Container fluid={containerFluid}>
+      <Container>
         <Row>
-          {columns}
+          <Col>
+            <h5 className="mt-4">Latest maps</h5>
+            <MapCollection
+              adventures={myAdventures}
+              maps={latestMaps}
+              showNewMap={showNewMap}
+            />
+          </Col>
+        </Row>
+        <Row>
+          <Col>
+            <h5 className="mt-4">Latest adventures</h5>
+            <AdventureCollection
+              uid={user?.uid}
+              adventures={adventures}
+              showNewAdventure={true}
+            />
+          </Col>
         </Row>
       </Container>
     </div>

@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [master]
 
+# Least-privilege permissions: only read access to repository contents
+# See: https://docs.github.com/en/actions/security-guides/automatic-token-authentication
+permissions:
+  contents: read
+
 env:
   # Pin firebase-tools version for reproducible builds
   # Update this when upgrading Firebase CLI in the dev environment

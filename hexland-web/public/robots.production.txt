@@ -1,0 +1,20 @@
+# robots.txt for Production Environment
+# Allows all search engines to crawl and index the public site
+
+User-agent: *
+Allow: /
+
+# Allow crawling of main landing page
+Allow: /index.html
+Allow: /landing-index.html
+
+# Block private app routes (these also have noindex meta tags)
+Disallow: /app
+Disallow: /adventure/
+Disallow: /map/
+Disallow: /character/
+Disallow: /invite/
+Disallow: /profile/
+
+# Sitemap (add when available)
+# Sitemap: https://wallandshadow.io/sitemap.xml

@@ -39,7 +39,8 @@ The easiest way to get started is with the VS Code dev container:
    # Terminal 2: Start Vite dev server
    yarn dev:vite
    ```
-7. Open http://localhost:5000 in your browser
+7. Open http://localhost:3400 in your browser (Firebase Hosting emulator)
+   - For development with hot reload, use http://localhost:5000 (Vite dev server)
 
 Running emulators and dev server separately is recommended - you can restart the app without restarting the emulators.
 

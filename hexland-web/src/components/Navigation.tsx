@@ -111,7 +111,7 @@ function NavPageLinks() {
 
   return (
     <Nav className="me-auto">
-      <LinkContainer to="/">
+      <LinkContainer to="/app">
         <Nav.Link>Home</Nav.Link>
       </LinkContainer>
       {!loggedInItemsHidden && (
@@ -473,8 +473,14 @@ function Navigation(props: INavigationProps) {
 
   return (
     <div ref={measureRef}>
-      <Navbar bg="dark" expand="lg" sticky="top" onToggle={setExpanded}>
-        <LinkContainer to="/">
+      <Navbar
+        expand="lg"
+        sticky="top"
+        onToggle={setExpanded}
+        variant="dark"
+        style={{ backgroundColor: 'var(--env-navbar-bg)' }}
+      >
+        <LinkContainer to="/app">
           <Navbar.Brand className="Navigation-brand me-3">
             <img src="/logo32.svg" alt="logo" height={32} className="me-2" />
             <div className="Navigation-brand-text">
@@ -487,14 +493,16 @@ function Navigation(props: INavigationProps) {
             </div>
           </Navbar.Brand>
         </LinkContainer>
+        <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
           <NavPageLinks />
+          <Nav className="mx-auto" hidden={childrenHidden}>
+            <Navbar.Text>{props.children}</Navbar.Text>
+          </Nav>
+          <Nav className="ms-auto">
+            <NavLogin expanded={expanded} />
+          </Nav>
         </Navbar.Collapse>
-        <Navbar.Text className="justify-content-center" hidden={childrenHidden}>{props.children}</Navbar.Text>
-        <Navbar.Collapse id="basic-navbar-nav" className="justify-content-end">
-          <NavLogin expanded={expanded} />
-        </Navbar.Collapse>
-        <Navbar.Toggle aria-controls="basic-navbar-nav" />
       </Navbar>
     </div>
   );

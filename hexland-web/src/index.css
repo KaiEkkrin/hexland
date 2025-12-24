@@ -1,3 +1,10 @@
+/* Environment-specific CSS custom properties */
+:root {
+  /* Default to production colors */
+  --env-background: #282c34;
+  --env-navbar-bg: #212529;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -13,6 +20,6 @@ code {
 }
 
 html {
-  background-color: #282c34;
+  background-color: var(--env-background);
   color: white;
 }

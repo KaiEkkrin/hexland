@@ -54,7 +54,7 @@ function AdventureContextProvider(props: IContextProviderProps) {
         record: { title: 'Error loading adventure', message: message }
       });
 
-      navigate('/', { replace: true });
+      navigate('/app', { replace: true });
     }
 
     // Check this adventure exists and can be fetched (the watch doesn't do this for us)

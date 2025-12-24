@@ -34,21 +34,20 @@ test.describe('Basic tests', () => {
       }
     });
 
-    // Navigate to home page and accept cookies before each test
+    // Navigate to home page (which redirects to /login for unauthenticated users)
     await page.goto('/');
-    await expect(page.locator('.Introduction-image')).toBeVisible();
+    // Wait for either the login page text or the consent banner to appear
+    await Promise.race([
+      expect(page.locator('.App-login-text').first()).toBeVisible(),
+      expect(page.locator('.App-consent-container')).toBeVisible()
+    ]);
     await Util.acceptCookieConsent(page);
   });
 
-  test('view front page', async ({ page }, testInfo) => {
-    const deviceName = Util.getDeviceNameFromProject(testInfo.project.name);
-    const browserName = Util.getBrowserNameFromProject(testInfo.project.name);
-
-    await page.waitForTimeout(500);
-
-    // For now, just take a screenshot without verification
-    // We'll regenerate baselines in Phase 5
-    await Util.takeScreenshot(page, browserName, deviceName, 'view-front-page');
+  test('redirect to login when not authenticated', async ({ page }) => {
+    // Verify that accessing home page without authentication redirects to /login
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(page.locator('.App-login-text').first()).toBeVisible();
   });
 
   test('create account and login', async ({ page }, testInfo) => {
@@ -78,10 +77,11 @@ test.describe('Basic tests', () => {
 
     // If we log out, we should get `Sign up/Login` back:
     await page.click('text="Log out"');
+    await Util.ensureNavbarExpanded(page, deviceName);
     await expect(page.locator('.nav-link >> text="Sign up/Login"')).toBeVisible();
 
     // Check we can log back in again too :)
-    await Util.signIn(page, user);
+    await Util.signIn(page, user, deviceName);
     await Util.ensureNavbarExpanded(page, deviceName);
     await expect(page.locator(`.dropdown >> text=${user.displayName}`)).toBeVisible();
 
@@ -109,9 +109,13 @@ test.describe('Basic tests', () => {
       const page2 = await context2.newPage();
 
       try {
-        // Set up second page
+        // Set up second page (will redirect to /login for unauthenticated users)
         await page2.goto('/');
-        await expect(page2.locator('.Introduction-image')).toBeVisible();
+        // Wait for either the login page text or the consent banner to appear
+        await Promise.race([
+          expect(page2.locator('.App-login-text').first()).toBeVisible(),
+          expect(page2.locator('.App-consent-container')).toBeVisible()
+        ]);
         await Util.acceptCookieConsent(page2);
 
         // Debug: Check if localStorage was set

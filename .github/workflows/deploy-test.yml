@@ -1,0 +1,170 @@
+# =============================================================================
+# Wall & Shadow - Deploy to Test Environment
+# =============================================================================
+#
+# This workflow automatically deploys Wall & Shadow to the TEST Firebase
+# environment when code is pushed to the master branch.
+#
+# This is a CALLER WORKFLOW that invokes the shared deployment logic in
+# deploy-firebase.yml. See that file for the actual deployment steps.
+#
+# =============================================================================
+# SETUP INSTRUCTIONS - Read this before first deployment!
+# =============================================================================
+#
+# You need to configure a GitHub ENVIRONMENT with TWO secrets:
+#
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ STEP 1: Create the "test" GitHub Environment                            │
+# └─────────────────────────────────────────────────────────────────────────┘
+#
+# 1. Go to your GitHub repository
+# 2. Click "Settings" tab
+# 3. In left sidebar: "Environments"
+# 4. Click "New environment"
+# 5. Name: test
+# 6. Click "Configure environment"
+# 7. (Optional) Configure protection rules:
+#    - Deployment branches: Limit to "master" branch only
+#    - You probably DON'T want required reviewers for test environment
+#
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ STEP 2: Add FIREBASE_SERVICE_ACCOUNT secret to "test" environment       │
+# └─────────────────────────────────────────────────────────────────────────┘
+#
+# This is the Firebase service account credentials that allow GitHub to deploy
+# to your TEST Firebase project.
+#
+# HOW TO GENERATE A NEW SERVICE ACCOUNT KEY:
+# -------------------------------------------
+# 1. Go to Firebase Console: https://console.firebase.google.com
+# 2. Select your TEST project (e.g., "hexland-test-25")
+# 3. Click the gear icon (⚙️) → "Project settings"
+# 4. Navigate to the "Service Accounts" tab
+# 5. Click "Generate New Private Key" button
+# 6. Click "Generate Key" to confirm
+# 7. A JSON file will download (e.g., "hexland-test-25-firebase-adminsdk-xxxxx.json")
+#    ⚠️  KEEP THIS FILE SECURE - It contains sensitive credentials!
+#
+# IMPORTANT: Generating a new key does NOT invalidate old keys!
+# Old keys remain valid until you explicitly delete them.
+#
+# REQUIRED PERMISSIONS:
+# ---------------------
+# Add the "Firebase Admin" role to the service account for full deployment access.
+#
+# HOW TO ADD FIREBASE ADMIN ROLE:
+# --------------------------------
+# 1. Go to: https://console.cloud.google.com/iam-admin/iam?project=YOUR_TEST_PROJECT_ID
+# 2. Find your Firebase Admin SDK service account:
+#    firebase-adminsdk-xxxxx@YOUR-TEST-PROJECT-ID.iam.gserviceaccount.com
+# 3. Click the ✏️ (pencil/edit) icon
+# 4. Click "Add Another Role"
+# 5. Search for and select: "Firebase Admin"
+# 6. Click "Save"
+# 7. Wait 2-5 minutes for IAM changes to propagate
+#
+# HOW TO ENCODE AND ADD TO GITHUB ENVIRONMENT:
+# ---------------------------------------------
+# On Linux/macOS/WSL:
+#   1. Open terminal
+#   2. Navigate to where you downloaded the JSON file
+#   3. Encode it to base64:
+#        cat hexland-test-25-firebase-adminsdk-xxxxx.json | base64 -w 0 > encoded.txt
+#      (The -w 0 flag prevents line wrapping)
+#   4. Copy the contents of encoded.txt
+#   5. DELETE the original JSON file and encoded.txt after adding to GitHub
+#
+# On Windows PowerShell:
+#   1. Open PowerShell
+#   2. Navigate to where you downloaded the JSON file
+#   3. Encode it to base64:
+#        [Convert]::ToBase64String([IO.File]::ReadAllBytes("hexland-test-25-firebase-adminsdk-xxxxx.json")) | Out-File -Encoding ASCII encoded.txt
+#   4. Copy the contents of encoded.txt
+#   5. DELETE the original JSON file and encoded.txt after adding to GitHub
+#
+# ADD TO GITHUB ENVIRONMENT SECRETS:
+#   1. Go to your GitHub repository → Settings → Environments → test
+#   2. Under "Environment secrets", click "Add secret"
+#   3. Name: FIREBASE_SERVICE_ACCOUNT
+#   4. Value: Paste the base64-encoded string (the contents of encoded.txt)
+#   5. Click "Add secret"
+#
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ STEP 3: Add FIREBASE_PROJECT_ID secret to "test" environment            │
+# └─────────────────────────────────────────────────────────────────────────┘
+#
+# This is your TEST Firebase project ID (e.g., "hexland-test-25").
+#
+# HOW TO FIND YOUR PROJECT ID:
+# -----------------------------
+# Option 1: From Firebase Console
+#   - Open Firebase Console: https://console.firebase.google.com
+#   - Select your TEST project
+#   - The project ID is shown under the project name at the top
+#
+# Option 2: From your local .firebaserc file
+#   - Look in hexland-web/.firebaserc
+#   - Use the "default" alias (e.g., "hexland-test-25")
+#
+# ADD TO GITHUB ENVIRONMENT SECRETS:
+#   1. Go to your GitHub repository → Settings → Environments → test
+#   2. Under "Environment secrets", click "Add secret"
+#   3. Name: FIREBASE_PROJECT_ID
+#   4. Value: Your TEST project ID (e.g., "hexland-test-25")
+#   5. Click "Add secret"
+#
+# =============================================================================
+# SECURITY NOTES
+# =============================================================================
+#
+# ✅ DO:
+#   - Rotate service account keys every 90 days (regenerate and update secret)
+#   - Use SEPARATE service accounts for test and production environments
+#   - Delete service account keys from your local machine after adding to GitHub
+#   - Review GitHub's audit log periodically for secret access
+#   - Set up Firebase budget alerts to monitor usage
+#
+# ❌ DON'T:
+#   - Never commit the service account JSON to git (it's in .gitignore)
+#   - Don't use the same service account across multiple repositories
+#   - Don't share the base64-encoded secret outside of GitHub
+#   - Don't grant more permissions than necessary to the service account
+#
+# =============================================================================
+# TRIGGERING DEPLOYMENTS
+# =============================================================================
+#
+# This workflow will automatically run when:
+#   - Code is pushed to the master branch (auto-deploy)
+#   - You manually trigger it via GitHub Actions UI (Actions tab → Deploy to Test → Run workflow)
+#
+# To deploy manually without pushing:
+#   1. Go to your repository on GitHub
+#   2. Click "Actions" tab
+#   3. Select "Deploy to Test" workflow
+#   4. Click "Run workflow" dropdown
+#   5. Select branch (usually "master")
+#   6. Click "Run workflow"
+#
+# =============================================================================
+
+name: Deploy to Test
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:  # Allow manual triggering from GitHub UI
+
+# Least-privilege permissions: only read access to repository contents
+# Deployment to Firebase is handled via service account credentials (not GITHUB_TOKEN)
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to Test Environment
+    uses: ./.github/workflows/deploy-firebase.yml
+    with:
+      environment: test
+    secrets: inherit
