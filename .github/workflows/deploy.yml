@@ -2,6 +2,22 @@
 # Wall & Shadow - Firebase Auto-Deploy
 # =============================================================================
 #
+# ⚠️⚠️⚠️ DEPRECATION NOTICE ⚠️⚠️⚠️
+#
+# This workflow is DEPRECATED and will be removed in a future version.
+#
+# Please migrate to the new environment-specific workflows:
+#   - .github/workflows/deploy-test.yml (test environment, auto-deploy)
+#   - .github/workflows/deploy-production.yml (production environment, manual)
+#
+# The new workflows use GitHub Environments for better secret management
+# and separation between test and production deployments.
+#
+# This workflow will continue to work for now to maintain backward compatibility,
+# but it will be removed once all deployments have been migrated.
+#
+# =============================================================================
+#
 # This workflow automatically deploys Wall & Shadow to Firebase when code is
 # pushed to the master branch.
 #
@@ -219,6 +235,12 @@ on:
   push:
     branches: [master]
   workflow_dispatch:  # Allow manual triggering from GitHub UI
+
+# Least-privilege permissions: only read access to repository contents
+# Deployment to Firebase is handled via service account credentials (not GITHUB_TOKEN)
+# See: https://docs.github.com/en/actions/security-guides/automatic-token-authentication
+permissions:
+  contents: read
 
 env:
   # Pin firebase-tools version to match development environment

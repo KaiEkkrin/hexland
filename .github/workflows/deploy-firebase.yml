@@ -1,0 +1,219 @@
+# =============================================================================
+# Wall & Shadow - Reusable Firebase Deployment Workflow
+# =============================================================================
+#
+# This is a REUSABLE WORKFLOW that contains the shared deployment logic for
+# deploying Wall & Shadow to Firebase. It's called by environment-specific
+# workflows (deploy-test.yml, deploy-production.yml).
+#
+# DO NOT trigger this workflow directly. Use the environment-specific workflows.
+#
+# =============================================================================
+# ARCHITECTURE
+# =============================================================================
+#
+# This workflow uses GitHub's reusable workflow pattern:
+#   https://docs.github.com/en/actions/using-workflows/reusing-workflows
+#
+# Benefits:
+#   - DRY: Deployment logic defined once, used by multiple environments
+#   - Maintainability: Changes to deployment process only need to be made here
+#   - Flexibility: Environment-specific workflows can customize triggers/conditions
+#   - Clarity: Environment differences are explicit in caller workflows
+#
+# Caller workflows:
+#   - .github/workflows/deploy-test.yml (auto-deploy on push to master)
+#   - .github/workflows/deploy-production.yml (manual trigger only)
+#
+# =============================================================================
+# SECRETS CONFIGURATION
+# =============================================================================
+#
+# This workflow expects secrets to be configured in GitHub Environments:
+#
+# For "test" environment:
+#   - FIREBASE_SERVICE_ACCOUNT (base64-encoded service account JSON)
+#   - FIREBASE_PROJECT_ID (e.g., "hexland-test-25")
+#
+# For "production" environment:
+#   - FIREBASE_SERVICE_ACCOUNT (base64-encoded service account JSON)
+#   - FIREBASE_PROJECT_ID (e.g., "hexland")
+#
+# How to set up GitHub Environments:
+#   1. Go to your repository → Settings → Environments
+#   2. Click "New environment"
+#   3. Name it "test" or "production"
+#   4. Add environment secrets (same process as repository secrets)
+#   5. (Optional) Configure protection rules (e.g., required reviewers for prod)
+#
+# See the caller workflow files for detailed secret generation instructions.
+#
+# =============================================================================
+
+name: Deploy to Firebase (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Target environment (test, production)'
+        required: true
+        type: string
+
+# Least-privilege permissions: only read access to repository contents
+# Deployment to Firebase is handled via service account credentials (not GITHUB_TOKEN)
+# See: https://docs.github.com/en/actions/security-guides/automatic-token-authentication
+permissions:
+  contents: read
+
+env:
+  # Pin firebase-tools version to match development environment
+  # Update this when upgrading Firebase CLI
+  FIREBASE_TOOLS_VERSION: '15.1.0'
+
+jobs:
+  deploy:
+    name: Build and Deploy to Firebase (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+
+    # Reference the environment to access environment-scoped secrets
+    # This also enables deployment tracking in GitHub UI
+    environment: ${{ inputs.environment }}
+
+    steps:
+      # -----------------------------------------------------------------------
+      # Checkout code
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # Setup Node.js environment
+      # -----------------------------------------------------------------------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'yarn'
+          cache-dependency-path: |
+            hexland-web/yarn.lock
+            hexland-web/functions/yarn.lock
+
+      # -----------------------------------------------------------------------
+      # Install dependencies
+      # -----------------------------------------------------------------------
+      - name: Install dependencies (web)
+        working-directory: hexland-web
+        run: yarn install --frozen-lockfile
+
+      - name: Install dependencies (functions)
+        working-directory: hexland-web/functions
+        run: yarn install --frozen-lockfile
+
+      # -----------------------------------------------------------------------
+      # Build Cloud Functions
+      # -----------------------------------------------------------------------
+      - name: Build Cloud Functions
+        working-directory: hexland-web/functions
+        run: yarn build
+
+      # -----------------------------------------------------------------------
+      # Create mock Firebase credentials for build
+      # -----------------------------------------------------------------------
+      # The web app looks for firebase-admin-credentials.json during build
+      # (there's a symlink in public/ pointing to this file).
+      # In production, the app uses Firebase Hosting's auto-config instead.
+      # We create a minimal mock file here just to satisfy the build process.
+      #
+      - name: Create mock Firebase credentials
+        working-directory: hexland-web
+        run: |
+          echo '{"project_id": "demo-project"}' > firebase-admin-credentials.json
+
+      # -----------------------------------------------------------------------
+      # Build web application
+      # -----------------------------------------------------------------------
+      - name: Build web application
+        working-directory: hexland-web
+        run: yarn build
+
+      # -----------------------------------------------------------------------
+      # Decode service account credentials
+      # -----------------------------------------------------------------------
+      # The service account JSON is stored as a base64-encoded GitHub secret
+      # to avoid issues with special characters and secret redaction in logs.
+      # We decode it here and write to a temporary file that Firebase CLI can use.
+      #
+      - name: Decode Firebase service account
+        working-directory: hexland-web
+        run: |
+          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" | base64 --decode > firebase-service-account.json
+          echo "✅ Service account credentials decoded"
+
+      # -----------------------------------------------------------------------
+      # Cache npm (for firebase-tools)
+      # -----------------------------------------------------------------------
+      - name: Cache npm (for firebase-tools)
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-firebase-tools-${{ env.FIREBASE_TOOLS_VERSION }}
+
+      # -----------------------------------------------------------------------
+      # Install Firebase CLI
+      # -----------------------------------------------------------------------
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@${{ env.FIREBASE_TOOLS_VERSION }}
+
+      # -----------------------------------------------------------------------
+      # Deploy to Firebase
+      # -----------------------------------------------------------------------
+      # Deploy all Firebase services:
+      #   - Hosting (web app)
+      #   - Cloud Functions
+      #   - Firestore security rules
+      #   - Firestore indexes
+      #   - Storage security rules
+      #
+      # The GOOGLE_APPLICATION_CREDENTIALS environment variable tells Firebase
+      # CLI where to find the service account credentials.
+      #
+      - name: Deploy to Firebase
+        working-directory: hexland-web
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/hexland-web/firebase-service-account.json
+        run: firebase deploy --project ${{ secrets.FIREBASE_PROJECT_ID }}
+
+      # -----------------------------------------------------------------------
+      # Cleanup
+      # -----------------------------------------------------------------------
+      # Remove the decoded service account file for security
+      # (GitHub Actions runners are ephemeral, but good practice)
+      #
+      - name: Cleanup credentials
+        if: always()
+        working-directory: hexland-web
+        run: |
+          if [ -f firebase-service-account.json ]; then
+            rm firebase-service-account.json
+            echo "✅ Credentials cleaned up"
+          fi
+
+      # -----------------------------------------------------------------------
+      # Deployment complete
+      # -----------------------------------------------------------------------
+      - name: Deployment summary
+        if: success()
+        run: |
+          echo "🚀 Deployment successful to ${{ inputs.environment }} environment!"
+          echo ""
+          echo "Your app should be live at:"
+          echo "  https://${{ secrets.FIREBASE_PROJECT_ID }}.web.app"
+          echo "  https://${{ secrets.FIREBASE_PROJECT_ID }}.firebaseapp.com"
+          echo ""
+          echo "Deployed services:"
+          echo "  ✅ Firebase Hosting"
+          echo "  ✅ Cloud Functions"
+          echo "  ✅ Firestore Rules"
+          echo "  ✅ Firestore Indexes"
+          echo "  ✅ Storage Rules"
