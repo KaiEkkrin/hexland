@@ -42,7 +42,7 @@ echo "   ✅ ~/.claude -> .devcontainer/.claude"
 echo ""
 
 # Check for Firebase admin credentials
-CREDS_FILE="/workspaces/hexland/hexland-web/firebase-admin-credentials.json"
+CREDS_FILE="/workspaces/hexland/was-web/firebase-admin-credentials.json"
 if [ ! -f "$CREDS_FILE" ]; then
     echo "⚠️  WARNING: Firebase admin credentials not found!"
     echo ""
@@ -52,7 +52,7 @@ if [ ! -f "$CREDS_FILE" ]; then
     echo "   3. Go to Project Settings > Service Accounts"
     echo "   4. Click 'Generate new private key'"
     echo "   5. Save the downloaded JSON file as:"
-    echo "      hexland-web/firebase-admin-credentials.json"
+    echo "      was-web/firebase-admin-credentials.json"
     echo ""
     echo "   The dev container will work without this file, but some features"
     echo "   will be limited. You can add it later and restart the container."
@@ -64,7 +64,7 @@ fi
 
 # Install web app dependencies
 echo "📦 Installing web app dependencies..."
-cd /workspaces/hexland/hexland-web
+cd /workspaces/hexland/was-web
 if [ -f "yarn.lock" ]; then
     echo "   Using yarn.lock for deterministic install..."
     yarn install --frozen-lockfile || yarn install
@@ -75,7 +75,7 @@ echo ""
 
 # Install Firebase Functions dependencies
 echo "📦 Installing Firebase Functions dependencies..."
-cd /workspaces/hexland/hexland-web/functions
+cd /workspaces/hexland/was-web/functions
 if [ -f "yarn.lock" ]; then
     echo "   Using yarn.lock for deterministic install..."
     yarn install --frozen-lockfile || yarn install
@@ -86,13 +86,13 @@ echo ""
 
 # Install Playwright browsers for E2E tests
 echo "🎭 Installing Playwright browsers..."
-cd /workspaces/hexland/hexland-web
+cd /workspaces/hexland/was-web
 npx playwright install || echo "   Note: Playwright browser installation failed (non-critical)"
 echo ""
 
 # Firebase setup
 echo "🔥 Setting up Firebase..."
-cd /workspaces/hexland/hexland-web
+cd /workspaces/hexland/was-web
 
 # Try to login (may already be logged in)
 firebase login --no-localhost || echo "   Firebase login skipped (already logged in or running non-interactively)"
@@ -115,13 +115,13 @@ echo "📚 Quick Start Guide"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "  Start development server:"
-echo "    cd hexland-web && yarn start"
+echo "    cd was-web && yarn start"
 echo ""
 echo "  Run unit tests:"
-echo "    cd hexland-web && yarn test:unit"
+echo "    cd was-web && yarn test:unit"
 echo ""
 echo "  Run E2E tests (requires dev server running):"
-echo "    cd hexland-web && yarn test:e2e"
+echo "    cd was-web && yarn test:e2e"
 echo ""
 echo "  View this guide anytime:"
 echo "    cat .devcontainer/README.md"

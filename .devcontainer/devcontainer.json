@@ -26,11 +26,8 @@
         "editor.tabSize": 2,
         "editor.formatOnSave": true,
         "editor.defaultFormatter": "esbenp.prettier-vscode",
-        "typescript.tsdk": "hexland-web/node_modules/typescript/lib",
-        "eslint.workingDirectories": [
-          "hexland-web",
-          "hexland-web/functions"
-        ],
+        "typescript.tsdk": "was-web/node_modules/typescript/lib",
+        "eslint.workingDirectories": ["was-web", "was-web/functions"],
         "files.exclude": {
           "**/.git": true,
           "**/.DS_Store": true,

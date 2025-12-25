@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 # Extension field (not a service) - provides common configuration via YAML anchor
 x-hexland-common: &hexland-common
@@ -18,19 +18,19 @@ x-hexland-common: &hexland-common
     # Colorized output in logs
     - FORCE_COLOR=true
     # Firebase admin credentials path (if file exists)
-    - GOOGLE_APPLICATION_CREDENTIALS=/workspaces/hexland/hexland-web/firebase-admin-credentials.json
+    - GOOGLE_APPLICATION_CREDENTIALS=/workspaces/hexland/was-web/firebase-admin-credentials.json
 
   ports:
-    - "3400:3400"  # Firebase Hosting emulator
-    - "4000:4000"  # Firebase Emulator UI
-    - "5000:5000"  # React dev server
-    - "5001:5001"  # Firebase Functions emulator
-    - "8080:8080"  # Firestore emulator
-    - "9005:9005"  # Firestore debug port
-    - "9099:9099"  # Firebase Auth emulator
-    - "9199:9199"  # Firebase Storage emulator
-    - "9229:9229"  # Node.js debug port for Functions
-    - "9323:9323"  # Playwright test results
+    - "3400:3400" # Firebase Hosting emulator
+    - "4000:4000" # Firebase Emulator UI
+    - "5000:5000" # React dev server
+    - "5001:5001" # Firebase Functions emulator
+    - "8080:8080" # Firestore emulator
+    - "9005:9005" # Firestore debug port
+    - "9099:9099" # Firebase Auth emulator
+    - "9199:9199" # Firebase Storage emulator
+    - "9229:9229" # Node.js debug port for Functions
+    - "9323:9323" # Playwright test results
 
   networks:
     - hexland-network

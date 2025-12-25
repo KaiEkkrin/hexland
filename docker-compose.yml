@@ -1,28 +1,28 @@
 version: "3.8"
 services:
-    hexland:
-        build:
-            context: hexland-web/docker
-            args:
-                - GID=${GROUP_ID}
-                - UID=${USER_ID}
-                - USER=${USER}
-        environment: 
-            - GOOGLE_APPLICATION_CREDENTIALS=/usr/src/app/hexland-web/firebase-admin-credentials.json
-            - RUN_TESTS=${RUN_TESTS}
-            - RUN_TEST_ARGS=${RUN_TEST_ARGS}
-        ports:
-            - 4000:4000
-            - 5000:5000
-            - 5001:5001
-            - 8080:8080
-            - 9005:9005
-            - 9099:9099
-            - 9199:9199
-        security_opt:
-            - seccomp:./hexland-web/docker/seccomp_profile.json
-        stdin_open: true
-        tty: true
-        volumes:
-            - ./hexland-web:/usr/src/app/hexland-web
-            - ./.usercache:/home/${USER}
+  hexland:
+    build:
+      context: was-web/docker
+      args:
+        - GID=${GROUP_ID}
+        - UID=${USER_ID}
+        - USER=${USER}
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/usr/src/app/was-web/firebase-admin-credentials.json
+      - RUN_TESTS=${RUN_TESTS}
+      - RUN_TEST_ARGS=${RUN_TEST_ARGS}
+    ports:
+      - 4000:4000
+      - 5000:5000
+      - 5001:5001
+      - 8080:8080
+      - 9005:9005
+      - 9099:9099
+      - 9199:9199
+    security_opt:
+      - seccomp:./was-web/docker/seccomp_profile.json
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./was-web:/usr/src/app/was-web
+      - ./.usercache:/home/${USER}

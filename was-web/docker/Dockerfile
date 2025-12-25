@@ -23,6 +23,6 @@ RUN userdel -f pwuser && \
 USER ${UID}:${GID}
 
 ENV RUN_TESTS=${RUN_TESTS}
-WORKDIR /usr/src/app/hexland-web
+WORKDIR /usr/src/app/was-web
 ENTRYPOINT ["/bin/bash", "-c"]
 CMD ["/usr/src/scripts/dev.sh"]

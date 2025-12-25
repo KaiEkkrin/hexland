@@ -26,12 +26,13 @@ The easiest way to get started is with the VS Code dev container:
 4. Set up Firebase credentials (see [`.devcontainer/README.md`](.devcontainer/README.md))
 5. Build Firebase Functions:
    ```bash
-   cd hexland-web/functions
+   cd was-web/functions
    yarn build
    ```
 6. Start developing:
+
    ```bash
-   cd hexland-web
+   cd was-web
 
    # Terminal 1: Start Firebase emulators
    yarn dev:firebase
@@ -39,6 +40,7 @@ The easiest way to get started is with the VS Code dev container:
    # Terminal 2: Start Vite dev server
    yarn dev:vite
    ```
+
 7. Open http://localhost:3400 in your browser (Firebase Hosting emulator)
    - For development with hot reload, use http://localhost:5000 (Vite dev server)
 
@@ -49,7 +51,7 @@ See [`.devcontainer/README.md`](.devcontainer/README.md) for comprehensive docum
 ## Running Tests
 
 ```bash
-cd hexland-web
+cd was-web
 
 # Unit tests (watch mode)
 yarn test:unit
@@ -63,8 +65,9 @@ yarn test:e2e
 For production deployment instructions, see **[DEPLOY.md](DEPLOY.md)**.
 
 Quick deploy (after initial setup):
+
 ```bash
-cd hexland-web
+cd was-web
 yarn build
 firebase deploy --only hosting    # Web app only (fast)
 firebase deploy                   # Everything (includes Functions)

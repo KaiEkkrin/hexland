@@ -15,11 +15,13 @@ These items were deferred from the Revival Plan Phase 3 as non-critical for init
 The map share end-to-end test is currently failing (8 of 24 E2E tests failing). This test verifies map sharing functionality between multiple users using separate browser contexts.
 
 **Known Issues:**
+
 - Multi-user authentication with separate browser contexts
 - Firebase Auth emulator race conditions
 - Snapshot baselines may need regeneration after Playwright 1.57+ upgrade
 
 **Steps to Fix:**
+
 1. Review test against current Playwright 1.57+ API
 2. Verify Firebase Auth emulator configuration for multi-context scenarios
 3. Debug user creation/authentication flow
@@ -39,8 +41,9 @@ The map share end-to-end test is currently failing (8 of 24 E2E tests failing). 
 Update Playwright test runner and browser binaries to latest version.
 
 **Steps:**
+
 ```bash
-cd hexland-web
+cd was-web
 yarn upgrade @playwright/test
 npx playwright install  # Download latest browser binaries
 yarn test:e2e
@@ -103,6 +106,7 @@ Execute comprehensive manual testing checklist covering:
 Install and configure Prettier for consistent code formatting across the codebase.
 
 **Steps:**
+
 1. Install Prettier: `yarn add -D prettier`
 2. Create `.prettierrc.json`:
    ```json
@@ -132,9 +136,9 @@ Enable stricter TypeScript compiler options for improved type safety:
 ```json
 {
   "compilerOptions": {
-    "strict": true,  // ✅ Already enabled
-    "noUncheckedIndexedAccess": true,  // Makes array/object index access safer
-    "noPropertyAccessFromIndexSignature": true  // Requires bracket notation for index signatures
+    "strict": true, // ✅ Already enabled
+    "noUncheckedIndexedAccess": true, // Makes array/object index access safer
+    "noPropertyAccessFromIndexSignature": true // Requires bracket notation for index signatures
   }
 }
 ```
@@ -154,11 +158,11 @@ Enable stricter TypeScript compiler options for improved type safety:
 Lazy load route components in `src/App.tsx` to reduce initial bundle size:
 
 ```typescript
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense } from "react";
 
-const Home = lazy(() => import('./Home'));
-const MapPage = lazy(() => import('./Map'));
-const AdventurePage = lazy(() => import('./Adventure'));
+const Home = lazy(() => import("./Home"));
+const MapPage = lazy(() => import("./Map"));
+const AdventurePage = lazy(() => import("./Adventure"));
 // etc.
 
 <Suspense fallback={<div>Loading...</div>}>
@@ -166,7 +170,7 @@ const AdventurePage = lazy(() => import('./Adventure'));
     <Route path="/" element={<Home />} />
     {/* etc */}
   </Routes>
-</Suspense>
+</Suspense>;
 ```
 
 **Expected Impact:** Faster initial page load, smaller main bundle, better user experience on slower connections.
@@ -186,14 +190,12 @@ yarn add -D rollup-plugin-visualizer
 ```
 
 Update `vite.config.ts`:
+
 ```typescript
-import { visualizer } from 'rollup-plugin-visualizer';
+import { visualizer } from "rollup-plugin-visualizer";
 
 export default defineConfig({
-  plugins: [
-    react(),
-    visualizer({ open: true })
-  ],
+  plugins: [react(), visualizer({ open: true })],
 });
 ```
 
@@ -212,12 +214,14 @@ export default defineConfig({
 Run Lighthouse audit on deployed application and address issues.
 
 **Target Scores:**
+
 - Performance: 90+
 - Accessibility: 90+
 - Best Practices: 90+
 - SEO: 90+
 
 **Common Issues to Expect:**
+
 - Image optimization opportunities
 - Accessibility improvements (ARIA labels, color contrast)
 - Cache policy recommendations (already addressed in firebase.json)
@@ -275,10 +279,10 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 20
-      - run: cd hexland-web && yarn install
-      - run: cd hexland-web && yarn lint
-      - run: cd hexland-web && yarn build
-      - run: cd hexland-web && yarn test:unit
+      - run: cd was-web && yarn install
+      - run: cd was-web && yarn lint
+      - run: cd was-web && yarn build
+      - run: cd was-web && yarn test:unit
 ```
 
 **Benefits:** Catches issues before merge, ensures tests always pass on main branch, can automate deployments.
@@ -294,6 +298,7 @@ jobs:
 Firebase App Check protects backend resources by requiring attestation tokens with requests.
 
 **Why Not Critical Now:**
+
 - Firestore/Storage security rules already require authentication
 - Can be added post-launch without breaking existing clients
 - Free tier (10,000 assessments/month) is sufficient for casual VTT use
@@ -301,6 +306,7 @@ Firebase App Check protects backend resources by requiring attestation tokens wi
 **When to Implement:** Before public launch with significant user base.
 
 **Implementation Steps:**
+
 1. Create reCAPTCHA Enterprise key in Google Cloud Console
 2. Register app in Firebase Console App Check section
 3. Add client-side initialization code to `src/firebase.ts`
@@ -324,9 +330,11 @@ Firebase App Check protects backend resources by requiring attestation tokens wi
 TypeScript 6.0 is a "bridge" release before TypeScript 7.0 (rewritten in Go for 10x performance).
 
 **Current Blocker:**
+
 - `@typescript-eslint/*` peer dependency requires `typescript@>=4.8.4 <6.0.0`
 
 **Preparatory Work Already Complete:**
+
 - ✅ Updated `tsconfig.json`: target ES2022, moduleResolution bundler
 - ✅ Updated `e2e/tsconfig.json`: ES2022 target, bundler moduleResolution
 - ✅ Fixed ES module compatibility (`__dirname` → `import.meta.url`)
@@ -334,6 +342,7 @@ TypeScript 6.0 is a "bridge" release before TypeScript 7.0 (rewritten in Go for 
 - ✅ Migrated from Jest to Vitest (removed ts-jest blocker)
 
 **Action When Available:**
+
 1. Wait for `@typescript-eslint` to support TypeScript 6.0
 2. Update TypeScript: `yarn upgrade typescript@6`
 3. Run tests and fix any new type errors
@@ -346,11 +355,13 @@ TypeScript 6.0 is a "bridge" release before TypeScript 7.0 (rewritten in Go for 
 **Total Tasks:** 14
 
 **Priority Breakdown:**
+
 - High: 1 (environment variables documentation)
 - Medium: 7 (testing, code quality, performance, CI/CD)
 - Low: 6 (tooling updates, future enhancements)
 
 **Recommended Order:**
+
 1. Document environment variables (quick win)
 2. Complete manual testing walkthrough (verify quality)
 3. Perform Lighthouse audit (identify issues early)
