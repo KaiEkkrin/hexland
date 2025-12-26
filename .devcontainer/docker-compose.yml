@@ -10,7 +10,7 @@ x-was-common: &was-common
     # Bind mount to workspace
     # Performance: Excellent on Linux and WSL2 (when repo is in WSL filesystem)
     # All cache and config data stored via symlinks (see post-create.sh)
-    - ..:/workspaces/hexland
+    - ..:/workspaces/wallandshadow
 
   environment:
     # Enable emulator-only functions
@@ -18,7 +18,7 @@ x-was-common: &was-common
     # Colorized output in logs
     - FORCE_COLOR=true
     # Firebase admin credentials path (if file exists)
-    - GOOGLE_APPLICATION_CREDENTIALS=/workspaces/hexland/was-web/firebase-admin-credentials.json
+    - GOOGLE_APPLICATION_CREDENTIALS=/workspaces/wallandshadow/was-web/firebase-admin-credentials.json
 
   ports:
     - "3400:3400" # Firebase Hosting emulator

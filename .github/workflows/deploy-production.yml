@@ -44,12 +44,12 @@
 # HOW TO GENERATE A NEW SERVICE ACCOUNT KEY:
 # -------------------------------------------
 # 1. Go to Firebase Console: https://console.firebase.google.com
-# 2. Select your PRODUCTION project (e.g., "hexland")
+# 2. Select your PRODUCTION project (e.g., "wallandshadow")
 # 3. Click the gear icon (⚙️) → "Project settings"
 # 4. Navigate to the "Service Accounts" tab
 # 5. Click "Generate New Private Key" button
 # 6. Click "Generate Key" to confirm
-# 7. A JSON file will download (e.g., "hexland-firebase-adminsdk-xxxxx.json")
+# 7. A JSON file will download (e.g., "wallandshadow-firebase-adminsdk-xxxxx.json")
 #    ⚠️  KEEP THIS FILE SECURE - It contains sensitive credentials!
 #    ⚠️  This is PRODUCTION - extra care required!
 #
@@ -87,7 +87,7 @@
 #   1. Open terminal
 #   2. Navigate to where you downloaded the JSON file
 #   3. Encode it to base64:
-#        cat hexland-firebase-adminsdk-xxxxx.json | base64 -w 0 > encoded.txt
+#        cat wallandshadow-firebase-adminsdk-xxxxx.json | base64 -w 0 > encoded.txt
 #      (The -w 0 flag prevents line wrapping)
 #   4. Copy the contents of encoded.txt
 #   5. DELETE the original JSON file and encoded.txt after adding to GitHub
@@ -96,7 +96,7 @@
 #   1. Open PowerShell
 #   2. Navigate to where you downloaded the JSON file
 #   3. Encode it to base64:
-#        [Convert]::ToBase64String([IO.File]::ReadAllBytes("hexland-firebase-adminsdk-xxxxx.json")) | Out-File -Encoding ASCII encoded.txt
+#        [Convert]::ToBase64String([IO.File]::ReadAllBytes("wallandshadow-firebase-adminsdk-xxxxx.json")) | Out-File -Encoding ASCII encoded.txt
 #   4. Copy the contents of encoded.txt
 #   5. DELETE the original JSON file and encoded.txt after adding to GitHub
 #
@@ -111,7 +111,7 @@
 # │ STEP 3: Add FIREBASE_PROJECT_ID secret to "production" environment      │
 # └─────────────────────────────────────────────────────────────────────────┘
 #
-# This is your PRODUCTION Firebase project ID (e.g., "hexland").
+# This is your PRODUCTION Firebase project ID (e.g., "wallandshadow").
 #
 # HOW TO FIND YOUR PROJECT ID:
 # -----------------------------
@@ -122,13 +122,13 @@
 #
 # Option 2: From your local .firebaserc file
 #   - Look in was-web/.firebaserc
-#   - Use the "production" alias (e.g., "hexland")
+#   - Use the "production" alias (e.g., "wallandshadow")
 #
 # ADD TO GITHUB ENVIRONMENT SECRETS:
 #   1. Go to your GitHub repository → Settings → Environments → production
 #   2. Under "Environment secrets", click "Add secret"
 #   3. Name: FIREBASE_PROJECT_ID
-#   4. Value: Your PRODUCTION project ID (e.g., "hexland")
+#   4. Value: Your PRODUCTION project ID (e.g., "wallandshadow")
 #   5. Click "Add secret"
 #
 # =============================================================================

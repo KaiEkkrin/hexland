@@ -73,7 +73,7 @@ Your project uses `.firebaserc` to manage deployment targets:
 {
   "projects": {
     "default": "hexland-test-25", // Test/staging environment
-    "production": "hexland" // Production environment
+    "production": "wallandshadow" // Production environment
   }
 }
 ```

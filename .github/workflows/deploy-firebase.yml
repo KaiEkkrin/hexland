@@ -37,7 +37,7 @@
 #
 # For "production" environment:
 #   - FIREBASE_SERVICE_ACCOUNT (base64-encoded service account JSON)
-#   - FIREBASE_PROJECT_ID (e.g., "hexland")
+#   - FIREBASE_PROJECT_ID (e.g., "wallandshadow")
 #
 # How to set up GitHub Environments:
 #   1. Go to your repository → Settings → Environments

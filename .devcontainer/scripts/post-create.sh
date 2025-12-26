@@ -6,21 +6,21 @@ echo "🚀 Setting up Wall & Shadow development environment..."
 echo ""
 
 # Verify repository is in the expected location
-if [ ! -d "/workspaces/hexland/.git" ]; then
-    echo "❌ ERROR: Repository not found at /workspaces/hexland"
+if [ ! -d "/workspaces/wallandshadow/.git" ]; then
+    echo "❌ ERROR: Repository not found at /workspaces/wallandshadow"
     echo ""
     echo "   Please see .devcontainer/README.md for setup instructions."
     echo ""
     exit 1
 fi
 
-echo "✅ Repository found at /workspaces/hexland"
+echo "✅ Repository found at /workspaces/wallandshadow"
 echo ""
 
 # Create directories for cache, config, and credentials within the workspace
 # These will be symlinked from /home/node to keep everything in one volume
 echo "🔗 Setting up cache and config symlinks..."
-DEVCONTAINER_DIR="/workspaces/hexland/.devcontainer"
+DEVCONTAINER_DIR="/workspaces/wallandshadow/.devcontainer"
 
 # Create actual directories within .devcontainer
 mkdir -p "$DEVCONTAINER_DIR/.cache/firebase"
@@ -42,7 +42,7 @@ echo "   ✅ ~/.claude -> .devcontainer/.claude"
 echo ""
 
 # Check for Firebase admin credentials
-CREDS_FILE="/workspaces/hexland/was-web/firebase-admin-credentials.json"
+CREDS_FILE="/workspaces/wallandshadow/was-web/firebase-admin-credentials.json"
 if [ ! -f "$CREDS_FILE" ]; then
     echo "⚠️  WARNING: Firebase admin credentials not found!"
     echo ""
@@ -64,7 +64,7 @@ fi
 
 # Install web app dependencies
 echo "📦 Installing web app dependencies..."
-cd /workspaces/hexland/was-web
+cd /workspaces/wallandshadow/was-web
 if [ -f "yarn.lock" ]; then
     echo "   Using yarn.lock for deterministic install..."
     yarn install --frozen-lockfile || yarn install
@@ -75,7 +75,7 @@ echo ""
 
 # Install Firebase Functions dependencies
 echo "📦 Installing Firebase Functions dependencies..."
-cd /workspaces/hexland/was-web/functions
+cd /workspaces/wallandshadow/was-web/functions
 if [ -f "yarn.lock" ]; then
     echo "   Using yarn.lock for deterministic install..."
     yarn install --frozen-lockfile || yarn install
@@ -86,13 +86,13 @@ echo ""
 
 # Install Playwright browsers for E2E tests
 echo "🎭 Installing Playwright browsers..."
-cd /workspaces/hexland/was-web
+cd /workspaces/wallandshadow/was-web
 npx playwright install || echo "   Note: Playwright browser installation failed (non-critical)"
 echo ""
 
 # Firebase setup
 echo "🔥 Setting up Firebase..."
-cd /workspaces/hexland/was-web
+cd /workspaces/wallandshadow/was-web
 
 # Try to login (may already be logged in)
 firebase login --no-localhost || echo "   Firebase login skipped (already logged in or running non-interactively)"

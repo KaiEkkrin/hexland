@@ -30,8 +30,8 @@ Complete development environment for Wall & Shadow with Node.js 20, Firebase Emu
 ```bash
 # Inside WSL2 (Ubuntu or other Linux distribution)
 cd ~
-git clone https://github.com/KaiEkkrin/hexland.git
-cd hexland
+git clone https://github.com/KaiEkkrin/wallandshadow.git
+cd wallandshadow
 code .
 ```
 
@@ -39,8 +39,8 @@ code .
 
 ```bash
 cd ~
-git clone https://github.com/KaiEkkrin/hexland.git
-cd hexland
+git clone https://github.com/KaiEkkrin/wallandshadow.git
+cd wallandshadow
 code .
 ```
 
