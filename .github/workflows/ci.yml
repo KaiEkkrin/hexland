@@ -14,7 +14,7 @@ permissions:
 env:
   # Pin firebase-tools version for reproducible builds
   # Update this when upgrading Firebase CLI in the dev environment
-  FIREBASE_TOOLS_VERSION: '15.1.0'
+  FIREBASE_TOOLS_VERSION: "15.1.0"
 
 jobs:
   build-lint-test:
@@ -27,16 +27,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'yarn'
+          cache: "yarn"
           cache-dependency-path: |
-            hexland-web/yarn.lock
-            hexland-web/functions/yarn.lock
+            was-web/yarn.lock
+            was-web/functions/yarn.lock
 
       - name: Setup Java (for Firebase emulators)
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '21'
+          distribution: "temurin"
+          java-version: "21"
 
       - name: Cache Firebase emulators
         uses: actions/cache@v4
@@ -54,36 +54,36 @@ jobs:
         run: npm install -g firebase-tools@${{ env.FIREBASE_TOOLS_VERSION }}
 
       - name: Install dependencies (web)
-        working-directory: hexland-web
+        working-directory: was-web
         run: yarn install --frozen-lockfile
 
       - name: Install dependencies (functions)
-        working-directory: hexland-web/functions
+        working-directory: was-web/functions
         run: yarn install --frozen-lockfile
 
       - name: Build functions
-        working-directory: hexland-web/functions
+        working-directory: was-web/functions
         run: yarn build
 
       - name: Create mock Firebase credentials
-        working-directory: hexland-web
+        working-directory: was-web
         run: |
           echo '{"project_id": "hexland-test"}' > firebase-admin-credentials.json
 
       - name: Build web
-        working-directory: hexland-web
+        working-directory: was-web
         run: yarn build
 
       - name: Lint web
-        working-directory: hexland-web
+        working-directory: was-web
         run: yarn lint
 
       - name: Lint functions
-        working-directory: hexland-web/functions
+        working-directory: was-web/functions
         run: yarn lint
 
       - name: Start Firebase Emulators and Run Tests
-        working-directory: hexland-web
+        working-directory: was-web
         run: |
           firebase emulators:exec \
             --only auth,firestore,functions,storage \

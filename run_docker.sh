@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs a local development environment of hexland-web.
+# Runs a local development environment of was-web.
 # To run tests instead, pass "test" as the first command-line argument.
 
 echo "USER_ID=`id -u ${USER}`" > .env

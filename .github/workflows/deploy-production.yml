@@ -121,7 +121,7 @@
 #   - The project ID is shown under the project name at the top
 #
 # Option 2: From your local .firebaserc file
-#   - Look in hexland-web/.firebaserc
+#   - Look in was-web/.firebaserc
 #   - Use the "production" alias (e.g., "hexland")
 #
 # ADD TO GITHUB ENVIRONMENT SECRETS:
@@ -184,7 +184,7 @@
 name: Deploy to Production
 
 on:
-  workflow_dispatch:  # ONLY manual triggering - no auto-deploy
+  workflow_dispatch: # ONLY manual triggering - no auto-deploy
 
 # Least-privilege permissions: only read access to repository contents
 # Deployment to Firebase is handled via service account credentials (not GITHUB_TOKEN)

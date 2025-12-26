@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo ""
-echo "🔄 Hexland dev container started!"
+echo "🔄 Wall & Shadow dev container started!"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "📊 Service Endpoints"
@@ -17,5 +17,5 @@ echo "  Firebase Auth:           localhost:9099"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "💡 Tip: Run 'cd hexland-web && yarn start' to begin"
+echo "💡 Tip: Run 'cd was-web && yarn start' to begin"
 echo ""

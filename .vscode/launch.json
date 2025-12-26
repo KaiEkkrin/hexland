@@ -8,20 +8,16 @@
       "port": 9229,
       "restart": true,
       "sourceMaps": true,
-      "outFiles": [
-        "${workspaceFolder}/hexland-web/functions/lib/**/*.js"
-      ],
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
-      "cwd": "${workspaceFolder}/hexland-web/functions"
+      "outFiles": ["${workspaceFolder}/was-web/functions/lib/**/*.js"],
+      "skipFiles": ["<node_internals>/**"],
+      "cwd": "${workspaceFolder}/was-web/functions"
     },
     {
       "name": "Launch Chrome",
       "type": "chrome",
       "request": "launch",
       "url": "http://localhost:5000",
-      "webRoot": "${workspaceFolder}/hexland-web",
+      "webRoot": "${workspaceFolder}/was-web",
       "sourceMaps": true,
       "sourceMapPathOverrides": {
         "webpack:///src/*": "${webRoot}/src/*"

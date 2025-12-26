@@ -1,4 +1,4 @@
-# Hexland Dev Container
+# Wall & Shadow Dev Container
 # Node 20 LTS with Firebase tools, Java for emulators, and development dependencies
 
 FROM mcr.microsoft.com/devcontainers/typescript-node:20-trixie

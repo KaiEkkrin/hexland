@@ -1,11 +1,11 @@
 {
-  "name": "Hexland Development",
+  "name": "Wall & Shadow Development",
   "dockerComposeFile": "docker-compose.yml",
 
   // GPU support: Service name must match active profile (see README.md)
-  // Default connects to hexland-dev (no GPU)
+  // Default connects to was-dev (no GPU)
   // Create .devcontainer/.env to activate GPU profiles
-  "service": "hexland-dev",
+  "service": "was-dev",
   "workspaceFolder": "/workspaces/hexland",
   "shutdownAction": "stopCompose",
 
@@ -26,11 +26,8 @@
         "editor.tabSize": 2,
         "editor.formatOnSave": true,
         "editor.defaultFormatter": "esbenp.prettier-vscode",
-        "typescript.tsdk": "hexland-web/node_modules/typescript/lib",
-        "eslint.workingDirectories": [
-          "hexland-web",
-          "hexland-web/functions"
-        ],
+        "typescript.tsdk": "was-web/node_modules/typescript/lib",
+        "eslint.workingDirectories": ["was-web", "was-web/functions"],
         "files.exclude": {
           "**/.git": true,
           "**/.DS_Store": true,

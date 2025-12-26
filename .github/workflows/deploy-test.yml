@@ -104,7 +104,7 @@
 #   - The project ID is shown under the project name at the top
 #
 # Option 2: From your local .firebaserc file
-#   - Look in hexland-web/.firebaserc
+#   - Look in was-web/.firebaserc
 #   - Use the "default" alias (e.g., "hexland-test-25")
 #
 # ADD TO GITHUB ENVIRONMENT SECRETS:
@@ -154,7 +154,7 @@ name: Deploy to Test
 on:
   push:
     branches: [master]
-  workflow_dispatch:  # Allow manual triggering from GitHub UI
+  workflow_dispatch: # Allow manual triggering from GitHub UI
 
 # Least-privilege permissions: only read access to repository contents
 # Deployment to Firebase is handled via service account credentials (not GITHUB_TOKEN)

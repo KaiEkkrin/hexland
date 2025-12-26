@@ -1,13 +1,15 @@
-# Hexland Dev Container
+# Wall & Shadow Dev Container
 
-Complete development environment for Hexland (Wall & Shadow) with Node.js 20, Firebase Emulator Suite, and optional GPU support for Playwright/WebGL tests.
+Complete development environment for Wall & Shadow with Node.js 20, Firebase Emulator Suite, and optional GPU support for Playwright/WebGL tests.
 
 ## Prerequisites
 
 1. **Docker Desktop** (or Docker Engine + Docker Compose on Linux)
+
    - [Download Docker Desktop](https://www.docker.com/products/docker-desktop)
 
 2. **Visual Studio Code** with **Dev Containers** extension
+
    - Install VS Code: https://code.visualstudio.com/
    - Install extension: `ms-vscode-remote.remote-containers`
 
@@ -24,6 +26,7 @@ Complete development environment for Hexland (Wall & Shadow) with Node.js 20, Fi
 **Step 1: Clone the repository**
 
 **On Windows (WSL2):**
+
 ```bash
 # Inside WSL2 (Ubuntu or other Linux distribution)
 cd ~
@@ -33,6 +36,7 @@ code .
 ```
 
 **On Linux:**
+
 ```bash
 cd ~
 git clone https://github.com/KaiEkkrin/hexland.git
@@ -56,7 +60,7 @@ Once the container is ready:
 4. Click **"Generate new private key"**
 5. Save the downloaded JSON file as:
    ```
-   hexland-web/firebase-admin-credentials.json
+   was-web/firebase-admin-credentials.json
    ```
 
 ⚠️ **Important**: This file is required for Firebase Functions to work properly (including creating adventures, maps, etc.). Without it, you'll get CORS errors and "internal" errors when calling Functions.
@@ -68,7 +72,7 @@ This file is in `.gitignore` and will never be committed. A symlink at `public/f
 Before starting the dev server, you must build the Firebase Functions:
 
 ```bash
-cd hexland-web/functions
+cd was-web/functions
 yarn build
 cd ..
 ```
@@ -80,7 +84,7 @@ This compiles the TypeScript Functions to JavaScript. The emulator cannot run wi
 Once setup is complete:
 
 ```bash
-cd hexland-web
+cd was-web
 
 # Terminal 1: Start Firebase emulators
 yarn dev:firebase
@@ -110,18 +114,21 @@ GPU support enables hardware-accelerated WebGL rendering for Playwright tests. *
 Copy the appropriate sample `.env` file for your system into `.devcontainer/.env`:
 
 **For NVIDIA GPU (WSL2 + Docker Desktop):**
+
 ```bash
 cd .devcontainer
 cp .env.nvidia .env
 ```
 
 **For AMD GPU (Native Linux with ROCm):**
+
 ```bash
 cd .devcontainer
 cp .env.amd .env
 ```
 
 **For No GPU (default):**
+
 ```bash
 # Don't create a .env file - default configuration is used automatically
 ```
@@ -131,12 +138,14 @@ After creating the `.env` file, rebuild the container: `F1` → **"Dev Container
 ### Requirements by GPU Type
 
 **NVIDIA (WSL2 + Docker Desktop):**
+
 - NVIDIA GPU
 - NVIDIA driver installed on Windows host
 - Docker Desktop with WSL2 backend (includes NVIDIA Container Toolkit automatically)
 - **Important**: Do NOT install any NVIDIA driver inside WSL2 - the Windows driver is automatically made available
 
 **AMD (Native Linux):**
+
 - AMD GPU with ROCm support
 - ROCm drivers installed on Linux host ([installation guide](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/))
 - Verify GPU access: `ls -la /dev/dri /dev/kfd`
@@ -147,38 +156,39 @@ After creating the `.env` file, rebuild the container: `F1` → **"Dev Container
 Inside the container, check for GPU devices:
 
 **NVIDIA:**
+
 ```bash
 # Should show your GPU
 nvidia-smi
 ```
 
 **AMD:**
+
 ```bash
 # Should list GPU devices
 ls -la /dev/dri /dev/kfd
 ```
 
-
 ## Service Endpoints
 
-| Service | URL | Description |
-|---------|-----|-------------|
-| **React App** | http://localhost:3400 | Main web application (Firebase Hosting emulator - recommended) |
-| **Dev Server** | http://localhost:5000 | Vite dev server (for development with hot reload) |
-| **Emulator UI** | http://localhost:4000 | Firebase emulator dashboard |
-| **Hosting** | http://localhost:3400 | Firebase hosting emulator (same as React App) |
-| **Functions** | http://localhost:5001 | Firebase Functions endpoint |
-| **Storage** | localhost:9199 | Firebase Storage emulator |
-| **Firestore** | localhost:8080 | Firestore emulator |
-| **Auth** | localhost:9099 | Authentication emulator |
-| **Node Debug** | localhost:9229 | Node.js debugging port |
+| Service         | URL                   | Description                                                    |
+| --------------- | --------------------- | -------------------------------------------------------------- |
+| **React App**   | http://localhost:3400 | Main web application (Firebase Hosting emulator - recommended) |
+| **Dev Server**  | http://localhost:5000 | Vite dev server (for development with hot reload)              |
+| **Emulator UI** | http://localhost:4000 | Firebase emulator dashboard                                    |
+| **Hosting**     | http://localhost:3400 | Firebase hosting emulator (same as React App)                  |
+| **Functions**   | http://localhost:5001 | Firebase Functions endpoint                                    |
+| **Storage**     | localhost:9199        | Firebase Storage emulator                                      |
+| **Firestore**   | localhost:8080        | Firestore emulator                                             |
+| **Auth**        | localhost:9099        | Authentication emulator                                        |
+| **Node Debug**  | localhost:9229        | Node.js debugging port                                         |
 
 ## Development Workflows
 
 ### Running Tests
 
 ```bash
-cd hexland-web
+cd was-web
 
 # Unit tests (watch mode)
 yarn test:unit
@@ -193,11 +203,11 @@ yarn test
 ### Building for Production
 
 ```bash
-cd hexland-web
+cd was-web
 yarn build
 ```
 
-Creates optimized production build in `hexland-web/build/` directory.
+Creates optimized production build in `was-web/build/` directory.
 
 ### Debugging
 
@@ -213,7 +223,7 @@ Creates optimized production build in `hexland-web/build/` directory.
 1. Start emulators: `yarn dev:firebase`
 2. Go to Run & Debug in VS Code
 3. Select **"Debug Firebase Functions"**
-4. Set breakpoints in `hexland-web/functions/src/**/*.ts`
+4. Set breakpoints in `was-web/functions/src/**/*.ts`
 5. Trigger the function from your app or Emulator UI
 
 ## Architecture
@@ -253,9 +263,10 @@ Automatically configured in the container:
 **Root cause**: Firebase Functions not built, admin credentials missing, or credentials symlink not created
 
 **Solution**:
+
 ```bash
 # 1. Build Firebase Functions
-cd hexland-web/functions
+cd was-web/functions
 yarn build
 
 # 2. Ensure firebase-admin-credentials.json exists and symlink is present
@@ -279,16 +290,17 @@ If `firebase-admin-credentials.json` is missing, follow Step 2 in the Quick Star
 
 **Possible causes:**
 
-1. **Functions not built**: Run `cd hexland-web/functions && yarn build`
+1. **Functions not built**: Run `cd was-web/functions && yarn build`
 2. **Java not found**: Run `java --version` (should show OpenJDK 21)
 3. **Port conflicts**: Check if ports 3400, 4000, 5000, 5001, 8080, 9099 are already in use on your host
-4. **Missing credentials**: Ensure `hexland-web/firebase-admin-credentials.json` exists (see Quick Start Step 2)
+4. **Missing credentials**: Ensure `was-web/firebase-admin-credentials.json` exists (see Quick Start Step 2)
 
 ### Slow Performance on Windows
 
 **Symptom**: Slow file operations, long build times
 
 **Solution**: Ensure you're working in WSL2, NOT directly on Windows:
+
 - ✅ Repository should be in WSL2 filesystem: `/home/username/hexland`
 - ❌ NOT on Windows filesystem: `/mnt/c/Users/username/hexland`
 
@@ -299,8 +311,9 @@ Verify Docker Desktop is using WSL2 backend: Settings → General → Use WSL 2 
 **Symptom**: `Cannot find module` errors
 
 **Solution**: Reinstall dependencies
+
 ```bash
-cd hexland-web
+cd was-web
 rm -rf node_modules
 yarn install
 
@@ -312,12 +325,14 @@ yarn install
 ### GPU Not Detected
 
 **NVIDIA**:
+
 - Verify NVIDIA driver on Windows: Open PowerShell, run `nvidia-smi`
 - Verify Docker Desktop has WSL2 backend enabled
 - Check `.devcontainer/.env` file exists and contains `COMPOSE_PROFILES=nvidia`
 - Rebuild the container after creating/modifying `.env` file
 
 **AMD**:
+
 - Verify ROCm drivers: `rocm-smi` on host Linux
 - Verify devices exist: `ls -la /dev/dri /dev/kfd`
 - Check `.devcontainer/.env` file exists and contains `COMPOSE_PROFILES=amd`
@@ -331,7 +346,7 @@ yarn install
 1. Hard refresh: `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac)
 2. Check terminal for compilation messages
 3. Restart dev server: `Ctrl+C`, then `yarn start`
-4. Verify file is in `hexland-web/src/` and not excluded by `.gitignore`
+4. Verify file is in `was-web/src/` and not excluded by `.gitignore`
 
 ### Container Build Fails
 
@@ -346,12 +361,13 @@ yarn install
 1. Open VS Code
 2. Press `F1`
 3. Type **"File: Open Recent"**
-4. Select your hexland container workspace
+4. Select your Wall & Shadow container workspace
 
 OR use the Remote Explorer:
+
 1. Open Remote Explorer in VS Code sidebar
 2. Select "Dev Containers" from dropdown
-3. Find your hexland container
+3. Find your Wall & Shadow container
 4. Click to connect
 
 ## Resources

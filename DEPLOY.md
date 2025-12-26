@@ -1,6 +1,6 @@
 # Wall & Shadow - Deployment Guide
 
-This guide covers deploying Wall & Shadow (Hexland) to Firebase.
+This guide covers deploying Wall & Shadow to Firebase.
 
 ## Prerequisites
 
@@ -49,6 +49,7 @@ This guide covers deploying Wall & Shadow (Hexland) to Firebase.
 **Why this is needed**: Registering the web app adds the `appId` and `measurementId` to Firebase Hosting's auto-configuration, which is required for Firebase Analytics and prevents initialization errors.
 
 **Firestore Database** (Auto-enabled on first deployment):
+
 - No manual setup required - rules and indexes will be deployed automatically
 
 ### 2. Firebase CLI
@@ -71,13 +72,14 @@ Your project uses `.firebaserc` to manage deployment targets:
 ```json
 {
   "projects": {
-    "default": "hexland-test-25",    // Test/staging environment
-    "production": "hexland"           // Production environment
+    "default": "hexland-test-25", // Test/staging environment
+    "production": "hexland" // Production environment
   }
 }
 ```
 
 Switch between projects:
+
 ```bash
 firebase use default      # Use test project
 firebase use production   # Use production project
@@ -93,11 +95,12 @@ Before deploying, ensure both the web app and Cloud Functions build successfully
 ### Web Application
 
 ```bash
-cd hexland-web
+cd was-web
 yarn build
 ```
 
 **Expected output:**
+
 - Build completes in ~5-10 seconds
 - Main bundle: ~468KB (gzipped)
 - Output directory: `build/`
@@ -105,11 +108,12 @@ yarn build
 ### Cloud Functions
 
 ```bash
-cd hexland-web/functions
+cd was-web/functions
 yarn build
 ```
 
 **Expected output:**
+
 - TypeScript compilation succeeds
 - Output directory: `lib/`
 
@@ -120,11 +124,12 @@ yarn build
 ### Deploy Everything (Recommended for First Deployment)
 
 ```bash
-cd hexland-web
+cd was-web
 firebase deploy
 ```
 
 **Deploys:**
+
 - ✅ Web app (Hosting)
 - ✅ Cloud Functions
 - ✅ Firestore Security Rules
@@ -182,11 +187,13 @@ Combine services with comma-separated list.
 ### First-Time Deployment
 
 1. **Verify Blaze Plan**:
+
    - Visit: https://console.firebase.google.com/project/YOUR_PROJECT_ID/usage
    - Confirm "Blaze Plan" is active
    - If not, click "Modify Plan" → Upgrade to Blaze
 
 2. **Enable Firebase Storage** (if not already done):
+
    - Visit: https://console.firebase.google.com/project/YOUR_PROJECT_ID/storage
    - Click "Get Started" → "Start in production mode" → Choose location → "Done"
    - See [Prerequisites](#enable-required-firebase-services) for details
@@ -194,6 +201,7 @@ Combine services with comma-separated list.
 3. **Configure CORS for Cloud Storage**:
 
    **Authenticate with Google Cloud SDK:**
+
    ```bash
    gcloud auth login
    ```
@@ -201,20 +209,23 @@ Combine services with comma-separated list.
    This opens a browser window for authentication; sign in with the Google account that has access to your Firebase project.
 
    **Apply CORS configuration:**
+
    ```bash
-   cd hexland-web
+   cd was-web
    gsutil cors set cors.json gs://YOUR_PROJECT_ID.firebasestorage.app
    ```
 
    Replace `YOUR_PROJECT_ID` with your actual Firebase project ID.
 
    **Bucket URL format:**
+
    - **New buckets** (created after Oct 2024): `gs://PROJECT_ID.firebasestorage.app`
    - **Old buckets** (created before Oct 2024): `gs://PROJECT_ID.appspot.com`
 
    Check your Firebase Console Storage page to confirm which format your bucket uses.
 
    **Verify CORS configuration:**
+
    ```bash
    gsutil cors get gs://YOUR_PROJECT_ID.firebasestorage.app
    ```
@@ -222,17 +233,20 @@ Combine services with comma-separated list.
    You should see the CORS policy JSON output confirming the configuration was applied.
 
 4. **Select Project**:
+
    ```bash
    firebase use default  # or firebase use production
    ```
 
 5. **Build**:
+
    ```bash
    yarn build
    cd functions && yarn build && cd ..
    ```
 
 6. **Deploy**:
+
    ```bash
    firebase deploy
    ```
@@ -248,7 +262,7 @@ Combine services with comma-separated list.
 #### Frontend-Only Changes
 
 ```bash
-cd hexland-web
+cd was-web
 yarn build
 firebase deploy --only hosting
 ```
@@ -256,7 +270,7 @@ firebase deploy --only hosting
 #### Backend-Only Changes
 
 ```bash
-cd hexland-web/functions
+cd was-web/functions
 yarn build
 cd ..
 firebase deploy --only functions
@@ -265,7 +279,7 @@ firebase deploy --only functions
 #### Full Deployment (Code + Rules + Indexes)
 
 ```bash
-cd hexland-web
+cd was-web
 yarn build
 firebase deploy
 ```
@@ -277,10 +291,12 @@ firebase deploy
 ### 1. Web Application
 
 Visit your deployed app:
+
 - Primary URL: `https://YOUR_PROJECT_ID.web.app`
 - Alternate URL: `https://YOUR_PROJECT_ID.firebaseapp.com`
 
 **Test core functionality:**
+
 - [ ] Sign up / Sign in (email/password, Google)
 - [ ] Create adventure
 - [ ] Create map (hex and square grid)
@@ -291,11 +307,13 @@ Visit your deployed app:
 ### 2. Cloud Functions
 
 List deployed functions:
+
 ```bash
 firebase functions:list
 ```
 
 **Expected output:**
+
 ```
 ┌──────────────────────┬────────────────┬──────────────┐
 │ Name                 │ Region         │ Trigger      │
@@ -310,16 +328,19 @@ firebase functions:list
 ### 3. Monitor Function Logs
 
 View real-time logs:
+
 ```bash
 firebase functions:log
 ```
 
 Or view in console:
+
 - https://console.firebase.google.com/project/YOUR_PROJECT_ID/functions/logs
 
 ### 4. Firestore & Storage Rules
 
 Verify rules deployed:
+
 - Firestore: https://console.firebase.google.com/project/YOUR_PROJECT_ID/firestore/rules
 - Storage: https://console.firebase.google.com/project/YOUR_PROJECT_ID/storage/rules
 
@@ -330,18 +351,21 @@ Verify rules deployed:
 ### Region
 
 Cloud Functions are deployed to **europe-west2** (London):
-- Configured in: `hexland-web/functions/src/index.ts:16`
+
+- Configured in: `was-web/functions/src/index.ts:16`
 - Change if needed for different geographic region
 
 ### Emulator vs Production
 
 The app automatically detects deployment environment:
+
 - **Local development**: Uses Firebase emulators (no credentials needed)
 - **Production**: Fetches config from `/__/firebase/init.json` (auto-provided by Firebase Hosting)
 
 ### Credentials
 
 **Important:** `firebase-admin-credentials.json` is **only used locally** for development/testing:
+
 - ✅ Development: Provides project ID for emulator connections
 - ✅ Testing: E2E tests use it to determine project ID
 - ❌ Production: **NOT deployed** (in `.gitignore`)
@@ -358,6 +382,7 @@ No manual credential management needed for production deployments.
 **Cause:** Not authenticated or wrong project selected.
 
 **Solution:**
+
 ```bash
 firebase login --reauth
 firebase use YOUR_PROJECT_ID
@@ -378,8 +403,9 @@ firebase use YOUR_PROJECT_ID
 **Cause:** TypeScript or lint errors in Functions code.
 
 **Solution:**
+
 ```bash
-cd hexland-web/functions
+cd was-web/functions
 yarn lint
 yarn build
 ```
@@ -389,6 +415,7 @@ Fix any reported errors before deploying.
 ### Error: "Firebase Storage has not been set up"
 
 **Full error:**
+
 ```
 Error: Firebase Storage has not been set up on project 'YOUR_PROJECT_ID'.
 Go to https://console.firebase.google.com/project/YOUR_PROJECT_ID/storage
@@ -398,6 +425,7 @@ and click 'Get Started' to set up Firebase Storage.
 **Cause:** Firebase Storage needs to be manually enabled before first deployment.
 
 **Solution:**
+
 1. Visit the link shown in the error message (or go to Firebase Console → Storage)
 2. Click **"Get Started"**
 3. Select **"Start in production mode"**
@@ -414,6 +442,7 @@ See [Prerequisites → Enable Required Firebase Services](#enable-required-fireb
 **Cause:** Firebase Authentication providers (Email/Password, Google) are not enabled in the Firebase Console.
 
 **Solution:**
+
 1. Visit: https://console.firebase.google.com/project/YOUR_PROJECT_ID/authentication/providers
 2. Click "Get started" if this is your first time
 3. Enable Email/Password provider:
@@ -426,6 +455,7 @@ See [Prerequisites → Enable Required Firebase Services](#enable-required-fireb
 ### Error: "Missing App configuration value: appId" (Analytics Error)
 
 **Full error:**
+
 ```
 FirebaseError: Installations: Missing App configuration value: "appId"
 (installations/missing-app-config-values).
@@ -436,6 +466,7 @@ FirebaseError: Installations: Missing App configuration value: "appId"
 **Cause:** Web app not registered with Firebase Hosting, so the auto-config endpoint (`/__/firebase/init.json`) is missing the `appId` field.
 
 **Solution:**
+
 1. Visit: https://console.firebase.google.com/project/YOUR_PROJECT_ID/settings/general
 2. Scroll to "Your apps" section
 3. Click the `</>` (Web) icon
@@ -452,10 +483,12 @@ See [Prerequisites → Register Web App](#register-web-app-required---enables-an
 ### Functions Deployment is Slow
 
 **Normal behavior:**
+
 - First deployment: 3-5 minutes (builds Docker containers)
 - Subsequent deployments: 1-2 minutes (reuses containers)
 
 To speed up:
+
 - Use `--only hosting` when possible
 - Deploy functions separately: `--only functions`
 
@@ -464,8 +497,9 @@ To speed up:
 **Cause:** Cloud Storage bucket not configured for CORS.
 
 **Solution:**
+
 ```bash
-cd hexland-web
+cd was-web
 gsutil cors set cors.json gs://YOUR_PROJECT_ID.firebasestorage.app
 ```
 
@@ -482,9 +516,11 @@ gsutil cors set cors.json gs://YOUR_PROJECT_ID.firebasestorage.app
 ### Monitor Usage
 
 Check usage dashboard:
+
 - https://console.firebase.google.com/project/YOUR_PROJECT_ID/usage
 
 **Expected costs for low-traffic VTT:**
+
 - Most usage stays within free tiers
 - Typical monthly cost: $0-5
 
@@ -502,11 +538,13 @@ Check usage dashboard:
 ### Using Firebase Hosting Versions
 
 View deployment history:
+
 ```bash
 firebase hosting:channel:list
 ```
 
 Rollback to previous version:
+
 1. Visit: https://console.firebase.google.com/project/YOUR_PROJECT_ID/hosting
 2. Click "Release history"
 3. Find previous working version
@@ -515,13 +553,15 @@ Rollback to previous version:
 ### Using Git Tags
 
 The project uses git tags for major milestones:
+
 - `v1.3.10-phase0`, `v1.3.10-phase1`
 - `v1.4.0-phase2`, `v1.4.0-phase3-complete`
 
 To roll back:
+
 ```bash
 git checkout v1.4.0-phase3-complete
-cd hexland-web
+cd was-web
 yarn build
 firebase deploy
 ```
@@ -552,7 +592,7 @@ firebase use default              # Test/staging
 firebase use production           # Production
 
 # Build
-cd hexland-web && yarn build
+cd was-web && yarn build
 
 # Deploy everything
 firebase deploy
@@ -578,4 +618,4 @@ firebase projects:list
 
 ---
 
-**Ready to deploy?** Run `firebase deploy` from `hexland-web/` directory.
+**Ready to deploy?** Run `firebase deploy` from `was-web/` directory.

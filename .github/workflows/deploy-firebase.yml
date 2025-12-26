@@ -56,7 +56,7 @@ on:
   workflow_call:
     inputs:
       environment:
-        description: 'Target environment (test, production)'
+        description: "Target environment (test, production)"
         required: true
         type: string
 
@@ -69,7 +69,7 @@ permissions:
 env:
   # Pin firebase-tools version to match development environment
   # Update this when upgrading Firebase CLI
-  FIREBASE_TOOLS_VERSION: '15.1.0'
+  FIREBASE_TOOLS_VERSION: "15.1.0"
 
 jobs:
   deploy:
@@ -94,27 +94,27 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'yarn'
+          cache: "yarn"
           cache-dependency-path: |
-            hexland-web/yarn.lock
-            hexland-web/functions/yarn.lock
+            was-web/yarn.lock
+            was-web/functions/yarn.lock
 
       # -----------------------------------------------------------------------
       # Install dependencies
       # -----------------------------------------------------------------------
       - name: Install dependencies (web)
-        working-directory: hexland-web
+        working-directory: was-web
         run: yarn install --frozen-lockfile
 
       - name: Install dependencies (functions)
-        working-directory: hexland-web/functions
+        working-directory: was-web/functions
         run: yarn install --frozen-lockfile
 
       # -----------------------------------------------------------------------
       # Build Cloud Functions
       # -----------------------------------------------------------------------
       - name: Build Cloud Functions
-        working-directory: hexland-web/functions
+        working-directory: was-web/functions
         run: yarn build
 
       # -----------------------------------------------------------------------
@@ -126,7 +126,7 @@ jobs:
       # We create a minimal mock file here just to satisfy the build process.
       #
       - name: Create mock Firebase credentials
-        working-directory: hexland-web
+        working-directory: was-web
         run: |
           echo '{"project_id": "demo-project"}' > firebase-admin-credentials.json
 
@@ -134,7 +134,7 @@ jobs:
       # Build web application
       # -----------------------------------------------------------------------
       - name: Build web application
-        working-directory: hexland-web
+        working-directory: was-web
         env:
           VITE_DEPLOY_ENV: ${{ inputs.environment }}
         run: yarn build
@@ -147,7 +147,7 @@ jobs:
       # We decode it here and write to a temporary file that Firebase CLI can use.
       #
       - name: Decode Firebase service account
-        working-directory: hexland-web
+        working-directory: was-web
         run: |
           echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" | base64 --decode > firebase-service-account.json
           echo "✅ Service account credentials decoded"
@@ -185,9 +185,9 @@ jobs:
       #   - Production uses firebase.json (default, no X-Robots-Tag)
       #
       - name: Deploy to Firebase
-        working-directory: hexland-web
+        working-directory: was-web
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/hexland-web/firebase-service-account.json
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/was-web/firebase-service-account.json
         run: |
           if [ "${{ inputs.environment }}" = "test" ]; then
             firebase deploy --config firebase.test.json --project ${{ secrets.FIREBASE_PROJECT_ID }}
@@ -203,7 +203,7 @@ jobs:
       #
       - name: Cleanup credentials
         if: always()
-        working-directory: hexland-web
+        working-directory: was-web
         run: |
           if [ -f firebase-service-account.json ]; then
             rm firebase-service-account.json
