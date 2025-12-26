@@ -22,7 +22,7 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
   private readonly _dict = new FeatureDictionary<GridVertex, ITokenTextWithMesh>(vertexString);
 
   // We cache text geometries here to avoid repeated re-creation
-  private readonly _geometries = new Map<string, THREE.ShapeBufferGeometry>();
+  private readonly _geometries = new Map<string, THREE.ShapeGeometry>();
 
   private readonly _material: THREE.MeshBasicMaterial; // we don't own this
   private readonly _z: number;
@@ -48,7 +48,7 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
     this._z = z;
   }
 
-  private createMesh(f: ITokenText, geometry: THREE.ShapeBufferGeometry, bb: THREE.Box3) {
+  private createMesh(f: ITokenText, geometry: THREE.ShapeGeometry, bb: THREE.Box3) {
     const mesh = new THREE.Mesh(geometry, this._material);
 
     const thisOffsetMul = this._scratchVector2.copy(offsetMultiplicand);
@@ -68,7 +68,7 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
     return mesh;
   }
 
-  private getGeometry(text: string): THREE.ShapeBufferGeometry | undefined {
+  private getGeometry(text: string): THREE.ShapeGeometry | undefined {
     let geometry = this._geometries.get(text);
     if (geometry !== undefined) {
       return geometry;
