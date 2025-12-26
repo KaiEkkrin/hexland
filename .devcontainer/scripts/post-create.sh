@@ -2,7 +2,7 @@
 set -e
 
 echo ""
-echo "🚀 Setting up Hexland development environment..."
+echo "🚀 Setting up Wall & Shadow development environment..."
 echo ""
 
 # Verify repository is in the expected location

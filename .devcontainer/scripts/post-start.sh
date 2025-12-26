@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo ""
-echo "🔄 Hexland dev container started!"
+echo "🔄 Wall & Shadow dev container started!"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "📊 Service Endpoints"

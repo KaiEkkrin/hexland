@@ -1,4 +1,4 @@
-# Hexland
+# Wall & Shadow
 
 This project contains the source code for Wall & Shadow. It is available under the terms of the [Apache License, version 2.0](http://www.apache.org/licenses/LICENSE-2.0) -- see the LICENSE file.
 
@@ -72,10 +72,6 @@ yarn build
 firebase deploy --only hosting    # Web app only (fast)
 firebase deploy                   # Everything (includes Functions)
 ```
-
-## Alternative: Standalone Docker
-
-A standalone Docker setup is available via `run_docker.sh` and `docker-compose.yml`. This is less integrated with VS Code but works for command-line development. See the script for usage.
 
 ## License
 

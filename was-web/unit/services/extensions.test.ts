@@ -76,8 +76,8 @@ describe('test extensions', () => {
 
     expect(profile?.name).toBe('Owner');
 
-    // If we fetch it, it should not get re-created or updated (changing their Hexland display
-    // name should be a Hexland UI feature, it shouldn't sync with the provider's idea of it)
+    // If we fetch it, it should not get re-created or updated (changing their Wall & Shadow display
+    // name should be our UI feature, it shouldn't sync with the provider's idea of it)
     const profile2 = await ensureProfile(dataService, { ...user, displayName: 'fish' }, undefined);
     expect(profile2?.name).toBe('Owner');
   });

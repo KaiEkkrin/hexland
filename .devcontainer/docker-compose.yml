@@ -1,7 +1,7 @@
 version: "3.8"
 
 # Extension field (not a service) - provides common configuration via YAML anchor
-x-hexland-common: &hexland-common
+x-was-common: &was-common
   build:
     context: .
     dockerfile: Dockerfile
@@ -33,7 +33,7 @@ x-hexland-common: &hexland-common
     - "9323:9323" # Playwright test results
 
   networks:
-    - hexland-network
+    - was-network
 
   # Use host IPC namespace for shared memory (fixes WebGL rendering in Docker)
   ipc: host
@@ -47,14 +47,14 @@ x-hexland-common: &hexland-common
 services:
   # No GPU variant (default)
   # Starts when no .env file exists (empty profile activates by default)
-  hexland-dev:
-    <<: *hexland-common
+  was-dev:
+    <<: *was-common
     profiles: ["", "default"]
 
   # NVIDIA GPU variant
   # Activate by creating .devcontainer/.env with: COMPOSE_PROFILES=nvidia
-  hexland-dev-nvidia:
-    <<: *hexland-common
+  was-dev-nvidia:
+    <<: *was-common
     profiles: ["nvidia"]
     deploy:
       resources:
@@ -66,8 +66,8 @@ services:
 
   # AMD GPU variant
   # Activate by creating .devcontainer/.env with: COMPOSE_PROFILES=amd
-  hexland-dev-amd:
-    <<: *hexland-common
+  was-dev-amd:
+    <<: *was-common
     profiles: ["amd"]
     devices:
       - /dev/dri:/dev/dri
@@ -79,5 +79,5 @@ services:
       - render
 
 networks:
-  hexland-network:
+  was-network:
     driver: bridge

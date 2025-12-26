@@ -1,6 +1,6 @@
 # Architecture
 
-Detailed architecture documentation for Wall & Shadow (Hexland).
+Detailed architecture documentation for Wall & Shadow.
 
 ## Data Layer Architecture
 

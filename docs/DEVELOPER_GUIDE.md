@@ -1,6 +1,6 @@
 # Developer Guide
 
-Development workflows, common tasks, testing, and debugging for Wall & Shadow (Hexland).
+Development workflows, common tasks, testing, and debugging for Wall & Shadow.
 
 ## Development Environment
 
@@ -12,13 +12,7 @@ The repository includes a VS Code dev container ([.devcontainer/](../.devcontain
 - All Firebase emulators pre-configured (including Storage emulator)
 - VS Code extensions for React/TypeScript development
 
-**IMPORTANT**: Must clone repository into a named Docker volume (`hexland_workspace`) to avoid Windows/Linux permission conflicts.
-
 See [.devcontainer/README.md](../.devcontainer/README.md) for detailed setup instructions.
-
-### Standalone Docker
-
-Alternative Docker setup using `run_docker.sh` and `docker-compose.yml` in the root directory. Less integrated with VS Code but works for command-line development.
 
 ## Testing Strategy
 

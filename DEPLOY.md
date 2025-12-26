@@ -1,6 +1,6 @@
 # Wall & Shadow - Deployment Guide
 
-This guide covers deploying Wall & Shadow (Hexland) to Firebase.
+This guide covers deploying Wall & Shadow to Firebase.
 
 ## Prerequisites
 

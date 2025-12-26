@@ -4,7 +4,7 @@ Guidance for Claude Code when working with this repository.
 
 ## Project Overview
 
-Wall & Shadow (codename: Hexland) - Virtual tabletop (VTT) web app for running tabletop RPG sessions online. Real-time collaborative map editing, token management, game state sharing.
+Wall & Shadow - Virtual tabletop (VTT) web app for running tabletop RPG sessions online. Real-time collaborative map editing, token management, game state sharing.
 
 **Stack**: React 18 + TypeScript + Firebase (Firestore, Functions, Auth, Hosting, Storage) + Three.js + Vite
 
@@ -117,8 +117,6 @@ yarn build              # Compile TypeScript to lib/
 **Three.js Memory**: Always dispose geometries, materials, textures. Three.js doesn't auto-collect.
 
 **Firebase Admin Credentials**: Requires `was-web/firebase-admin-credentials.json` (gitignored). Get from Firebase Console → Project Settings → Service Accounts.
-
-**Dev Container**: Clone into named Docker volume (`hexland_workspace`) to avoid permission conflicts. See `.devcontainer/README.md`.
 
 **Emulators**: All bind to `0.0.0.0` for Docker compatibility (see `firebase.json`).
 

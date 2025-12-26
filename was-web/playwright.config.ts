@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Playwright configuration for Hexland e2e tests.
+ * Playwright configuration for Wall & Shadow` e2e tests.
  *
  * Tests run against Firebase emulators and the React dev server.
  * Tests are executed serially (workers: 1) to avoid Firebase emulator race conditions.

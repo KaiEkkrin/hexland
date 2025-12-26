@@ -22,14 +22,14 @@ const getEnvironmentFromHostname = (): Environment => {
 
   const hostname = window.location.hostname;
 
-  // Production domains
-  if (hostname === 'wallandshadow.io' || hostname === 'hexland.web.app') {
-    return 'production';
+  // Test domain
+  if (hostname.includes('test')) {
+    return 'test';
   }
 
-  // Test domain
-  if (hostname.includes('hexland-test-25')) {
-    return 'test';
+  // Production domains
+  if (hostname.includes('wallandshadow')) {
+    return 'production';
   }
 
   // Local development

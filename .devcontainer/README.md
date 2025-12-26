@@ -1,6 +1,6 @@
-# Hexland Dev Container
+# Wall & Shadow Dev Container
 
-Complete development environment for Hexland (Wall & Shadow) with Node.js 20, Firebase Emulator Suite, and optional GPU support for Playwright/WebGL tests.
+Complete development environment for Wall & Shadow with Node.js 20, Firebase Emulator Suite, and optional GPU support for Playwright/WebGL tests.
 
 ## Prerequisites
 
@@ -361,13 +361,13 @@ yarn install
 1. Open VS Code
 2. Press `F1`
 3. Type **"File: Open Recent"**
-4. Select your hexland container workspace
+4. Select your Wall & Shadow container workspace
 
 OR use the Remote Explorer:
 
 1. Open Remote Explorer in VS Code sidebar
 2. Select "Dev Containers" from dropdown
-3. Find your hexland container
+3. Find your Wall & Shadow container
 4. Click to connect
 
 ## Resources

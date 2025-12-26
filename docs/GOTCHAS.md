@@ -1,6 +1,6 @@
 # Important Gotchas & Troubleshooting
 
-Critical warnings and common issues when working with Wall & Shadow (Hexland).
+Critical warnings and common issues when working with Wall & Shadow.
 
 ## Firebase Configuration
 
@@ -92,47 +92,6 @@ The rendering system uses instanced meshes for performance:
 3. Clients subscribe to change stream
 4. `mapChangeTracker.ts` merges changes and detects conflicts
 5. Optimistic updates with rollback on conflict
-
-## Development Environment
-
-### Dev Container Setup
-
-**IMPORTANT**: Repository must be cloned into a named Docker volume (`hexland_workspace`).
-
-**Why**: Avoids Windows/Linux permission conflicts in WSL2 and Docker Desktop.
-
-**Setup**:
-
-```bash
-# Create volume
-docker volume create hexland_workspace
-
-# Clone into volume (VS Code command palette)
-# "Dev Containers: Clone Repository in Container Volume..."
-```
-
-See [.devcontainer/README.md](../.devcontainer/README.md) for detailed instructions.
-
-### Port Conflicts
-
-If you get "port already in use" errors:
-
-**Check running processes**:
-
-```bash
-lsof -i :3400  # or whatever port
-kill -9 <PID>
-```
-
-**Firebase emulators**:
-
-```bash
-# Stop all emulators
-firebase emulators:stop
-
-# Or kill process
-pkill -f firebase
-```
 
 ## Testing
 
