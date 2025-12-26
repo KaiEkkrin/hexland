@@ -6,7 +6,7 @@ This guide walks you through setting up GitHub Environments for deploying Wall &
 
 Wall & Shadow uses GitHub's **Environments** feature to manage environment-specific secrets and deployment workflows:
 
-- **test** environment: Auto-deploys on push to master
+- **test** environment: Auto-deploys on push to main
 - **production** environment: Manual deployment only
 
 Each environment has its own Firebase project and service account credentials.
@@ -36,8 +36,8 @@ Each environment has its own Firebase project and service account credentials.
 7. Configure protection rules (optional but recommended):
    - **Deployment branches**: Click "Add deployment branch rule"
      - Select "Selected branches"
-     - Add pattern: `master`
-     - This ensures only master branch can deploy to test
+     - Add pattern: `main`
+     - This ensures only main branch can deploy to test
    - **Required reviewers**: Leave empty (we want auto-deploy)
    - **Wait timer**: Leave empty
 8. Scroll down to **"Environment secrets"** section (you'll add secrets in Part 2)
@@ -51,8 +51,8 @@ Each environment has its own Firebase project and service account credentials.
 5. Configure protection rules (RECOMMENDED for production):
    - **Deployment branches**: Click "Add deployment branch rule"
      - Select "Selected branches"
-     - Add pattern: `master`
-     - This ensures only master branch can deploy to production
+     - Add pattern: `main`
+     - This ensures only main branch can deploy to production
    - **Required reviewers** (GitHub Enterprise only):
      - If you have Enterprise, add trusted team members
      - They will need to approve each production deployment
@@ -266,13 +266,13 @@ Remove-Item production-encoded.txt
 
 ### Test the "test" Environment Workflow
 
-1. Make a trivial commit to the master branch:
+1. Make a trivial commit to the main branch:
    ```bash
-   git checkout master
+   git checkout main
    echo "# Test deployment" >> README.md
    git add README.md
    git commit -m "Test: Verify test environment deployment"
-   git push origin master
+   git push origin main
    ```
 
 2. Go to GitHub → **Actions** tab
@@ -290,7 +290,7 @@ When you're ready to deploy to production:
 1. Go to GitHub → **Actions** tab
 2. Click **"Deploy to Production"** workflow
 3. Click **"Run workflow"** dropdown
-4. Select **"master"** branch
+4. Select **"main"** branch
 5. Click **"Run workflow"**
 6. Monitor the deployment
 7. Verify: `https://YOUR-PRODUCTION-PROJECT-ID.web.app`
@@ -408,7 +408,7 @@ You should now have:
 - ✅ Service account keys with proper permissions
 - ✅ All sensitive files deleted from local machine
 
-**Test environment:** Pushes to master automatically deploy to test
+**Test environment:** Pushes to main automatically deploy to test
 **Production environment:** Manually triggered via GitHub Actions UI
 
 For questions or issues, refer to the workflow files:

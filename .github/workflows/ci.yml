@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
 
 # Least-privilege permissions: only read access to repository contents
 # See: https://docs.github.com/en/actions/security-guides/automatic-token-authentication

@@ -22,7 +22,7 @@
 #   - Clarity: Environment differences are explicit in caller workflows
 #
 # Caller workflows:
-#   - .github/workflows/deploy-test.yml (auto-deploy on push to master)
+#   - .github/workflows/deploy-test.yml (auto-deploy on push to main)
 #   - .github/workflows/deploy-production.yml (manual trigger only)
 #
 # =============================================================================

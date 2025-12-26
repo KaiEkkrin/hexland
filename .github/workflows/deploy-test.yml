@@ -3,7 +3,7 @@
 # =============================================================================
 #
 # This workflow automatically deploys Wall & Shadow to the TEST Firebase
-# environment when code is pushed to the master branch.
+# environment when code is pushed to the main branch.
 #
 # This is a CALLER WORKFLOW that invokes the shared deployment logic in
 # deploy-firebase.yml. See that file for the actual deployment steps.
@@ -25,7 +25,7 @@
 # 5. Name: test
 # 6. Click "Configure environment"
 # 7. (Optional) Configure protection rules:
-#    - Deployment branches: Limit to "master" branch only
+#    - Deployment branches: Limit to "main" branch only
 #    - You probably DON'T want required reviewers for test environment
 #
 # ┌─────────────────────────────────────────────────────────────────────────┐
@@ -136,7 +136,7 @@
 # =============================================================================
 #
 # This workflow will automatically run when:
-#   - Code is pushed to the master branch (auto-deploy)
+#   - Code is pushed to the main branch (auto-deploy)
 #   - You manually trigger it via GitHub Actions UI (Actions tab → Deploy to Test → Run workflow)
 #
 # To deploy manually without pushing:
@@ -144,7 +144,7 @@
 #   2. Click "Actions" tab
 #   3. Select "Deploy to Test" workflow
 #   4. Click "Run workflow" dropdown
-#   5. Select branch (usually "master")
+#   5. Select branch (usually "main")
 #   6. Click "Run workflow"
 #
 # =============================================================================
@@ -153,7 +153,7 @@ name: Deploy to Test
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   workflow_dispatch: # Allow manual triggering from GitHub UI
 
 # Least-privilege permissions: only read access to repository contents
