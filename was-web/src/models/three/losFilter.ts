@@ -83,6 +83,8 @@ export class LoSFilter extends ShaderFilter {
   constructor(gridGeometry: IGridGeometry, z: number, shader: IShader) {
     super(z, {
       blending: THREE.MultiplyBlending,
+      // Three.js r178+ requires premultipliedAlpha for MultiplyBlending
+      premultipliedAlpha: true,
       side: THREE.DoubleSide,
       transparent: true,
       uniforms: shader.uniforms,

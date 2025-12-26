@@ -13,35 +13,13 @@ import * as THREE from 'three';
 // leaking resources.
 
 let renderer: THREE.WebGLRenderer | undefined = undefined;
-const v1RequiredExtensions = [
-  'ANGLE_instanced_arrays'
-];
 
 function getRenderer() {
-  // create the singleton renderer lazily
+  // Create the singleton renderer lazily
+  // Three.js r163+ requires WebGL 2.0 (instancing support is implicit)
   if (renderer === undefined) {
     renderer = new THREE.WebGLRenderer({ alpha: true });
-
-    // Check for functionality
-    if (renderer.domElement.getContext('webgl2')) {
-      // This should be enough for us, instancing support is implicit rather than
-      // an extension
-      console.info('This platform has WebGL 2');
-      return renderer;
-    }
-
-    const supportedExtensions = renderer.getContext().getSupportedExtensions();
-    console.info(
-      `This platform's WebGL renderer supports:\n    ` +
-      supportedExtensions?.join('\n    ')
-    );
-
-    for (const e of v1RequiredExtensions) {
-      if (!supportedExtensions?.find(e2 => e2 === e)) {
-        renderer = undefined;
-        throw Error(`No ${e} support found.`);
-      }
-    }
+    console.info('WebGL renderer initialized (WebGL 2.0 required)');
   }
 
   return renderer;
