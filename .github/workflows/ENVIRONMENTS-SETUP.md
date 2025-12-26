@@ -15,7 +15,7 @@ Each environment has its own Firebase project and service account credentials.
 
 1. Two Firebase projects:
    - Test/staging project (e.g., `hexland-test-25`)
-   - Production project (e.g., `hexland`)
+   - Production project (e.g., `wallandshadow`)
 
 2. GitHub repository with admin access
 
@@ -87,15 +87,15 @@ You need to generate a service account key for **each** Firebase project.
 #### 2.2 Generate Production Environment Service Account
 
 1. Still in [Firebase Console](https://console.firebase.google.com)
-2. Switch to your **PRODUCTION** project (e.g., "hexland")
+2. Switch to your **PRODUCTION** project (e.g., "wallandshadow")
 3. Click the **gear icon (⚙️)** → **"Project settings"**
 4. Navigate to the **"Service Accounts"** tab
 5. Click **"Generate New Private Key"** button
 6. Click **"Generate Key"** to confirm
-7. A JSON file will download (e.g., `hexland-firebase-adminsdk-xxxxx-xxxxxxxxxx.json`)
+7. A JSON file will download (e.g., `wallandshadow-firebase-adminsdk-xxxxx-xxxxxxxxxx.json`)
 8. **Rename the file immediately**:
    ```bash
-   mv hexland-firebase-adminsdk-*.json firebase-production-github-actions-2024-12-24.json
+   mv wallandshadow-firebase-adminsdk-*.json firebase-production-github-actions-2024-12-24.json
    ```
 9. **Keep this file secure** - you'll encode it in the next step
 
@@ -123,10 +123,10 @@ The service accounts need permissions to deploy to Firebase.
 #### 3.2 Grant Permissions to Production Service Account
 
 1. Still in [Google Cloud Console IAM](https://console.cloud.google.com/iam-admin/iam)
-2. **Switch to your PRODUCTION project** from the dropdown at the top (e.g., "hexland")
+2. **Switch to your PRODUCTION project** from the dropdown at the top (e.g., "wallandshadow")
 3. Find your Firebase Admin SDK service account in the list:
    - Look for: `firebase-adminsdk-xxxxx@YOUR-PRODUCTION-PROJECT-ID.iam.gserviceaccount.com`
-   - Example: `firebase-adminsdk-ab12c@hexland.iam.gserviceaccount.com`
+   - Example: `firebase-adminsdk-ab12c@wallandshadow.iam.gserviceaccount.com`
 4. Click the **✏️ (pencil/edit)** icon for that service account
 5. Click **"Add Another Role"**
 6. In the role dropdown, search for: `Firebase Admin`
@@ -228,7 +228,7 @@ Now we'll add the encoded service account keys and project IDs to the GitHub Env
 **Add FIREBASE_PROJECT_ID:**
 1. Click **"Add secret"**
 2. Name: `FIREBASE_PROJECT_ID`
-3. Value: Your production Firebase project ID (e.g., `hexland`)
+3. Value: Your production Firebase project ID (e.g., `wallandshadow`)
    - Find this in Firebase Console or `.firebaserc` file
 4. Click **"Add secret"**
 

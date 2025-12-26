@@ -6,7 +6,7 @@ function VersionBadge() {
 
   return (
     <a
-      href="https://github.com/KaiEkkrin/hexland"
+      href="https://github.com/KaiEkkrin/wallandshadow"
       className="version-badge"
       target="_blank"
       rel="noopener noreferrer"

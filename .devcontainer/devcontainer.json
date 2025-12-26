@@ -6,7 +6,7 @@
   // Default connects to was-dev (no GPU)
   // Create .devcontainer/.env to activate GPU profiles
   "service": "was-dev",
-  "workspaceFolder": "/workspaces/hexland",
+  "workspaceFolder": "/workspaces/wallandshadow",
   "shutdownAction": "stopCompose",
 
   "customizations": {
