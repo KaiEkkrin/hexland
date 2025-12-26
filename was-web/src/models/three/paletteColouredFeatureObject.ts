@@ -69,8 +69,11 @@ export class PaletteColouredFeatureObject<K extends GridCoord, F extends IFeatur
     this._geometry.setAttribute('instanceColour', this._colourAttr);
 
     this._uniforms = THREE.UniformsUtils.clone(shader?.uniforms ?? instanceColouredShader.uniforms);
+    const blending = colourParameters.blending ?? THREE.NoBlending;
     this._material = new THREE.ShaderMaterial({
-      blending: colourParameters.blending ?? THREE.NoBlending,
+      blending: blending,
+      // Three.js r178+ requires premultipliedAlpha for MultiplyBlending and SubtractiveBlending
+      premultipliedAlpha: blending === THREE.MultiplyBlending || blending === THREE.SubtractiveBlending,
       side: THREE.DoubleSide,
       transparent: colourParameters.transparent ?? false,
       vertexShader: (shader ?? instanceColouredShader).vertexShader,
