@@ -348,10 +348,10 @@ export abstract class BaseGeometry {
   createSolidVertexVertices(tile: THREE.Vector2, alpha: number, z: number, maxVertex?: number | undefined): THREE.Vector3[] {
     const radius = this.getVertexRadius(alpha);
     const vertices: THREE.Vector3[] = [];
-    maxVertex = Math.min(maxVertex ?? this.maxVertex, this.maxVertex);
+    const effectiveMaxVertex = Math.min(maxVertex ?? this.maxVertex, this.maxVertex);
     for (let y = 0; y < this.tileDim; ++y) {
       for (let x = 0; x < this.tileDim; ++x) {
-        for (let v = 0; v < maxVertex; ++v) {
+        for (let v = 0; v < effectiveMaxVertex; ++v) {
           this.pushVertexVertices(vertices, tile, radius, x, y, z, v);
         }
       }
@@ -362,10 +362,10 @@ export abstract class BaseGeometry {
 
   *createSolidVertexIndices(maxVertex?: number | undefined) {
     let baseIndex = 0;
-    maxVertex = Math.min(maxVertex ?? this.maxVertex, this.maxVertex);
+    const effectiveMaxVertex = Math.min(maxVertex ?? this.maxVertex, this.maxVertex);
     for (let y = 0; y < this.tileDim; ++y) {
       for (let x = 0; x < this.tileDim; ++x) {
-        for (let v = 0; v < maxVertex; ++v) {
+        for (let v = 0; v < effectiveMaxVertex; ++v) {
           // We create one triangle for each vertex around the rim:
           for (let t = 0; t < vertexRimCount; ++t) {
             yield baseIndex;
@@ -440,12 +440,12 @@ export abstract class BaseGeometry {
   }
 
   createVertexAttributes(maxVertex?: number | undefined) {
-    maxVertex = Math.min(maxVertex ?? this.maxVertex, this.maxVertex);
-    const attrs = new Float32Array(this.tileDim * this.tileDim * maxVertex * (vertexRimCount + 1) * 3);
+    const effectiveMaxVertex = Math.min(maxVertex ?? this.maxVertex, this.maxVertex);
+    const attrs = new Float32Array(this.tileDim * this.tileDim * effectiveMaxVertex * (vertexRimCount + 1) * 3);
     let offset = 0;
     for (let y = 0; y < this.tileDim; ++y) {
       for (let x = 0; x < this.tileDim; ++x) {
-        for (let v = 0; v < maxVertex; ++v) {
+        for (let v = 0; v < effectiveMaxVertex; ++v) {
           for (let r = 0; r <= vertexRimCount; ++r) {
             attrs[offset++] = x;
             attrs[offset++] = y;
