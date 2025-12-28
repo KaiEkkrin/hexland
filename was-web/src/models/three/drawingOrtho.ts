@@ -62,7 +62,6 @@ export class DrawingOrtho implements IDrawing {
   private readonly _resolveImageUrl: (path: string) => Promise<string>;
 
   private readonly _camera: THREE.OrthographicCamera;
-  private readonly _losCamera: THREE.OrthographicCamera;
   private readonly _fixedCamera: THREE.OrthographicCamera;
   private readonly _overlayCamera: THREE.OrthographicCamera;
   private readonly _renderer: THREE.WebGLRenderer; // this is a singleton, we don't own it
@@ -142,10 +141,6 @@ export class DrawingOrtho implements IDrawing {
     this._camera = new THREE.OrthographicCamera(0, renderWidth, renderHeight, 0, -1, 1);
     this._camera.position.z = 0;
 
-    const [losWidth, losHeight] = this.createLoSSize(renderWidth, renderHeight);
-    this._losCamera = new THREE.OrthographicCamera(-0.5 * losWidth, 0.5 * losWidth, 0.5 * losHeight, -0.5 * losHeight, -1, 1);
-    this._losCamera.position.z = 0;
-
     this._fixedCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
     this._fixedCamera.position.z = 0;
 
@@ -213,15 +208,13 @@ export class DrawingOrtho implements IDrawing {
 
     // The LoS
     this._los = new LoS(
-      this._gridGeometry, this._needsRedraw, losZ, losQ, losWidth, losHeight
+      this._gridGeometry, this._needsRedraw, losZ, losQ, renderWidth, renderHeight
     );
 
     this._losParameters = {
-      faceCoordTarget: this._grid.faceCoordRenderTarget,
       fullyHidden: 0.0, // increased if `seeEverything`
       fullyVisible: 1.0,
-      losTarget: this._los.target,
-      tileOrigin: this._grid.tileOrigin
+      losTarget: this._los.target
     };
 
     // The highlighted areas
@@ -357,7 +350,7 @@ export class DrawingOrtho implements IDrawing {
     this._textFilter = new TextFilter(textZ, new THREE.Vector4(1, 1, 1, 1));
     this._textFilter.addToScene(this._fixedFilterScene);
 
-    this._losFilter = createLoSFilter(gridGeometry, losZ);
+    this._losFilter = createLoSFilter(losZ);
 
     // Don't start with LoS if we should see everything.
     // The state machine will call showLoSPositions() to update this after changes come in.
@@ -373,15 +366,6 @@ export class DrawingOrtho implements IDrawing {
     // The outlined rectangle
     this._outlinedRectangle = new OutlinedRectangle(gridGeometry, this._needsRedraw);
     this._outlinedRectangle.addToScene(this._overlayScene);
-  }
-
-  private createLoSSize(width: number, height: number) {
-    // We want the size of LoS faces to remain the same at different magnifications.
-    // So that it correctly covers the drawn area at all angles, the LoS must be square,
-    // and a bit bigger than the map drawing -- but TODO #56 when I multiply width and
-    // height by 1.1 here I get mystery spots where I can see through walls in square grids (??!)
-    const [w, h] = [Math.ceil(width), Math.ceil(height)];
-    return [Math.max(w, h), Math.max(w, h)];
   }
 
   get areas() { return this._areas; }
@@ -439,8 +423,8 @@ export class DrawingOrtho implements IDrawing {
 
     if (gridNeedsRedraw || needsRedraw) {
       if (this._showLoS === true) {
-        this._los.render(this._losCamera, this._fixedCamera, this._renderer);
-        this._losFilter.preRender(this._losParameters, this._losCamera);
+        this._los.render(this._camera, this._fixedCamera, this._renderer);
+        this._losFilter.preRender(this._losParameters);
       }
 
       this._areas.render(this._camera, this._renderer);
@@ -473,10 +457,6 @@ export class DrawingOrtho implements IDrawing {
         this._renderer.render(this._fixedHighlightScene, this._fixedCamera);
       }
       this._renderer.render(this._overlayScene, this._overlayCamera);
-
-      if (this._showLoS === true) {
-        this._losFilter.postRender();
-      }
     }
 
     postAnimate?.();
@@ -507,8 +487,14 @@ export class DrawingOrtho implements IDrawing {
   }
 
   getWorldToLoSViewport(target: THREE.Matrix4): THREE.Matrix4 {
-    // There's no rotation involved here
-    return target.copy(this._losCamera.projectionMatrix);
+    // Now uses the same camera as the main viewport
+    const rotationMatrix = this._scratchMatrix1.makeRotationFromQuaternion(
+      this._scratchQuaternion.setFromEuler(this._camera.rotation).invert()
+    );
+    return target.multiplyMatrices(
+      this._camera.projectionMatrix,
+      rotationMatrix
+    );
   }
 
   getWorldToViewport(target: THREE.Matrix4): THREE.Matrix4 {
@@ -551,23 +537,8 @@ export class DrawingOrtho implements IDrawing {
     this._camera.setRotationFromQuaternion(rotation);
     this._camera.updateProjectionMatrix();
 
-    // TODO #56 After the basics are working, start tweaking the LoS camera here
-    // rather than blindly following the map camera
-    // To draw a consistent LoS, we don't rotate or scale the camera, and we clamp the
-    // translation to a whole multiple of the geometry's X and Y steps
-    const [losWidth, losHeight] = this.createLoSSize(width, height);
-    const losTranslation = translation.clone().applyQuaternion(rotation);
-    const [xStep, yStep] = [2 * this._gridGeometry.xStep, 2 * this._gridGeometry.yStep];
-    const gridClampX = (x: number) => xStep * Math.floor(x / xStep);
-    const gridClampY = (y: number) => yStep * Math.floor(y / yStep);
-
-    // TODO #56 How does the grid clamp interact with scaling...?
-    this._losCamera.left = gridClampX(losTranslation.x - losWidth);
-    this._losCamera.right = this._losCamera.left + 2 * losWidth;
-    this._losCamera.top = gridClampY(losTranslation.y - losHeight);
-    this._losCamera.bottom = this._losCamera.top + 2 * losHeight;
-    this._losCamera.updateProjectionMatrix();
-    this._los.resize(losWidth, losHeight);
+    // LoS now uses the same dimensions as the main viewport
+    this._los.resize(width, height);
 
     this._overlayCamera.left = 0;
     this._overlayCamera.right = width;
