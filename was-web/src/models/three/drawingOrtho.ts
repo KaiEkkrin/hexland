@@ -1,4 +1,5 @@
 import { GridCoord, GridVertex } from '../../data/coord';
+import { LoSPosition } from '../../data/losPosition';
 import { ITokenGeometry } from '../../data/tokenGeometry';
 import { ITokenDrawing } from '../../data/tokens';
 import { MapColouring } from '../colouring';
@@ -552,7 +553,7 @@ export class DrawingOrtho implements IDrawing {
     this._gridNeedsRedraw.setNeedsRedraw();
   }
 
-  setLoSPositions(positions: GridCoord[] | undefined, seeEverything: boolean) {
+  setLoSPositions(positions: LoSPosition[] | undefined, seeEverything: boolean) {
     const nowShowLoS = positions !== undefined;
     if (nowShowLoS) {
       this._losFilter.addToScene(this._fixedFilterScene);
@@ -565,7 +566,7 @@ export class DrawingOrtho implements IDrawing {
     }
 
     this._showLoS = nowShowLoS;
-    
+
     // Doing this makes fully-hidden areas show up a bit if we can notionally
     // see everything -- for the map owner / FFA mode.
     this._losParameters.fullyHidden = seeEverything ? 0.25 : 0.0;

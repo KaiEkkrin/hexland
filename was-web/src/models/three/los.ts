@@ -1,5 +1,6 @@
-import { GridCoord, GridEdge, edgeString, coordsEqual } from '../../data/coord';
+import { GridEdge, edgeString } from '../../data/coord';
 import { IFeature } from '../../data/feature';
+import { LoSPosition, losPositionsEqual } from '../../data/losPosition';
 import { Drawn } from '../drawn';
 import { IGridGeometry } from '../gridGeometry';
 import { InstancedFeatureObject } from './instancedFeatureObject';
@@ -137,7 +138,7 @@ export class LoS extends Drawn {
 
   private readonly _composedTargetReader: RenderTargetReader;
 
-  private _tokenPositions: GridCoord[] = [];
+  private _tokenPositions: LoSPosition[] = [];
 
   private _isDisposed = false;
 
@@ -278,13 +279,10 @@ export class LoS extends Drawn {
 
     // Render the LoS features for each token position
     let lastRenderedIndex = maxComposeCount;
-    this._tokenPositions.forEach((c, i) => {
+    this._tokenPositions.forEach((pos, i) => {
       const targetIndex = (i % maxComposeCount);
-      this.geometry.createCoordCentre(
-        this._featureUniforms[tokenCentre].value,
-        c,
-        this._featureUniforms[zValue].value
-      );
+      // Use the pre-calculated world centre directly
+      this._featureUniforms[tokenCentre].value.copy(pos.centre);
 
       renderer.setRenderTarget(this._featureRenderTargets[targetIndex]);
       renderer.setClearColor(this._featureClearColour);
@@ -315,12 +313,9 @@ export class LoS extends Drawn {
   }
 
   // Assigns the positions of the tokens to draw LoS for.
-  setTokenPositions(positions: GridCoord[]) {
+  setTokenPositions(positions: LoSPosition[]) {
     // If these are the same, we don't need to do anything:
-    if (
-      positions.length === this._tokenPositions.length &&
-      positions.map((p, i) => coordsEqual(p, this._tokenPositions[i])).reduce((a, b) => a && b, true)
-    ) {
+    if (losPositionsEqual(positions, this._tokenPositions)) {
       return;
     }
 
