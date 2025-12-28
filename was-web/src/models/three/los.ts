@@ -28,58 +28,139 @@ import fluent from 'fluent-iterable';
 // the drawn LoS layer, and also sample it for allowed/disallowed move purposes.
 // We're going to need uniforms:
 // - tokenCentre (vec3)
+// - tokenRadius (float) (for soft shadow tangent calculations)
 // - zValue (float) (for determining which edges to project; *not* q)
 const tokenCentre = "tokenCentre";
+const tokenRadius = "tokenRadius";
 const zValue = "zValue";
 
 const featureShader = {
   uniforms: {
     tokenCentre: { type: 'v3', value: null },
+    tokenRadius: { type: 'f', value: null },
     zValue: { type: 'f', value: null },
   },
-  vertexShader: [
-    "uniform vec3 tokenCentre;",
-    "uniform float zValue;",
+  vertexShader: `
+    uniform vec3 tokenCentre;
+    uniform float tokenRadius;
+    uniform float zValue;
 
-    "const float near = -10.0;",
-    "const float far = 10.0;",
-    "const float epsilon = 0.0000001;",
+    // vertexInfo: (vertexType, endpointIndex, baseAlpha)
+    // vertexType: 0=wall, 1=outer tangent, 2=inner tangent
+    // endpointIndex: 0=A, 1=B
+    // baseAlpha: 1.0 for umbra, 0.0 for penumbra edge
+    attribute vec3 vertexInfo;
 
-    "vec3 intersectHorizontalBounds(const in vec3 origin, const in vec3 dir) {",
-    "  return dir.y > 0.0 ?",
-    "    vec3(origin.x + (far - origin.y) * dir.x / dir.y, far, origin.z) :",
-    "    vec3(origin.x + (near - origin.y) * dir.x / dir.y, near, origin.z);",
-    "}",
+    // edgePositions: (edgeA.x, edgeA.y, edgeB.x, edgeB.y)
+    // Both endpoints encoded per-vertex for convergence calculation
+    attribute vec4 edgePositions;
 
-    "vec3 intersectVerticalBounds(const in vec3 origin, const in vec3 dir) {",
-    "  return dir.x > 0.0 ?",
-    "    vec3(far, origin.y + (far - origin.x) * dir.y / dir.x, origin.z) :",
-    "    vec3(near, origin.y + (near - origin.x) * dir.y / dir.x, origin.z);",
-    "}",
+    varying float vAlpha;
 
-    "vec4 project() {",
-    "  if (position.z == zValue) {",
-    "    return projectionMatrix * viewMatrix * instanceMatrix * vec4(position, 1.0);",
-    "  }",
-    "  vec3 projected = (projectionMatrix * viewMatrix * instanceMatrix * vec4(position.xy, zValue, 1.0)).xyz;",
-    "  vec3 token = (projectionMatrix * viewMatrix * vec4(tokenCentre, 1.0)).xyz;",
-    "  vec3 dir = normalize(projected - token);",
-    "  vec3 iHoriz = intersectHorizontalBounds(projected, dir);",
-    "  vec3 iVert = intersectVerticalBounds(projected, dir);",
-    "  vec3 intersection = abs(dir.x) < epsilon ? iHoriz : abs(dir.y) < epsilon ? iVert :",
-    "    dot(iHoriz - projected, dir) < dot(iVert - projected, dir) ? iHoriz : iVert;",
-    "  return vec4(intersection, 1.0);",
-    "}",
+    const float near = -10.0;
+    const float far = 10.0;
+    const float epsilon = 0.0001;
 
-    "void main() {",
-    "  gl_Position = project();",
-    "}"
-  ].join("\n"),
-  fragmentShader: [
-    "void main() {",
-    "  gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);",
-    "}"
-  ].join("\n")
+    vec3 intersectBounds(vec3 origin, vec3 dir) {
+      vec3 iHoriz = dir.y > 0.0 ?
+        vec3(origin.x + (far - origin.y) * dir.x / dir.y, far, origin.z) :
+        vec3(origin.x + (near - origin.y) * dir.x / dir.y, near, origin.z);
+      vec3 iVert = dir.x > 0.0 ?
+        vec3(far, origin.y + (far - origin.x) * dir.y / dir.x, origin.z) :
+        vec3(near, origin.y + (near - origin.x) * dir.y / dir.x, origin.z);
+      return abs(dir.x) < epsilon ? iHoriz : abs(dir.y) < epsilon ? iVert :
+        dot(iHoriz - origin, dir) < dot(iVert - origin, dir) ? iHoriz : iVert;
+    }
+
+    // Calculate inner tangent direction from wall vertex toward token circle
+    vec2 calcInnerTangent(vec2 wallVertex, vec2 tokenPos, float radius) {
+      vec2 D = wallVertex - tokenPos;
+      float d = length(D);
+      float safeD = max(d, radius + epsilon);
+      vec2 Dn = D / safeD;
+      vec2 perp = vec2(-Dn.y, Dn.x);
+      float sinTheta = clamp(radius / safeD, 0.0, 0.99);
+      float cosTheta = sqrt(1.0 - sinTheta * sinTheta);
+      return normalize(-Dn * cosTheta - perp * sinTheta);
+    }
+
+    // Line intersection: point A + t*dirA = point B + s*dirB
+    vec2 lineIntersection(vec2 pA, vec2 dirA, vec2 pB, vec2 dirB) {
+      float denom = dirA.x * dirB.y - dirA.y * dirB.x;
+      if (abs(denom) < epsilon) return pA + dirA * 100.0; // Parallel, extend far
+      float t = ((pB.x - pA.x) * dirB.y - (pB.y - pA.y) * dirB.x) / denom;
+      return pA + dirA * t;
+    }
+
+    void main() {
+      float vertexType = vertexInfo.x;
+      float endpointIdx = vertexInfo.y;
+      vAlpha = vertexInfo.z;
+
+      // Get token position in clip space
+      vec3 token = (projectionMatrix * viewMatrix * vec4(tokenCentre, 1.0)).xyz;
+
+      // Get both edge endpoints in clip space
+      vec3 edgeA = (projectionMatrix * viewMatrix * instanceMatrix *
+                   vec4(edgePositions.xy, zValue, 1.0)).xyz;
+      vec3 edgeB = (projectionMatrix * viewMatrix * instanceMatrix *
+                   vec4(edgePositions.zw, zValue, 1.0)).xyz;
+
+      // Wall vertices (type 0): pass through directly
+      if (vertexType < 0.5) {
+        gl_Position = projectionMatrix * viewMatrix * instanceMatrix * vec4(position, 1.0);
+        return;
+      }
+
+      // Determine which endpoint this vertex extends from
+      vec3 wallVertex = endpointIdx < 0.5 ? edgeA : edgeB;
+
+      // Calculate tangent parameters
+      vec2 D = wallVertex.xy - token.xy;
+      float d = length(D);
+      float safeD = max(d, tokenRadius + epsilon);
+      vec2 Dn = D / safeD;
+      vec2 perp = vec2(-Dn.y, Dn.x);
+      float sinTheta = clamp(tokenRadius / safeD, 0.0, 0.99);
+      float cosTheta = sqrt(1.0 - sinTheta * sinTheta);
+
+      vec2 tangentDir;
+      if (vertexType < 1.5) {
+        // Outer tangent (type 1): rotate away from wall center
+        tangentDir = normalize(-Dn * cosTheta + perp * sinTheta);
+      } else {
+        // Inner tangent (type 2): check for convergence
+        vec2 innerA = calcInnerTangent(edgeA.xy, token.xy, tokenRadius);
+        vec2 innerB = calcInnerTangent(edgeB.xy, token.xy, tokenRadius);
+
+        if (dot(innerA, innerB) < 0.0) {
+          // Lines converge - compute umbra convergence point
+          vec2 convergence = lineIntersection(edgeA.xy, innerA, edgeB.xy, innerB);
+          gl_Position = vec4(convergence, 0.0, 1.0);
+          vAlpha = 1.0;  // Solid umbra
+          return;
+        }
+        // Lines diverge - use inner tangent
+        tangentDir = normalize(-Dn * cosTheta - perp * sinTheta);
+      }
+
+      vec3 rayDir = vec3(tangentDir, 0.0);
+      vec3 intersection = intersectBounds(wallVertex, rayDir);
+      gl_Position = vec4(intersection, 1.0);
+    }
+  `,
+  fragmentShader: `
+    varying float vAlpha;
+
+    void main() {
+      // Output shadow with varying alpha
+      // Red channel = shadow intensity (0=shadow, 1=visible in current system)
+      // umbra (vAlpha=1) -> full shadow (output 0)
+      // penumbra edge (vAlpha=0) -> no shadow (output 1)
+      float shadow = 1.0 - vAlpha;
+      gl_FragColor = vec4(shadow, shadow, shadow, 1.0);
+    }
+  `
 };
 
 // This feature object draws the shadows cast by the walls using the above shader.
@@ -97,6 +178,35 @@ class LoSFeatureObject extends InstancedFeatureObject<GridEdge, IFeature<GridEdg
     this._geometry = new THREE.InstancedBufferGeometry();
     this._geometry.setFromPoints(vertices);
     this._geometry.setIndex(gridGeometry.createLoSIndices());
+
+    // Add vertex attributes for soft shadow calculation
+    // vertexInfo: (vertexType, endpointIndex, baseAlpha)
+    // vertexType: 0=wall, 1=outer tangent, 2=inner tangent
+    // endpointIndex: 0=A, 1=B
+    // baseAlpha: 1.0 for umbra, 0.0 for penumbra edge
+    const vertexInfo = new Float32Array([
+      0, 0, 1.0,  // v0: wall, endpoint A, alpha=1 (umbra)
+      0, 1, 1.0,  // v1: wall, endpoint B, alpha=1 (umbra)
+      1, 0, 0.0,  // v2: outer tangent, endpoint A, alpha=0 (penumbra edge)
+      1, 1, 0.0,  // v3: outer tangent, endpoint B, alpha=0 (penumbra edge)
+      2, 0, 0.0,  // v4: inner tangent, endpoint A, alpha=0 (or 1 if converging)
+      2, 1, 0.0,  // v5: inner tangent, endpoint B, alpha=0 (or 1 if converging)
+    ]);
+    this._geometry.setAttribute('vertexInfo', new THREE.BufferAttribute(vertexInfo, 3));
+
+    // edgePositions: Both wall endpoints encoded per-vertex for convergence calculation
+    // All 6 vertices get the same edgeA and edgeB positions
+    const edgeA = vertices[0];
+    const edgeB = vertices[1];
+    const edgePositions = new Float32Array([
+      edgeA.x, edgeA.y, edgeB.x, edgeB.y,  // v0
+      edgeA.x, edgeA.y, edgeB.x, edgeB.y,  // v1
+      edgeA.x, edgeA.y, edgeB.x, edgeB.y,  // v2
+      edgeA.x, edgeA.y, edgeB.x, edgeB.y,  // v3
+      edgeA.x, edgeA.y, edgeB.x, edgeB.y,  // v4
+      edgeA.x, edgeA.y, edgeB.x, edgeB.y,  // v5
+    ]);
+    this._geometry.setAttribute('edgePositions', new THREE.BufferAttribute(edgePositions, 4));
 
     this._material = material;
   }
@@ -157,6 +267,7 @@ export class LoS extends Drawn {
 
     this._featureUniforms = THREE.UniformsUtils.clone(featureShader.uniforms);
     this._featureUniforms[tokenCentre].value = new THREE.Vector3();
+    this._featureUniforms[tokenRadius].value = 0.0;
     this._featureUniforms[zValue].value = z;
     this._featureMaterial = new THREE.ShaderMaterial({
       side: THREE.DoubleSide,
@@ -281,8 +392,9 @@ export class LoS extends Drawn {
     let lastRenderedIndex = maxComposeCount;
     this._tokenPositions.forEach((pos, i) => {
       const targetIndex = (i % maxComposeCount);
-      // Use the pre-calculated world centre directly
+      // Use the pre-calculated world centre and radius
       this._featureUniforms[tokenCentre].value.copy(pos.centre);
+      this._featureUniforms[tokenRadius].value = pos.radius;
 
       renderer.setRenderTarget(this._featureRenderTargets[targetIndex]);
       renderer.setClearColor(this._featureClearColour);

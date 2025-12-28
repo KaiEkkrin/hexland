@@ -321,25 +321,42 @@ export abstract class BaseGeometry {
   }
 
   *createLoSVertices(z: number, q: number) {
+    // Soft shadow geometry: 6 vertices per wall
+    // Vertices 0,1: Wall endpoints (at z) - umbra edge
+    // Vertices 2,3: Outer tangent extension points (at q) - penumbra outer edge
+    // Vertices 4,5: Inner tangent extension points (at q+0.1) - penumbra inner edge or umbra convergence
     const edgeA = new THREE.Vector3();
     const edgeB = new THREE.Vector3();
 
+    // Vertices 0,1: Wall endpoints at z
     const centre = this.createCentre(new THREE.Vector3(), 0, 0, z);
     this.createEdgeVertices(edgeA, edgeB, centre, 0);
     yield edgeA.clone();
     yield edgeB.clone();
 
+    // Vertices 2,3: Outer tangent extension points at q
     this.createCentre(centre, 0, 0, q);
+    this.createEdgeVertices(edgeA, edgeB, centre, 0);
+    yield edgeA.clone();
+    yield edgeB.clone();
+
+    // Vertices 4,5: Inner tangent extension points at q+0.1 (different z to distinguish in shader)
+    this.createCentre(centre, 0, 0, q + 0.1);
     this.createEdgeVertices(edgeA, edgeB, centre, 0);
     yield edgeA;
     yield edgeB;
   }
 
   createLoSIndices() {
+    // Soft shadow: 6 triangles (18 indices) per wall
     // You need to disable back-face culling to use these :)
     return [
-      0, 1, 2,
-      1, 2, 3
+      0, 2, 3,   // Outer penumbra: EdgeA → Outer_A → Outer_B
+      0, 3, 1,   // Outer penumbra: EdgeA → Outer_B → EdgeB
+      0, 1, 4,   // Inner region: EdgeA → EdgeB → Inner_A
+      1, 5, 4,   // Inner region: EdgeB → Inner_B → Inner_A
+      0, 4, 2,   // Side fill: EdgeA → Inner_A → Outer_A
+      1, 3, 5    // Side fill: EdgeB → Outer_B → Inner_B
     ];
   }
   
