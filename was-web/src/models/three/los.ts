@@ -23,6 +23,10 @@ import fluent from "fluent-iterable";
 //
 // To do this, for each wall of the shader, I want to transform the following geometry for
 // each token, given the wall co-ordinates and the token's centre position and radius:
+// 
+// - Case 1, where the token can see around the wall, and thus there is a small triangular
+// umbra region (fully shadowed) behind the wall (triangle TXU), with a larger penumbra region
+// (partially shadowed) comprised of two overlapping triangles PRT and QSU:
 //
 //                    P_______________Q_______R_______________S
 //                      \_            |\     /|            _/
@@ -46,63 +50,9 @@ import fluent from "fluent-iterable";
 //                                  #############
 //                                     #######
 //                                         
-//
-// as follows:
-//
-// - ===== is the wall edge; ----- define the other edges of our LoS triangles;
-//
-// Vertices
-// --------
-//
-// We expect input vertices P, Q, R, S, X, T, U, T' and U'. We disregard their input
-// positions and relocate them as follows:
-//
-// - T and U become the vertices of the opposite ends of the wall edge.
-// - T' and U' get the same positions, so that we can assign them different vertex colours
-// (see later.)
-// - P, Q, R and S all become vertices 2x viewable area away from the token centre.
-// - X becomes the vertex where lines RT and QU intersect, if it exists and the wall
-// is between the token centre and point X (see later.)
-//
-// Edges
-// -----
-//
-// - TU is the wall edge.
-// - We also define two vertices T' and U' such that T'U' is also the wall edge (this
-// allows us to assign them different vertex colours.)
-// - PT and RT are segments of the two possible lines that go through vertex T and are
-// tangent to the token circle.
-// - QU and SU are segments of the two possible lines that go through vertex U and are
-// tangent to the token circle.
-//
-// Triangles
-// ---------
-//
-// The input geometry consists of the following triangles: PQT', QXT, TXU, UXR, RXQ, RSU'.
-// Note the references to T' and U' rather than T or U for the two outer, "penumbra"
-// triangles.
-//
-// Case 1
-// ------
-//
-// (As illustrated in the diagram above.)
-//
-// Point X exists (lines RT and QU are not parallel), and the wall edge TU lies between
-// the token centre and point X.
-//
-// - The position of vertex X is the intersection point between lines RT and QU.
-// - The following vertices are assigned the colour black, being totally shadowed: T, X, U.
-// - The following vertices are assigned the colour white, being totally visible: P, S, T', U'.
-// - Vertex Q is assigned a grey colour, linearly interpolated between its distance from point P
-// (white) and its distance from point X (black).
-// - Vertex R is assigned a grey colour, linearly interpolated between its distance from point S
-// (white) and its distance from point X (black).
-//
-// Case 2
-// ------
-//
-// Lines RT and QU are parallel (point X does not exist), or, point X does exist but
-// it lies on the opposite side of the token from the wall edge. Diagram:
+// - Case 2, where the token cannot see around the wall, and thus there is a quadrilateral
+// umbra region (fully shadowed) behind the wall (triangles TRU and RUQ), with two non-overlapping
+// triangular penumbra (partially shadowed) regions on either side of it (triangles PRT and QSU):
 //
 //                    P_______________R_______Q_______________S
 //                      \_            |\      |            _/
@@ -121,12 +71,105 @@ import fluent from "fluent-iterable";
 //                                     #######
 //                                        #
 //
+// To our great inconvenience, WebGL 2 doesn't allow us to use geometry shaders, which would
+// be ideal for solving this problem. Therefore, we must provide excess geometry to the vertex
+// shader input and do a bunch of duplicate calculations, deliberately reducing unwanted triangles
+// to zero area, to achieve the desired end result.
 //
+// We need to achieve the following fragment shading:
 //
-// - The position of point X is set equal to the position of point U (this makes two of the four
-// inner triangles disappear, since they will have area 0.)
-// - The following vertices are assigned the colour black, being totally shadowed: Q, R, T, X, U.
-// - The following vertices are assigned the colour white, being totally visible: P, S, T', U'.
+// - For the umbra triangle(s), solid black (value 0, 0, 0, 1).
+// - For the penumbra triangle PRT, we calculate the angle of the vector fragment-T and linearly
+// interpolate it between the angle of the PT vector in the XY plane (value 1, 1, 1, 1) and the
+// angle of the RT vector in the XY plane (value 0, 0, 0, 1) to get the fragment colour value;
+// - Similarly, for the penumbra triangle QSU, we calculate the angle of the vector fragment-U and
+// linearly interpolate it between the angle of the SU vector in the XY plane (value 1, 1, 1, 1) and
+// the angle of the QU vector in the XY plane (value 0, 0, 0, 1) to get the fragment colour value.
+//
+// Overlapping triangles are resolved using custom blending with MIN.
+//
+// Input Geometry
+// --------------
+//
+// Using distinct vertices we provide the following, with all vertex positions set to (0, 0, z, 1)
+// because the vertex shader will reassign x and y based on the wall position, token centre and radius:
+//
+// - one penumbra triangle PRT (indexes 0, 1, 2);
+// - one penumbra triangle QSU (indexes 3, 4, 5);
+// - one umbra quad ABCD (indexes 6, 7, 8, 7, 8, 9) -- the vertices will be mapped to different
+// output vertices from the diagrams above depending on whether we're in Case 1 or Case 2.
+//
+// The index mapping is: P = 0, R = 1, T = 2, Q = 3, S = 4, U = 5, A = 6, B = 7, C = 8, D = 9.
+//
+// Vertex Shader
+// -------------
+//
+// All z values from the inputs are retained; this is a calculation on x and y vector components only.
+//
+// - Set T and U positions to be either side of the wall edge.
+// - Find the four distinct possible lines that intersect either T or U and are tangent to either
+// side of the token circle.
+// - Set points P, Q, R and S to be points along each of those lines a suitably long distance away
+// such that the shadowed areas they enclose will always spill off the viewport. (Lines P-R-Q-S should
+// always be fully off-viewport.) PT and RT are the outer and inner lines respectively that travel from
+// the token tangent, through point T and then to point P or R; SU and QU are the outer and inner lines
+// respectively that travel from the token tangent, through point U and then to point S or Q.
+// - Determine whether we are in Case 1 (lines RT and QU intersect at a point X, such that the wall
+// edge lies between the token and point X) or in Case 2 (otherwise), which input vertex we're dealing
+// with, and process as per the sub-headings below.
+//
+// In all cases, for each vertex the shader will emit a vec2 `pivot`, vec2 `reference_direction` and a float
+// `sweep_angle`. For the penumbra triangles, `reference_direction` will be the normalised direction
+// of the "fully visible" edge, and `sweep_angle` will be the signed angle from `reference_direction` to
+// the "fully shadowed" edge; for the umbra triangles, all these values will be zero.
+//
+// Vertex Shader (Input Vertices P, R, T)
+// --------------------------------------
+//
+// - Emit pivot = T;
+// - Calculate reference_direction = normalised direction of line PT;
+// - Calculate sweep_angle = signed angle from line PT to line RT;
+// - Assign gl_Position to point P, R or T as appropriate
+//
+// Vertex Shader (Input Vertices Q, S, U)
+// --------------------------------------
+//
+// - Emit pivot = U;
+// - Calculate reference_direction = normalised direction of line SU;
+// - Calculate sweep_angle = signed angle from line SU to line QU;
+// - Assign gl_Position to point Q, S or U as appropriate
+//
+// Vertex Shader (Input Vertices A, B, C, D) -- Case 1
+// ---------------------------------------------------
+//
+// - Emit pivot = (0, 0), reference_direction = (0, 0), sweep_angle = 0
+// - Input Vertex A: Assign gl_Position = T
+// - Input Vertex B: Assign gl_Position = X
+// - Input Vertex C: Assign gl_Position = U
+// - Input Vertex D: Assign gl_Position = U
+//
+// This collapses the second triangle of the quad into a line, effectively meaning we'll only draw
+// the single umbra triangle, TXU.
+//
+// Vertex Shader (Input Vertices A, B, C, D) -- Case 2
+// ---------------------------------------------------
+//
+// - Emit pivot = (0, 0), reference_direction = (0, 0), sweep_angle = 0
+// - Input Vertex A: Assign gl_Position = T
+// - Input Vertex B: Assign gl_Position = R
+// - Input Vertex C: Assign gl_Position = U
+// - Input Vertex D: Assign gl_Position = Q
+//
+// This produces umbra triangles TRU and RUQ.
+//
+// Fragment Shader
+// ---------------
+//
+// - If sweep_angle = 0, assign colour (0, 0, 0, 1) and return.
+// - Calculate fragment_direction = normalize(fragmentPosition - pivot);
+// - Calculate fragment_angle = signedAngle(reference_direction, fragment_direction);
+// - Assign a colour based on linear interpolation of fragment_angle between 0 (colour 1, 1, 1, 1)
+// and sweep_angle (colour 0, 0, 0, 1) and return.
 //
 // Composing together the LoS of multiple tokens
 // ---------------------------------------------
