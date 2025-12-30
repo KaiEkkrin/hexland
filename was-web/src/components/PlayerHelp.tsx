@@ -69,28 +69,37 @@ const ownerHelp = [
     The context menu enables you to create and edit tokens and notes, and also switch to one of the paint modes.
     Edit a token to assign it to a player.
   </ExpandingHelpItem>),
-  (<ExpandingHelpItem key="o2" eventKey="2" summary={(<div><b>A</b> to start painting an area.</div>)}>
+  (<ExpandingHelpItem key="o2" eventKey="2" summary={(<div><b>T</b> to add or edit tokens.</div>)}>
+    Adds a token to the map, or edits an existing token.
+  </ExpandingHelpItem>),
+  (<ExpandingHelpItem key="o3" eventKey="3" summary={(<div><b>C</b> to add or edit character tokens.</div>)}>
+    Adds a player character's token to the map, or edits an existing token.
+  </ExpandingHelpItem>),
+  (<ExpandingHelpItem key="o4" eventKey="4" summary={(<div><b>N</b> to add or edit notes.</div>)}>
+    Adds a note to the map, or edits an existing note.
+  </ExpandingHelpItem>),
+  (<ExpandingHelpItem key="o5" eventKey="5" summary={(<div><b>A</b> to start painting an area.</div>)}>
     Paints an area in the currently selected colour.
     While in this mode, <b>drag</b> to paint freehand, or <b>Shift-drag</b> to paint a rectangle.
   </ExpandingHelpItem>),
-  (<ExpandingHelpItem key="o3" eventKey="3" summary={(<div><b>W</b> to start painting a wall.</div>)}>
+  (<ExpandingHelpItem key="o6" eventKey="6" summary={(<div><b>W</b> to start painting a wall.</div>)}>
     Paints a wall in the currently selected colour.
     While in this mode, <b>drag</b> to paint freehand, or <b>Shift-drag</b> to paint a wall enclosing a rectangle.
     Players cannot move their tokens through walls.
   </ExpandingHelpItem>),
-  (<ExpandingHelpItem key="o4" eventKey="4" summary={(<div><b>R</b> to start painting a room.</div>)}>
+  (<ExpandingHelpItem key="o7" eventKey="7" summary={(<div><b>R</b> to start painting a room.</div>)}>
     Paints an enclosed room with walls in the currently selected colour.
     While in this mode, <b>drag</b> to combine it with any other room you drag over, or <b>Shift-drag</b> to
     take the area you drag over away from any other existing room.
   </ExpandingHelpItem>),
-  (<ExpandingHelpItem key="o5" eventKey="5" summary={(<div><b>I</b> to add an image.</div>)}>
+  (<ExpandingHelpItem key="o8" eventKey="8" summary={(<div><b>I</b> to add an image.</div>)}>
     Adds an image to the map background.  To move, edit and delete these images, tap the Image layer icon
     &nbsp;<FontAwesomeIcon icon={faImages} color="white" /> to switch to the image layer, and the Object layer icon
     &nbsp;<FontAwesomeIcon icon={faCubes} color="white" /> to switch back out again.
     While in the Image layer, drag to move images or their control points with grid snapping, or hold Shift
     and drag to disable grid snapping.
   </ExpandingHelpItem>),
-  (<HelpItem key="o7">
+  (<HelpItem key="o9">
     <b>Del</b> to delete the currently selected token(s).
   </HelpItem>),
 ];
