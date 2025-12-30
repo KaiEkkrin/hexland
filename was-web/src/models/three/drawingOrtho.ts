@@ -602,7 +602,7 @@ export class DrawingOrtho implements IDrawing {
     } else {
       // Remove any map colour visualisation and put the area visualisation back
       this._mapColourVisualisation.removeFromScene();
-      this._areas.addToScene(this._mapScene);
+      this._areas.addToScene(this._fixedFilterScene);
     }
   }
 
