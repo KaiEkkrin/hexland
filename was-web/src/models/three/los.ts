@@ -205,22 +205,27 @@ const featureShader = {
     uniform vec3 wallT;
     uniform vec3 wallU;
 
-    varying vec4 vColour;
+    // Varyings for fragment shader
+    varying vec3 vWorldPosition;
+    varying vec2 vPivot;
+    varying vec2 vReferenceDirection;
+    varying float vSweepAngle;
 
     // Large value to project shadows beyond any visible area (world space)
     const float worldBound = 1000.0;
     const float epsilon = 0.00001;
 
-    // Vertex type constants
-    const int V_T = 0;
-    const int V_U = 1;
-    const int V_T_PRIME = 2;
-    const int V_U_PRIME = 3;
-    const int V_P = 4;
-    const int V_Q = 5;
-    const int V_R = 6;
-    const int V_S = 7;
-    const int V_X = 8;
+    // Vertex type constants (new mapping: P=0, R=1, T=2, Q=3, S=4, U=5, A=6, B=7, C=8, D=9)
+    const int V_P = 0;
+    const int V_R = 1;
+    const int V_T = 2;
+    const int V_Q = 3;
+    const int V_S = 4;
+    const int V_U = 5;
+    const int V_A = 6;
+    const int V_B = 7;
+    const int V_C = 8;
+    const int V_D = 9;
 
     // Project point to world bounds along direction, returning the closer intersection
     vec3 projectToBounds(vec3 origin, vec3 dir) {
@@ -339,8 +344,14 @@ const featureShader = {
       return dot(wallToToken, wallToX) < 0.0;
     }
 
+    // Calculate signed angle from vector 'from' to vector 'to'
+    // Returns angle in radians, positive for counter-clockwise rotation
+    float signedAngle(vec2 from, vec2 to) {
+      return atan(from.x * to.y - from.y * to.x, dot(from, to));
+    }
+
     void main() {
-      int vType = gl_VertexID % 9;
+      int vType = gl_VertexID % 10;
 
       // Transform matrix for final clip space output
       mat4 VP = projectionMatrix * viewMatrix;
@@ -363,77 +374,121 @@ const featureShader = {
       bool xValid = lineIntersection(T, T_inner, U, U_inner, X);
       xValid = xValid && isXValid(X, T, U, token, T_inner, U_inner);
 
-      // Default colours
-      vec4 BLACK = vec4(0.0, 0.0, 0.0, 1.0);
-      vec4 WHITE = vec4(1.0, 1.0, 1.0, 1.0);
+      // Calculate projected positions
+      vec3 posP = projectToBounds(T, T_outer);
+      vec3 posR = projectToBounds(T, T_inner);
+      vec3 posQ = projectToBounds(U, U_inner);
+      vec3 posS = projectToBounds(U, U_outer);
 
-      // Case 2: X is invalid, collapse geometry
-      if (!xValid) {
-        X = U;
-      }
+      // Calculate sweep angles for penumbra triangles
+      float sweepT = signedAngle(T_outer.xy, T_inner.xy);  // PT to RT
+      float sweepU = signedAngle(U_outer.xy, U_inner.xy);  // SU to QU
 
-      // Route by vertex type (all positions in world space, transformed to clip at end)
-      if (vType == V_T) {
-        // T: wall endpoint, umbra (black)
-        gl_Position = VP * vec4(T, 1.0);
-        vColour = BLACK;
-      } else if (vType == V_U) {
-        // U: wall endpoint, umbra (black)
-        gl_Position = VP * vec4(U, 1.0);
-        vColour = BLACK;
-      } else if (vType == V_T_PRIME) {
-        // T': wall endpoint for penumbra triangle (white)
-        gl_Position = VP * vec4(T, 1.0);
-        vColour = WHITE;
-      } else if (vType == V_U_PRIME) {
-        // U': wall endpoint for penumbra triangle (white)
-        gl_Position = VP * vec4(U, 1.0);
-        vColour = WHITE;
-      } else if (vType == V_P) {
-        // P: outer tangent from T, projected to bounds (white)
-        gl_Position = VP * vec4(projectToBounds(T, T_outer), 1.0);
-        vColour = WHITE;
-      } else if (vType == V_Q) {
-        // Q: inner tangent from T, projected to bounds
-        // Grey in Case 1 (penumbra), black in Case 2 (umbra)
-        gl_Position = VP * vec4(projectToBounds(T, T_inner), 1.0);
-        if (xValid) {
-          // Case 1: interpolate grey based on position in penumbra
-          // For now, use a simple midpoint grey; can refine later
-          float greyValue = 0.5; // Placeholder - will refine in next step
-          vColour = vec4(greyValue, greyValue, greyValue, 1.0);
-        } else {
-          // Case 2: solid black umbra
-          vColour = BLACK;
-        }
+      // Output position variable
+      vec3 worldPos;
+
+      // Route by vertex type
+      if (vType == V_P) {
+        // P: outer tangent from T, projected to bounds
+        worldPos = posP;
+        vPivot = T.xy;
+        vReferenceDirection = normalize(T_outer.xy);
+        vSweepAngle = sweepT;
       } else if (vType == V_R) {
-        // R: inner tangent from U, projected to bounds
-        // Grey in Case 1 (penumbra), black in Case 2 (umbra)
-        gl_Position = VP * vec4(projectToBounds(U, U_inner), 1.0);
-        if (xValid) {
-          // Case 1: interpolate grey based on position in penumbra
-          float greyValue = 0.5; // Placeholder - will refine in next step
-          vColour = vec4(greyValue, greyValue, greyValue, 1.0);
-        } else {
-          // Case 2: solid black umbra
-          vColour = BLACK;
-        }
+        // R: inner tangent from T, projected to bounds
+        worldPos = posR;
+        vPivot = T.xy;
+        vReferenceDirection = normalize(T_outer.xy);
+        vSweepAngle = sweepT;
+      } else if (vType == V_T) {
+        // T: wall endpoint (penumbra triangle vertex)
+        worldPos = T;
+        vPivot = T.xy;
+        vReferenceDirection = normalize(T_outer.xy);
+        vSweepAngle = sweepT;
+      } else if (vType == V_Q) {
+        // Q: inner tangent from U, projected to bounds
+        worldPos = posQ;
+        vPivot = U.xy;
+        vReferenceDirection = normalize(U_outer.xy);
+        vSweepAngle = sweepU;
       } else if (vType == V_S) {
-        // S: outer tangent from U, projected to bounds (white)
-        gl_Position = VP * vec4(projectToBounds(U, U_outer), 1.0);
-        vColour = WHITE;
-      } else if (vType == V_X) {
-        // X: inner tangent intersection (black)
-        gl_Position = VP * vec4(X, 1.0);
-        vColour = BLACK;
+        // S: outer tangent from U, projected to bounds
+        worldPos = posS;
+        vPivot = U.xy;
+        vReferenceDirection = normalize(U_outer.xy);
+        vSweepAngle = sweepU;
+      } else if (vType == V_U) {
+        // U: wall endpoint (penumbra triangle vertex)
+        worldPos = U;
+        vPivot = U.xy;
+        vReferenceDirection = normalize(U_outer.xy);
+        vSweepAngle = sweepU;
+      } else if (vType == V_A) {
+        // A: umbra quad vertex -> T
+        worldPos = T;
+        vPivot = vec2(0.0, 0.0);
+        vReferenceDirection = vec2(0.0, 0.0);
+        vSweepAngle = 0.0;
+      } else if (vType == V_B) {
+        // B: umbra quad vertex -> X (Case 1) or R (Case 2)
+        worldPos = xValid ? X : posR;
+        vPivot = vec2(0.0, 0.0);
+        vReferenceDirection = vec2(0.0, 0.0);
+        vSweepAngle = 0.0;
+      } else if (vType == V_C) {
+        // C: umbra quad vertex -> U
+        worldPos = U;
+        vPivot = vec2(0.0, 0.0);
+        vReferenceDirection = vec2(0.0, 0.0);
+        vSweepAngle = 0.0;
+      } else if (vType == V_D) {
+        // D: umbra quad vertex -> U (Case 1) or Q (Case 2)
+        worldPos = xValid ? U : posQ;
+        vPivot = vec2(0.0, 0.0);
+        vReferenceDirection = vec2(0.0, 0.0);
+        vSweepAngle = 0.0;
+      } else {
+        // Fallback (should not happen)
+        worldPos = T;
+        vPivot = vec2(0.0, 0.0);
+        vReferenceDirection = vec2(0.0, 0.0);
+        vSweepAngle = 0.0;
       }
+
+      vWorldPosition = worldPos;
+      gl_Position = VP * vec4(worldPos, 1.0);
     }
   `,
   fragmentShader: `
-    varying vec4 vColour;
+    varying vec3 vWorldPosition;
+    varying vec2 vPivot;
+    varying vec2 vReferenceDirection;
+    varying float vSweepAngle;
+
+    const float epsilon = 0.00001;
 
     void main() {
-      gl_FragColor = vColour;
+      // Umbra case: sweep_angle is zero
+      if (abs(vSweepAngle) < epsilon) {
+        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+        return;
+      }
+
+      // Penumbra case: interpolate based on angle
+      vec2 fragmentDir = normalize(vWorldPosition.xy - vPivot);
+
+      // Signed angle from reference direction to fragment direction
+      float fragAngle = atan(
+        vReferenceDirection.x * fragmentDir.y - vReferenceDirection.y * fragmentDir.x,
+        dot(vReferenceDirection, fragmentDir)
+      );
+
+      // Interpolate: 0 angle = white (1.0), sweep_angle = black (0.0)
+      float t = clamp(fragAngle / vSweepAngle, 0.0, 1.0);
+      float brightness = 1.0 - t;
+
+      gl_FragColor = vec4(brightness, brightness, brightness, 1.0);
     }
   `,
 };
@@ -549,8 +604,9 @@ export class LoS extends Drawn {
     this._featureUniforms[tokenCentre].value = new THREE.Vector3();
     this._featureUniforms[tokenRadius].value = 0.5; // Default; updated per token in render
     this._featureUniforms[zValue].value = z;
-    this._featureUniforms[wallT].value = vertices[0].clone(); // Canonical T position
-    this._featureUniforms[wallU].value = vertices[1].clone(); // Canonical U position
+    // In new geometry: P=0, R=1, T=2, Q=3, S=4, U=5, A=6, B=7, C=8, D=9
+    this._featureUniforms[wallT].value = vertices[2].clone(); // Canonical T position (index 2)
+    this._featureUniforms[wallU].value = vertices[5].clone(); // Canonical U position (index 5)
     this._featureMaterial = new THREE.ShaderMaterial({
       side: THREE.DoubleSide,
       uniforms: this._featureUniforms,

@@ -321,18 +321,19 @@ export abstract class BaseGeometry {
   }
 
   *createLoSVertices(z: number, q: number) {
-    // 9 vertices for soft shadow LoS geometry:
-    // 0: T   (wall endpoint 1, umbra)
-    // 1: U   (wall endpoint 2, umbra)
-    // 2: T'  (wall endpoint 1, penumbra - same position as T, different colour)
-    // 3: U'  (wall endpoint 2, penumbra - same position as U, different colour)
-    // 4: P   (outer tangent from T, projected to bounds)
-    // 5: Q   (inner tangent from T, projected to bounds)
-    // 6: R   (inner tangent from U, projected to bounds)
-    // 7: S   (outer tangent from U, projected to bounds)
-    // 8: X   (intersection of inner tangent lines, or degenerate position)
+    // 10 vertices for soft shadow LoS geometry:
+    // 0: P   (outer tangent from T, projected to bounds)
+    // 1: R   (inner tangent from T, projected to bounds)
+    // 2: T   (wall endpoint 1)
+    // 3: Q   (inner tangent from U, projected to bounds)
+    // 4: S   (outer tangent from U, projected to bounds)
+    // 5: U   (wall endpoint 2)
+    // 6: A   (umbra quad vertex, maps to T)
+    // 7: B   (umbra quad vertex, maps to X or R)
+    // 8: C   (umbra quad vertex, maps to U)
+    // 9: D   (umbra quad vertex, maps to U or Q)
     //
-    // Positions for 4-8 are placeholders; actual positions computed in shader.
+    // All positions are placeholders; actual positions computed in shader.
     const edgeA = new THREE.Vector3();
     const edgeB = new THREE.Vector3();
 
@@ -340,35 +341,41 @@ export abstract class BaseGeometry {
     const centre = this.createCentre(new THREE.Vector3(), 0, 0, z);
     this.createEdgeVertices(edgeA, edgeB, centre, 0);
 
-    // Vertices 0-3: Wall endpoints (T, U, T', U') at z level
-    yield edgeA.clone();  // 0: T
-    yield edgeB.clone();  // 1: U
-    yield edgeA.clone();  // 2: T'
-    yield edgeB.clone();  // 3: U'
+    // Use q-level for placeholder positions of projected points
+    const centreQ = this.createCentre(new THREE.Vector3(), 0, 0, q);
+    const edgeAQ = new THREE.Vector3();
+    const edgeBQ = new THREE.Vector3();
+    this.createEdgeVertices(edgeAQ, edgeBQ, centreQ, 0);
 
-    // Vertices 4-8: Projected points (P, Q, R, S, X)
-    // Positions computed in shader; use q-level as placeholders
-    this.createCentre(centre, 0, 0, q);
-    this.createEdgeVertices(edgeA, edgeB, centre, 0);
+    // Penumbra triangle PRT (indices 0, 1, 2)
+    yield edgeAQ.clone();  // 0: P (placeholder - outer tangent from T)
+    yield edgeAQ.clone();  // 1: R (placeholder - inner tangent from T)
+    yield edgeA.clone();   // 2: T (wall endpoint)
 
-    yield edgeA.clone();  // 4: P (placeholder)
-    yield edgeA.clone();  // 5: Q (placeholder)
-    yield edgeB.clone();  // 6: R (placeholder)
-    yield edgeB.clone();  // 7: S (placeholder)
-    yield edgeA.clone().lerp(edgeB, 0.5);  // 8: X (placeholder)
+    // Penumbra triangle QSU (indices 3, 4, 5)
+    yield edgeBQ.clone();  // 3: Q (placeholder - inner tangent from U)
+    yield edgeBQ.clone();  // 4: S (placeholder - outer tangent from U)
+    yield edgeB.clone();   // 5: U (wall endpoint)
+
+    // Umbra quad ABCD (indices 6, 7, 8, 9)
+    yield edgeA.clone();   // 6: A (maps to T)
+    yield edgeAQ.clone().lerp(edgeBQ, 0.5);  // 7: B (placeholder - maps to X or R)
+    yield edgeB.clone();   // 8: C (maps to U)
+    yield edgeBQ.clone();  // 9: D (placeholder - maps to U or Q)
   }
 
   createLoSIndices() {
-    // 6 triangles for soft shadow geometry, clockwise winding:
-    // PQT', QXT, TXU, UXR, RXQ, RSU'
+    // 4 triangles for soft shadow geometry:
+    // - PRT (penumbra around T): indices 0, 1, 2
+    // - QSU (penumbra around U): indices 3, 4, 5
+    // - ABC (umbra triangle 1): indices 6, 7, 8
+    // - BCD (umbra triangle 2): indices 7, 8, 9
     // (Back-face culling should be disabled)
     return [
-      4, 5, 2,   // PQT'
-      5, 8, 0,   // QXT
-      0, 8, 1,   // TXU
-      1, 8, 6,   // UXR
-      6, 8, 5,   // RXQ
-      6, 7, 3    // RSU'
+      0, 1, 2,   // PRT
+      3, 4, 5,   // QSU
+      6, 7, 8,   // ABC
+      7, 8, 9    // BCD
     ];
   }
   
