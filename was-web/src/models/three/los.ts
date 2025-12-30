@@ -1,15 +1,15 @@
-import { GridEdge, edgeString } from '../../data/coord';
-import { IFeature } from '../../data/feature';
-import { LoSPosition, losPositionsEqual } from '../../data/losPosition';
-import { Drawn } from '../drawn';
-import { IGridGeometry } from '../gridGeometry';
-import { InstancedFeatureObject } from './instancedFeatureObject';
-import { InstancedFeatures } from './instancedFeatures';
-import { RedrawFlag } from '../redrawFlag';
-import { RenderTargetReader } from './renderTargetReader';
+import { GridEdge, edgeString } from "../../data/coord";
+import { IFeature } from "../../data/feature";
+import { LoSPosition, losPositionsEqual } from "../../data/losPosition";
+import { Drawn } from "../drawn";
+import { IGridGeometry } from "../gridGeometry";
+import { InstancedFeatureObject } from "./instancedFeatureObject";
+import { InstancedFeatures } from "./instancedFeatures";
+import { RedrawFlag } from "../redrawFlag";
+import { RenderTargetReader } from "./renderTargetReader";
 
-import * as THREE from 'three';
-import fluent from 'fluent-iterable';
+import * as THREE from "three";
+import fluent from "fluent-iterable";
 
 // Shader-based LoS.
 // Careful with this!  In order for it to work correctly, we need to not use the built-in
@@ -34,15 +34,17 @@ const zValue = "zValue";
 
 const featureShader = {
   uniforms: {
-    tokenCentre: { type: 'v3', value: null },
-    zValue: { type: 'f', value: null },
+    tokenCentre: { type: "v3", value: null },
+    zValue: { type: "f", value: null },
   },
   vertexShader: `
     uniform vec3 tokenCentre;
     uniform float zValue;
 
-    const float near = -10.0;
-    const float far = 10.0;
+    varying vec4 vColour;
+
+    const float near = -2.0;
+    const float far = 2.0;
     const float epsilon = 0.00001;
 
     vec3 intersectHorizontalBounds(const in vec3 origin, const in vec3 dir) {
@@ -58,9 +60,12 @@ const featureShader = {
     }
 
     vec4 project() {
-      if (abs(position.z - zValue) < epsilon) {
+      if ((gl_VertexID % 4) < 2) {
+        // TODO temporary tweak to check shadow colour blending is OK
+        vColour = vec4(0.0, 0.0, 0.0, 1.0);
         return projectionMatrix * viewMatrix * instanceMatrix * vec4(position, 1.0);
       }
+
       vec3 projected = (projectionMatrix * viewMatrix * instanceMatrix * vec4(position.xy, zValue, 1.0)).xyz;
       vec3 token = (projectionMatrix * viewMatrix * vec4(tokenCentre, 1.0)).xyz;
       vec3 dir = normalize(projected - token);
@@ -68,6 +73,8 @@ const featureShader = {
       vec3 iVert = intersectVerticalBounds(projected, dir);
       vec3 intersection = abs(dir.x) < epsilon ? iHoriz : abs(dir.y) < epsilon ? iVert :
         dot(iHoriz - projected, dir) < dot(iVert - projected, dir) ? iHoriz : iVert;
+
+      vColour = vec4(1.0, 1.0, 1.0, 1.0);
       return vec4(intersection, 1.0);
     }
 
@@ -76,21 +83,36 @@ const featureShader = {
     }
   `,
   fragmentShader: `
+    varying vec4 vColour;
+
     void main() {
-      gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+      gl_FragColor = vColour;
     }
-  `
+  `,
 };
 
 // This feature object draws the shadows cast by the walls using the above shader.
 // (It doesn't own the material.)
 // Edit the material before rendering this to draw LoS for different tokens
-class LoSFeatureObject extends InstancedFeatureObject<GridEdge, IFeature<GridEdge>> {
+class LoSFeatureObject extends InstancedFeatureObject<
+  GridEdge,
+  IFeature<GridEdge>
+> {
   private readonly _geometry: THREE.InstancedBufferGeometry;
   private readonly _material: THREE.ShaderMaterial;
 
-  constructor(gridGeometry: IGridGeometry, z: number, q: number, material: THREE.ShaderMaterial, maxInstances: number) {
-    super(edgeString, (o, p) => gridGeometry.transformToEdge(o, p), maxInstances);
+  constructor(
+    gridGeometry: IGridGeometry,
+    z: number,
+    q: number,
+    material: THREE.ShaderMaterial,
+    maxInstances: number
+  ) {
+    super(
+      edgeString,
+      (o, p) => gridGeometry.transformToEdge(o, p),
+      maxInstances
+    );
     const single = gridGeometry.toSingle();
     const vertices = [...single.createLoSVertices(z, q)];
 
@@ -102,7 +124,11 @@ class LoSFeatureObject extends InstancedFeatureObject<GridEdge, IFeature<GridEdg
   }
 
   protected createMesh(maxInstances: number) {
-    return new THREE.InstancedMesh(this._geometry, this._material, maxInstances);
+    return new THREE.InstancedMesh(
+      this._geometry,
+      this._material,
+      maxInstances
+    );
   }
 
   dispose() {
@@ -112,10 +138,23 @@ class LoSFeatureObject extends InstancedFeatureObject<GridEdge, IFeature<GridEdg
 }
 
 class LoSFeatures extends InstancedFeatures<GridEdge, IFeature<GridEdge>> {
-  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, z: number, q: number, material: THREE.ShaderMaterial, maxInstances?: number | undefined) {
-    super(geometry, redrawFlag, edgeString, maxInstances => {
-      return new LoSFeatureObject(geometry, z, q, material, maxInstances);
-    }, maxInstances);
+  constructor(
+    geometry: IGridGeometry,
+    redrawFlag: RedrawFlag,
+    z: number,
+    q: number,
+    material: THREE.ShaderMaterial,
+    maxInstances?: number | undefined
+  ) {
+    super(
+      geometry,
+      redrawFlag,
+      edgeString,
+      (maxInstances) => {
+        return new LoSFeatureObject(geometry, z, q, material, maxInstances);
+      },
+      maxInstances
+    );
   }
 }
 
@@ -162,42 +201,65 @@ export class LoS extends Drawn {
       side: THREE.DoubleSide,
       uniforms: this._featureUniforms,
       vertexShader: featureShader.vertexShader,
-      fragmentShader: featureShader.fragmentShader
+      fragmentShader: featureShader.fragmentShader,
+      // Use MIN blending to retain the minimum (darkest) color value when
+      // multiple shadow fragments overlap the same pixel
+      blending: THREE.CustomBlending,
+      blendEquation: THREE.MinEquation,
+      blendSrc: THREE.OneFactor,
+      blendDst: THREE.OneFactor,
     });
 
-    this._features = new LoSFeatures(geometry, redrawFlag, z, q, this._featureMaterial, maxInstances);
+    this._features = new LoSFeatures(
+      geometry,
+      redrawFlag,
+      z,
+      q,
+      this._featureMaterial,
+      maxInstances
+    );
     this._featureRenderTargets = [];
     for (let i = 0; i < maxComposeCount; ++i) {
-      this._featureRenderTargets.push(this.createRenderTarget(renderWidth, renderHeight));
+      this._featureRenderTargets.push(
+        this.createRenderTarget(renderWidth, renderHeight)
+      );
     }
 
     this._featureScene = new THREE.Scene();
     this._features.addToScene(this._featureScene);
 
     this._composeClearColour = new THREE.Color(0, 0, 0); // invisible unless seen by something
-    this._composeRenderTarget = this.createRenderTarget(renderWidth, renderHeight);
+    this._composeRenderTarget = this.createRenderTarget(
+      renderWidth,
+      renderHeight
+    );
     this._composeScene = new THREE.Scene();
 
-    this._composedTargetReader = new RenderTargetReader(this._composeRenderTarget);
+    this._composedTargetReader = new RenderTargetReader(
+      this._composeRenderTarget
+    );
 
     // Create the geometry we use to compose the LoS together
     this._composeGeometry = new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(-1, -1, 0),
       new THREE.Vector3(1, -1, 0),
       new THREE.Vector3(-1, 1, 0),
-      new THREE.Vector3(1, 1, 0)
+      new THREE.Vector3(1, 1, 0),
     ]);
-    this._composeGeometry.setIndex([
-      0, 1, 2, 1, 2, 3
-    ]);
+    this._composeGeometry.setIndex([0, 1, 2, 1, 2, 3]);
 
     // Yes, having the UVs specified is mandatory :P
-    this._composeGeometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([
-      0, 0, 1, 0, 0, 1, 1, 1
-    ]), 2));
+    this._composeGeometry.setAttribute(
+      "uv",
+      new THREE.BufferAttribute(new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), 2)
+    );
   }
 
-  private compose(camera: THREE.Camera, renderer: THREE.WebGLRenderer, count: number) {
+  private compose(
+    camera: THREE.Camera,
+    renderer: THREE.WebGLRenderer,
+    count: number
+  ) {
     // Composes the contents of the given number of feature renders onto the compose target.
     // TODO #52 To successfully down-scale the LoS, this here needs its own camera
     renderer.setRenderTarget(this._composeRenderTarget);
@@ -205,10 +267,15 @@ export class LoS extends Drawn {
     const meshes: THREE.Mesh[] = [];
     for (let i = 0; i < count; ++i) {
       const material = new THREE.MeshBasicMaterial({
-        blending: THREE.AdditiveBlending,
+        // Use MAX blending to combine LoS from multiple tokens:
+        // a pixel is visible if ANY token can see it
+        blending: THREE.CustomBlending,
+        blendEquation: THREE.MaxEquation,
+        blendSrc: THREE.OneFactor,
+        blendDst: THREE.OneFactor,
         map: this._featureRenderTargets[i].texture,
         side: THREE.DoubleSide,
-        transparent: true
+        transparent: true,
       });
       materials.push(material);
 
@@ -220,8 +287,8 @@ export class LoS extends Drawn {
     renderer.render(this._composeScene, camera);
 
     // Put settings back
-    meshes.forEach(m => this._composeScene.remove(m));
-    materials.forEach(m => m.dispose());
+    meshes.forEach((m) => this._composeScene.remove(m));
+    materials.forEach((m) => m.dispose());
   }
 
   private createRenderTarget(renderWidth: number, renderHeight: number) {
@@ -254,7 +321,7 @@ export class LoS extends Drawn {
   checkLoS(cp: THREE.Vector3) {
     const x = Math.floor((cp.x + 1) * 0.5 * this._composeRenderTarget.width);
     const y = Math.floor((cp.y + 1) * 0.5 * this._composeRenderTarget.height);
-    function *enumerateSamplePositions() {
+    function* enumerateSamplePositions() {
       yield [x, y];
       yield [x - 2, y - 2];
       yield [x + 2, y - 2];
@@ -263,14 +330,24 @@ export class LoS extends Drawn {
     }
 
     const visibleCount = fluent(enumerateSamplePositions())
-      .map(p => this._composedTargetReader.sample(p[0], p[1], (buf, offset) => buf[offset] ?? 0))
+      .map((p) =>
+        this._composedTargetReader.sample(
+          p[0],
+          p[1],
+          (buf, offset) => buf[offset] ?? 0
+        )
+      )
       .sum();
     return visibleCount > 0;
   }
 
   // Renders the LoS frames.  Overwrites the render target and clear colours.
   // TODO Can I sometimes avoid re-rendering these?  Separate the `needsRedraw` flags?
-  render(camera: THREE.Camera, fixedCamera: THREE.Camera, renderer: THREE.WebGLRenderer) {
+  render(
+    camera: THREE.Camera,
+    fixedCamera: THREE.Camera,
+    renderer: THREE.WebGLRenderer
+  ) {
     // Always clear the composed target to begin with (otherwise, with 0 token positions to
     // render, we'll end up returning the old composed target!)
     renderer.setRenderTarget(this._composeRenderTarget);
@@ -280,7 +357,7 @@ export class LoS extends Drawn {
     // Render the LoS features for each token position
     let lastRenderedIndex = maxComposeCount;
     this._tokenPositions.forEach((pos, i) => {
-      const targetIndex = (i % maxComposeCount);
+      const targetIndex = i % maxComposeCount;
       // Use the pre-calculated world centre directly
       this._featureUniforms[tokenCentre].value.copy(pos.centre);
 
@@ -290,7 +367,7 @@ export class LoS extends Drawn {
       renderer.render(this._featureScene, camera);
       lastRenderedIndex = targetIndex;
 
-      if (targetIndex === (maxComposeCount - 1)) {
+      if (targetIndex === maxComposeCount - 1) {
         // We've filled all our feature render targets; we must compose these down
         // before we can continue.
         this.compose(fixedCamera, renderer, maxComposeCount);
@@ -308,7 +385,7 @@ export class LoS extends Drawn {
   }
 
   resize(width: number, height: number) {
-    this._featureRenderTargets.forEach(t => t.setSize(width, height));
+    this._featureRenderTargets.forEach((t) => t.setSize(width, height));
     this._composeRenderTarget.setSize(width, height);
   }
 
@@ -327,7 +404,7 @@ export class LoS extends Drawn {
     if (this._isDisposed === false) {
       this._features.dispose();
       this._featureMaterial.dispose();
-      this._featureRenderTargets.forEach(t => t.dispose());
+      this._featureRenderTargets.forEach((t) => t.dispose());
 
       this._composeGeometry.dispose();
       this._composeRenderTarget.dispose();
