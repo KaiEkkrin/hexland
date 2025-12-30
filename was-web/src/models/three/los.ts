@@ -222,21 +222,22 @@ const featureShader = {
       float sinAlpha = radius / dist;
       float cosAlpha = sqrt(1.0 - sinAlpha * sinAlpha);
 
-      // Normalise the to-token direction
-      vec2 toTokenNorm = toToken / dist;
+      // Normalise the direction AWAY from the token (shadow projection direction)
+      // We negate toToken because shadows project away from the token, not towards it
+      vec2 awayFromToken = -toToken / dist;
 
-      // Rotate to get the two tangent directions
+      // Rotate to get the two tangent directions (projecting away from token)
       // Left tangent (rotate counter-clockwise by alpha)
       vec3 leftDir = vec3(
-        toTokenNorm.x * cosAlpha - toTokenNorm.y * sinAlpha,
-        toTokenNorm.x * sinAlpha + toTokenNorm.y * cosAlpha,
+        awayFromToken.x * cosAlpha - awayFromToken.y * sinAlpha,
+        awayFromToken.x * sinAlpha + awayFromToken.y * cosAlpha,
         0.0
       );
 
       // Right tangent (rotate clockwise by alpha)
       vec3 rightDir = vec3(
-        toTokenNorm.x * cosAlpha + toTokenNorm.y * sinAlpha,
-        -toTokenNorm.x * sinAlpha + toTokenNorm.y * cosAlpha,
+        awayFromToken.x * cosAlpha + awayFromToken.y * sinAlpha,
+        -awayFromToken.x * sinAlpha + awayFromToken.y * cosAlpha,
         0.0
       );
 
@@ -271,13 +272,27 @@ const featureShader = {
       return true;
     }
 
-    // Check if X is on the correct side (opposite from token relative to wall)
-    bool isXValid(vec3 X, vec3 T, vec3 U, vec3 tokenPos) {
+    // Check if X is valid for Case 1 geometry:
+    // 1. X must be in the forward direction along the inner tangent rays (not behind the wall)
+    // 2. X must be on the opposite side of the wall from the token
+    bool isXValid(vec3 X, vec3 T, vec3 U, vec3 tokenPos, vec3 T_inner, vec3 U_inner) {
+      // Check 1: X must be in the forward direction from T along T_inner
+      // (If dot product is negative, X is behind T in the opposite direction)
+      vec2 TtoX = X.xy - T.xy;
+      if (dot(TtoX, T_inner.xy) < 0.0) {
+        return false;
+      }
+
+      // Check 2: X must be in the forward direction from U along U_inner
+      vec2 UtoX = X.xy - U.xy;
+      if (dot(UtoX, U_inner.xy) < 0.0) {
+        return false;
+      }
+
+      // Check 3: X should be on the opposite side of the wall from the token
       vec2 wallMid = (T.xy + U.xy) * 0.5;
       vec2 wallToToken = tokenPos.xy - wallMid;
       vec2 wallToX = X.xy - wallMid;
-
-      // X should be on the opposite side of the wall from the token
       return dot(wallToToken, wallToX) < 0.0;
     }
 
@@ -306,7 +321,7 @@ const featureShader = {
       // Find X (intersection of inner tangent rays from T and U)
       vec3 X;
       bool xValid = lineIntersection(T, T_inner, U, U_inner, X);
-      xValid = xValid && isXValid(X, T, U, token);
+      xValid = xValid && isXValid(X, T, U, token, T_inner, U_inner);
 
       // Default colours
       vec4 BLACK = vec4(0.0, 0.0, 0.0, 1.0);
@@ -339,28 +354,32 @@ const featureShader = {
         gl_Position = vec4(projectToBounds(T, T_outer), 1.0);
         vColour = WHITE;
       } else if (vType == V_Q) {
-        // Q: inner tangent from T, projected to bounds
+        // Q: inner tangent from T (Case 1), or swapped to U_inner (Case 2)
         // Grey in Case 1 (penumbra), black in Case 2 (umbra)
-        gl_Position = vec4(projectToBounds(T, T_inner), 1.0);
         if (xValid) {
-          // Case 1: interpolate grey based on position in penumbra
+          // Case 1: Q is inner tangent from T
+          gl_Position = vec4(projectToBounds(T, T_inner), 1.0);
+          // Interpolate grey based on position in penumbra
           // For now, use a simple midpoint grey; can refine later
-          vec3 P = projectToBounds(T, T_outer);
-          vec3 Q = projectToBounds(T, T_inner);
           float greyValue = 0.5; // Placeholder - will refine in next step
           vColour = vec4(greyValue, greyValue, greyValue, 1.0);
         } else {
+          // Case 2: Q and R swap positions; Q takes R's position (U_inner)
+          gl_Position = vec4(projectToBounds(U, U_inner), 1.0);
           vColour = BLACK;
         }
       } else if (vType == V_R) {
-        // R: inner tangent from U, projected to bounds
+        // R: inner tangent from U (Case 1), or swapped to T_inner (Case 2)
         // Grey in Case 1 (penumbra), black in Case 2 (umbra)
-        gl_Position = vec4(projectToBounds(U, U_inner), 1.0);
         if (xValid) {
-          // Case 1: interpolate grey based on position in penumbra
+          // Case 1: R is inner tangent from U
+          gl_Position = vec4(projectToBounds(U, U_inner), 1.0);
+          // Interpolate grey based on position in penumbra
           float greyValue = 0.5; // Placeholder - will refine in next step
           vColour = vec4(greyValue, greyValue, greyValue, 1.0);
         } else {
+          // Case 2: Q and R swap positions; R takes Q's position (T_inner)
+          gl_Position = vec4(projectToBounds(T, T_inner), 1.0);
           vColour = BLACK;
         }
       } else if (vType == V_S) {
