@@ -235,6 +235,12 @@ export class MapUi {
           break;
         case EditMode.Wall: this._stateMachine?.moveWallHighlightTo(cp, shiftKey, this._state.selectedColour); break;
         case EditMode.Room: this._stateMachine?.moveRoomHighlightTo(cp, shiftKey, this._state.selectedColour); break;
+        case EditMode.Token:
+        case EditMode.CharacterToken:
+        case EditMode.Notes:
+        case EditMode.Image:
+          this._stateMachine?.moveTokenHighlightTo(cp);
+          break;
       }
     }
 
@@ -486,6 +492,21 @@ export class MapUi {
       if (canDoAnything) {
         newState.layer = Layer.Object;
         newState.editMode = EditMode.Room;
+      }
+    } else if (e.key === 't' || e.key === 'T') {
+      if (canDoAnything) {
+        newState.layer = Layer.Object;
+        newState.editMode = EditMode.Token;
+      }
+    } else if (e.key === 'c' || e.key === 'C') {
+      if (canDoAnything) {
+        newState.layer = Layer.Object;
+        newState.editMode = EditMode.CharacterToken;
+      }
+    } else if (e.key === 'n' || e.key === 'N') {
+      if (canDoAnything) {
+        newState.layer = Layer.Object;
+        newState.editMode = EditMode.Notes;
       }
     } else if (e.key === 's' || e.key === 'S') {
       // This applies to either layer so we won't change it

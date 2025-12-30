@@ -1,6 +1,6 @@
 # Important Gotchas & Troubleshooting
 
-Critical warnings and common issues when working with Wall & Shadow.
+This is an AI-generated document.
 
 ## Firebase Configuration
 

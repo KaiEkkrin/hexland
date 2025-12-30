@@ -22,7 +22,7 @@ import {
 } from 'firebase/firestore';
 
 import * as Convert from './converter';
-import { IDataService, IDataReference, IDataView, IDataAndReference, IChildDataReference } from './interfaces';
+import { IDataService, IDataReference, IDataView, IDataAndReference, IChildDataReference, IAppVersion } from './interfaces';
 import { IAdventure, IPlayer } from '../data/adventure';
 import { Change, Changes } from '../data/change';
 import { IIdentified } from '../data/identified';
@@ -255,6 +255,11 @@ export class DataService implements IDataService {
   getProfileRef(uid: string): IDataReference<IProfile> {
     const d = doc(this._db, profiles, uid);
     return new DataReference<IProfile>(d, Convert.profileConverter);
+  }
+
+  getVersionRef(): IDataReference<IAppVersion> {
+    const d = doc(this._db, 'config', 'version');
+    return new DataReference<IAppVersion>(d, Convert.appVersionConverter);
   }
 
   async getSpritesheetsBySource(adventureId: string, geometry: string, sources: string[]): Promise<IDataAndReference<ISpritesheet>[]> {

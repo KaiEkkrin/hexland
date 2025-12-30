@@ -196,6 +196,18 @@ jobs:
           fi
 
       # -----------------------------------------------------------------------
+      # Update version in Firestore
+      # -----------------------------------------------------------------------
+      # Writes current version to config/version document so connected
+      # clients know to reload for the new version.
+      #
+      - name: Update version in Firestore
+        working-directory: was-web
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/was-web/firebase-service-account.json
+        run: node scripts/update-version.js
+
+      # -----------------------------------------------------------------------
       # Cleanup
       # -----------------------------------------------------------------------
       # Remove the decoded service account file for security
@@ -228,3 +240,4 @@ jobs:
           echo "  ✅ Firestore Rules"
           echo "  ✅ Firestore Indexes"
           echo "  ✅ Storage Rules"
+          echo "  ✅ Version updated in Firestore (clients will auto-reload)"

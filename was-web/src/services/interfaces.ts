@@ -13,6 +13,13 @@ import { IConverter } from './converter';
 
 import { Observable } from 'rxjs';
 
+// App version information stored in Firestore (config/version document).
+// Used to detect when a new version has been deployed.
+export interface IAppVersion {
+  commit: string;
+  version?: string;
+}
+
 // Abstracts the Firebase authentication stuff, which isn't supported by the
 // simulator.
 export interface IAuth {
@@ -101,6 +108,9 @@ export interface IDataService extends IDataView {
 
   // Gets the user's profile.
   getProfileRef(uid: string): IDataReference<IProfile>;
+
+  // Gets the app version document reference (for version checking).
+  getVersionRef(): IDataReference<IAppVersion>;
 
   // Gets all spritesheets containing one of the supplied images.
   // No more than 10 sources in one go!

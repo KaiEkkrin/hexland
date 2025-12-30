@@ -88,6 +88,12 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid == id;
     }
 
+    // App version - readable by all authenticated users, writable only by admin SDK (deployment)
+    match /config/version {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
     // No writing anything else! :P
     match /{document=**} {
       allow read, write: if false;

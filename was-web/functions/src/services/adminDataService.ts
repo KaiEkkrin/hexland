@@ -3,7 +3,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 
 import * as Convert from './converter';
 import { IAdminDataService, ICollectionGroupQueryResult } from './extraInterfaces';
-import { IChildDataReference, IDataReference, IDataView, IDataAndReference } from './interfaces';
+import { IChildDataReference, IDataReference, IDataView, IDataAndReference, IAppVersion } from './interfaces';
 import { IAdventure, IPlayer } from '../data/adventure';
 import { Change, Changes } from '../data/change';
 import { IIdentified } from '../data/identified';
@@ -275,6 +275,11 @@ export class AdminDataService implements IAdminDataService {
   getProfileRef(uid: string): IDataReference<IProfile> {
     const d = this._db.collection(profiles).doc(uid);
     return new DataReference<IProfile>(d, Convert.profileConverter);
+  }
+
+  getVersionRef(): IDataReference<IAppVersion> {
+    const d = this._db.collection('config').doc('version');
+    return new DataReference<IAppVersion>(d, Convert.appVersionConverter);
   }
 
   async getSpritesheetsByFreeSpace(adventureId: string, geometry: string): Promise<IDataAndReference<ISpritesheet>[]> {
