@@ -7,7 +7,7 @@
  * Usage:
  *   GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json node scripts/update-version.js
  *
- * The script:
+ * The script
  * 1. Reads the current Git commit hash
  * 2. Reads the version from package.json
  * 3. Writes both to the config/version document in Firestore
