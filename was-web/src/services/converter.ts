@@ -573,3 +573,9 @@ export const spritesheetConverter = new ShallowConverter<ISpritesheet>({
   supersededBy: "",
   refs: 0
 });
+
+// App version converter for version checking
+export const appVersionConverter = new ShallowConverter<{ commit: string; version?: string }>({
+  commit: "",
+  version: ""
+});

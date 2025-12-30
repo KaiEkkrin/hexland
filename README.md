@@ -12,6 +12,12 @@ I originally built it in 2020 while I was unemployed. Since then the VTT space h
 
 Wall & Shadow is a map tool only and doesn't attempt to provide dice rolling, player character tracking etc. I use Discord bots for that -- Avrae for D&D, [ThirteenIsh](https://github.com/KaiEkkrin/ThirteenIsh) for other systems.
 
+## Requirements
+
+Wall & Shadow should work well in any modern browser that supports [WebGL 2](https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API#webgl_2). I don't have access to a Mac, so it may or may not work properly on Safari.
+
+For contributing to development I would strongly recommend Linux, either natively or through WSL.
+
 ## Tech Stack
 
 - **React 18** + TypeScript + Vite

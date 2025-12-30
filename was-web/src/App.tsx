@@ -18,6 +18,8 @@ import Throbber from './components/Throbber';
 import ToastCollection from './components/ToastCollection';
 import UserContextProvider from './components/UserContextProvider';
 import VersionBadge from './components/VersionBadge';
+import VersionChecker from './components/VersionChecker';
+import ChunkErrorHandler from './components/ChunkErrorHandler';
 import { getEnvironmentColors } from './utils/environment';
 
 import { Route, Routes } from 'react-router-dom';
@@ -66,6 +68,8 @@ function App(props: IFirebaseProps & IRoutingProps & IAnalyticsProps) {
                 <Consent />
                 <Status />
                 <ToastCollection />
+                <ChunkErrorHandler />
+                <VersionChecker />
                 <VersionBadge />
               </StatusContextProvider>
             </ProfileContextProvider>
