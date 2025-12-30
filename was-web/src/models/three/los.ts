@@ -164,8 +164,8 @@ const featureShader = {
 
     varying vec4 vColour;
 
-    const float near = -2.0;
-    const float far = 2.0;
+    // Large value to project shadows beyond any visible area (world space)
+    const float worldBound = 1000.0;
     const float epsilon = 0.00001;
 
     // Vertex type constants
@@ -179,14 +179,14 @@ const featureShader = {
     const int V_S = 7;
     const int V_X = 8;
 
-    // Project point to screen bounds along direction, returning the closer intersection
+    // Project point to world bounds along direction, returning the closer intersection
     vec3 projectToBounds(vec3 origin, vec3 dir) {
       // Handle near-zero direction components to avoid division issues
       float tX = abs(dir.x) > epsilon
-        ? (dir.x > 0.0 ? (far - origin.x) / dir.x : (near - origin.x) / dir.x)
+        ? (dir.x > 0.0 ? (worldBound - origin.x) / dir.x : (-worldBound - origin.x) / dir.x)
         : 1e10;
       float tY = abs(dir.y) > epsilon
-        ? (dir.y > 0.0 ? (far - origin.y) / dir.y : (near - origin.y) / dir.y)
+        ? (dir.y > 0.0 ? (worldBound - origin.y) / dir.y : (-worldBound - origin.y) / dir.y)
         : 1e10;
       float t = min(tX, tY);
       return vec3(origin.xy + dir.xy * t, origin.z);
@@ -299,24 +299,21 @@ const featureShader = {
     void main() {
       int vType = gl_VertexID % 9;
 
-      // Transform matrices
-      mat4 MVP = projectionMatrix * viewMatrix * instanceMatrix;
+      // Transform matrix for final clip space output
       mat4 VP = projectionMatrix * viewMatrix;
 
-      // Get wall endpoints in clip space
-      vec3 T = (MVP * vec4(wallT.xy, zValue, 1.0)).xyz;
-      vec3 U = (MVP * vec4(wallU.xy, zValue, 1.0)).xyz;
+      // Transform wall endpoints to world space (canonical -> actual position)
+      vec3 T = (instanceMatrix * vec4(wallT.xy, zValue, 1.0)).xyz;
+      vec3 U = (instanceMatrix * vec4(wallU.xy, zValue, 1.0)).xyz;
 
-      // Get token position in clip space
-      vec3 token = (VP * vec4(tokenCentre, 1.0)).xyz;
+      // Token centre and radius are already in world space
+      vec3 token = tokenCentre;
+      float radius = tokenRadius;
 
-      // Scale radius to clip space (approximate using x-axis scale)
-      float clipRadius = tokenRadius * length((VP * vec4(1.0, 0.0, 0.0, 0.0)).xyz);
-
-      // Compute tangent directions for T and U
+      // Compute tangent directions for T and U (all in world space)
       vec3 T_outer, T_inner, U_outer, U_inner;
-      computeTangentDirections(T, U, token, clipRadius, T_outer, T_inner);
-      computeTangentDirections(U, T, token, clipRadius, U_outer, U_inner);
+      computeTangentDirections(T, U, token, radius, T_outer, T_inner);
+      computeTangentDirections(U, T, token, radius, U_outer, U_inner);
 
       // Find X (intersection of inner tangent rays from T and U)
       vec3 X;
@@ -332,63 +329,59 @@ const featureShader = {
         X = U;
       }
 
-      // Route by vertex type
+      // Route by vertex type (all positions in world space, transformed to clip at end)
       if (vType == V_T) {
         // T: wall endpoint, umbra (black)
-        gl_Position = vec4(T, 1.0);
+        gl_Position = VP * vec4(T, 1.0);
         vColour = BLACK;
       } else if (vType == V_U) {
         // U: wall endpoint, umbra (black)
-        gl_Position = vec4(U, 1.0);
+        gl_Position = VP * vec4(U, 1.0);
         vColour = BLACK;
       } else if (vType == V_T_PRIME) {
         // T': wall endpoint for penumbra triangle (white)
-        gl_Position = vec4(T, 1.0);
+        gl_Position = VP * vec4(T, 1.0);
         vColour = WHITE;
       } else if (vType == V_U_PRIME) {
         // U': wall endpoint for penumbra triangle (white)
-        gl_Position = vec4(U, 1.0);
+        gl_Position = VP * vec4(U, 1.0);
         vColour = WHITE;
       } else if (vType == V_P) {
         // P: outer tangent from T, projected to bounds (white)
-        gl_Position = vec4(projectToBounds(T, T_outer), 1.0);
+        gl_Position = VP * vec4(projectToBounds(T, T_outer), 1.0);
         vColour = WHITE;
       } else if (vType == V_Q) {
-        // Q: inner tangent from T (Case 1), or swapped to U_inner (Case 2)
+        // Q: inner tangent from T, projected to bounds
         // Grey in Case 1 (penumbra), black in Case 2 (umbra)
+        gl_Position = VP * vec4(projectToBounds(T, T_inner), 1.0);
         if (xValid) {
-          // Case 1: Q is inner tangent from T
-          gl_Position = vec4(projectToBounds(T, T_inner), 1.0);
-          // Interpolate grey based on position in penumbra
+          // Case 1: interpolate grey based on position in penumbra
           // For now, use a simple midpoint grey; can refine later
           float greyValue = 0.5; // Placeholder - will refine in next step
           vColour = vec4(greyValue, greyValue, greyValue, 1.0);
         } else {
-          // Case 2: Q and R swap positions; Q takes R's position (U_inner)
-          gl_Position = vec4(projectToBounds(U, U_inner), 1.0);
+          // Case 2: solid black umbra
           vColour = BLACK;
         }
       } else if (vType == V_R) {
-        // R: inner tangent from U (Case 1), or swapped to T_inner (Case 2)
+        // R: inner tangent from U, projected to bounds
         // Grey in Case 1 (penumbra), black in Case 2 (umbra)
+        gl_Position = VP * vec4(projectToBounds(U, U_inner), 1.0);
         if (xValid) {
-          // Case 1: R is inner tangent from U
-          gl_Position = vec4(projectToBounds(U, U_inner), 1.0);
-          // Interpolate grey based on position in penumbra
+          // Case 1: interpolate grey based on position in penumbra
           float greyValue = 0.5; // Placeholder - will refine in next step
           vColour = vec4(greyValue, greyValue, greyValue, 1.0);
         } else {
-          // Case 2: Q and R swap positions; R takes Q's position (T_inner)
-          gl_Position = vec4(projectToBounds(T, T_inner), 1.0);
+          // Case 2: solid black umbra
           vColour = BLACK;
         }
       } else if (vType == V_S) {
         // S: outer tangent from U, projected to bounds (white)
-        gl_Position = vec4(projectToBounds(U, U_outer), 1.0);
+        gl_Position = VP * vec4(projectToBounds(U, U_outer), 1.0);
         vColour = WHITE;
       } else if (vType == V_X) {
         // X: inner tangent intersection (black)
-        gl_Position = vec4(X, 1.0);
+        gl_Position = VP * vec4(X, 1.0);
         vColour = BLACK;
       }
     }
