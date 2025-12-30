@@ -1,6 +1,6 @@
 # Architecture
 
-Detailed architecture documentation for Wall & Shadow.
+This is an AI-generated document.
 
 ## Data Layer Architecture
 

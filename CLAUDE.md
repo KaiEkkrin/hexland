@@ -6,7 +6,7 @@ Guidance for Claude Code when working with this repository.
 
 Wall & Shadow - Virtual tabletop (VTT) web app for running tabletop RPG sessions online. Real-time collaborative map editing, token management, game state sharing.
 
-**Stack**: React 18 + TypeScript + Firebase (Firestore, Functions, Auth, Hosting, Storage) + Three.js + Vite
+**Stack**: React + TypeScript + Firebase (Firestore, Functions, Auth, Hosting, Storage) + Three.js + Vite
 
 **Status**: Revived with modern toolchain (Node.js 20, React 18, Vite, Firebase v11)
 
@@ -28,11 +28,15 @@ was-web/
 └── app.html                 # React SPA (all app routes)
 ```
 
+Where code files need to be shared between Functions and Web projects, symbolic links from inside the functions/ directory point to the real files in the src/ directory.
+
 ## Development Commands
 
 All commands from `was-web/` directory.
 
 ### Start Development
+
+You may assume the developer has already done this.
 
 ```bash
 cd was-web
@@ -52,33 +56,33 @@ yarn dev:vite
 - Vite dev server: http://localhost:5000 (hot reload)
 - Firebase Emulator UI: http://localhost:4000
 
-Alternative: `yarn start` (runs both in parallel)
+### Web Build & Lint
 
-### Testing
-
-```bash
-yarn test:unit          # Vitest watch mode
-yarn test               # Single run
-yarn test:e2e           # Playwright (requires dev server)
-```
-
-### Build & Deploy
+Ensures the code is ready for deployment.
 
 ```bash
+yarn lint
 yarn build              # Build to was-web/build/
-firebase deploy --only hosting    # Web app only
-firebase deploy                   # Everything (includes Functions)
 ```
 
-See @DEPLOY.md for comprehensive deployment instructions.
-
-### Firebase Functions
+### Firebase Functions Build & Lint
 
 ```bash
 cd was-web/functions
 yarn lint
 yarn build              # Compile TypeScript to lib/
 ```
+
+Changes to the Firebase Functions code will not be reflected in the running Functions Emulator until `yarn build` is run.
+
+### Testing
+
+```bash
+yarn test:unit          # Vitest watch mode
+yarn test:e2e           # Playwright (requires dev server)
+```
+
+See @DEPLOY.md for comprehensive deployment instructions.
 
 ## Code Standards
 
@@ -202,7 +206,8 @@ See @docs/ARCHITECTURE.md for detailed architecture documentation.
 1. Implement in `functions/src/index.ts` or separate file
 2. Export from `functions/src/index.ts`
 3. Add types to `data/` if needed (shared between web/functions)
-4. Test with `yarn dev:firebase`
+4. Build: `(cd functions && yarn build)`
+5. Test with `yarn dev:firebase`
 
 ### Debug Rendering
 
