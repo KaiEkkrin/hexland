@@ -14,7 +14,7 @@ import { IAnnotation, IPositionedAnnotation } from '../data/annotation';
 import { Change, createTokenRemove, createTokenAdd, createNoteRemove, createNoteAdd, createTokenMove, createImageAdd, createImageRemove } from '../data/change';
 import { netObjectCount, trackChanges } from '../data/changeTracking';
 import { GridCoord, coordString, coordsEqual, coordSub, coordAdd, GridVertex, vertexAdd } from '../data/coord';
-import { FeatureDictionary, flipToken, IToken, ITokenDictionary, ITokenProperties, TokenSize } from '../data/feature';
+import { FeatureDictionary, flipToken, IToken, ITokenDictionary, ITokenProperties, TokenSize, defaultToken } from '../data/feature';
 import { IAdventureIdentified } from '../data/identified';
 import { Anchor, anchorsEqual, anchorString, IMapImage, IMapImageProperties } from '../data/image';
 import { IMap } from '../data/map';
@@ -1025,6 +1025,8 @@ export class MapStateMachine {
     this._roomHighlighter.clear();
     this._dragRectangle.reset();
     this._imageResizer.dragCancel();
+    this._selectionDrag.clear();
+    this._selectionDragRed.clear();
   }
 
   clearSelection() {
@@ -1071,6 +1073,7 @@ export class MapStateMachine {
     this.clearSelection();
 
     this._drawing.areas.clear();
+    this._drawing.playerAreas.clear();
     this._tokens.clear();
     this._outlineTokens.clear();
     this._drawing.walls.clear();
@@ -1227,6 +1230,19 @@ export class MapStateMachine {
     } else if (this._dragRectangle.isEnabled()) {
       this.panIfWithinMargin(cp);
       this.selectTokensInDragRectangle();
+    }
+  }
+
+  moveTokenHighlightTo(cp: THREE.Vector3) {
+    const position = this._drawing.getGridCoordAt(cp);
+    this._selectionDrag.clear();
+    if (position !== undefined) {
+      // Create a minimal size-1 token highlight at this position
+      this._selectionDrag.add({
+        ...defaultToken,
+        position: position,
+        colour: 0,  // green highlight color
+      });
     }
   }
 

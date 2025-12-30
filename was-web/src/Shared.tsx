@@ -6,6 +6,7 @@ import { AnalyticsContext } from './components/AnalyticsContext';
 import Navigation from './components/Navigation';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { UserContext } from './components/UserContext';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 
 import { IPlayer } from './data/adventure';
 
@@ -17,6 +18,8 @@ function Shared() {
   const { logError } = useContext(AnalyticsContext);
   const { dataService, user } = useContext(UserContext);
   const [adventures, setAdventures] = useState<IPlayer[]>([]);
+
+  useDocumentTitle('Shared With Me');
 
   useEffect(() => {
     const uid = user?.uid;

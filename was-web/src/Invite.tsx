@@ -8,6 +8,7 @@ import { ProfileContext } from './components/ProfileContext';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { StatusContext } from './components/StatusContext';
 import { UserContext } from './components/UserContext';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 
 import { IInvite } from './data/invite';
 
@@ -49,6 +50,12 @@ function Invite({ inviteId }: IInvitePageProps) {
   const inviteDescription = useMemo(() =>
     invite === undefined ? "(no such invite)" : invite.adventureName + " by " + invite.ownerName,
     [invite]);
+
+  const documentTitle = useMemo(() =>
+    invite?.adventureName ? `Join ${invite.adventureName}` : 'Accept Invite',
+    [invite?.adventureName]);
+
+  useDocumentTitle(documentTitle);
 
   const handleJoin = useCallback(() => {
     setButtonDisabled(true);

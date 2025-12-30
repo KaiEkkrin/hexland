@@ -4,6 +4,7 @@ import './App.css';
 import './Map.css';
 
 import { AdventureContext } from './components/AdventureContext';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { AnalyticsContext } from './components/AnalyticsContext';
 import CharacterTokenEditorModal from './components/CharacterTokenEditorModal';
 import { addToast } from './components/extensions';
@@ -87,6 +88,14 @@ function Map() {
       </div>
     );
   }, [profile, map, mapState, userPolicy]);
+
+  // Document title for browser tab
+  const documentTitle = useMemo(() => {
+    if (!map?.record.adventureName || !map?.record.name) return undefined;
+    return `${map.record.adventureName} | ${map.record.name}`;
+  }, [map?.record.adventureName, map?.record.name]);
+
+  useDocumentTitle(documentTitle);
 
   // Track network status
   const [resyncCount, setResyncCount] = useState(0);

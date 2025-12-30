@@ -2,7 +2,17 @@
 
 This project contains the source code for Wall & Shadow. It is available under the terms of the [Apache License, version 2.0](http://www.apache.org/licenses/LICENSE-2.0) -- see the LICENSE file.
 
-## Stack
+Wall & Shadow is a lightweight VTT (virtual tabletop) focused on providing a fast, on-the-fly battle map creation experience. It's aimed at groups who might:
+
+* run homebrew campaigns;
+* have unruly players who do unexpected things;
+* run sandbox adventures in which anything could happen.
+
+I originally built it in 2020 while I was unemployed. Since then the VTT space has become a lot more crowded, but most offerings focus on providing a polished experience given pre-built assets or lots of preparation, not the fast improvisation that I want :).
+
+Wall & Shadow is a map tool only and doesn't attempt to provide dice rolling, player character tracking etc. I use Discord bots for that -- Avrae for D&D, [ThirteenIsh](https://github.com/KaiEkkrin/ThirteenIsh) for other systems.
+
+## Tech Stack
 
 - **React 18** + TypeScript + Vite
 - **Firebase v11** (Firestore, Functions, Auth, Hosting, Storage)
@@ -76,3 +86,9 @@ firebase deploy                   # Everything (includes Functions)
 ## License
 
 Apache License, version 2.0
+
+## AI Policy
+
+I use Generative AI to deal with the tedious, time-consuming parts of maintaining a project like this, such as keeping on top of JavaScript package churn. I'm aware it's a controversial and much-misused technology but having it available to me has made the difference between being able to keep Wall & Shadow running and having to mothball it permanently.
+
+If you feel I have accidentally incorporated copyright code verbatim in this project, in violation of the code's original license, please raise a GitHub Issue with details.

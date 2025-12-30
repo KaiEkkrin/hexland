@@ -1,6 +1,6 @@
 # Developer Guide
 
-Development workflows, common tasks, testing, and debugging for Wall & Shadow.
+This is an AI-generated document.
 
 ## Development Environment
 

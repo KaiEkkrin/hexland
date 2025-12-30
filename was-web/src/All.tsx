@@ -7,6 +7,7 @@ import Navigation from './components/Navigation';
 import { ProfileContext } from './components/ProfileContext';
 import { RequireLoggedIn } from './components/RequireLoggedIn';
 import { UserContext } from './components/UserContext';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 
 import { IAdventure, summariseAdventure } from './data/adventure';
 import { IIdentified } from './data/identified';
@@ -20,6 +21,8 @@ function All() {
   const { dataService, user } = useContext(UserContext);
   const { profile } = useContext(ProfileContext);
   const analyticsContext = useContext(AnalyticsContext);
+
+  useDocumentTitle('My Adventures');
 
   const [adventures, setAdventures] = useState<IIdentified<IAdventure>[]>([]);
 
