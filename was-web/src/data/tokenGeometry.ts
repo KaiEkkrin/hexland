@@ -396,7 +396,7 @@ export function getTokenLoSPosition(
     switch (token.size[0]) {
       case '2':
         // Size 2: covers 3 (hex) or 4 (square) tiles
-        radius = gridGeometry.xStep;
+        radius = gridGeometry.faceSize;
         break;
       case '3':
         // Size 3: covers 7 (hex) or 9 (square) tiles
