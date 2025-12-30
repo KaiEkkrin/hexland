@@ -235,6 +235,12 @@ export class MapUi {
           break;
         case EditMode.Wall: this._stateMachine?.moveWallHighlightTo(cp, shiftKey, this._state.selectedColour); break;
         case EditMode.Room: this._stateMachine?.moveRoomHighlightTo(cp, shiftKey, this._state.selectedColour); break;
+        case EditMode.Token:
+        case EditMode.CharacterToken:
+        case EditMode.Notes:
+        case EditMode.Image:
+          this._stateMachine?.moveTokenHighlightTo(cp);
+          break;
       }
     }
 
