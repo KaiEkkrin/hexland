@@ -121,6 +121,8 @@ class LoSFeatures extends InstancedFeatures<GridEdge, IFeature<GridEdge>> {
 
 // This class encapsulates the LoS drawing along with its intermediate surfaces.
 const maxComposeCount = 8;
+const losResolutionDivisor = 4; // Render LoS at 1/4 resolution in each dimension
+
 export class LoS extends Drawn {
   private readonly _featureClearColour: THREE.Color;
   private readonly _features: LoSFeatures;
@@ -140,6 +142,10 @@ export class LoS extends Drawn {
 
   private _tokenPositions: LoSPosition[] = [];
 
+  // Track both full viewport and reduced LoS render target dimensions
+  private _losWidth: number;
+  private _losHeight: number;
+
   private _isDisposed = false;
 
   constructor(
@@ -153,6 +159,10 @@ export class LoS extends Drawn {
   ) {
     super(geometry, redrawFlag);
 
+    // Calculate reduced LoS render target dimensions (1/4 in each dimension)
+    this._losWidth = Math.max(1, Math.floor(renderWidth / losResolutionDivisor));
+    this._losHeight = Math.max(1, Math.floor(renderHeight / losResolutionDivisor));
+
     this._featureClearColour = new THREE.Color(1, 1, 1); // visible by default; we draw the shadows
 
     this._featureUniforms = THREE.UniformsUtils.clone(featureShader.uniforms);
@@ -162,20 +172,26 @@ export class LoS extends Drawn {
       side: THREE.DoubleSide,
       uniforms: this._featureUniforms,
       vertexShader: featureShader.vertexShader,
-      fragmentShader: featureShader.fragmentShader
+      fragmentShader: featureShader.fragmentShader,
+      // Use MIN blending to retain the minimum (darkest) color value when
+      // multiple shadow fragments overlap the same pixel
+      blending: THREE.CustomBlending,
+      blendEquation: THREE.MinEquation,
+      blendSrc: THREE.OneFactor,
+      blendDst: THREE.OneFactor,
     });
 
     this._features = new LoSFeatures(geometry, redrawFlag, z, q, this._featureMaterial, maxInstances);
     this._featureRenderTargets = [];
     for (let i = 0; i < maxComposeCount; ++i) {
-      this._featureRenderTargets.push(this.createRenderTarget(renderWidth, renderHeight));
+      this._featureRenderTargets.push(this.createRenderTarget(this._losWidth, this._losHeight));
     }
 
     this._featureScene = new THREE.Scene();
     this._features.addToScene(this._featureScene);
 
     this._composeClearColour = new THREE.Color(0, 0, 0); // invisible unless seen by something
-    this._composeRenderTarget = this.createRenderTarget(renderWidth, renderHeight);
+    this._composeRenderTarget = this.createRenderTarget(this._losWidth, this._losHeight);
     this._composeScene = new THREE.Scene();
 
     this._composedTargetReader = new RenderTargetReader(this._composeRenderTarget);
@@ -205,10 +221,15 @@ export class LoS extends Drawn {
     const meshes: THREE.Mesh[] = [];
     for (let i = 0; i < count; ++i) {
       const material = new THREE.MeshBasicMaterial({
-        blending: THREE.AdditiveBlending,
+        // Use MAX blending to combine LoS from multiple tokens:
+        // a pixel is visible if ANY token can see it
+        blending: THREE.CustomBlending,
+        blendEquation: THREE.MaxEquation,
+        blendSrc: THREE.OneFactor,
+        blendDst: THREE.OneFactor,
         map: this._featureRenderTargets[i].texture,
         side: THREE.DoubleSide,
-        transparent: true
+        transparent: true,
       });
       materials.push(material);
 
@@ -250,22 +271,23 @@ export class LoS extends Drawn {
 
   // Checks the LoS for the given client position and returns true if the position
   // is visible, else false.
-  // TODO #56 This is now really messed up and needs sorting out :)
   checkLoS(cp: THREE.Vector3) {
-    const x = Math.floor((cp.x + 1) * 0.5 * this._composeRenderTarget.width);
-    const y = Math.floor((cp.y + 1) * 0.5 * this._composeRenderTarget.height);
+    // Use the tracked LoS dimensions (reduced resolution)
+    const x = Math.floor((cp.x + 1) * 0.5 * this._losWidth);
+    const y = Math.floor((cp.y + 1) * 0.5 * this._losHeight);
+    // Sample offset reduced to 1 since we're at 1/4 resolution (1 pixel = 4 original pixels)
     function *enumerateSamplePositions() {
       yield [x, y];
-      yield [x - 2, y - 2];
-      yield [x + 2, y - 2];
-      yield [x - 2, y + 2];
-      yield [x + 2, y + 2];
+      yield [x - 1, y - 1];
+      yield [x + 1, y - 1];
+      yield [x - 1, y + 1];
+      yield [x + 1, y + 1];
     }
 
     const visibleCount = fluent(enumerateSamplePositions())
       .map(p => this._composedTargetReader.sample(p[0], p[1], (buf, offset) => buf[offset] ?? 0))
       .sum();
-    return visibleCount > 0;
+    return visibleCount > 0.1;
   }
 
   // Renders the LoS frames.  Overwrites the render target and clear colours.
@@ -308,8 +330,11 @@ export class LoS extends Drawn {
   }
 
   resize(width: number, height: number) {
-    this._featureRenderTargets.forEach(t => t.setSize(width, height));
-    this._composeRenderTarget.setSize(width, height);
+    // Calculate reduced LoS render target dimensions (1/4 in each dimension)
+    this._losWidth = Math.max(1, Math.floor(width / losResolutionDivisor));
+    this._losHeight = Math.max(1, Math.floor(height / losResolutionDivisor));
+    this._featureRenderTargets.forEach(t => t.setSize(this._losWidth, this._losHeight));
+    this._composeRenderTarget.setSize(this._losWidth, this._losHeight);
   }
 
   // Assigns the positions of the tokens to draw LoS for.
