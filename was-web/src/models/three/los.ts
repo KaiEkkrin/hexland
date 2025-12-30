@@ -12,22 +12,132 @@ import * as THREE from "three";
 import fluent from "fluent-iterable";
 
 // Shader-based LoS.
+//
 // Careful with this!  In order for it to work correctly, we need to not use the built-in
 // attributes `modelMatrix` or `modelViewMatrix`, because they are not instanced.  Instead
 // we refer to the built-in attribute `instanceMatrix` in place of `modelMatrix`.  `viewMatrix`
 // is not instanced anyway and can be used as expected.
-// To do this, I will supply a pair of triangles (forming a rectangle) for each wall
-// to the shader, where the vertices are at (edgeA, z); (edgeB, z); (edgeA, q); (edgeB; q)
-// The vertices at z=q will be transformed by the vertex shader to be at the point where the
-// line from the token centre to the vertex intersects the closest one of the four bounds.
-// (which can be fixed at the size 2 cube centred on 0, because we can do this stuff post-
-// orthographic projection.)
+//
+// We can assume that a token never overlaps a wall (code elsewhere guarantees this), although
+// it may be tangent to one.
+//
+// To do this, for each wall of the shader, I want to transform the following geometry for
+// each token, given the wall co-ordinates and the token's centre position and radius:
+//
+//                    P_______________Q_______R_______________S
+//                      \_            |\     /|            _/
+//                        \_          | \   / |          _/
+//                          \_        |  \ /  |        _/
+//                            \_      |   X   |      _/
+//                              \_    |  / \  |    _/
+//                                \_  | /   \ |  _/
+//                                  \_|/     \|_/
+//                                    T=======U
+//                                   . .     . .
+//                                  .    . .    .
+//                                 .   .     .   .
+//                                .  . ####### .  .
+//                               . .#############. .
+//                              ..#################..
+//                             . ################### .
+//                               ###################    <-- token
+//                               ###################
+//                                #################
+//                                  #############
+//                                     #######
+//                                         
+//
+// as follows:
+//
+// - ===== is the wall edge; ----- define the other edges of our LoS triangles;
+//
+// Vertices
+// --------
+//
+// We expect input vertices P, Q, R, S, X, T, U, T' and U'. We disregard their input
+// positions and relocate them as follows:
+//
+// - T and U become the vertices of the opposite ends of the wall edge.
+// - T' and U' get the same positions, so that we can assign them different vertex colours
+// (see later.)
+// - P, Q, R and S all become vertices 2x viewable area away from the token centre.
+// - X becomes the vertex where lines RT and QU intersect, if it exists and the wall
+// is between the token centre and point X (see later.)
+//
+// Edges
+// -----
+//
+// - TU is the wall edge.
+// - We also define two vertices T' and U' such that T'U' is also the wall edge (this
+// allows us to assign them different vertex colours.)
+// - PT and RT are segments of the two possible lines that go through vertex T and are
+// tangent to the token circle.
+// - QU and SU are segments of the two possible lines that go through vertex U and are
+// tangent to the token circle.
+//
+// Triangles
+// ---------
+//
+// The input geometry consists of the following triangles: PQT', QXT, TXU, UXR, RXQ, RSU'.
+// Note the references to T' and U' rather than T or U for the two outer, "penumbra"
+// triangles.
+//
+// Case 1
+// ------
+//
+// (As illustrated in the diagram above.)
+//
+// Point X exists (lines RT and QU are not parallel), and the wall edge TU lies between
+// the token centre and point X.
+//
+// - The position of vertex X is the intersection point between lines RT and QU.
+// - The following vertices are assigned the colour black, being totally shadowed: T, X, U.
+// - The following vertices are assigned the colour white, being totally visible: P, S, T', U'.
+// - Vertex Q is assigned a grey colour, linearly interpolated between its distance from point P
+// (white) and its distance from point X (black).
+// - Vertex R is assigned a grey colour, linearly interpolated between its distance from point S
+// (white) and its distance from point X (black).
+//
+// Case 2
+// ------
+//
+// Lines RT and QU are parallel (point X does not exist), or, point X does exist but
+// it lies on the opposite side of the token from the wall edge. Diagram:
+//
+//                    P_______________R_______Q_______________S
+//                      \_            |\      |            _/
+//                        \_          | \     |          _/
+//                          \_        |  \    |        _/
+//                            \_      |   \   |      _/
+//                              \_    |    \  |    _/
+//                                \_  |     \ |  _/
+//                                  \_|      \|_/
+//                                    T=======U
+//                                    . .   . .
+//                                    .   .   .
+//                                    . . # . .
+//                                    .#######.
+//                                    #########   <-- token
+//                                     #######
+//                                        #
+//
+//
+//
+// - The position of point X is set equal to the position of point U (this makes two of the four
+// inner triangles disappear, since they will have area 0.)
+// - The following vertices are assigned the colour black, being totally shadowed: Q, R, T, X, U.
+// - The following vertices are assigned the colour white, being totally visible: P, S, T', U'.
+//
+// Composing together the LoS of multiple tokens
+// ---------------------------------------------
+//
 // This will render the LoS from a single token; to compose multiple tokens together,
 // repeat in batches (size 4?) and run a "merge" shader that adds together all the textures in the batches.
 // When we've got a final LoS render, we can overlay it onto the screen one by multiply to create
 // the drawn LoS layer, and also sample it for allowed/disallowed move purposes.
 // We're going to need uniforms:
 // - tokenCentre (vec3)
+// - tokenRadius (float)
 // - zValue (float) (for determining which edges to project; *not* q)
 const tokenCentre = "tokenCentre";
 const zValue = "zValue";
@@ -53,7 +163,8 @@ const featureShader = {
         vec3(origin.x + (near - origin.y) * dir.x / dir.y, near, origin.z);
     }
 
-    vec3 intersectVerticalBounds(const in vec3 origin, const in vec3 dir) {
+    vec3 intersectVerticalBounds(const in vec3 
+    origin, const in vec3 dir) {
       return dir.x > 0.0 ?
         vec3(far, origin.y + (far - origin.x) * dir.y / dir.x, origin.z) :
         vec3(near, origin.y + (near - origin.x) * dir.y / dir.x, origin.z);
@@ -69,6 +180,7 @@ const featureShader = {
       vec3 projected = (projectionMatrix * viewMatrix * instanceMatrix * vec4(position.xy, zValue, 1.0)).xyz;
       vec3 token = (projectionMatrix * viewMatrix * vec4(tokenCentre, 1.0)).xyz;
       vec3 dir = normalize(projected - token);
+
       vec3 iHoriz = intersectHorizontalBounds(projected, dir);
       vec3 iVert = intersectVerticalBounds(projected, dir);
       vec3 intersection = abs(dir.x) < epsilon ? iHoriz : abs(dir.y) < epsilon ? iVert :
