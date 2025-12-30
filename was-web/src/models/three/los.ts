@@ -139,17 +139,28 @@ import fluent from "fluent-iterable";
 // - tokenCentre (vec3)
 // - tokenRadius (float)
 // - zValue (float) (for determining which edges to project; *not* q)
+// - wallT (vec3) - canonical T position in local space
+// - wallU (vec3) - canonical U position in local space
 const tokenCentre = "tokenCentre";
+const tokenRadius = "tokenRadius";
 const zValue = "zValue";
+const wallT = "wallT";
+const wallU = "wallU";
 
 const featureShader = {
   uniforms: {
     tokenCentre: { type: "v3", value: null },
+    tokenRadius: { type: "f", value: null },
     zValue: { type: "f", value: null },
+    wallT: { type: "v3", value: null },
+    wallU: { type: "v3", value: null },
   },
   vertexShader: `
     uniform vec3 tokenCentre;
+    uniform float tokenRadius;
     uniform float zValue;
+    uniform vec3 wallT;
+    uniform vec3 wallU;
 
     varying vec4 vColour;
 
@@ -157,41 +168,210 @@ const featureShader = {
     const float far = 2.0;
     const float epsilon = 0.00001;
 
-    vec3 intersectHorizontalBounds(const in vec3 origin, const in vec3 dir) {
-      return dir.y > 0.0 ?
-        vec3(origin.x + (far - origin.y) * dir.x / dir.y, far, origin.z) :
-        vec3(origin.x + (near - origin.y) * dir.x / dir.y, near, origin.z);
+    // Vertex type constants
+    const int V_T = 0;
+    const int V_U = 1;
+    const int V_T_PRIME = 2;
+    const int V_U_PRIME = 3;
+    const int V_P = 4;
+    const int V_Q = 5;
+    const int V_R = 6;
+    const int V_S = 7;
+    const int V_X = 8;
+
+    // Project point to screen bounds along direction, returning the closer intersection
+    vec3 projectToBounds(vec3 origin, vec3 dir) {
+      // Handle near-zero direction components to avoid division issues
+      float tX = abs(dir.x) > epsilon
+        ? (dir.x > 0.0 ? (far - origin.x) / dir.x : (near - origin.x) / dir.x)
+        : 1e10;
+      float tY = abs(dir.y) > epsilon
+        ? (dir.y > 0.0 ? (far - origin.y) / dir.y : (near - origin.y) / dir.y)
+        : 1e10;
+      float t = min(tX, tY);
+      return vec3(origin.xy + dir.xy * t, origin.z);
     }
 
-    vec3 intersectVerticalBounds(const in vec3 
-    origin, const in vec3 dir) {
-      return dir.x > 0.0 ?
-        vec3(far, origin.y + (far - origin.x) * dir.y / dir.x, origin.z) :
-        vec3(near, origin.y + (near - origin.x) * dir.y / dir.x, origin.z);
-    }
+    // Compute tangent directions from vertex V to token circle
+    // Returns directions via out parameters:
+    // - outerTangent: tangent line on the "outside" (away from the other wall endpoint)
+    // - innerTangent: tangent line on the "inside" (toward the other wall endpoint)
+    // The "outer" vs "inner" distinction depends on which side of the V-to-token line
+    // the other endpoint is on.
+    void computeTangentDirections(
+      vec3 V,
+      vec3 otherEndpoint,
+      vec3 tokenPos,
+      float radius,
+      out vec3 outerTangent,
+      out vec3 innerTangent
+    ) {
+      vec2 toToken = tokenPos.xy - V.xy;
+      float dist = length(toToken);
 
-    vec4 project() {
-      if ((gl_VertexID % 4) < 2) {
-        // TODO temporary tweak to check shadow colour blending is OK
-        vColour = vec4(0.0, 0.0, 0.0, 1.0);
-        return projectionMatrix * viewMatrix * instanceMatrix * vec4(position, 1.0);
+      // Handle degenerate case: vertex inside or very close to token
+      if (dist <= radius + epsilon) {
+        // Use perpendicular directions
+        vec2 perp = normalize(vec2(-toToken.y, toToken.x));
+        outerTangent = vec3(perp, 0.0);
+        innerTangent = vec3(-perp, 0.0);
+        return;
       }
 
-      vec3 projected = (projectionMatrix * viewMatrix * instanceMatrix * vec4(position.xy, zValue, 1.0)).xyz;
-      vec3 token = (projectionMatrix * viewMatrix * vec4(tokenCentre, 1.0)).xyz;
-      vec3 dir = normalize(projected - token);
+      // Calculate angle from V-to-token to tangent line
+      float sinAlpha = radius / dist;
+      float cosAlpha = sqrt(1.0 - sinAlpha * sinAlpha);
 
-      vec3 iHoriz = intersectHorizontalBounds(projected, dir);
-      vec3 iVert = intersectVerticalBounds(projected, dir);
-      vec3 intersection = abs(dir.x) < epsilon ? iHoriz : abs(dir.y) < epsilon ? iVert :
-        dot(iHoriz - projected, dir) < dot(iVert - projected, dir) ? iHoriz : iVert;
+      // Normalise the to-token direction
+      vec2 toTokenNorm = toToken / dist;
 
-      vColour = vec4(0.0, 0.0, 0.0, 1.0);
-      return vec4(intersection, 1.0);
+      // Rotate to get the two tangent directions
+      // Left tangent (rotate counter-clockwise by alpha)
+      vec3 leftDir = vec3(
+        toTokenNorm.x * cosAlpha - toTokenNorm.y * sinAlpha,
+        toTokenNorm.x * sinAlpha + toTokenNorm.y * cosAlpha,
+        0.0
+      );
+
+      // Right tangent (rotate clockwise by alpha)
+      vec3 rightDir = vec3(
+        toTokenNorm.x * cosAlpha + toTokenNorm.y * sinAlpha,
+        -toTokenNorm.x * sinAlpha + toTokenNorm.y * cosAlpha,
+        0.0
+      );
+
+      // Determine which is "outer" vs "inner" based on the other endpoint
+      // The inner tangent is the one that points more toward the other endpoint
+      vec2 toOther = otherEndpoint.xy - V.xy;
+      float leftDot = dot(leftDir.xy, toOther);
+      float rightDot = dot(rightDir.xy, toOther);
+
+      if (leftDot > rightDot) {
+        innerTangent = leftDir;
+        outerTangent = rightDir;
+      } else {
+        innerTangent = rightDir;
+        outerTangent = leftDir;
+      }
+    }
+
+    // Find intersection of two lines in 2D
+    // Line 1: point1 + t * dir1
+    // Line 2: point2 + s * dir2
+    // Returns intersection point via out parameter, returns false if parallel
+    bool lineIntersection(vec3 point1, vec3 dir1, vec3 point2, vec3 dir2, out vec3 intersection) {
+      float cross = dir1.x * dir2.y - dir1.y * dir2.x;
+      if (abs(cross) < epsilon) {
+        return false; // Lines are parallel
+      }
+
+      vec2 diff = point2.xy - point1.xy;
+      float t = (diff.x * dir2.y - diff.y * dir2.x) / cross;
+      intersection = vec3(point1.xy + dir1.xy * t, point1.z);
+      return true;
+    }
+
+    // Check if X is on the correct side (opposite from token relative to wall)
+    bool isXValid(vec3 X, vec3 T, vec3 U, vec3 tokenPos) {
+      vec2 wallMid = (T.xy + U.xy) * 0.5;
+      vec2 wallToToken = tokenPos.xy - wallMid;
+      vec2 wallToX = X.xy - wallMid;
+
+      // X should be on the opposite side of the wall from the token
+      return dot(wallToToken, wallToX) < 0.0;
     }
 
     void main() {
-      gl_Position = project();
+      int vType = gl_VertexID % 9;
+
+      // Transform matrices
+      mat4 MVP = projectionMatrix * viewMatrix * instanceMatrix;
+      mat4 VP = projectionMatrix * viewMatrix;
+
+      // Get wall endpoints in clip space
+      vec3 T = (MVP * vec4(wallT.xy, zValue, 1.0)).xyz;
+      vec3 U = (MVP * vec4(wallU.xy, zValue, 1.0)).xyz;
+
+      // Get token position in clip space
+      vec3 token = (VP * vec4(tokenCentre, 1.0)).xyz;
+
+      // Scale radius to clip space (approximate using x-axis scale)
+      float clipRadius = tokenRadius * length((VP * vec4(1.0, 0.0, 0.0, 0.0)).xyz);
+
+      // Compute tangent directions for T and U
+      vec3 T_outer, T_inner, U_outer, U_inner;
+      computeTangentDirections(T, U, token, clipRadius, T_outer, T_inner);
+      computeTangentDirections(U, T, token, clipRadius, U_outer, U_inner);
+
+      // Find X (intersection of inner tangent rays from T and U)
+      vec3 X;
+      bool xValid = lineIntersection(T, T_inner, U, U_inner, X);
+      xValid = xValid && isXValid(X, T, U, token);
+
+      // Default colours
+      vec4 BLACK = vec4(0.0, 0.0, 0.0, 1.0);
+      vec4 WHITE = vec4(1.0, 1.0, 1.0, 1.0);
+
+      // Case 2: X is invalid, collapse geometry
+      if (!xValid) {
+        X = U;
+      }
+
+      // Route by vertex type
+      if (vType == V_T) {
+        // T: wall endpoint, umbra (black)
+        gl_Position = vec4(T, 1.0);
+        vColour = BLACK;
+      } else if (vType == V_U) {
+        // U: wall endpoint, umbra (black)
+        gl_Position = vec4(U, 1.0);
+        vColour = BLACK;
+      } else if (vType == V_T_PRIME) {
+        // T': wall endpoint for penumbra triangle (white)
+        gl_Position = vec4(T, 1.0);
+        vColour = WHITE;
+      } else if (vType == V_U_PRIME) {
+        // U': wall endpoint for penumbra triangle (white)
+        gl_Position = vec4(U, 1.0);
+        vColour = WHITE;
+      } else if (vType == V_P) {
+        // P: outer tangent from T, projected to bounds (white)
+        gl_Position = vec4(projectToBounds(T, T_outer), 1.0);
+        vColour = WHITE;
+      } else if (vType == V_Q) {
+        // Q: inner tangent from T, projected to bounds
+        // Grey in Case 1 (penumbra), black in Case 2 (umbra)
+        gl_Position = vec4(projectToBounds(T, T_inner), 1.0);
+        if (xValid) {
+          // Case 1: interpolate grey based on position in penumbra
+          // For now, use a simple midpoint grey; can refine later
+          vec3 P = projectToBounds(T, T_outer);
+          vec3 Q = projectToBounds(T, T_inner);
+          float greyValue = 0.5; // Placeholder - will refine in next step
+          vColour = vec4(greyValue, greyValue, greyValue, 1.0);
+        } else {
+          vColour = BLACK;
+        }
+      } else if (vType == V_R) {
+        // R: inner tangent from U, projected to bounds
+        // Grey in Case 1 (penumbra), black in Case 2 (umbra)
+        gl_Position = vec4(projectToBounds(U, U_inner), 1.0);
+        if (xValid) {
+          // Case 1: interpolate grey based on position in penumbra
+          float greyValue = 0.5; // Placeholder - will refine in next step
+          vColour = vec4(greyValue, greyValue, greyValue, 1.0);
+        } else {
+          vColour = BLACK;
+        }
+      } else if (vType == V_S) {
+        // S: outer tangent from U, projected to bounds (white)
+        gl_Position = vec4(projectToBounds(U, U_outer), 1.0);
+        vColour = WHITE;
+      } else if (vType == V_X) {
+        // X: inner tangent intersection (black)
+        gl_Position = vec4(X, 1.0);
+        vColour = BLACK;
+      }
     }
   `,
   fragmentShader: `
@@ -306,9 +486,16 @@ export class LoS extends Drawn {
 
     this._featureClearColour = new THREE.Color(1, 1, 1); // visible by default; we draw the shadows
 
+    // Get canonical wall endpoint positions from the geometry
+    const single = geometry.toSingle();
+    const vertices = [...single.createLoSVertices(z, q)];
+
     this._featureUniforms = THREE.UniformsUtils.clone(featureShader.uniforms);
     this._featureUniforms[tokenCentre].value = new THREE.Vector3();
+    this._featureUniforms[tokenRadius].value = 0.5; // Default; updated per token in render
     this._featureUniforms[zValue].value = z;
+    this._featureUniforms[wallT].value = vertices[0].clone(); // Canonical T position
+    this._featureUniforms[wallU].value = vertices[1].clone(); // Canonical U position
     this._featureMaterial = new THREE.ShaderMaterial({
       side: THREE.DoubleSide,
       uniforms: this._featureUniforms,
@@ -470,8 +657,9 @@ export class LoS extends Drawn {
     let lastRenderedIndex = maxComposeCount;
     this._tokenPositions.forEach((pos, i) => {
       const targetIndex = i % maxComposeCount;
-      // Use the pre-calculated world centre directly
+      // Use the pre-calculated world centre and radius directly
       this._featureUniforms[tokenCentre].value.copy(pos.centre);
+      this._featureUniforms[tokenRadius].value = pos.radius;
 
       renderer.setRenderTarget(this._featureRenderTargets[targetIndex]);
       renderer.setClearColor(this._featureClearColour);

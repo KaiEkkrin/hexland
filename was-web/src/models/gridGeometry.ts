@@ -321,25 +321,54 @@ export abstract class BaseGeometry {
   }
 
   *createLoSVertices(z: number, q: number) {
+    // 9 vertices for soft shadow LoS geometry:
+    // 0: T   (wall endpoint 1, umbra)
+    // 1: U   (wall endpoint 2, umbra)
+    // 2: T'  (wall endpoint 1, penumbra - same position as T, different colour)
+    // 3: U'  (wall endpoint 2, penumbra - same position as U, different colour)
+    // 4: P   (outer tangent from T, projected to bounds)
+    // 5: Q   (inner tangent from T, projected to bounds)
+    // 6: R   (inner tangent from U, projected to bounds)
+    // 7: S   (outer tangent from U, projected to bounds)
+    // 8: X   (intersection of inner tangent lines, or degenerate position)
+    //
+    // Positions for 4-8 are placeholders; actual positions computed in shader.
     const edgeA = new THREE.Vector3();
     const edgeB = new THREE.Vector3();
 
+    // Canonical wall at (0,0) edge 0 - instanceMatrix transforms to actual position
     const centre = this.createCentre(new THREE.Vector3(), 0, 0, z);
     this.createEdgeVertices(edgeA, edgeB, centre, 0);
-    yield edgeA.clone();
-    yield edgeB.clone();
 
+    // Vertices 0-3: Wall endpoints (T, U, T', U') at z level
+    yield edgeA.clone();  // 0: T
+    yield edgeB.clone();  // 1: U
+    yield edgeA.clone();  // 2: T'
+    yield edgeB.clone();  // 3: U'
+
+    // Vertices 4-8: Projected points (P, Q, R, S, X)
+    // Positions computed in shader; use q-level as placeholders
     this.createCentre(centre, 0, 0, q);
     this.createEdgeVertices(edgeA, edgeB, centre, 0);
-    yield edgeA;
-    yield edgeB;
+
+    yield edgeA.clone();  // 4: P (placeholder)
+    yield edgeA.clone();  // 5: Q (placeholder)
+    yield edgeB.clone();  // 6: R (placeholder)
+    yield edgeB.clone();  // 7: S (placeholder)
+    yield edgeA.clone().lerp(edgeB, 0.5);  // 8: X (placeholder)
   }
 
   createLoSIndices() {
-    // You need to disable back-face culling to use these :)
+    // 6 triangles for soft shadow geometry, clockwise winding:
+    // PQT', QXT, TXU, UXR, RXQ, RSU'
+    // (Back-face culling should be disabled)
     return [
-      0, 1, 2,
-      1, 2, 3
+      4, 5, 2,   // PQT'
+      5, 8, 0,   // QXT
+      0, 8, 1,   // TXU
+      1, 8, 6,   // UXR
+      6, 8, 5,   // RXQ
+      6, 7, 3    // RSU'
     ];
   }
   
