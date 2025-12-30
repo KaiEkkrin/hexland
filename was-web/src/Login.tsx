@@ -7,6 +7,7 @@ import Navigation from './components/Navigation';
 import * as Policy from './data/policy';
 import { ProfileContext } from './components/ProfileContext';
 import { StatusContext } from './components/StatusContext';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 
 import { IUser } from './services/interfaces';
 
@@ -249,6 +250,8 @@ function Login() {
   const { logError } = useContext(AnalyticsContext);
   const { toasts } = useContext(StatusContext);
   const navigate = useNavigate();
+
+  useDocumentTitle('Login');
 
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [initialTab, setInitialTab] = useState<"new" | "existing">("new");

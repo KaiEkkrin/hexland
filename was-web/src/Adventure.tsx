@@ -2,6 +2,7 @@ import { useContext, useEffect, useReducer, useState, useMemo, useCallback } fro
 import './App.css';
 
 import { AdventureContext } from './components/AdventureContext';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 import AdventureModal from './components/AdventureModal';
 import { AnalyticsContext } from './components/AnalyticsContext';
 import BusyElement from './components/BusyElement';
@@ -70,6 +71,8 @@ function Adventure({ adventureId }: IAdventureProps) {
       </div>
     );
   }, [adventure, user, userPolicy]);
+
+  useDocumentTitle(adventure?.record.name);
 
   // Derive the adventures list for the map collection
   const adventures = useMemo(

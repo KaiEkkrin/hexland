@@ -6,6 +6,7 @@ import MapCollection from './components/MapCollection';
 import Navigation from './components/Navigation';
 import { ProfileContext } from './components/ProfileContext';
 import { UserContext } from './components/UserContext';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
@@ -16,6 +17,8 @@ function Home() {
   const { user } = useContext(UserContext);
   const { profile } = useContext(ProfileContext);
   const navigate = useNavigate();
+
+  useDocumentTitle('Home');
 
   // Redirect to login if not logged in
   // Use replace: true to avoid creating a history entry, so the back button

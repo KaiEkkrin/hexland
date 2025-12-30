@@ -31,6 +31,19 @@ const getDeployEnvironment = (): 'production' | 'test' | 'development' => {
 
 const deployEnvironment = getDeployEnvironment();
 
+/**
+ * Adds environment-specific prefix to HTML title tags
+ * Matches <title>any content</title> and prepends [Dev] or [Test]
+ */
+const addTitlePrefix = (html: string): string => {
+  if (deployEnvironment === 'production') {
+    return html; // No prefix for production
+  }
+
+  const prefix = deployEnvironment === 'test' ? '[Test] ' : '[Dev] ';
+  return html.replace(/<title>([^<]*)<\/title>/, `<title>${prefix}$1</title>`);
+};
+
 // Plugin to copy environment-specific robots.txt to build output
 const copyRobotsTxt = () => ({
   name: 'copy-robots-txt',
@@ -75,6 +88,9 @@ const copyLandingPage = () => ({
         console.log(`Added noindex meta tag and removed canonical tag for ${deployEnvironment} environment`);
       }
 
+      // Add environment-specific title prefix
+      html = addTitlePrefix(html);
+
       // Write to build directory
       writeFileSync(destPath, html, 'utf-8');
 
@@ -85,8 +101,27 @@ const copyLandingPage = () => ({
   }
 });
 
+// Plugin to process app.html with environment-specific title prefix
+const processAppHtml = () => ({
+  name: 'process-app-html',
+  closeBundle() {
+    try {
+      const appPath = resolve(__dirname, 'build/app.html');
+      let html = readFileSync(appPath, 'utf-8');
+
+      // Add environment-specific title prefix
+      html = addTitlePrefix(html);
+
+      writeFileSync(appPath, html, 'utf-8');
+      console.log(`Processed app.html (env: ${deployEnvironment})`);
+    } catch (err) {
+      console.error('Failed to process app.html:', err);
+    }
+  }
+});
+
 export default defineConfig({
-  plugins: [react(), copyLandingPage(), copyRobotsTxt()],
+  plugins: [react(), copyLandingPage(), processAppHtml(), copyRobotsTxt()],
   define: {
     __GIT_COMMIT__: JSON.stringify(gitCommitHash),
   },
