@@ -37,49 +37,49 @@ const featureShader = {
     tokenCentre: { type: 'v3', value: null },
     zValue: { type: 'f', value: null },
   },
-  vertexShader: [
-    "uniform vec3 tokenCentre;",
-    "uniform float zValue;",
+  vertexShader: `
+    uniform vec3 tokenCentre;
+    uniform float zValue;
 
-    "const float near = -10.0;",
-    "const float far = 10.0;",
-    "const float epsilon = 0.0000001;",
+    const float near = -10.0;
+    const float far = 10.0;
+    const float epsilon = 0.00001;
 
-    "vec3 intersectHorizontalBounds(const in vec3 origin, const in vec3 dir) {",
-    "  return dir.y > 0.0 ?",
-    "    vec3(origin.x + (far - origin.y) * dir.x / dir.y, far, origin.z) :",
-    "    vec3(origin.x + (near - origin.y) * dir.x / dir.y, near, origin.z);",
-    "}",
+    vec3 intersectHorizontalBounds(const in vec3 origin, const in vec3 dir) {
+      return dir.y > 0.0 ?
+        vec3(origin.x + (far - origin.y) * dir.x / dir.y, far, origin.z) :
+        vec3(origin.x + (near - origin.y) * dir.x / dir.y, near, origin.z);
+    }
 
-    "vec3 intersectVerticalBounds(const in vec3 origin, const in vec3 dir) {",
-    "  return dir.x > 0.0 ?",
-    "    vec3(far, origin.y + (far - origin.x) * dir.y / dir.x, origin.z) :",
-    "    vec3(near, origin.y + (near - origin.x) * dir.y / dir.x, origin.z);",
-    "}",
+    vec3 intersectVerticalBounds(const in vec3 origin, const in vec3 dir) {
+      return dir.x > 0.0 ?
+        vec3(far, origin.y + (far - origin.x) * dir.y / dir.x, origin.z) :
+        vec3(near, origin.y + (near - origin.x) * dir.y / dir.x, origin.z);
+    }
 
-    "vec4 project() {",
-    "  if (position.z == zValue) {",
-    "    return projectionMatrix * viewMatrix * instanceMatrix * vec4(position, 1.0);",
-    "  }",
-    "  vec3 projected = (projectionMatrix * viewMatrix * instanceMatrix * vec4(position.xy, zValue, 1.0)).xyz;",
-    "  vec3 token = (projectionMatrix * viewMatrix * vec4(tokenCentre, 1.0)).xyz;",
-    "  vec3 dir = normalize(projected - token);",
-    "  vec3 iHoriz = intersectHorizontalBounds(projected, dir);",
-    "  vec3 iVert = intersectVerticalBounds(projected, dir);",
-    "  vec3 intersection = abs(dir.x) < epsilon ? iHoriz : abs(dir.y) < epsilon ? iVert :",
-    "    dot(iHoriz - projected, dir) < dot(iVert - projected, dir) ? iHoriz : iVert;",
-    "  return vec4(intersection, 1.0);",
-    "}",
+    vec4 project() {
+      if (abs(position.z - zValue) < epsilon) {
+        return projectionMatrix * viewMatrix * instanceMatrix * vec4(position, 1.0);
+      }
+      vec3 projected = (projectionMatrix * viewMatrix * instanceMatrix * vec4(position.xy, zValue, 1.0)).xyz;
+      vec3 token = (projectionMatrix * viewMatrix * vec4(tokenCentre, 1.0)).xyz;
+      vec3 dir = normalize(projected - token);
+      vec3 iHoriz = intersectHorizontalBounds(projected, dir);
+      vec3 iVert = intersectVerticalBounds(projected, dir);
+      vec3 intersection = abs(dir.x) < epsilon ? iHoriz : abs(dir.y) < epsilon ? iVert :
+        dot(iHoriz - projected, dir) < dot(iVert - projected, dir) ? iHoriz : iVert;
+      return vec4(intersection, 1.0);
+    }
 
-    "void main() {",
-    "  gl_Position = project();",
-    "}"
-  ].join("\n"),
-  fragmentShader: [
-    "void main() {",
-    "  gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);",
-    "}"
-  ].join("\n")
+    void main() {
+      gl_Position = project();
+    }
+  `,
+  fragmentShader: `
+    void main() {
+      gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+    }
+  `
 };
 
 // This feature object draws the shadows cast by the walls using the above shader.
