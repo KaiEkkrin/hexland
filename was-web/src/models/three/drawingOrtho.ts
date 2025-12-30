@@ -54,6 +54,7 @@ const outlineTokenAlpha = 0.8;
 const selectionAlpha = 0.8;
 const areaAlpha = 1.0;
 const vertexHighlightAlpha = 0.35;
+const imageControlPointAlpha = 0.175; // Half of vertexHighlightAlpha for smaller image control points
 
 // An orthographic implementation of IDrawing using THREE.js.
 export class DrawingOrtho implements IDrawing {
@@ -246,7 +247,7 @@ export class DrawingOrtho implements IDrawing {
 
     // The map image highlights
     this._imageControlPointHighlights = new MapControlPoints(
-      this._gridGeometry, this._needsRedraw, this._filterScene, vertexHighlightAlpha, vertexHighlightZ
+      this._gridGeometry, this._needsRedraw, this._filterScene, imageControlPointAlpha, vertexHighlightZ
     );
 
     // The selection
@@ -343,7 +344,7 @@ export class DrawingOrtho implements IDrawing {
     );
 
     this._imageControlPointSelection = new MapControlPoints(
-      this._gridGeometry, this._needsRedraw, this._filterScene, vertexHighlightAlpha, highlightZ
+      this._gridGeometry, this._needsRedraw, this._filterScene, imageControlPointAlpha, highlightZ
     );
 
     // The rest of the fixed filter (added after the outline tokens, which are also rendered here)
