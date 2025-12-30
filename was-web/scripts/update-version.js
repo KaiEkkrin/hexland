@@ -7,7 +7,7 @@
  * Usage:
  *   GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json node scripts/update-version.js
  *
- * The script:
+ * The script
  * 1. Reads the current Git commit hash
  * 2. Reads the version from package.json
  * 3. Writes both to the config/version document in Firestore
@@ -16,18 +16,20 @@
  * and reload to get the new version.
  */
 
-const admin = require('firebase-admin');
-const { execSync } = require('child_process');
-const path = require('path');
+import { initializeApp } from 'firebase-admin/app';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { execSync } from 'child_process';
+import { createRequire } from 'module';
 
-// Load package.json from the parent directory
+// Use createRequire to load JSON files in ESM
+const require = createRequire(import.meta.url);
 const packageJson = require('../package.json');
 
 // Initialize Firebase Admin SDK
 // Uses GOOGLE_APPLICATION_CREDENTIALS environment variable
-admin.initializeApp();
+initializeApp();
 
-const db = admin.firestore();
+const db = getFirestore();
 
 async function updateVersion() {
   // Get the short Git commit hash
@@ -41,7 +43,7 @@ async function updateVersion() {
   await db.collection('config').doc('version').set({
     commit,
     version,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    updatedAt: FieldValue.serverTimestamp()
   });
 
   console.log(`\u2705 Updated version in Firestore: v${version}+${commit}`);
