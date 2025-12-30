@@ -1071,6 +1071,7 @@ export class MapStateMachine {
     this.clearSelection();
 
     this._drawing.areas.clear();
+    this._drawing.playerAreas.clear();
     this._tokens.clear();
     this._outlineTokens.clear();
     this._drawing.walls.clear();
