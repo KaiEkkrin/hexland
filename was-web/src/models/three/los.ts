@@ -74,7 +74,7 @@ const featureShader = {
       vec3 intersection = abs(dir.x) < epsilon ? iHoriz : abs(dir.y) < epsilon ? iVert :
         dot(iHoriz - projected, dir) < dot(iVert - projected, dir) ? iHoriz : iVert;
 
-      vColour = vec4(1.0, 1.0, 1.0, 1.0);
+      vColour = vec4(0.0, 0.0, 0.0, 1.0);
       return vec4(intersection, 1.0);
     }
 
