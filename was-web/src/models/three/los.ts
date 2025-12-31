@@ -85,7 +85,8 @@ import * as THREE from "three";
 // linearly interpolate it between the angle of the SU vector in the XY plane (value 0, 0, 0, 1 = visible) and
 // the angle of the QU vector in the XY plane (value 1, 1, 1, 1 = shadowed) to get the fragment colour value.
 //
-// Overlapping triangles are resolved using custom blending with MAX (keep brightest = most shadowed).
+// Overlapping triangles are resolved using custom blending with ADD (shadows combine additively,
+// saturating at 1.0, so two 50% shadows correctly produce full shadow).
 //
 // Input Geometry
 // --------------
@@ -611,10 +612,10 @@ export class LoS extends Drawn {
       uniforms: this._featureUniforms,
       vertexShader: featureShader.vertexShader,
       fragmentShader: featureShader.fragmentShader,
-      // Use MAX blending to retain the maximum (brightest = most shadowed) color value when
-      // multiple shadow fragments overlap the same pixel
+      // Use ADD blending to combine shadow values when multiple shadow fragments overlap.
+      // Two 50% shadows correctly combine into a fully shadowed pixel. Values saturate at 1.0.
       blending: THREE.CustomBlending,
-      blendEquation: THREE.MaxEquation,
+      blendEquation: THREE.AddEquation,
       blendSrc: THREE.OneFactor,
       blendDst: THREE.OneFactor,
     });
