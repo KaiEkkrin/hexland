@@ -81,7 +81,7 @@ class OutlineFeatures<K extends GridCoord, F extends IFeature<K>> extends Instan
 // to have that :)
 const outlineFilterShader: IShader = {
   uniforms: {
-    "step": { type: 'v2', value: null },
+    "step": { value: null },
     "tex": { value: null }
   },
   vertexShader: `

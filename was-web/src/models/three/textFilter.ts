@@ -6,8 +6,8 @@ import * as THREE from 'three';
 // drop-shadow.
 const textFilterShader: IShader = {
   uniforms: {
-    "shadowColour": { type: 'v4', value: null },
-    "step": { type: 'v2', value: null },
+    "shadowColour": { value: null },
+    "step": { value: null },
     "tex": { value: null }
   },
   vertexShader: `
