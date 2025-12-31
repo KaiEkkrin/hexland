@@ -185,6 +185,12 @@ export class LoS extends Drawn {
   private _losWidth: number;
   private _losHeight: number;
 
+  // Pooled materials and meshes for compose operations (avoid per-frame allocation)
+  private readonly _composeMaterials: THREE.MeshBasicMaterial[];
+  private readonly _composeMeshes: THREE.Mesh[];
+  private readonly _tokenComposeMaterials: THREE.MeshBasicMaterial[];
+  private readonly _tokenComposeMeshes: THREE.Mesh[];
+
   private _isDisposed = false;
 
   constructor(
@@ -280,6 +286,38 @@ export class LoS extends Drawn {
       "uv",
       new THREE.BufferAttribute(new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), 2)
     );
+
+    // Pre-create materials for MIN-compose (token → final)
+    this._composeMaterials = [];
+    this._composeMeshes = [];
+    for (let i = 0; i < maxComposeCount; ++i) {
+      const material = new THREE.MeshBasicMaterial({
+        blending: THREE.CustomBlending,
+        blendEquation: THREE.MinEquation,
+        blendSrc: THREE.OneFactor,
+        blendDst: THREE.OneFactor,
+        side: THREE.DoubleSide,
+        transparent: true,
+      });
+      this._composeMaterials.push(material);
+      this._composeMeshes.push(new THREE.Mesh(this._composeGeometry, material));
+    }
+
+    // Pre-create materials for ADD-compose (samples → token)
+    this._tokenComposeMaterials = [];
+    this._tokenComposeMeshes = [];
+    for (let i = 0; i < maxComposeCount; ++i) {
+      const material = new THREE.MeshBasicMaterial({
+        blending: THREE.CustomBlending,
+        blendEquation: THREE.AddEquation,
+        blendSrc: THREE.OneFactor,
+        blendDst: THREE.OneFactor,
+        side: THREE.DoubleSide,
+        transparent: true,
+      });
+      this._tokenComposeMaterials.push(material);
+      this._tokenComposeMeshes.push(new THREE.Mesh(this._composeGeometry, material));
+    }
   }
 
   // MIN-composes token compose targets to produce final LoS (any token seeing a pixel makes it visible)
@@ -290,32 +328,20 @@ export class LoS extends Drawn {
   ) {
     // TODO #52 To successfully down-scale the LoS, this here needs its own camera
     renderer.setRenderTarget(this._composeRenderTarget);
-    const materials: THREE.MeshBasicMaterial[] = [];
-    const meshes: THREE.Mesh[] = [];
-    for (let i = 0; i < count; ++i) {
-      const material = new THREE.MeshBasicMaterial({
-        // Use MIN blending to combine LoS from multiple tokens:
-        // a pixel is visible (black) if ANY token can see it (lowest shadow value wins)
-        blending: THREE.CustomBlending,
-        blendEquation: THREE.MinEquation,
-        blendSrc: THREE.OneFactor,
-        blendDst: THREE.OneFactor,
-        map: this._tokenComposeTargets[i].texture,
-        side: THREE.DoubleSide,
-        transparent: true,
-      });
-      materials.push(material);
 
-      const mesh = new THREE.Mesh(this._composeGeometry, material);
-      meshes.push(mesh);
-      this._composeScene.add(mesh);
+    for (let i = 0; i < count; ++i) {
+      // Update texture reference on pooled material (avoids per-frame material allocation)
+      this._composeMaterials[i].map = this._tokenComposeTargets[i].texture;
+      this._composeMaterials[i].needsUpdate = true;
+      this._composeScene.add(this._composeMeshes[i]);
     }
 
     renderer.render(this._composeScene, camera);
 
-    // Put settings back
-    meshes.forEach((m) => this._composeScene.remove(m));
-    materials.forEach((m) => m.dispose());
+    // Remove meshes from scene (but don't dispose - they're pooled)
+    for (let i = 0; i < count; ++i) {
+      this._composeScene.remove(this._composeMeshes[i]);
+    }
   }
 
   // Generates sample points for multi-sample LoS rendering: centre + perimeter points
@@ -348,30 +374,20 @@ export class LoS extends Drawn {
     count: number
   ) {
     renderer.setRenderTarget(this._tokenComposeTargets[tokenIndex]);
-    const materials: THREE.MeshBasicMaterial[] = [];
-    const meshes: THREE.Mesh[] = [];
-    for (let i = 0; i < count; ++i) {
-      const material = new THREE.MeshBasicMaterial({
-        // Use ADD blending to accumulate shadow from multiple sample points
-        blending: THREE.CustomBlending,
-        blendEquation: THREE.AddEquation,
-        blendSrc: THREE.OneFactor,
-        blendDst: THREE.OneFactor,
-        map: this._featureRenderTargets[i].texture,
-        side: THREE.DoubleSide,
-        transparent: true,
-      });
-      materials.push(material);
 
-      const mesh = new THREE.Mesh(this._composeGeometry, material);
-      meshes.push(mesh);
-      this._composeScene.add(mesh);
+    for (let i = 0; i < count; ++i) {
+      // Update texture reference on pooled material (avoids per-frame material allocation)
+      this._tokenComposeMaterials[i].map = this._featureRenderTargets[i].texture;
+      this._tokenComposeMaterials[i].needsUpdate = true;
+      this._composeScene.add(this._tokenComposeMeshes[i]);
     }
 
     renderer.render(this._composeScene, camera);
 
-    meshes.forEach((m) => this._composeScene.remove(m));
-    materials.forEach((m) => m.dispose());
+    // Remove meshes from scene (but don't dispose - they're pooled)
+    for (let i = 0; i < count; ++i) {
+      this._composeScene.remove(this._tokenComposeMeshes[i]);
+    }
   }
 
   private createRenderTarget(renderWidth: number, renderHeight: number) {
@@ -540,6 +556,10 @@ export class LoS extends Drawn {
       this._tokenComposeTargets.forEach((t) => t.dispose());
       this._composeGeometry.dispose();
       this._composeRenderTarget.dispose();
+
+      // Dispose pooled materials
+      this._composeMaterials.forEach((m) => m.dispose());
+      this._tokenComposeMaterials.forEach((m) => m.dispose());
 
       this._isDisposed = true;
     }
