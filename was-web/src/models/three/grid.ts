@@ -308,6 +308,7 @@ export class Grid extends Drawn {
 
   // We need to access this to feed it to the grid and LoS filters
   get faceCoordRenderTarget() { return this._faceCoordRenderTarget; }
+  get vertexCoordRenderTarget() { return this._vertexCoordRenderTarget; }
   get tileOrigin() { return this._tileOrigin; }
 
   // Extends the grid across the given range of tiles.
