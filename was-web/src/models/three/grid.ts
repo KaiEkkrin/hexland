@@ -11,7 +11,6 @@ import { createVertexGeometry, Vertices, createVertices } from './vertices';
 
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
-// import fluent from 'fluent-iterable';
 
 // This shading provides the colouring for the coord and vertex colour textures, which
 // aren't shown to the user (they look rainbow...) but let us look up a client position
