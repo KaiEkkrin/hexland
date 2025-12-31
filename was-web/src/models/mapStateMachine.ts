@@ -523,13 +523,13 @@ export class MapStateMachine {
       } else {
         // Show the LoS of all my tokens - calculate center and radius for each
         return myTokens.map(t =>
-          getTokenLoSPosition(t, this._tokenGeometry, this._gridGeometry, 0)
+          getTokenLoSPosition(t, this._tokenGeometry, this._gridGeometry.faceSize)
         );
       }
     } else {
       // Show the LoS of only the selected tokens - calculate center and radius for each
       return selectedTokens.map(t =>
-        getTokenLoSPosition(t, this._tokenGeometry, this._gridGeometry, 0)
+        getTokenLoSPosition(t, this._tokenGeometry, this._gridGeometry.faceSize)
       );
     }
   }

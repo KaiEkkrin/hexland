@@ -302,10 +302,11 @@ export class LoS extends Drawn {
 
     // Render the LoS features for each token position
     let lastRenderedIndex = maxComposeCount;
+    const z = this._featureUniforms[zValue].value as number;
     this._tokenPositions.forEach((pos, i) => {
       const targetIndex = (i % maxComposeCount);
-      // Use the pre-calculated world centre directly
-      this._featureUniforms[tokenCentre].value.copy(pos.centre);
+      // Convert GridCoord to world coordinates for the shader
+      this.geometry.createCoordCentre(this._featureUniforms[tokenCentre].value, pos, z);
 
       renderer.setRenderTarget(this._featureRenderTargets[targetIndex]);
       renderer.setClearColor(this._featureClearColour);
