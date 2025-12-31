@@ -29,8 +29,8 @@ type MeshRecord = {
 // align grids in the images with ours
 const mapImageShader: IShader = {
   uniforms: {
-    "colourScale": { type: 'v4', value: null },
-    "colourTrans": { type: 'v4', value: null },
+    "colourScale": { value: null },
+    "colourTrans": { value: null },
     "imageTex": { value: null }
   },
   vertexShader: /* uses the Three.js built-in `uv` attribute */ `
