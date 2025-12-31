@@ -1,15 +1,15 @@
-import { GridEdge, edgeString } from '../../data/coord';
-import { IFeature } from '../../data/feature';
-import { LoSPosition, losPositionsEqual } from '../../data/losPosition';
-import { Drawn } from '../drawn';
-import { IGridGeometry } from '../gridGeometry';
-import { InstancedFeatureObject } from './instancedFeatureObject';
-import { InstancedFeatures } from './instancedFeatures';
-import { RedrawFlag } from '../redrawFlag';
-import { RenderTargetReader } from './renderTargetReader';
+import { GridEdge, edgeString } from "../../data/coord";
+import { IFeature } from "../../data/feature";
+import { LoSPosition, losPositionsEqual } from "../../data/losPosition";
+import { Drawn } from "../drawn";
+import { IGridGeometry } from "../gridGeometry";
+import { InstancedFeatureObject } from "./instancedFeatureObject";
+import { InstancedFeatures } from "./instancedFeatures";
+import { RedrawFlag } from "../redrawFlag";
+import { RenderTargetReader } from "./renderTargetReader";
 
-import * as THREE from 'three';
-import fluent from 'fluent-iterable';
+import * as THREE from "three";
+import fluent from "fluent-iterable";
 
 // Shader-based LoS.
 // Careful with this!  In order for it to work correctly, we need to not use the built-in
@@ -36,9 +36,9 @@ const shadowIntensity = "shadowIntensity";
 
 const featureShader = {
   uniforms: {
-    tokenCentre: { type: 'v3', value: null },
-    zValue: { type: 'f', value: null },
-    shadowIntensity: { type: 'f', value: null },
+    tokenCentre: { type: "v3", value: null },
+    zValue: { type: "f", value: null },
+    shadowIntensity: { type: "f", value: null },
   },
   vertexShader: `
     uniform vec3 tokenCentre;
@@ -84,18 +84,31 @@ const featureShader = {
     void main() {
       gl_FragColor = vec4(shadowIntensity, shadowIntensity, shadowIntensity, 1.0);
     }
-  `
+  `,
 };
 
 // This feature object draws the shadows cast by the walls using the above shader.
 // (It doesn't own the material.)
 // Edit the material before rendering this to draw LoS for different tokens
-class LoSFeatureObject extends InstancedFeatureObject<GridEdge, IFeature<GridEdge>> {
+class LoSFeatureObject extends InstancedFeatureObject<
+  GridEdge,
+  IFeature<GridEdge>
+> {
   private readonly _geometry: THREE.InstancedBufferGeometry;
   private readonly _material: THREE.ShaderMaterial;
 
-  constructor(gridGeometry: IGridGeometry, z: number, q: number, material: THREE.ShaderMaterial, maxInstances: number) {
-    super(edgeString, (o, p) => gridGeometry.transformToEdge(o, p), maxInstances);
+  constructor(
+    gridGeometry: IGridGeometry,
+    z: number,
+    q: number,
+    material: THREE.ShaderMaterial,
+    maxInstances: number
+  ) {
+    super(
+      edgeString,
+      (o, p) => gridGeometry.transformToEdge(o, p),
+      maxInstances
+    );
     const single = gridGeometry.toSingle();
     const vertices = [...single.createLoSVertices(z, q)];
 
@@ -107,7 +120,11 @@ class LoSFeatureObject extends InstancedFeatureObject<GridEdge, IFeature<GridEdg
   }
 
   protected createMesh(maxInstances: number) {
-    return new THREE.InstancedMesh(this._geometry, this._material, maxInstances);
+    return new THREE.InstancedMesh(
+      this._geometry,
+      this._material,
+      maxInstances
+    );
   }
 
   dispose() {
@@ -117,10 +134,23 @@ class LoSFeatureObject extends InstancedFeatureObject<GridEdge, IFeature<GridEdg
 }
 
 class LoSFeatures extends InstancedFeatures<GridEdge, IFeature<GridEdge>> {
-  constructor(geometry: IGridGeometry, redrawFlag: RedrawFlag, z: number, q: number, material: THREE.ShaderMaterial, maxInstances?: number | undefined) {
-    super(geometry, redrawFlag, edgeString, maxInstances => {
-      return new LoSFeatureObject(geometry, z, q, material, maxInstances);
-    }, maxInstances);
+  constructor(
+    geometry: IGridGeometry,
+    redrawFlag: RedrawFlag,
+    z: number,
+    q: number,
+    material: THREE.ShaderMaterial,
+    maxInstances?: number | undefined
+  ) {
+    super(
+      geometry,
+      redrawFlag,
+      edgeString,
+      (maxInstances) => {
+        return new LoSFeatureObject(geometry, z, q, material, maxInstances);
+      },
+      maxInstances
+    );
   }
 }
 
@@ -169,8 +199,14 @@ export class LoS extends Drawn {
     super(geometry, redrawFlag);
 
     // Calculate reduced LoS render target dimensions (1/4 in each dimension)
-    this._losWidth = Math.max(1, Math.floor(renderWidth / losResolutionDivisor));
-    this._losHeight = Math.max(1, Math.floor(renderHeight / losResolutionDivisor));
+    this._losWidth = Math.max(
+      1,
+      Math.floor(renderWidth / losResolutionDivisor)
+    );
+    this._losHeight = Math.max(
+      1,
+      Math.floor(renderHeight / losResolutionDivisor)
+    );
 
     this._featureClearColour = new THREE.Color(0, 0, 0); // visible (black) by default; we draw shadows as white
 
@@ -192,10 +228,19 @@ export class LoS extends Drawn {
       blendDst: THREE.OneFactor,
     });
 
-    this._features = new LoSFeatures(geometry, redrawFlag, z, q, this._featureMaterial, maxInstances);
+    this._features = new LoSFeatures(
+      geometry,
+      redrawFlag,
+      z,
+      q,
+      this._featureMaterial,
+      maxInstances
+    );
     this._featureRenderTargets = [];
     for (let i = 0; i < maxComposeCount; ++i) {
-      this._featureRenderTargets.push(this.createRenderTarget(this._losWidth, this._losHeight));
+      this._featureRenderTargets.push(
+        this.createRenderTarget(this._losWidth, this._losHeight)
+      );
     }
 
     this._featureScene = new THREE.Scene();
@@ -204,35 +249,45 @@ export class LoS extends Drawn {
     // Token compose targets for ADD-composing sample points within each token (one per token in batch)
     this._tokenComposeTargets = [];
     for (let i = 0; i < maxComposeCount; ++i) {
-      this._tokenComposeTargets.push(this.createRenderTarget(this._losWidth, this._losHeight));
+      this._tokenComposeTargets.push(
+        this.createRenderTarget(this._losWidth, this._losHeight)
+      );
     }
     this._tokenComposeClearColour = new THREE.Color(0, 0, 0); // visible (no shadow) by default
 
     this._composeClearColour = new THREE.Color(1, 1, 1); // shadowed (white) unless seen by something
-    this._composeRenderTarget = this.createRenderTarget(this._losWidth, this._losHeight);
+    this._composeRenderTarget = this.createRenderTarget(
+      this._losWidth,
+      this._losHeight
+    );
     this._composeScene = new THREE.Scene();
 
-    this._composedTargetReader = new RenderTargetReader(this._composeRenderTarget);
+    this._composedTargetReader = new RenderTargetReader(
+      this._composeRenderTarget
+    );
 
     // Create the geometry we use to compose the LoS together
     this._composeGeometry = new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(-1, -1, 0),
       new THREE.Vector3(1, -1, 0),
       new THREE.Vector3(-1, 1, 0),
-      new THREE.Vector3(1, 1, 0)
+      new THREE.Vector3(1, 1, 0),
     ]);
-    this._composeGeometry.setIndex([
-      0, 1, 2, 1, 2, 3
-    ]);
+    this._composeGeometry.setIndex([0, 1, 2, 1, 2, 3]);
 
     // Yes, having the UVs specified is mandatory :P
-    this._composeGeometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([
-      0, 0, 1, 0, 0, 1, 1, 1
-    ]), 2));
+    this._composeGeometry.setAttribute(
+      "uv",
+      new THREE.BufferAttribute(new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), 2)
+    );
   }
 
   // MIN-composes token compose targets to produce final LoS (any token seeing a pixel makes it visible)
-  private compose(camera: THREE.Camera, renderer: THREE.WebGLRenderer, count: number) {
+  private compose(
+    camera: THREE.Camera,
+    renderer: THREE.WebGLRenderer,
+    count: number
+  ) {
     // TODO #52 To successfully down-scale the LoS, this here needs its own camera
     renderer.setRenderTarget(this._composeRenderTarget);
     const materials: THREE.MeshBasicMaterial[] = [];
@@ -259,8 +314,8 @@ export class LoS extends Drawn {
     renderer.render(this._composeScene, camera);
 
     // Put settings back
-    meshes.forEach(m => this._composeScene.remove(m));
-    materials.forEach(m => m.dispose());
+    meshes.forEach((m) => this._composeScene.remove(m));
+    materials.forEach((m) => m.dispose());
   }
 
   // Generates sample points for multi-sample LoS rendering: centre + perimeter points
@@ -274,17 +329,24 @@ export class LoS extends Drawn {
 
     for (let i = 0; i < perimeterSamples; i++) {
       const angle = (i / perimeterSamples) * 2 * Math.PI; // Start from 0 (right)
-      points.push(new THREE.Vector3(
-        centre.x + Math.cos(angle) * radius,
-        centre.y + Math.sin(angle) * radius,
-        z
-      ));
+      points.push(
+        new THREE.Vector3(
+          centre.x + Math.cos(angle) * radius,
+          centre.y + Math.sin(angle) * radius,
+          z
+        )
+      );
     }
     return points;
   }
 
   // ADD-composes sample point renders into specified token compose target (does not clear - caller must clear when starting new token)
-  private composeTokenSamples(camera: THREE.Camera, renderer: THREE.WebGLRenderer, tokenIndex: number, count: number) {
+  private composeTokenSamples(
+    camera: THREE.Camera,
+    renderer: THREE.WebGLRenderer,
+    tokenIndex: number,
+    count: number
+  ) {
     renderer.setRenderTarget(this._tokenComposeTargets[tokenIndex]);
     const materials: THREE.MeshBasicMaterial[] = [];
     const meshes: THREE.Mesh[] = [];
@@ -308,16 +370,13 @@ export class LoS extends Drawn {
 
     renderer.render(this._composeScene, camera);
 
-    meshes.forEach(m => this._composeScene.remove(m));
-    materials.forEach(m => m.dispose());
+    meshes.forEach((m) => this._composeScene.remove(m));
+    materials.forEach((m) => m.dispose());
   }
 
   private createRenderTarget(renderWidth: number, renderHeight: number) {
     return new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
       depthBuffer: false,
-      // Using linear filtering here, though counter-intuitive, will reduce our vulnerability
-      // to hairline 'cracks' forming in between shadows that ought to line up but don't quite
-      // because of float inaccuracies/quirks of the rasterizer
       minFilter: THREE.LinearFilter,
       magFilter: THREE.LinearFilter,
       wrapS: THREE.ClampToEdgeWrapping,
@@ -343,7 +402,7 @@ export class LoS extends Drawn {
     const x = Math.floor((cp.x + 1) * 0.5 * this._losWidth);
     const y = Math.floor((cp.y + 1) * 0.5 * this._losHeight);
     // Sample offset reduced to 1 since we're at 1/4 resolution (1 pixel = 4 original pixels)
-    function *enumerateSamplePositions() {
+    function* enumerateSamplePositions() {
       yield [x, y];
       yield [x - 1, y - 1];
       yield [x + 1, y - 1];
@@ -353,7 +412,13 @@ export class LoS extends Drawn {
 
     // Invert sample values since black (0) = visible, white (255) = shadow
     const visibleCount = fluent(enumerateSamplePositions())
-      .map(p => this._composedTargetReader.sample(p[0], p[1], (buf, offset) => 255 - (buf[offset] ?? 255)))
+      .map((p) =>
+        this._composedTargetReader.sample(
+          p[0],
+          p[1],
+          (buf, offset) => 255 - (buf[offset] ?? 255)
+        )
+      )
       .sum();
     return visibleCount > 0.1;
   }
@@ -361,7 +426,11 @@ export class LoS extends Drawn {
   // Renders the LoS frames using multi-sample approach.
   // For each token, renders LoS from multiple sample points (centre + perimeter),
   // ADD-composes them, then MIN-composes across tokens.
-  render(camera: THREE.Camera, fixedCamera: THREE.Camera, renderer: THREE.WebGLRenderer) {
+  render(
+    camera: THREE.Camera,
+    fixedCamera: THREE.Camera,
+    renderer: THREE.WebGLRenderer
+  ) {
     // Always clear the composed target to begin with (otherwise, with 0 token positions to
     // render, we'll end up returning the old composed target!)
     renderer.setRenderTarget(this._composeRenderTarget);
@@ -370,7 +439,12 @@ export class LoS extends Drawn {
 
     const z = this._featureUniforms[zValue].value as number;
     const totalSamples = this.geometry.losCircleSamples + 1; // perimeter + centre
-    this._featureUniforms[shadowIntensity].value = 1.0 / totalSamples;
+
+    // TODO BUG? If I don't apply an excess of shadow intensity here I get
+    // occasional light bleed into closed areas that the token shouldn't be able
+    // to see into...
+    //this._featureUniforms[shadowIntensity].value = 1.0 / totalSamples;
+    this._featureUniforms[shadowIntensity].value = 1.5 / totalSamples;
 
     let tokenResultCount = 0;
 
@@ -390,14 +464,21 @@ export class LoS extends Drawn {
         const featureTargetIndex = s % maxComposeCount;
         this._featureUniforms[tokenCentre].value.copy(samples[s]);
 
-        renderer.setRenderTarget(this._featureRenderTargets[featureTargetIndex]);
+        renderer.setRenderTarget(
+          this._featureRenderTargets[featureTargetIndex]
+        );
         renderer.setClearColor(this._featureClearColour);
         renderer.clear();
         renderer.render(this._featureScene, camera);
 
         if (featureTargetIndex === maxComposeCount - 1) {
           // We've filled all feature render targets; ADD-compose to this token's target
-          this.composeTokenSamples(fixedCamera, renderer, tokenIndex, maxComposeCount);
+          this.composeTokenSamples(
+            fixedCamera,
+            renderer,
+            tokenIndex,
+            maxComposeCount
+          );
         }
       }
 
@@ -430,8 +511,12 @@ export class LoS extends Drawn {
     // Calculate reduced LoS render target dimensions (1/2 in each dimension)
     this._losWidth = Math.max(1, Math.floor(width / losResolutionDivisor));
     this._losHeight = Math.max(1, Math.floor(height / losResolutionDivisor));
-    this._featureRenderTargets.forEach(t => t.setSize(this._losWidth, this._losHeight));
-    this._tokenComposeTargets.forEach(t => t.setSize(this._losWidth, this._losHeight));
+    this._featureRenderTargets.forEach((t) =>
+      t.setSize(this._losWidth, this._losHeight)
+    );
+    this._tokenComposeTargets.forEach((t) =>
+      t.setSize(this._losWidth, this._losHeight)
+    );
     this._composeRenderTarget.setSize(this._losWidth, this._losHeight);
   }
 
@@ -450,9 +535,9 @@ export class LoS extends Drawn {
     if (this._isDisposed === false) {
       this._features.dispose();
       this._featureMaterial.dispose();
-      this._featureRenderTargets.forEach(t => t.dispose());
+      this._featureRenderTargets.forEach((t) => t.dispose());
 
-      this._tokenComposeTargets.forEach(t => t.dispose());
+      this._tokenComposeTargets.forEach((t) => t.dispose());
       this._composeGeometry.dispose();
       this._composeRenderTarget.dispose();
 
