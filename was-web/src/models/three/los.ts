@@ -9,7 +9,6 @@ import { RedrawFlag } from "../redrawFlag";
 import { RenderTargetReader } from "./renderTargetReader";
 
 import * as THREE from "three";
-import fluent from "fluent-iterable";
 
 // Shader-based LoS.
 //
@@ -78,15 +77,15 @@ import fluent from "fluent-iterable";
 //
 // We need to achieve the following fragment shading:
 //
-// - For the umbra triangle(s), solid black (value 0, 0, 0, 1).
+// - For the umbra triangle(s), solid white (value 1, 1, 1, 1) = fully shadowed.
 // - For the penumbra triangle PRT, we calculate the angle of the vector fragment-T and linearly
-// interpolate it between the angle of the PT vector in the XY plane (value 1, 1, 1, 1) and the
-// angle of the RT vector in the XY plane (value 0, 0, 0, 1) to get the fragment colour value;
+// interpolate it between the angle of the PT vector in the XY plane (value 0, 0, 0, 1 = visible) and the
+// angle of the RT vector in the XY plane (value 1, 1, 1, 1 = shadowed) to get the fragment colour value;
 // - Similarly, for the penumbra triangle QSU, we calculate the angle of the vector fragment-U and
-// linearly interpolate it between the angle of the SU vector in the XY plane (value 1, 1, 1, 1) and
-// the angle of the QU vector in the XY plane (value 0, 0, 0, 1) to get the fragment colour value.
+// linearly interpolate it between the angle of the SU vector in the XY plane (value 0, 0, 0, 1 = visible) and
+// the angle of the QU vector in the XY plane (value 1, 1, 1, 1 = shadowed) to get the fragment colour value.
 //
-// Overlapping triangles are resolved using custom blending with MIN.
+// Overlapping triangles are resolved using custom blending with MAX (keep brightest = most shadowed).
 //
 // Input Geometry
 // --------------
@@ -165,11 +164,11 @@ import fluent from "fluent-iterable";
 // Fragment Shader
 // ---------------
 //
-// - If sweep_angle = 0, assign colour (0, 0, 0, 1) and return.
+// - If sweep_angle = 0, assign colour (1, 1, 1, 1) = fully shadowed and return.
 // - Calculate fragment_direction = normalize(fragmentPosition - pivot);
 // - Calculate fragment_angle = signedAngle(reference_direction, fragment_direction);
-// - Assign a colour based on linear interpolation of fragment_angle between 0 (colour 1, 1, 1, 1)
-// and sweep_angle (colour 0, 0, 0, 1) and return.
+// - Assign a colour based on linear interpolation of fragment_angle between 0 (colour 0, 0, 0, 1 = visible)
+// and sweep_angle (colour 1, 1, 1, 1 = shadowed) and return.
 //
 // Composing together the LoS of multiple tokens
 // ---------------------------------------------
@@ -469,9 +468,9 @@ const featureShader = {
     const float epsilon = 0.00001;
 
     void main() {
-      // Umbra case: sweep_angle is zero
+      // Umbra case: sweep_angle is zero -> fully shadowed = white
       if (abs(vSweepAngle) < epsilon) {
-        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+        gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
         return;
       }
 
@@ -484,9 +483,9 @@ const featureShader = {
         dot(vReferenceDirection, fragmentDir)
       );
 
-      // Interpolate: 0 angle = white (1.0), sweep_angle = black (0.0)
+      // Interpolate: 0 angle = black (0.0) = visible, sweep_angle = white (1.0) = shadowed
       float t = clamp(fragAngle / vSweepAngle, 0.0, 1.0);
-      float brightness = 1.0 - t;
+      float brightness = t;
 
       gl_FragColor = vec4(brightness, brightness, brightness, 1.0);
     }
@@ -594,7 +593,7 @@ export class LoS extends Drawn {
   ) {
     super(geometry, redrawFlag);
 
-    this._featureClearColour = new THREE.Color(1, 1, 1); // visible by default; we draw the shadows
+    this._featureClearColour = new THREE.Color(0, 0, 0); // visible (black) by default; we draw the shadows (white)
 
     // Get canonical wall endpoint positions from the geometry
     const single = geometry.toSingle();
@@ -612,10 +611,10 @@ export class LoS extends Drawn {
       uniforms: this._featureUniforms,
       vertexShader: featureShader.vertexShader,
       fragmentShader: featureShader.fragmentShader,
-      // Use MIN blending to retain the minimum (darkest) color value when
+      // Use MAX blending to retain the maximum (brightest = most shadowed) color value when
       // multiple shadow fragments overlap the same pixel
       blending: THREE.CustomBlending,
-      blendEquation: THREE.MinEquation,
+      blendEquation: THREE.MaxEquation,
       blendSrc: THREE.OneFactor,
       blendDst: THREE.OneFactor,
     });
@@ -638,7 +637,7 @@ export class LoS extends Drawn {
     this._featureScene = new THREE.Scene();
     this._features.addToScene(this._featureScene);
 
-    this._composeClearColour = new THREE.Color(0, 0, 0); // invisible unless seen by something
+    this._composeClearColour = new THREE.Color(1, 1, 1); // fully shadowed (white) unless seen by something
     this._composeRenderTarget = this.createRenderTarget(
       renderWidth,
       renderHeight
@@ -677,10 +676,10 @@ export class LoS extends Drawn {
     const meshes: THREE.Mesh[] = [];
     for (let i = 0; i < count; ++i) {
       const material = new THREE.MeshBasicMaterial({
-        // Use MAX blending to combine LoS from multiple tokens:
-        // a pixel is visible if ANY token can see it
+        // Use MIN blending to combine LoS from multiple tokens:
+        // a pixel is visible (black) if ANY token can see it
         blending: THREE.CustomBlending,
-        blendEquation: THREE.MaxEquation,
+        blendEquation: THREE.MinEquation,
         blendSrc: THREE.OneFactor,
         blendDst: THREE.OneFactor,
         map: this._featureRenderTargets[i].texture,
@@ -727,28 +726,30 @@ export class LoS extends Drawn {
 
   // Checks the LoS for the given client position and returns true if the position
   // is visible, else false.
+  // With inverted colours: 0 = visible (black), 255 = shadowed (white)
   // TODO #56 This is now really messed up and needs sorting out :)
   checkLoS(cp: THREE.Vector3) {
     const x = Math.floor((cp.x + 1) * 0.5 * this._composeRenderTarget.width);
     const y = Math.floor((cp.y + 1) * 0.5 * this._composeRenderTarget.height);
-    function* enumerateSamplePositions() {
-      yield [x, y];
-      yield [x - 2, y - 2];
-      yield [x + 2, y - 2];
-      yield [x - 2, y + 2];
-      yield [x + 2, y + 2];
-    }
+    const samplePositions: [number, number][] = [
+      [x, y],
+      [x - 2, y - 2],
+      [x + 2, y - 2],
+      [x - 2, y + 2],
+      [x + 2, y + 2],
+    ];
 
-    const visibleCount = fluent(enumerateSamplePositions())
-      .map((p) =>
-        this._composedTargetReader.sample(
-          p[0],
-          p[1],
-          (buf, offset) => buf[offset] ?? 0
-        )
+    // Find the minimum shadow value across all samples
+    // If any sample is below the threshold (128 = halfway), consider it visible
+    const samples = samplePositions.map(([px, py]) =>
+      this._composedTargetReader.sample(
+        px,
+        py,
+        (buf, offset) => buf[offset] ?? 255  // Default to shadowed if no data
       )
-      .sum();
-    return visibleCount > 0;
+    );
+    const minShadow = Math.min(...samples);
+    return minShadow < 128;
   }
 
   // Renders the LoS frames.  Overwrites the render target and clear colours.
