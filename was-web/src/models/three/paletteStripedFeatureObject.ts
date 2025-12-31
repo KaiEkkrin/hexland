@@ -246,6 +246,10 @@ export class StripedAreas implements IAreaDictionary {
     return this.iterate();
   }
 
+  get size(): number {
+    return this._features.size;
+  }
+
   add(f: IFeature<GridCoord> & Striped): boolean {
     const done = this._features.add(f);
     if (done) {

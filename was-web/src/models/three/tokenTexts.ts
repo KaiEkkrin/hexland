@@ -106,6 +106,10 @@ export class TokenTexts extends Drawn implements IFeatureDictionary<GridVertex, 
     return this.iterate();
   }
 
+  get size(): number {
+    return this._dict.size;
+  }
+
   add(f: ITokenText): boolean {
     const geometry = this.getGeometry(f.text);
     if (geometry === undefined || geometry.boundingBox === null) {

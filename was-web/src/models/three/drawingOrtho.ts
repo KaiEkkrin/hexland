@@ -121,6 +121,13 @@ export class DrawingOrtho implements IDrawing {
   private _showMapColourVisualisation = false;
   private _disposed = false;
 
+  // Debug texture visualization
+  private _debugShowFaceCoord = false;
+  private _debugShowVertexCoord = false;
+  private _debugScene: THREE.Scene | undefined;
+  private _debugMaterial: THREE.MeshBasicMaterial | undefined;
+  private _debugMesh: THREE.Mesh | undefined;
+
   constructor(
     renderer: THREE.WebGLRenderer,
     gridGeometry: IGridGeometry,
@@ -424,41 +431,52 @@ export class DrawingOrtho implements IDrawing {
     }
 
     if (gridNeedsRedraw || needsRedraw) {
-      if (this._showLoS === true) {
-        this._los.render(this._camera, this._fixedCamera, this._renderer);
-        this._losFilter.preRender(this._losParameters);
+      // In debug mode, just render the debug texture fullscreen
+      if (this._debugShowFaceCoord || this._debugShowVertexCoord) {
+        this._renderer.setRenderTarget(null);
+        this._renderer.setClearColor(this._canvasClearColour);
+        this._renderer.clear();
+        if (this._debugScene !== undefined) {
+          this._renderer.render(this._debugScene, this._fixedCamera);
+        }
+      } else {
+        // Normal rendering
+        if (this._showLoS === true) {
+          this._los.render(this._camera, this._fixedCamera, this._renderer);
+          this._losFilter.preRender(this._losParameters);
+        }
+
+        this._areas.render(this._camera, this._renderer);
+        this._playerAreas.render(this._camera, this._renderer);
+        this._tokens.render(this._renderer, this._camera);
+        this._textFilter.preRender(this._tokens.textTarget);
+
+        this._outlineTokens.render(this._camera, this._renderer);
+        this._outlineSelection.render(this._camera, this._renderer);
+        this._outlineSelectionDrag.render(this._camera, this._renderer);
+        this._outlineSelectionDragRed.render(this._camera, this._renderer);
+
+        this._renderer.setRenderTarget(null);
+        this._renderer.setClearColor(this._canvasClearColour);
+        this._renderer.clear();
+
+        // TODO #197 I think the player areas are going to end up shading the tokens at this point.
+        // I should try to rationalise what gets rendered where -- perhaps going so far as to render
+        // everything into back buffers and only compose them together with filters to create the
+        // main result (?)
+        this._renderer.render(this._imageScene, this._camera);
+        this._renderer.render(this._mapScene, this._camera);
+        this._renderer.render(this._fixedFilterScene, this._fixedCamera);
+        this._renderer.render(this._filterScene, this._camera);
+        if (
+          this._outlineSelection.doRender ||
+          this._outlineSelectionDrag.doRender ||
+          this._outlineSelectionDragRed.doRender
+        ) {
+          this._renderer.render(this._fixedHighlightScene, this._fixedCamera);
+        }
+        this._renderer.render(this._overlayScene, this._overlayCamera);
       }
-
-      this._areas.render(this._camera, this._renderer);
-      this._playerAreas.render(this._camera, this._renderer);
-      this._tokens.render(this._renderer, this._camera);
-      this._textFilter.preRender(this._tokens.textTarget);
-
-      this._outlineTokens.render(this._camera, this._renderer);
-      this._outlineSelection.render(this._camera, this._renderer);
-      this._outlineSelectionDrag.render(this._camera, this._renderer);
-      this._outlineSelectionDragRed.render(this._camera, this._renderer);
-
-      this._renderer.setRenderTarget(null);
-      this._renderer.setClearColor(this._canvasClearColour);
-      this._renderer.clear();
-
-      // TODO #197 I think the player areas are going to end up shading the tokens at this point.
-      // I should try to rationalise what gets rendered where -- perhaps going so far as to render
-      // everything into back buffers and only compose them together with filters to create the
-      // main result (?)
-      this._renderer.render(this._imageScene, this._camera);
-      this._renderer.render(this._mapScene, this._camera);
-      this._renderer.render(this._fixedFilterScene, this._fixedCamera);
-      this._renderer.render(this._filterScene, this._camera);
-      if (
-        this._outlineSelection.doRender ||
-        this._outlineSelectionDrag.doRender ||
-        this._outlineSelectionDragRed.doRender
-      ) {
-        this._renderer.render(this._fixedHighlightScene, this._fixedCamera);
-      }
-      this._renderer.render(this._overlayScene, this._overlayCamera);
     }
 
     postAnimate?.();
@@ -627,6 +645,53 @@ export class DrawingOrtho implements IDrawing {
       .applyMatrix4(this._camera.projectionMatrix);
   }
 
+  // Debug methods for visualizing the coordinate textures
+  private ensureDebugResources() {
+    if (this._debugScene === undefined) {
+      this._debugScene = new THREE.Scene();
+      // Create a fullscreen quad that fills the -1..1 range of the fixed camera
+      const geometry = new THREE.PlaneGeometry(2, 2);
+      this._debugMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+      this._debugMesh = new THREE.Mesh(geometry, this._debugMaterial);
+      this._debugMesh.position.z = 0;
+      this._debugScene.add(this._debugMesh);
+    }
+  }
+
+  toggleDebugShowFaceCoord() {
+    if (this._debugShowFaceCoord) {
+      // Turn off
+      this._debugShowFaceCoord = false;
+    } else {
+      // Turn on (and turn off the other debug view)
+      this.ensureDebugResources();
+      this._debugShowFaceCoord = true;
+      this._debugShowVertexCoord = false;
+      this._debugMaterial!.map = this._grid.faceCoordRenderTarget.texture;
+      this._debugMaterial!.needsUpdate = true;
+    }
+    this._needsRedraw.setNeedsRedraw();
+  }
+
+  toggleDebugShowVertexCoord() {
+    if (this._debugShowVertexCoord) {
+      // Turn off
+      this._debugShowVertexCoord = false;
+    } else {
+      // Turn on (and turn off the other debug view)
+      this.ensureDebugResources();
+      this._debugShowVertexCoord = true;
+      this._debugShowFaceCoord = false;
+      this._debugMaterial!.map = this._grid.vertexCoordRenderTarget.texture;
+      this._debugMaterial!.needsUpdate = true;
+    }
+    this._needsRedraw.setNeedsRedraw();
+  }
+
+  get isDebugMode() {
+    return this._debugShowFaceCoord || this._debugShowVertexCoord;
+  }
+
   dispose() {
     if (this._disposed === true) {
       return;
@@ -664,6 +729,10 @@ export class DrawingOrtho implements IDrawing {
 
     this._textureCache.dispose();
     this._textMaterial.dispose();
+
+    // Dispose debug resources if created
+    this._debugMaterial?.dispose();
+    this._debugMesh?.geometry.dispose();
 
     // do *not* dispose the renderer, it'll be re-used for the next drawing context
 

@@ -516,6 +516,12 @@ export class MapUi {
         newState.layer = Layer.Object;
         newState.editMode = EditMode.Wall;
       }
+    } else if (e.key === '[') {
+      // Debug: toggle face coordinate texture visualization
+      this._stateMachine?.toggleDebugShowFaceCoord();
+    } else if (e.key === ']') {
+      // Debug: toggle vertex coordinate texture visualization
+      this._stateMachine?.toggleDebugShowVertexCoord();
     }
 
     this.changeState(newState);

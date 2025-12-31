@@ -26,6 +26,7 @@ import { TokensWithObservableText } from '../data/tokenTexts';
 
 import { IDataService, ISpriteManager } from '../services/interfaces';
 import { createDrawing } from './three/drawing';
+import { DrawingOrtho } from './three/drawingOrtho';
 
 import fluent from 'fluent-iterable';
 import { Observable, ReplaySubject } from 'rxjs';
@@ -1592,6 +1593,19 @@ export class MapStateMachine {
 
   setShowMapColourVisualisation(show: boolean) {
     this._drawing.setShowMapColourVisualisation(show, this._mapColouring);
+  }
+
+  // Debug methods for visualizing coordinate textures
+  toggleDebugShowFaceCoord() {
+    if (this._drawing instanceof DrawingOrtho) {
+      this._drawing.toggleDebugShowFaceCoord();
+    }
+  }
+
+  toggleDebugShowVertexCoord() {
+    if (this._drawing instanceof DrawingOrtho) {
+      this._drawing.toggleDebugShowVertexCoord();
+    }
   }
 
   setToken(cp: THREE.Vector3, properties: ITokenProperties | undefined) {
