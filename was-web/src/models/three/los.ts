@@ -212,7 +212,7 @@ const featureShader = {
     varying float vSweepAngle;
 
     // Large value to project shadows beyond any visible area (world space)
-    const float worldBound = 1000.0;
+    const float worldBound = 10000.0;
     const float epsilon = 0.00001;
 
     // Vertex type constants (new mapping: P=0, R=1, T=2, Q=3, S=4, U=5, A=6, B=7, C=8, D=9)
@@ -768,9 +768,11 @@ export class LoS extends Drawn {
     let lastRenderedIndex = maxComposeCount;
     this._tokenPositions.forEach((pos, i) => {
       const targetIndex = i % maxComposeCount;
-      // Use the pre-calculated world centre and radius directly
+
+      // Use the pre-calculated world centre and radius directly.
+      // Shrinking the radius slightly avoids edge cases in the math
       this._featureUniforms[tokenCentre].value.copy(pos.centre);
-      this._featureUniforms[tokenRadius].value = pos.radius;
+      this._featureUniforms[tokenRadius].value = pos.radius * 0.9;
 
       renderer.setRenderTarget(this._featureRenderTargets[targetIndex]);
       renderer.setClearColor(this._featureClearColour);
