@@ -139,8 +139,8 @@ export class LoS extends Drawn {
 
   private readonly _composeClearColour: THREE.Color;
 
-  // Render target for ADD-composing sample points within a single token
-  private readonly _tokenComposeTarget: THREE.WebGLRenderTarget;
+  // Render targets for ADD-composing sample points within each token (one per token in batch)
+  private readonly _tokenComposeTargets: THREE.WebGLRenderTarget[];
   private readonly _tokenComposeClearColour: THREE.Color;
 
   private readonly _composeGeometry: THREE.BufferGeometry;
@@ -201,8 +201,11 @@ export class LoS extends Drawn {
     this._featureScene = new THREE.Scene();
     this._features.addToScene(this._featureScene);
 
-    // Token compose target for ADD-composing sample points within a single token
-    this._tokenComposeTarget = this.createRenderTarget(this._losWidth, this._losHeight);
+    // Token compose targets for ADD-composing sample points within each token (one per token in batch)
+    this._tokenComposeTargets = [];
+    for (let i = 0; i < maxComposeCount; ++i) {
+      this._tokenComposeTargets.push(this.createRenderTarget(this._losWidth, this._losHeight));
+    }
     this._tokenComposeClearColour = new THREE.Color(0, 0, 0); // visible (no shadow) by default
 
     this._composeClearColour = new THREE.Color(1, 1, 1); // shadowed (white) unless seen by something
@@ -228,8 +231,8 @@ export class LoS extends Drawn {
     ]), 2));
   }
 
+  // MIN-composes token compose targets to produce final LoS (any token seeing a pixel makes it visible)
   private compose(camera: THREE.Camera, renderer: THREE.WebGLRenderer, count: number) {
-    // Composes the contents of the given number of feature renders onto the compose target.
     // TODO #52 To successfully down-scale the LoS, this here needs its own camera
     renderer.setRenderTarget(this._composeRenderTarget);
     const materials: THREE.MeshBasicMaterial[] = [];
@@ -242,7 +245,7 @@ export class LoS extends Drawn {
         blendEquation: THREE.MinEquation,
         blendSrc: THREE.OneFactor,
         blendDst: THREE.OneFactor,
-        map: this._featureRenderTargets[i].texture,
+        map: this._tokenComposeTargets[i].texture,
         side: THREE.DoubleSide,
         transparent: true,
       });
@@ -280,9 +283,9 @@ export class LoS extends Drawn {
     return points;
   }
 
-  // ADD-composes sample point renders into _tokenComposeTarget (does not clear - caller must clear when starting new token)
-  private composeTokenSamples(camera: THREE.Camera, renderer: THREE.WebGLRenderer, count: number) {
-    renderer.setRenderTarget(this._tokenComposeTarget);
+  // ADD-composes sample point renders into specified token compose target (does not clear - caller must clear when starting new token)
+  private composeTokenSamples(camera: THREE.Camera, renderer: THREE.WebGLRenderer, tokenIndex: number, count: number) {
+    renderer.setRenderTarget(this._tokenComposeTargets[tokenIndex]);
     const materials: THREE.MeshBasicMaterial[] = [];
     const meshes: THREE.Mesh[] = [];
     for (let i = 0; i < count; ++i) {
@@ -307,23 +310,6 @@ export class LoS extends Drawn {
 
     meshes.forEach(m => this._composeScene.remove(m));
     materials.forEach(m => m.dispose());
-  }
-
-  // Copies _tokenComposeTarget to a feature render target for MIN-composition
-  private copyToFeatureTarget(camera: THREE.Camera, renderer: THREE.WebGLRenderer, targetIndex: number) {
-    renderer.setRenderTarget(this._featureRenderTargets[targetIndex]);
-    const material = new THREE.MeshBasicMaterial({
-      // No blending - just copy
-      blending: THREE.NoBlending,
-      map: this._tokenComposeTarget.texture,
-      side: THREE.DoubleSide,
-    });
-
-    const mesh = new THREE.Mesh(this._composeGeometry, material);
-    this._composeScene.add(mesh);
-    renderer.render(this._composeScene, camera);
-    this._composeScene.remove(mesh);
-    material.dispose();
   }
 
   private createRenderTarget(renderWidth: number, renderHeight: number) {
@@ -389,43 +375,43 @@ export class LoS extends Drawn {
     let tokenResultCount = 0;
 
     for (const pos of this._tokenPositions) {
+      const tokenIndex = tokenResultCount % maxComposeCount;
+
       // Generate sample points for this token (centre + perimeter)
       const samples = this.generateSamplePoints(pos, z);
 
-      // Clear token compose target (black = no shadow) for this new token
-      renderer.setRenderTarget(this._tokenComposeTarget);
+      // Clear this token's compose target (black = no shadow)
+      renderer.setRenderTarget(this._tokenComposeTargets[tokenIndex]);
       renderer.setClearColor(this._tokenComposeClearColour);
       renderer.clear();
 
       // Render each sample point
       for (let s = 0; s < samples.length; s++) {
-        const targetIndex = s % maxComposeCount;
+        const featureTargetIndex = s % maxComposeCount;
         this._featureUniforms[tokenCentre].value.copy(samples[s]);
 
-        renderer.setRenderTarget(this._featureRenderTargets[targetIndex]);
+        renderer.setRenderTarget(this._featureRenderTargets[featureTargetIndex]);
         renderer.setClearColor(this._featureClearColour);
         renderer.clear();
         renderer.render(this._featureScene, camera);
 
-        if (targetIndex === maxComposeCount - 1) {
-          // We've filled all feature render targets; ADD-compose to token target
-          this.composeTokenSamples(fixedCamera, renderer, maxComposeCount);
+        if (featureTargetIndex === maxComposeCount - 1) {
+          // We've filled all feature render targets; ADD-compose to this token's target
+          this.composeTokenSamples(fixedCamera, renderer, tokenIndex, maxComposeCount);
         }
       }
 
       // ADD-compose any remaining samples for this token
       const remaining = samples.length % maxComposeCount;
       if (remaining > 0) {
-        this.composeTokenSamples(fixedCamera, renderer, remaining);
+        this.composeTokenSamples(fixedCamera, renderer, tokenIndex, remaining);
       }
 
-      // Now _tokenComposeTarget has this token's full LoS
-      // Copy it to a feature target for MIN-composition across tokens
-      this.copyToFeatureTarget(fixedCamera, renderer, tokenResultCount % maxComposeCount);
+      // This token's compose target now has its full LoS
       tokenResultCount++;
 
       if (tokenResultCount % maxComposeCount === 0) {
-        // We've filled all feature targets with token results; MIN-compose them
+        // We've filled all token compose targets; MIN-compose them
         this.compose(fixedCamera, renderer, maxComposeCount);
       }
     }
@@ -445,7 +431,7 @@ export class LoS extends Drawn {
     this._losWidth = Math.max(1, Math.floor(width / losResolutionDivisor));
     this._losHeight = Math.max(1, Math.floor(height / losResolutionDivisor));
     this._featureRenderTargets.forEach(t => t.setSize(this._losWidth, this._losHeight));
-    this._tokenComposeTarget.setSize(this._losWidth, this._losHeight);
+    this._tokenComposeTargets.forEach(t => t.setSize(this._losWidth, this._losHeight));
     this._composeRenderTarget.setSize(this._losWidth, this._losHeight);
   }
 
@@ -466,7 +452,7 @@ export class LoS extends Drawn {
       this._featureMaterial.dispose();
       this._featureRenderTargets.forEach(t => t.dispose());
 
-      this._tokenComposeTarget.dispose();
+      this._tokenComposeTargets.forEach(t => t.dispose());
       this._composeGeometry.dispose();
       this._composeRenderTarget.dispose();
 
