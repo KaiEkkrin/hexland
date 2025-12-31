@@ -20,6 +20,10 @@ export interface IGridGeometry {
   maxEdge: number;
   epsilon: number;
 
+  // Number of points around the perimeter for multi-sample LoS rendering.
+  // (Total samples = losCircleSamples + 1 for the centre point.)
+  losCircleSamples: number;
+
   // Creates an anchor position in this geometry.
   createAnchorPosition(target: THREE.Vector3, anchor: Anchor): THREE.Vector3;
 
