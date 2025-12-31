@@ -77,7 +77,7 @@ const featureShader = {
   `,
   fragmentShader: `
     void main() {
-      gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+      gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
     }
   `
 };
@@ -121,7 +121,7 @@ class LoSFeatures extends InstancedFeatures<GridEdge, IFeature<GridEdge>> {
 
 // This class encapsulates the LoS drawing along with its intermediate surfaces.
 const maxComposeCount = 8;
-const losResolutionDivisor = 4; // Render LoS at 1/4 resolution in each dimension
+const losResolutionDivisor = 2; // Render LoS at 1/2 resolution in each dimension
 
 export class LoS extends Drawn {
   private readonly _featureClearColour: THREE.Color;
@@ -163,7 +163,7 @@ export class LoS extends Drawn {
     this._losWidth = Math.max(1, Math.floor(renderWidth / losResolutionDivisor));
     this._losHeight = Math.max(1, Math.floor(renderHeight / losResolutionDivisor));
 
-    this._featureClearColour = new THREE.Color(1, 1, 1); // visible by default; we draw the shadows
+    this._featureClearColour = new THREE.Color(0, 0, 0); // visible (black) by default; we draw shadows as white
 
     this._featureUniforms = THREE.UniformsUtils.clone(featureShader.uniforms);
     this._featureUniforms[tokenCentre].value = new THREE.Vector3();
@@ -173,10 +173,10 @@ export class LoS extends Drawn {
       uniforms: this._featureUniforms,
       vertexShader: featureShader.vertexShader,
       fragmentShader: featureShader.fragmentShader,
-      // Use MIN blending to retain the minimum (darkest) color value when
-      // multiple shadow fragments overlap the same pixel
+      // Use MAX blending to retain the maximum (brightest/shadow) color value when
+      // multiple shadow fragments overlap the same pixel (white = shadow)
       blending: THREE.CustomBlending,
-      blendEquation: THREE.MinEquation,
+      blendEquation: THREE.MaxEquation,
       blendSrc: THREE.OneFactor,
       blendDst: THREE.OneFactor,
     });
@@ -190,7 +190,7 @@ export class LoS extends Drawn {
     this._featureScene = new THREE.Scene();
     this._features.addToScene(this._featureScene);
 
-    this._composeClearColour = new THREE.Color(0, 0, 0); // invisible unless seen by something
+    this._composeClearColour = new THREE.Color(1, 1, 1); // shadowed (white) unless seen by something
     this._composeRenderTarget = this.createRenderTarget(this._losWidth, this._losHeight);
     this._composeScene = new THREE.Scene();
 
@@ -221,10 +221,10 @@ export class LoS extends Drawn {
     const meshes: THREE.Mesh[] = [];
     for (let i = 0; i < count; ++i) {
       const material = new THREE.MeshBasicMaterial({
-        // Use MAX blending to combine LoS from multiple tokens:
-        // a pixel is visible if ANY token can see it
+        // Use MIN blending to combine LoS from multiple tokens:
+        // a pixel is visible (black) if ANY token can see it (lowest shadow value wins)
         blending: THREE.CustomBlending,
-        blendEquation: THREE.MaxEquation,
+        blendEquation: THREE.MinEquation,
         blendSrc: THREE.OneFactor,
         blendDst: THREE.OneFactor,
         map: this._featureRenderTargets[i].texture,
@@ -284,8 +284,9 @@ export class LoS extends Drawn {
       yield [x + 1, y + 1];
     }
 
+    // Invert sample values since black (0) = visible, white (255) = shadow
     const visibleCount = fluent(enumerateSamplePositions())
-      .map(p => this._composedTargetReader.sample(p[0], p[1], (buf, offset) => buf[offset] ?? 0))
+      .map(p => this._composedTargetReader.sample(p[0], p[1], (buf, offset) => 255 - (buf[offset] ?? 255)))
       .sum();
     return visibleCount > 0.1;
   }

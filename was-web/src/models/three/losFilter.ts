@@ -25,7 +25,7 @@ function createLoSFilterShader() {
       "varying vec2 texUv;",
       "void main() {",
       "  float visibility = texture2D(losTex, texUv).x;",
-      "  float result = mix(fullyHidden, fullyVisible, visibility);",
+      "  float result = mix(fullyVisible, fullyHidden, visibility);",
       "  gl_FragColor = vec4(result, result, result, 1.0);",
       "}"
     ].join("\n")
