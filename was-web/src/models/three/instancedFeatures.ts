@@ -74,6 +74,10 @@ export class InstancedFeatures<K extends GridCoord, F extends IFeature<K>> exten
     return this.iterate();
   }
 
+  get size(): number {
+    return this._features.size;
+  }
+
   add(f: F): boolean {
     const done = this._features.add(f);
     if (done === false) {

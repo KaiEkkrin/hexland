@@ -11,7 +11,6 @@ import { createVertexGeometry, Vertices, createVertices } from './vertices';
 
 import * as THREE from 'three';
 import fluent from 'fluent-iterable';
-// import fluent from 'fluent-iterable';
 
 // This shading provides the colouring for the coord and vertex colour textures, which
 // aren't shown to the user (they look rainbow...) but let us look up a client position
@@ -308,6 +307,7 @@ export class Grid extends Drawn {
 
   // We need to access this to feed it to the grid and LoS filters
   get faceCoordRenderTarget() { return this._faceCoordRenderTarget; }
+  get vertexCoordRenderTarget() { return this._vertexCoordRenderTarget; }
   get tileOrigin() { return this._tileOrigin; }
 
   // Extends the grid across the given range of tiles.
@@ -334,7 +334,7 @@ export class Grid extends Drawn {
     }
 
     // if (count > 0) {
-    //   console.debug("extended grid to " + fluent(this._faces).count() + " tiles");
+    //   console.debug(`extended grid to ${this._faces.size} tiles at bounds ${JSON.stringify(bounds)}`);
     // }
 
     return count;
@@ -402,9 +402,9 @@ export class Grid extends Drawn {
       this.setNeedsRedraw();
     });
 
-    if (added !== 0 || toDelete.length !== 0) {
-    //   console.debug("shrunk grid to " + fluent(this._faces).count() + " tiles");
-    }
+    // if (added !== 0 || toDelete.length !== 0) {
+    //    console.debug(`shrank grid to ${this._faces.size} tiles at bounds ${JSON.stringify(bounds)}`);
+    // }
 
     return added + toDelete.length;
   }
@@ -443,6 +443,8 @@ export class Grid extends Drawn {
       // This shouldn't happen unless we only just loaded the map.  Extend the grid around the origin.
       countChanged = this.extendGridAround(0, 0);
     } else if (undefinedCount > 0) {
+      // console.debug(`extending grid around samples: ${JSON.stringify(samples)}`);
+
       // We're missing grid in part of the view.  Extend the grid by one around the first
       // tile that we found in view -- this should, over the course of a couple of frames,
       // fill the whole view

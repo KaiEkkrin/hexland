@@ -106,6 +106,9 @@ export interface ITokenText extends IFeature<GridVertex> {
 
 // The interface of a dictionary of these
 export interface IFeatureDictionary<K extends GridCoord, F extends IFeature<K>> extends Iterable<F> {
+  // The number of elements in the dictionary.
+  size: number;
+
   // Returns true if the feature wasn't already present (we added it), else false
   // (we didn't replace it.)
   add(f: F): boolean;
@@ -144,6 +147,10 @@ export class FeatureDictionary<K extends GridCoord, F extends IFeature<K>> imple
 
   [Symbol.iterator](): Iterator<F> {
     return this.iterate();
+  }
+
+  get size(): number {
+    return this._values.size;
   }
 
   add(f: F) {
