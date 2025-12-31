@@ -295,7 +295,29 @@ const featureShader = {
       float leftDot = dot(leftDir.xy, toOther);
       float rightDot = dot(rightDir.xy, toOther);
 
-      if (leftDot > rightDot) {
+      // When leftDot ≈ rightDot, the token is on or very close to the T-U line.
+      // In this degenerate case, inner/outer distinction is unstable.
+      // Use a consistent fallback: inner tangent is the one more aligned with
+      // the perpendicular to the wall (away from token side).
+      float dotDiff = leftDot - rightDot;
+      if (abs(dotDiff) < epsilon * dist) {
+        // Token is on the T-U line - use perpendicular to toOther as tiebreaker
+        // The "inner" tangent should point more toward the opposite side from token
+        vec2 perpToWall = vec2(-toOther.y, toOther.x);
+        // Ensure perpToWall points away from token
+        if (dot(perpToWall, awayFromToken) < 0.0) {
+          perpToWall = -perpToWall;
+        }
+        float leftPerpDot = dot(leftDir.xy, perpToWall);
+        float rightPerpDot = dot(rightDir.xy, perpToWall);
+        if (leftPerpDot > rightPerpDot) {
+          innerTangent = leftDir;
+          outerTangent = rightDir;
+        } else {
+          innerTangent = rightDir;
+          outerTangent = leftDir;
+        }
+      } else if (dotDiff > 0.0) {
         innerTangent = leftDir;
         outerTangent = rightDir;
       } else {
@@ -374,6 +396,11 @@ const featureShader = {
       bool xValid = lineIntersection(T, T_inner, U, U_inner, X);
       xValid = xValid && isXValid(X, T, U, token, T_inner, U_inner);
 
+      // Check if inner tangents are parallel (token on T-U line)
+      // In this case, there's no valid umbra - only penumbra
+      float innerCross = T_inner.x * U_inner.y - T_inner.y * U_inner.x;
+      bool innersParallel = abs(innerCross) < epsilon;
+
       // Calculate projected positions
       vec3 posP = projectToBounds(T, T_outer);
       vec3 posR = projectToBounds(T, T_inner);
@@ -425,26 +452,26 @@ const featureShader = {
         vReferenceDirection = normalize(U_outer.xy);
         vSweepAngle = sweepU;
       } else if (vType == V_A) {
-        // A: umbra quad vertex -> T
-        worldPos = T;
+        // A: umbra quad vertex -> T (or collapse if no umbra)
+        worldPos = innersParallel ? T : T;  // Always T
         vPivot = vec2(0.0, 0.0);
         vReferenceDirection = vec2(0.0, 0.0);
         vSweepAngle = 0.0;
       } else if (vType == V_B) {
-        // B: umbra quad vertex -> X (Case 1) or R (Case 2)
-        worldPos = xValid ? X : posR;
+        // B: umbra quad vertex -> X (Case 1) or R (Case 2) or T (collapse)
+        worldPos = innersParallel ? T : (xValid ? X : posR);
         vPivot = vec2(0.0, 0.0);
         vReferenceDirection = vec2(0.0, 0.0);
         vSweepAngle = 0.0;
       } else if (vType == V_C) {
-        // C: umbra quad vertex -> U
-        worldPos = U;
+        // C: umbra quad vertex -> U (or collapse if no umbra)
+        worldPos = innersParallel ? T : U;
         vPivot = vec2(0.0, 0.0);
         vReferenceDirection = vec2(0.0, 0.0);
         vSweepAngle = 0.0;
       } else if (vType == V_D) {
-        // D: umbra quad vertex -> U (Case 1) or Q (Case 2)
-        worldPos = xValid ? U : posQ;
+        // D: umbra quad vertex -> U (Case 1) or Q (Case 2) or T (collapse)
+        worldPos = innersParallel ? T : (xValid ? U : posQ);
         vPivot = vec2(0.0, 0.0);
         vReferenceDirection = vec2(0.0, 0.0);
         vSweepAngle = 0.0;
@@ -747,7 +774,7 @@ export class LoS extends Drawn {
         px,
         py,
         (buf, offset) => buf[offset] ?? 255  // Default to shadowed if no data
-      )
+      ) ?? 255
     );
     const minShadow = Math.min(...samples);
     return minShadow < 128;
@@ -774,7 +801,7 @@ export class LoS extends Drawn {
       // Use the pre-calculated world centre and radius directly.
       // Shrinking the radius slightly avoids edge cases in the math
       this._featureUniforms[tokenCentre].value.copy(pos.centre);
-      this._featureUniforms[tokenRadius].value = pos.radius * 0.9;
+      this._featureUniforms[tokenRadius].value = pos.radius * 0.75;
 
       renderer.setRenderTarget(this._featureRenderTargets[targetIndex]);
       renderer.setClearColor(this._featureClearColour);
