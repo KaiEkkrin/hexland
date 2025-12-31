@@ -26,11 +26,11 @@ const tileOrigin = "tileOrigin";
 const token = "token";
 const gridColouredShader = {
   uniforms: {
-    epsilon: { type: 'f', value: null },
-    maxEdge: { type: 'f', value: null },
-    tileDim: { type: 'f', value: null },
-    tileOrigin: { type: 'v2', value: null },
-    token: { type: 'f', value: null },
+    epsilon: { value: null as number | null },
+    maxEdge: { value: null as number | null },
+    tileDim: { value: null as number | null },
+    tileOrigin: { value: null as THREE.Vector2 | null },
+    token: { value: null as number | null },
   },
   vertexShader: [
     "uniform float epsilon;",
@@ -128,7 +128,7 @@ class GridColouredFeatureObject<K extends GridCoord, F extends IFeature<K>> exte
     return this._uniforms;
   }
 
-  protected createMaterial() {
+  protected createMaterial(): [THREE.ShaderMaterial, Record<string, THREE.IUniform>] {
     const uniforms = THREE.UniformsUtils.clone(gridColouredShader.uniforms);
     uniforms[epsilon].value = this._gridGeometry.epsilon;
     uniforms[maxEdge].value = this._gridGeometry.maxEdge;

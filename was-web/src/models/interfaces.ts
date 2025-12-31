@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 import { MapColouring } from "./colouring";
 import { GridCoord, GridEdge, GridVertex } from "../data/coord";
 import { IFeature, IFeatureDictionary, IAreaDictionary } from "../data/feature";

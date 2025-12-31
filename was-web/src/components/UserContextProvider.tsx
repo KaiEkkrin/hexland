@@ -3,7 +3,7 @@ import { useEffect, useState, useContext } from 'react';
 import { FirebaseContext } from './FirebaseContext';
 import { UserContext } from './UserContext';
 import { SignInMethodsContext } from './SignInMethodsContext';
-import { IContextProviderProps } from './interfaces';
+import { IContextProviderProps, ISignInMethodsContext, IUserContext } from './interfaces';
 
 import { DataService } from '../services/dataService';
 import { FunctionsService } from '../services/functions';
