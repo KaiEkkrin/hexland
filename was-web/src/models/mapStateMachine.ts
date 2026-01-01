@@ -17,9 +17,10 @@ import { GridCoord, coordString, coordsEqual, coordSub, coordAdd, GridVertex, ve
 import { FeatureDictionary, flipToken, IToken, ITokenDictionary, ITokenProperties, TokenSize, defaultToken } from '../data/feature';
 import { IAdventureIdentified } from '../data/identified';
 import { Anchor, anchorsEqual, anchorString, IMapImage, IMapImageProperties } from '../data/image';
+import { LoSPosition } from '../data/losPosition';
 import { IMap } from '../data/map';
 import { IUserPolicy } from '../data/policy';
-import { ITokenGeometry } from '../data/tokenGeometry';
+import { getTokenLoSPosition, ITokenGeometry } from '../data/tokenGeometry';
 import { Tokens } from '../data/tokens';
 import { TokensWithObservableText } from '../data/tokenTexts';
 
@@ -497,24 +498,40 @@ export class MapStateMachine {
     };
   }
 
-  private getLoSPositions() {
+  private getLoSPositions(): LoSPosition[] | undefined {
     // These are the positions we should be projecting line-of-sight from.
-    // For large tokens, we project a separate LoS from every face and merge them together
-    const myTokens = Array.from(fluent(this._drawing.tokens.faces).concat(this._drawing.outlineTokens.faces))
+    // Get all token faces (including multi-tile token faces)
+    const myTokenFaces = Array.from(fluent(this._drawing.tokens.faces).concat(this._drawing.outlineTokens.faces))
       .filter(t => this.canSelectToken(t));
-    const selectedFaces = myTokens.filter(t =>
+
+    // Deduplicate by token ID to get unique tokens
+    const tokenMap = new Map<string, IToken>();
+    for (const face of myTokenFaces) {
+      if (!tokenMap.has(face.id)) {
+        tokenMap.set(face.id, face);
+      }
+    }
+    const myTokens = Array.from(tokenMap.values());
+
+    // Filter to selected tokens
+    const selectedTokens = myTokens.filter(t =>
       (t.outline ? this._drawing.outlineSelection : this._drawing.selection).faces.get(t.position) !== undefined);
-    if (selectedFaces.length === 0) {
+
+    if (selectedTokens.length === 0) {
       if (this.seeEverything) {
         // Render no LoS at all
         return undefined;
       } else {
-        // Show the LoS of all my tokens
-        return myTokens.map(t => t.position);
+        // Show the LoS of all my tokens - calculate center and radius for each
+        return myTokens.map(t =>
+          getTokenLoSPosition(t, this._tokenGeometry, this._gridGeometry.faceSize)
+        );
       }
     } else {
-      // Show the LoS of only the selected tokens
-      return selectedFaces.map(t => t.position);
+      // Show the LoS of only the selected tokens - calculate center and radius for each
+      return selectedTokens.map(t =>
+        getTokenLoSPosition(t, this._tokenGeometry, this._gridGeometry.faceSize)
+      );
     }
   }
 

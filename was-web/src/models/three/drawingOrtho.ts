@@ -1,4 +1,5 @@
 import { GridCoord, GridVertex } from '../../data/coord';
+import { LoSPosition } from '../../data/losPosition';
 import { ITokenGeometry } from '../../data/tokenGeometry';
 import { ITokenDrawing } from '../../data/tokens';
 import { MapColouring } from '../colouring';
@@ -376,6 +377,8 @@ export class DrawingOrtho implements IDrawing {
     this._outlinedRectangle.addToScene(this._overlayScene);
   }
 
+  get renderer() { return this._renderer; }
+
   get areas() { return this._areas; }
   get playerAreas() { return this._playerAreas; }
   get tokens() { return this._tokens; }
@@ -417,7 +420,7 @@ export class DrawingOrtho implements IDrawing {
 
     // Check that we have enough grid.
     // If we don't, we'll fill it in on the next frame:
-    this._grid.fitGridToFrame();
+    this._grid.fitGridToFrame(this._renderer);
 
     // Don't re-render the visible scene unless something changed:
     // (Careful -- don't chain these method calls up with ||, it's important
@@ -482,11 +485,11 @@ export class DrawingOrtho implements IDrawing {
   }
 
   checkLoS(cp: THREE.Vector3) {
-    return this._showLoS ? (this._los.checkLoS(cp) ?? false) : true;
+    return this._showLoS ? (this._los.checkLoS(this._renderer, cp) ?? false) : true;
   }
 
   getGridCoordAt(cp: THREE.Vector3): GridCoord & { isTokenFace: boolean } | undefined {
-    return this._grid.getGridCoordAt(cp);
+    return this._grid.getGridCoordAt(this._renderer, cp);
   }
 
   getGridVertexAt(cp: THREE.Vector3): GridVertex | undefined {
@@ -571,7 +574,7 @@ export class DrawingOrtho implements IDrawing {
     this._gridNeedsRedraw.setNeedsRedraw();
   }
 
-  setLoSPositions(positions: GridCoord[] | undefined, seeEverything: boolean) {
+  setLoSPositions(positions: LoSPosition[] | undefined, seeEverything: boolean) {
     const nowShowLoS = positions !== undefined;
     if (nowShowLoS) {
       this._losFilter.addToScene(this._fixedFilterScene);
@@ -584,7 +587,7 @@ export class DrawingOrtho implements IDrawing {
     }
 
     this._showLoS = nowShowLoS;
-    
+
     // Doing this makes fully-hidden areas show up a bit if we can notionally
     // see everything -- for the map owner / FFA mode.
     this._losParameters.fullyHidden = seeEverything ? 0.25 : 0.0;

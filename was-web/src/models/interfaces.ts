@@ -5,6 +5,7 @@ import { GridCoord, GridEdge, GridVertex } from "../data/coord";
 import { IFeature, IFeatureDictionary, IAreaDictionary } from "../data/feature";
 import { IIdDictionary } from "../data/identified";
 import { IMapControlPointDictionary, IMapImage } from "../data/image";
+import { LoSPosition } from "../data/losPosition";
 import { ITokenDrawing } from "../data/tokens";
 import { ITokenTextDrawing } from "../data/tokenTexts";
 import { ISpriteManager } from "../services/interfaces";
@@ -14,6 +15,9 @@ import { ISpriteManager } from "../services/interfaces";
 // The drawing interface exposes instanced features dictionaries directly --
 // editing these should update the drawing upon the next animation frame.
 export interface IDrawing {
+  // The WebGL renderer used by this drawing.
+  renderer: THREE.WebGLRenderer;
+
   areas: IAreaDictionary;
   playerAreas: IAreaDictionary;
   tokens: ITokenDrawing;
@@ -81,7 +85,7 @@ export interface IDrawing {
   resize(translation: THREE.Vector3, rotation: THREE.Quaternion, scaling: THREE.Vector3): void;
 
   // Sets the token positions whose LoS we should draw, or undefined to show everything.
-  setLoSPositions(positions: GridCoord[] | undefined, seeEverything: boolean): void;
+  setLoSPositions(positions: LoSPosition[] | undefined, seeEverything: boolean): void;
 
   // Sets the mount point of the rendered drawing.
   setMount(mount: HTMLDivElement | undefined): void;

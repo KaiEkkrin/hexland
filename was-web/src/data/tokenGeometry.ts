@@ -1,5 +1,6 @@
 import { GridCoord, GridEdge, GridVertex } from "./coord";
 import { IToken, TokenSize } from "./feature";
+import { LoSPosition } from "./losPosition";
 import { MapType } from "./map";
 
 // Expresses what faces, fill edges and fill vertices make up large tokens in
@@ -356,4 +357,49 @@ const squareTokenGeometry: ITokenGeometry = {
 
 export function getTokenGeometry(ty: MapType): ITokenGeometry {
   return ty === MapType.Hex ? hexTokenGeometry : squareTokenGeometry;
+}
+
+// Calculate the grid position and radius for a token's LoS position.
+// Returns grid coordinates (x, y) plus a radius for shadow calculations.
+// The world coordinate conversion happens at render time in los.ts.
+export function getTokenLoSPosition(
+  token: IToken,
+  tokenGeometry: ITokenGeometry,
+  faceSize: number
+): LoSPosition {
+  // Get all face positions for this token
+  const faces = Array.from(tokenGeometry.enumerateFacePositions(token));
+
+  let x: number, y: number, radius: number;
+
+  if (faces.length === 1) {
+    // Size 1 token: use the token position directly
+    x = token.position.x;
+    y = token.position.y;
+    radius = faceSize / 2;
+  } else {
+    // Multi-tile token: calculate average of all face positions
+    x = faces.reduce((sum, f) => sum + f.x, 0) / faces.length;
+    y = faces.reduce((sum, f) => sum + f.y, 0) / faces.length;
+
+    // Calculate radius based on token size
+    switch (token.size[0]) {
+      case '2':
+        // Size 2: covers 3 (hex) or 4 (square) tiles
+        radius = faceSize;
+        break;
+      case '3':
+        // Size 3: covers 7 (hex) or 9 (square) tiles
+        radius = faceSize * 1.5;
+        break;
+      case '4':
+        // Size 4: covers 12 tiles
+        radius = faceSize * 2;
+        break;
+      default:
+        radius = faceSize / 2;
+    }
+  }
+
+  return { x, y, radius };
 }
