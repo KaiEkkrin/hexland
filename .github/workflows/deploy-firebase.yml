@@ -184,15 +184,19 @@ jobs:
       #   - Test environment uses firebase.test.json (includes X-Robots-Tag headers)
       #   - Production uses firebase.json (default, no X-Robots-Tag)
       #
+      # The --force flag:
+      #   - Automatically sets up Artifact Registry cleanup policies
+      #   - Required in Firebase CLI v14+ to avoid deployment failures
+      #
       - name: Deploy to Firebase
         working-directory: was-web
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/was-web/firebase-service-account.json
         run: |
           if [ "${{ inputs.environment }}" = "test" ]; then
-            firebase deploy --config firebase.test.json --project ${{ secrets.FIREBASE_PROJECT_ID }}
+            firebase deploy --force --config firebase.test.json --project ${{ secrets.FIREBASE_PROJECT_ID }}
           else
-            firebase deploy --project ${{ secrets.FIREBASE_PROJECT_ID }}
+            firebase deploy --force --project ${{ secrets.FIREBASE_PROJECT_ID }}
           fi
 
       # -----------------------------------------------------------------------

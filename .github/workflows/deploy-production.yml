@@ -81,6 +81,43 @@
 # - Firebase Rules Admin
 # - Cloud Datastore Index Admin
 #
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ ONE-TIME SETUP: Cloud Storage Trigger Permissions                       │
+# └─────────────────────────────────────────────────────────────────────────┘
+#
+# If deploying Cloud Storage-triggered functions (like onUpload), you must
+# grant the Cloud Storage service agent the Pub/Sub Publisher role. This is
+# a ONE-TIME setup per project. Without this, you'll get:
+#   "Failed to configure trigger providers/cloud.storage/eventTypes/object.change"
+#
+# OPTION A: Using Google Cloud Console (Recommended)
+# ---------------------------------------------------
+# 1. Go to: https://console.cloud.google.com/iam-admin/iam?project=YOUR_PRODUCTION_PROJECT_ID
+# 2. Check "Include Google-provided role grants" checkbox
+# 3. Find the Cloud Storage service agent:
+#    service-PROJECT_NUMBER@gs-project-accounts.iam.gserviceaccount.com
+#    (Note: PROJECT_NUMBER is numeric, not the project ID)
+# 4. Click the ✏️ (pencil/edit) icon
+# 5. Click "Add Another Role"
+# 6. Search for and select: "Pub/Sub Publisher" (roles/pubsub.publisher)
+# 7. Click "Save"
+# 8. Wait 2-5 minutes for IAM changes to propagate
+#
+# OPTION B: Using gcloud CLI
+# --------------------------
+# Run these commands (requires gcloud CLI installed and authenticated):
+#
+#   # Get your project number
+#   PROJECT_NUMBER=$(gcloud projects describe YOUR_PRODUCTION_PROJECT_ID --format="value(projectNumber)")
+#
+#   # Grant Pub/Sub Publisher role to Cloud Storage service agent
+#   gcloud projects add-iam-policy-binding YOUR_PRODUCTION_PROJECT_ID \
+#     --member="serviceAccount:service-${PROJECT_NUMBER}@gs-project-accounts.iam.gserviceaccount.com" \
+#     --role="roles/pubsub.publisher"
+#
+# For more details, see:
+# https://cloud.google.com/functions/docs/calling/storage
+#
 # HOW TO ENCODE AND ADD TO GITHUB ENVIRONMENT:
 # ---------------------------------------------
 # On Linux/macOS/WSL:
