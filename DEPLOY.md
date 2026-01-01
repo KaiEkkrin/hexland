@@ -570,7 +570,7 @@ firebase deploy
 
 ## CI/CD Integration (Optional)
 
-For automated deployments via GitHub Actions, see [POST-DEPLOYMENT-TASKS.md](POST-DEPLOYMENT-TASKS.md#set-up-cicd-pipeline).
+See the instructions on the GitHub Actions: [test deployment](.github/workflows/deploy-test.yml), [production deployment](.github/workflows/deploy-production.yml).
 
 ---
 
