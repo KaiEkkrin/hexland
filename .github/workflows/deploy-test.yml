@@ -51,7 +51,7 @@
 #
 # REQUIRED PERMISSIONS:
 # ---------------------
-# Add the "Firebase Admin" role to the service account for full deployment access.
+# Add the "Firebase Admin" and "Service Account User" roles to the service account for full deployment access.
 #
 # HOW TO ADD FIREBASE ADMIN ROLE:
 # --------------------------------
