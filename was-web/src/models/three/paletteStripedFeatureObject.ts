@@ -104,8 +104,8 @@ export class PaletteStripedFeatureObject<K extends GridCoord, F extends IFeature
 // a supplied alpha
 const areaFilterShader: IShader = {
   uniforms: {
-    "alpha": { type: 'float', value: null },
-    "step": { type: 'v2', value: null },
+    "alpha": { value: null },
+    "step": { value: null },
     "tex": { value: null }
   },
   vertexShader: `
@@ -244,6 +244,10 @@ export class StripedAreas implements IAreaDictionary {
 
   [Symbol.iterator](): Iterator<IFeature<GridCoord> & Striped> {
     return this.iterate();
+  }
+
+  get size(): number {
+    return this._features.size;
   }
 
   add(f: IFeature<GridCoord> & Striped): boolean {

@@ -2,8 +2,6 @@ import { GridCoord, GridEdge, GridVertex } from "./coord";
 import { IToken, TokenSize } from "./feature";
 import { LoSPosition } from "./losPosition";
 import { MapType } from "./map";
-import { IGridGeometry } from "../models/gridGeometry";
-import * as THREE from 'three';
 
 // Expresses what faces, fill edges and fill vertices make up large tokens in
 // the given geometry.
@@ -361,55 +359,47 @@ export function getTokenGeometry(ty: MapType): ITokenGeometry {
   return ty === MapType.Hex ? hexTokenGeometry : squareTokenGeometry;
 }
 
-// Calculate the geometric center and radius for a token's LoS position.
-// The center is in world coordinates, and the radius represents the token's
-// effective size for shadow calculations.
+// Calculate the grid position and radius for a token's LoS position.
+// Returns grid coordinates (x, y) plus a radius for shadow calculations.
+// The world coordinate conversion happens at render time in los.ts.
 export function getTokenLoSPosition(
   token: IToken,
   tokenGeometry: ITokenGeometry,
-  gridGeometry: IGridGeometry,
-  z: number
+  faceSize: number
 ): LoSPosition {
-  const centre = new THREE.Vector3();
-  let radius: number;
-
   // Get all face positions for this token
   const faces = Array.from(tokenGeometry.enumerateFacePositions(token));
 
+  let x: number, y: number, radius: number;
+
   if (faces.length === 1) {
-    // Size 1 token: center is just the tile center
-    gridGeometry.createCoordCentre(centre, faces[0], z);
-    radius = gridGeometry.faceSize / 2;
+    // Size 1 token: use the token position directly
+    x = token.position.x;
+    y = token.position.y;
+    radius = faceSize / 2;
   } else {
-    // Multi-tile token: calculate average of all face centers
-    const scratch = new THREE.Vector3();
-    centre.set(0, 0, 0);
-    for (const face of faces) {
-      gridGeometry.createCoordCentre(scratch, face, z);
-      centre.add(scratch);
-    }
-    centre.divideScalar(faces.length);
+    // Multi-tile token: calculate average of all face positions
+    x = faces.reduce((sum, f) => sum + f.x, 0) / faces.length;
+    y = faces.reduce((sum, f) => sum + f.y, 0) / faces.length;
 
     // Calculate radius based on token size
-    // For hex: xStep is the distance between hex centers
-    // For square: faceSize is the square size
     switch (token.size[0]) {
       case '2':
         // Size 2: covers 3 (hex) or 4 (square) tiles
-        radius = gridGeometry.faceSize;
+        radius = faceSize;
         break;
       case '3':
         // Size 3: covers 7 (hex) or 9 (square) tiles
-        radius = gridGeometry.faceSize * 1.5;
+        radius = faceSize * 1.5;
         break;
       case '4':
         // Size 4: covers 12 tiles
-        radius = gridGeometry.faceSize * 2;
+        radius = faceSize * 2;
         break;
       default:
-        radius = gridGeometry.faceSize / 2;
+        radius = faceSize / 2;
     }
   }
 
-  return { centre, radius };
+  return { x, y, radius };
 }

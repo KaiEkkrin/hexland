@@ -17,6 +17,9 @@ export class InstanceCountedMesh {
     this._mesh = createMesh(maxInstances);
     this._mesh.count = 0;
     this._mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    // Always disable frustum culling - we use small base geometry at origin with large transforms
+    // in instance data, so the bounding sphere is wrong for frustum culling purposes
+    this._mesh.frustumCulled = false;
   }
 
   get mesh() { return this._mesh; }

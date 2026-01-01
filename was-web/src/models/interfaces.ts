@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 import { MapColouring } from "./colouring";
 import { GridCoord, GridEdge, GridVertex } from "../data/coord";
 import { IFeature, IFeatureDictionary, IAreaDictionary } from "../data/feature";
@@ -13,6 +15,9 @@ import { ISpriteManager } from "../services/interfaces";
 // The drawing interface exposes instanced features dictionaries directly --
 // editing these should update the drawing upon the next animation frame.
 export interface IDrawing {
+  // The WebGL renderer used by this drawing.
+  renderer: THREE.WebGLRenderer;
+
   areas: IAreaDictionary;
   playerAreas: IAreaDictionary;
   tokens: ITokenDrawing;

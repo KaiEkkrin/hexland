@@ -6,7 +6,6 @@ import { IGridGeometry } from "../gridGeometry";
 import { InstancedFeatureObject } from "./instancedFeatureObject";
 import { InstancedFeatures } from "./instancedFeatures";
 import { RedrawFlag } from "../redrawFlag";
-import { RenderTargetReader } from "./renderTargetReader";
 
 import * as THREE from "three";
 
@@ -589,6 +588,7 @@ class LoSFeatures extends InstancedFeatures<GridEdge, IFeature<GridEdge>> {
 
 // This class encapsulates the LoS drawing along with its intermediate surfaces.
 const maxComposeCount = 8;
+
 export class LoS extends Drawn {
   private readonly _featureClearColour: THREE.Color;
   private readonly _features: LoSFeatures;
@@ -604,9 +604,17 @@ export class LoS extends Drawn {
   private readonly _composeRenderTarget: THREE.WebGLRenderTarget;
   private readonly _composeScene: THREE.Scene;
 
-  private readonly _composedTargetReader: RenderTargetReader;
+  private readonly _losTexelReadBuf = new Uint8Array(36); // 3x3 pixels × 4 bytes
 
   private _tokenPositions: LoSPosition[] = [];
+
+  // Track render target dimensions for checkLoS
+  private _losWidth: number;
+  private _losHeight: number;
+
+  // Pooled materials and meshes for compose operations (avoid per-frame allocation)
+  private readonly _composeMaterials: THREE.MeshBasicMaterial[];
+  private readonly _composeMeshes: THREE.Mesh[];
 
   private _isDisposed = false;
 
@@ -620,6 +628,10 @@ export class LoS extends Drawn {
     maxInstances?: number | undefined
   ) {
     super(geometry, redrawFlag);
+
+    // Track render target dimensions at full resolution
+    this._losWidth = renderWidth;
+    this._losHeight = renderHeight;
 
     this._featureClearColour = new THREE.Color(0, 0, 0); // visible (black) by default; we draw the shadows (white)
 
@@ -672,10 +684,6 @@ export class LoS extends Drawn {
     );
     this._composeScene = new THREE.Scene();
 
-    this._composedTargetReader = new RenderTargetReader(
-      this._composeRenderTarget
-    );
-
     // Create the geometry we use to compose the LoS together
     this._composeGeometry = new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(-1, -1, 0),
@@ -690,8 +698,26 @@ export class LoS extends Drawn {
       "uv",
       new THREE.BufferAttribute(new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), 2)
     );
+
+    // Pre-create materials for MIN-compose (tokens → final)
+    // Using pooled materials avoids per-frame allocation
+    this._composeMaterials = [];
+    this._composeMeshes = [];
+    for (let i = 0; i < maxComposeCount; ++i) {
+      const material = new THREE.MeshBasicMaterial({
+        blending: THREE.CustomBlending,
+        blendEquation: THREE.MinEquation,
+        blendSrc: THREE.OneFactor,
+        blendDst: THREE.OneFactor,
+        side: THREE.DoubleSide,
+        transparent: true,
+      });
+      this._composeMaterials.push(material);
+      this._composeMeshes.push(new THREE.Mesh(this._composeGeometry, material));
+    }
   }
 
+  // MIN-composes feature render targets to produce final LoS (any token seeing a pixel makes it visible)
   private compose(
     camera: THREE.Camera,
     renderer: THREE.WebGLRenderer,
@@ -700,40 +726,25 @@ export class LoS extends Drawn {
     // Composes the contents of the given number of feature renders onto the compose target.
     // TODO #52 To successfully down-scale the LoS, this here needs its own camera
     renderer.setRenderTarget(this._composeRenderTarget);
-    const materials: THREE.MeshBasicMaterial[] = [];
-    const meshes: THREE.Mesh[] = [];
-    for (let i = 0; i < count; ++i) {
-      const material = new THREE.MeshBasicMaterial({
-        // Use MIN blending to combine LoS from multiple tokens:
-        // a pixel is visible (black) if ANY token can see it
-        blending: THREE.CustomBlending,
-        blendEquation: THREE.MinEquation,
-        blendSrc: THREE.OneFactor,
-        blendDst: THREE.OneFactor,
-        map: this._featureRenderTargets[i].texture,
-        side: THREE.DoubleSide,
-        transparent: true,
-      });
-      materials.push(material);
 
-      const mesh = new THREE.Mesh(this._composeGeometry, material);
-      meshes.push(mesh);
-      this._composeScene.add(mesh);
+    for (let i = 0; i < count; ++i) {
+      // Update texture reference on pooled material (avoids per-frame material allocation)
+      this._composeMaterials[i].map = this._featureRenderTargets[i].texture;
+      this._composeMaterials[i].needsUpdate = true;
+      this._composeScene.add(this._composeMeshes[i]);
     }
 
     renderer.render(this._composeScene, camera);
 
-    // Put settings back
-    meshes.forEach((m) => this._composeScene.remove(m));
-    materials.forEach((m) => m.dispose());
+    // Remove meshes from scene (but don't dispose - they're pooled)
+    for (let i = 0; i < count; ++i) {
+      this._composeScene.remove(this._composeMeshes[i]);
+    }
   }
 
   private createRenderTarget(renderWidth: number, renderHeight: number) {
     return new THREE.WebGLRenderTarget(renderWidth, renderHeight, {
       depthBuffer: false,
-      // Using linear filtering here, though counter-intuitive, will reduce our vulnerability
-      // to hairline 'cracks' forming in between shadows that ought to line up but don't quite
-      // because of float inaccuracies/quirks of the rasterizer
       minFilter: THREE.LinearFilter,
       magFilter: THREE.LinearFilter,
       wrapS: THREE.ClampToEdgeWrapping,
@@ -755,29 +766,53 @@ export class LoS extends Drawn {
   // Checks the LoS for the given client position and returns true if the position
   // is visible, else false.
   // With inverted colours: 0 = visible (black), 255 = shadowed (white)
-  // TODO #56 This is now really messed up and needs sorting out :)
-  checkLoS(cp: THREE.Vector3) {
-    const x = Math.floor((cp.x + 1) * 0.5 * this._composeRenderTarget.width);
-    const y = Math.floor((cp.y + 1) * 0.5 * this._composeRenderTarget.height);
-    const samplePositions: [number, number][] = [
-      [x, y],
-      [x - 2, y - 2],
-      [x + 2, y - 2],
-      [x - 2, y + 2],
-      [x + 2, y + 2],
+  checkLoS(renderer: THREE.WebGLRenderer, cp: THREE.Vector3) {
+    // Use the tracked LoS dimensions
+    const cx = Math.floor((cp.x + 1) * 0.5 * this._losWidth);
+    const cy = Math.floor((cp.y + 1) * 0.5 * this._losHeight);
+
+    // Calculate clipped 3x3 region (handle edges)
+    const x0 = Math.max(0, cx - 1);
+    const y0 = Math.max(0, cy - 1);
+    const x1 = Math.min(this._losWidth, cx + 2); // exclusive
+    const y1 = Math.min(this._losHeight, cy + 2); // exclusive
+    const w = x1 - x0;
+    const h = y1 - y0;
+
+    if (w <= 0 || h <= 0) {
+      return false; // Completely out of bounds
+    }
+
+    // Read the clipped region (on-demand small read instead of full texture)
+    renderer.readRenderTargetPixels(
+      this._composeRenderTarget,
+      x0,
+      y0,
+      w,
+      h,
+      this._losTexelReadBuf
+    );
+
+    // Sample the 5 positions (center + 4 corners) that fall within the read region
+    // Positions relative to read origin (x0, y0)
+    const positions = [
+      [cx - x0, cy - y0], // center
+      [cx - 1 - x0, cy - 1 - y0], // top-left
+      [cx + 1 - x0, cy - 1 - y0], // top-right
+      [cx - 1 - x0, cy + 1 - y0], // bottom-left
+      [cx + 1 - x0, cy + 1 - y0], // bottom-right
     ];
 
-    // Find the minimum shadow value across all samples
-    // If any sample is below the threshold (128 = halfway), consider it visible
-    const samples = samplePositions.map(([px, py]) =>
-      this._composedTargetReader.sample(
-        px,
-        py,
-        (buf, offset) => buf[offset] ?? 255  // Default to shadowed if no data
-      ) ?? 255
-    );
-    const minShadow = Math.min(...samples);
-    return minShadow < 128;
+    let visibleCount = 0;
+    for (const [px, py] of positions) {
+      if (px < 0 || py < 0 || px >= w || py >= h) {
+        continue; // This sample is outside the clipped region
+      }
+      const offset = (py * w + px) * 4;
+      visibleCount += 255 - (this._losTexelReadBuf[offset] ?? 255);
+    }
+
+    return visibleCount > 0.1;
   }
 
   // Renders the LoS frames.  Overwrites the render target and clear colours.
@@ -794,20 +829,25 @@ export class LoS extends Drawn {
     renderer.clear();
 
     // Render the LoS features for each token position
+    const z = this._featureUniforms[zValue].value as number;
     let lastRenderedIndex = maxComposeCount;
     this._tokenPositions.forEach((pos, i) => {
       const targetIndex = i % maxComposeCount;
 
-      // Use the pre-calculated world centre and radius directly.
+      // Convert grid position to world centre and set uniforms.
       // Shrinking the radius slightly avoids edge cases in the math
-      this._featureUniforms[tokenCentre].value.copy(pos.centre);
+      this.geometry.createCoordCentre(
+        this._featureUniforms[tokenCentre].value as THREE.Vector3,
+        pos,
+        z
+      );
       this._featureUniforms[tokenRadius].value = pos.radius * 0.75;
 
       renderer.setRenderTarget(this._featureRenderTargets[targetIndex]);
       renderer.setClearColor(this._featureClearColour);
       renderer.clear();
       renderer.render(this._featureScene, camera);
-      lastRenderedIndex = targetIndex;
+      lastRenderedIndex = targetIndex + 1;
 
       if (targetIndex === maxComposeCount - 1) {
         // We've filled all our feature render targets; we must compose these down
@@ -817,16 +857,19 @@ export class LoS extends Drawn {
       }
     });
 
-    // Complete any composition we might need to do
-    if (lastRenderedIndex < maxComposeCount) {
-      this.compose(fixedCamera, renderer, lastRenderedIndex + 1);
+    // Compose any remaining feature renders
+    const remaining = lastRenderedIndex % maxComposeCount;
+    if (remaining > 0 && this._tokenPositions.length > 0) {
+      this.compose(fixedCamera, renderer, remaining);
     }
 
     renderer.setRenderTarget(null);
-    this._composedTargetReader.refresh(renderer);
   }
 
   resize(width: number, height: number) {
+    // Track dimensions at full resolution for checkLoS
+    this._losWidth = width;
+    this._losHeight = height;
     this._featureRenderTargets.forEach((t) => t.setSize(width, height));
     this._composeRenderTarget.setSize(width, height);
   }
@@ -850,6 +893,9 @@ export class LoS extends Drawn {
 
       this._composeGeometry.dispose();
       this._composeRenderTarget.dispose();
+
+      // Dispose pooled materials
+      this._composeMaterials.forEach((m) => m.dispose());
 
       this._isDisposed = true;
     }
