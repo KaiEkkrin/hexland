@@ -192,7 +192,7 @@ export class MapStateMachine {
 
     this._dragRectangle = new DragRectangle(
       this._drawing.outlinedRectangle, this._gridGeometry,
-      cp => this._drawing.getGridCoordAt(this._drawing.renderer, cp),
+      cp => this._drawing.getGridCoordAt(cp),
       t => getClientToWorld(t, this._drawing)
     );
 
@@ -298,7 +298,7 @@ export class MapStateMachine {
       const withinLoS = fluent(this._drawing.selection.faces).map(f => {
         this._gridGeometry.createCoordCentre(this._scratchVector1, coordAdd(f.position, delta), 0);
         this._scratchVector1.applyMatrix4(worldToLoSViewport);
-        return this._drawing.checkLoS(this._drawing.renderer, this._scratchVector1);
+        return this._drawing.checkLoS(this._scratchVector1);
       }).reduce((a, b) => a && b, true);
 
       if (withinLoS === false) {
@@ -448,7 +448,7 @@ export class MapStateMachine {
 
   private getAnchor(cp: THREE.Vector3, mode: 'vertex' | 'pixel'): Anchor | undefined {
     if (mode === 'vertex') {
-      const vertex = this._drawing.getGridVertexAt(this._drawing.renderer, cp);
+      const vertex = this._drawing.getGridVertexAt(cp);
       return vertex ? { anchorType: 'vertex', position: vertex } : undefined;
     } else {
       const clientToWorld = getClientToWorld(this._scratchMatrix1, this._drawing);
@@ -458,12 +458,12 @@ export class MapStateMachine {
   }
 
   private getClosestVertexPosition(cp: THREE.Vector3): GridVertex | undefined {
-    const vertexPosition = this._drawing.getGridVertexAt(this._drawing.renderer, cp);
+    const vertexPosition = this._drawing.getGridVertexAt(cp);
     if (vertexPosition !== undefined) {
       return vertexPosition;
     }
 
-    const coordPosition = this._drawing.getGridCoordAt(this._drawing.renderer, cp);
+    const coordPosition = this._drawing.getGridCoordAt(cp);
     if (coordPosition !== undefined) {
       return { ...coordPosition, vertex: 0 };
     }
@@ -472,7 +472,7 @@ export class MapStateMachine {
   }
 
   private getImageControlPointHitTest(cp: THREE.Vector3): (anchor: Anchor) => boolean {
-    const vertex = this._drawing.getGridVertexAt(this._drawing.renderer, cp);
+    const vertex = this._drawing.getGridVertexAt(cp);
     const clientToWorld = getClientToWorld(this._scratchMatrix1, this._drawing);
     const worldPosition = this._scratchVector1.copy(cp).applyMatrix4(clientToWorld);
     const hitDistanceSq = Math.pow(this._drawing.vertexHitDistance, 2);
@@ -735,7 +735,7 @@ export class MapStateMachine {
   private onPanningEnded() {
     const chs: Change[] = [];
     if (fluent(this._selection).concat(this._outlineSelection).any()) {
-      const position = this._drawing.getGridCoordAt(this._drawing.renderer, panningPosition);
+      const position = this._drawing.getGridCoordAt(panningPosition);
       if (position !== undefined) {
         this.tokenMoveDragEnd(position, chs);
       }
@@ -752,7 +752,7 @@ export class MapStateMachine {
 
     if (fluent(this._selection).concat(this._outlineSelection).any()) {
       // Start moving this selection along with the panning:
-      const position = this._drawing.getGridCoordAt(this._drawing.renderer, panningPosition);
+      const position = this._drawing.getGridCoordAt(panningPosition);
       if (position !== undefined) {
         this.tokenMoveDragStart(position);
       }
@@ -928,7 +928,7 @@ export class MapStateMachine {
       // Skip notes outside of the current LoS
       this._gridGeometry.createCoordCentre(target, n.position, 0);
       target.applyMatrix4(worldToLoSViewport);
-      if (!this.seeEverything && !this._drawing.checkLoS(this._drawing.renderer, target)) {
+      if (!this.seeEverything && !this._drawing.checkLoS(target)) {
         continue;
       }
 
@@ -1119,8 +1119,8 @@ export class MapStateMachine {
   faceDragEnd(cp: THREE.Vector3, colour: number, stripe: number, isPlayerArea: boolean): Change[] {
     this.panMarginReset();
     const result = isPlayerArea ?
-      this._playerFaceHighlighter.dragEnd(this._drawing.getGridCoordAt(this._drawing.renderer, cp), { colour, stripe }) :
-      this._faceHighlighter.dragEnd(this._drawing.getGridCoordAt(this._drawing.renderer, cp), { colour, stripe });
+      this._playerFaceHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), { colour, stripe }) :
+      this._faceHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), { colour, stripe });
     this._dragRectangle.reset();
     return result;
   }
@@ -1130,9 +1130,9 @@ export class MapStateMachine {
       this._dragRectangle.start(cp);
     }
     if (isPlayerArea) {
-      this._playerFaceHighlighter.dragStart(this._drawing.getGridCoordAt(this._drawing.renderer, cp), { colour, stripe });
+      this._playerFaceHighlighter.dragStart(this._drawing.getGridCoordAt(cp), { colour, stripe });
     } else {
-      this._faceHighlighter.dragStart(this._drawing.getGridCoordAt(this._drawing.renderer, cp), { colour, stripe });
+      this._faceHighlighter.dragStart(this._drawing.getGridCoordAt(cp), { colour, stripe });
     }
   }
 
@@ -1146,7 +1146,7 @@ export class MapStateMachine {
   }
 
   getImage(cp: THREE.Vector3): IMapImage | undefined {
-    const position = this._drawing.getGridCoordAt(this._drawing.renderer, cp);
+    const position = this._drawing.getGridCoordAt(cp);
     if (position === undefined) {
       return undefined;
     }
@@ -1171,7 +1171,7 @@ export class MapStateMachine {
 
   // For editing
   getNote(cp: THREE.Vector3): IAnnotation | undefined {
-    const position = this._drawing.getGridCoordAt(this._drawing.renderer, cp);
+    const position = this._drawing.getGridCoordAt(cp);
     if (position === undefined) {
       return undefined;
     }
@@ -1187,7 +1187,7 @@ export class MapStateMachine {
 
   getToken(cp: THREE.Vector3 | string): ITokenProperties | undefined {
     if (cp instanceof THREE.Vector3) {
-      const position = this._drawing.getGridCoordAt(this._drawing.renderer, cp);
+      const position = this._drawing.getGridCoordAt(cp);
       return this.getTokenAtPosition(position).token;
     }
 
@@ -1195,7 +1195,7 @@ export class MapStateMachine {
   }
 
   *getTokens(cp: THREE.Vector3): Iterable<ITokenProperties> {
-    const position = this._drawing.getGridCoordAt(this._drawing.renderer, cp);
+    const position = this._drawing.getGridCoordAt(cp);
     if (position !== undefined) {
       const regularToken = this._tokens.at(position);
       if (regularToken !== undefined) {
@@ -1230,7 +1230,7 @@ export class MapStateMachine {
     }
 
     this._dragRectangle.moveTo(cp);
-    highlighter.moveHighlight(this._drawing.getGridCoordAt(this._drawing.renderer, cp), { colour, stripe });
+    highlighter.moveHighlight(this._drawing.getGridCoordAt(cp), { colour, stripe });
   }
 
   moveSelectionTo(cp: THREE.Vector3) {
@@ -1243,7 +1243,7 @@ export class MapStateMachine {
       this.imageMoveDragTo(cp);
     } else if (this._tokenMoveDragStart !== undefined && this._tokenMoveDragSelectionPosition !== undefined) {
       this.panIfWithinMargin(cp);
-      const position = this._drawing.getGridCoordAt(this._drawing.renderer, cp);
+      const position = this._drawing.getGridCoordAt(cp);
       this.tokenMoveDragTo(position);
     } else if (this._dragRectangle.isEnabled()) {
       this.panIfWithinMargin(cp);
@@ -1252,7 +1252,7 @@ export class MapStateMachine {
   }
 
   moveTokenHighlightTo(cp: THREE.Vector3) {
-    const position = this._drawing.getGridCoordAt(this._drawing.renderer, cp);
+    const position = this._drawing.getGridCoordAt(cp);
     this._selectionDrag.clear();
     if (position !== undefined) {
       // Create a minimal size-1 token highlight at this position
@@ -1271,7 +1271,7 @@ export class MapStateMachine {
 
     this._dragRectangle.moveTo(cp);
     this._roomHighlighter.difference = shiftKey;
-    this._roomHighlighter.moveHighlight(this._drawing.getGridCoordAt(this._drawing.renderer, cp), { colour });
+    this._roomHighlighter.moveHighlight(this._drawing.getGridCoordAt(cp), { colour });
   }
 
   moveWallHighlightTo(cp: THREE.Vector3, shiftKey: boolean, colour: number) {
@@ -1289,9 +1289,9 @@ export class MapStateMachine {
         this._wallHighlighter.clear();
       }
 
-      this._wallRectangleHighlighter.moveHighlight(this._drawing.getGridCoordAt(this._drawing.renderer, cp), { colour });
+      this._wallRectangleHighlighter.moveHighlight(this._drawing.getGridCoordAt(cp), { colour });
     } else {
-      this._wallHighlighter.moveHighlight(this._drawing.getGridVertexAt(this._drawing.renderer, cp), { colour });
+      this._wallHighlighter.moveHighlight(this._drawing.getGridVertexAt(cp), { colour });
       if (!this._wallHighlighter.inDrag) {
         this._wallRectangleHighlighter.clear();
       }
@@ -1398,7 +1398,7 @@ export class MapStateMachine {
   roomDragEnd(cp: THREE.Vector3, shiftKey: boolean, colour: number): Change[] {
     this.panMarginReset();
     this._roomHighlighter.difference = shiftKey;
-    const result = this._roomHighlighter.dragEnd(this._drawing.getGridCoordAt(this._drawing.renderer, cp), { colour });
+    const result = this._roomHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), { colour });
     this._dragRectangle.reset();
     return result;
   }
@@ -1406,14 +1406,14 @@ export class MapStateMachine {
   roomDragStart(cp: THREE.Vector3, shiftKey: boolean, colour: number) {
     this._dragRectangle.start(cp);
     this._roomHighlighter.difference = shiftKey;
-    this._roomHighlighter.dragStart(this._drawing.getGridCoordAt(this._drawing.renderer, cp), { colour });
+    this._roomHighlighter.dragStart(this._drawing.getGridCoordAt(cp), { colour });
   }
 
   // Selects the token or image at the client position, if there is one,
   // and begins a drag move for it.
   // Returns true if it selected something, else false.
   selectTokenOrImage(cp: THREE.Vector3, shiftKey: boolean, layer: Layer) {
-    const position = this._drawing.getGridCoordAt(this._drawing.renderer, cp);
+    const position = this._drawing.getGridCoordAt(cp);
     if (position === undefined) {
       return undefined;
     }
@@ -1457,7 +1457,7 @@ export class MapStateMachine {
 
   selectionDragEnd(cp: THREE.Vector3, layer: Layer): Change[] {
     this.panMarginReset();
-    const position = this._drawing.getGridCoordAt(this._drawing.renderer, cp);
+    const position = this._drawing.getGridCoordAt(cp);
     const chs: Change[] = [];
     if (position) {
       if (this._tokenMoveDragStart !== undefined) {
@@ -1510,7 +1510,7 @@ export class MapStateMachine {
         return;
       }
     } else {
-      const position = this._drawing.getGridCoordAt(this._drawing.renderer, cp);
+      const position = this._drawing.getGridCoordAt(cp);
       if (
         position !== undefined &&
         (position.isTokenFace ? this._selection : this._outlineSelection).at(position) !== undefined
@@ -1559,7 +1559,7 @@ export class MapStateMachine {
   }
 
   setNote(cp: THREE.Vector3, id: string, colour: number, text: string, visibleToPlayers: boolean): Change[] {
-    const position = this._drawing.getGridCoordAt(this._drawing.renderer, cp);
+    const position = this._drawing.getGridCoordAt(cp);
     const chs: Change[] = [];
     if (position !== undefined) {
       if (this._notes.get(position) !== undefined) {
@@ -1609,7 +1609,7 @@ export class MapStateMachine {
   }
 
   setToken(cp: THREE.Vector3, properties: ITokenProperties | undefined) {
-    const position = this._drawing.getGridCoordAt(this._drawing.renderer, cp);
+    const position = this._drawing.getGridCoordAt(cp);
     if (position !== undefined) {
       const token = properties === undefined ? this.findToken(position, undefined) :
         this._tokens.ofId(properties.id) ?? this._outlineTokens.ofId(properties.id);
@@ -1639,8 +1639,8 @@ export class MapStateMachine {
   wallDragEnd(cp: THREE.Vector3, colour: number): Change[] {
     this.panMarginReset();
     const result = this._dragRectangle.isEnabled() ?
-      this._wallRectangleHighlighter.dragEnd(this._drawing.getGridCoordAt(this._drawing.renderer, cp), { colour }) :
-      this._wallHighlighter.dragEnd(this._drawing.getGridVertexAt(this._drawing.renderer, cp), { colour });
+      this._wallRectangleHighlighter.dragEnd(this._drawing.getGridCoordAt(cp), { colour }) :
+      this._wallHighlighter.dragEnd(this._drawing.getGridVertexAt(cp), { colour });
     this._dragRectangle.reset();
     return result;
   }
@@ -1648,9 +1648,9 @@ export class MapStateMachine {
   wallDragStart(cp: THREE.Vector3, shiftKey: boolean, colour: number) {
     if (shiftKey) {
       this._dragRectangle.start(cp);
-      this._wallRectangleHighlighter.dragStart(this._drawing.getGridCoordAt(this._drawing.renderer, cp), { colour });
+      this._wallRectangleHighlighter.dragStart(this._drawing.getGridCoordAt(cp), { colour });
     } else {
-      this._wallHighlighter.dragStart(this._drawing.getGridVertexAt(this._drawing.renderer, cp), { colour });
+      this._wallHighlighter.dragStart(this._drawing.getGridVertexAt(cp), { colour });
     }
   }
 

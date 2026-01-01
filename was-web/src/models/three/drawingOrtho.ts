@@ -484,16 +484,16 @@ export class DrawingOrtho implements IDrawing {
     postAnimate?.();
   }
 
-  checkLoS(renderer: THREE.WebGLRenderer, cp: THREE.Vector3) {
-    return this._showLoS ? (this._los.checkLoS(renderer, cp) ?? false) : true;
+  checkLoS(cp: THREE.Vector3) {
+    return this._showLoS ? (this._los.checkLoS(this._renderer, cp) ?? false) : true;
   }
 
-  getGridCoordAt(renderer: THREE.WebGLRenderer, cp: THREE.Vector3): GridCoord & { isTokenFace: boolean } | undefined {
-    return this._grid.getGridCoordAt(renderer, cp);
+  getGridCoordAt(cp: THREE.Vector3): GridCoord & { isTokenFace: boolean } | undefined {
+    return this._grid.getGridCoordAt(this._renderer, cp);
   }
 
-  getGridVertexAt(renderer: THREE.WebGLRenderer, cp: THREE.Vector3): GridVertex | undefined {
-    return this._grid.getGridVertexAt(renderer, cp);
+  getGridVertexAt(cp: THREE.Vector3): GridVertex | undefined {
+    return this._grid.getGridVertexAt(this._renderer, cp);
   }
 
   getViewportToWorld(target: THREE.Matrix4): THREE.Matrix4 {

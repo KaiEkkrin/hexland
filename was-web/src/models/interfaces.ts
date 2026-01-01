@@ -59,12 +59,12 @@ export interface IDrawing {
   animate(onPreAnimate?: (() => void) | undefined, onPostAnimate?: (() => void) | undefined): void;
 
   // Checks whether the given LoS viewport position (-1..1) is within the current LoS.
-  checkLoS(renderer: THREE.WebGLRenderer, cp: THREE.Vector3): boolean;
+  checkLoS(cp: THREE.Vector3): boolean;
 
   // These functions turn viewport co-ordinates (0..windowWidth, 0..windowHeight)
   // into face, edge or vertex coords
-  getGridCoordAt(renderer: THREE.WebGLRenderer, cp: THREE.Vector3): GridCoord & { isTokenFace: boolean } | undefined;
-  getGridVertexAt(renderer: THREE.WebGLRenderer, cp: THREE.Vector3): GridVertex | undefined;
+  getGridCoordAt(cp: THREE.Vector3): GridCoord & { isTokenFace: boolean } | undefined;
+  getGridVertexAt(cp: THREE.Vector3): GridVertex | undefined;
 
   // Gets a viewport-to-world transfomation matrix, where the viewport visible
   // range is (-1..1).
