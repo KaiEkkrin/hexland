@@ -8,158 +8,57 @@
 # ⚠️  It does NOT auto-deploy on push (unlike the test environment).
 #
 # This is a CALLER WORKFLOW that invokes the shared deployment logic in
-# deploy-firebase.yml. See that file for the actual deployment steps.
+# deploy-firebase.yml. See that file for:
+#   - Complete setup instructions
+#   - How to configure secrets
+#   - Security best practices
+#   - Troubleshooting tips
 #
 # =============================================================================
-# SETUP INSTRUCTIONS - Read this before first deployment!
+# QUICK SETUP CHECKLIST
 # =============================================================================
 #
-# You need to configure a GitHub ENVIRONMENT with TWO secrets:
+# Before first deployment, complete these steps (details in deploy-firebase.yml):
 #
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ STEP 1: Create the "production" GitHub Environment                      │
-# └─────────────────────────────────────────────────────────────────────────┘
+# 1. Create GitHub Environment named "production"
+#    Settings → Environments → New environment → "production"
+#    RECOMMENDED: Configure protection rules (limit to main branch, add reviewers)
 #
-# 1. Go to your GitHub repository
-# 2. Click "Settings" tab
-# 3. In left sidebar: "Environments"
-# 4. Click "New environment"
-# 5. Name: production
-# 6. Click "Configure environment"
-# 7. (RECOMMENDED) Configure protection rules:
-#    - Deployment branches: Limit to "main" branch only
-#    - Required reviewers: Add trusted team members (requires GitHub Enterprise)
-#    - Wait timer: Optional delay before deployment (e.g., 5 minutes)
+# 2. Generate Firebase service account key (SEPARATE from test!)
+#    Firebase Console → Project Settings → Service Accounts → Generate New Private Key
 #
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ STEP 2: Add FIREBASE_SERVICE_ACCOUNT secret to "production" environment │
-# └─────────────────────────────────────────────────────────────────────────┘
+# 3. Add "Firebase Admin" role to the service account
+#    Google Cloud Console → IAM → Edit service account → Add role
 #
-# This is the Firebase service account credentials that allow GitHub to deploy
-# to your PRODUCTION Firebase project.
+# 4. Add FIREBASE_SERVICE_ACCOUNT secret (base64-encoded JSON)
+#    GitHub → Settings → Environments → production → Add secret
 #
-# ⚠️  IMPORTANT: Use a DIFFERENT service account than your test environment!
+# 5. Add FIREBASE_PROJECT_ID secret
+#    GitHub → Settings → Environments → production → Add secret
+#
+# 6. Grant Pub/Sub Publisher role to Cloud Storage service agent (one-time)
+#    Required for storage-triggered functions like onUpload
+#
+# =============================================================================
+# PRODUCTION-SPECIFIC NOTES
+# =============================================================================
+#
+# ⚠️  Use a DIFFERENT service account than your test environment!
 # ⚠️  Never share credentials between test and production.
 #
-# HOW TO GENERATE A NEW SERVICE ACCOUNT KEY:
-# -------------------------------------------
-# 1. Go to Firebase Console: https://console.firebase.google.com
-# 2. Select your PRODUCTION project (e.g., "wallandshadow")
-# 3. Click the gear icon (⚙️) → "Project settings"
-# 4. Navigate to the "Service Accounts" tab
-# 5. Click "Generate New Private Key" button
-# 6. Click "Generate Key" to confirm
-# 7. A JSON file will download (e.g., "wallandshadow-firebase-adminsdk-xxxxx.json")
-#    ⚠️  KEEP THIS FILE SECURE - It contains sensitive credentials!
-#    ⚠️  This is PRODUCTION - extra care required!
-#
-# IMPORTANT: Generating a new key does NOT invalidate old keys!
-# Old keys remain valid until you explicitly delete them.
-#
-# REQUIRED PERMISSIONS:
-# ---------------------
-# Add the "Firebase Admin" role to the service account for full deployment access.
-#
-# HOW TO ADD FIREBASE ADMIN ROLE:
-# --------------------------------
-# 1. Go to: https://console.cloud.google.com/iam-admin/iam?project=YOUR_PRODUCTION_PROJECT_ID
-# 2. Find your Firebase Admin SDK service account:
-#    firebase-adminsdk-xxxxx@YOUR-PRODUCTION-PROJECT-ID.iam.gserviceaccount.com
-# 3. Click the ✏️ (pencil/edit) icon
-# 4. Click "Add Another Role"
-# 5. Search for and select: "Firebase Admin"
-# 6. Click "Save"
-# 7. Wait 2-5 minutes for IAM changes to propagate
-#
-# ALTERNATIVE (More Secure for Production):
-# If you need granular permissions for production security, add these roles instead:
-# - Service Account User
-# - Service Usage Consumer
-# - Cloud Storage for Firebase Viewer
-# - Firebase Hosting Admin
-# - Cloud Functions Admin
-# - Firebase Rules Admin
-# - Cloud Datastore Index Admin
-#
-# HOW TO ENCODE AND ADD TO GITHUB ENVIRONMENT:
-# ---------------------------------------------
-# On Linux/macOS/WSL:
-#   1. Open terminal
-#   2. Navigate to where you downloaded the JSON file
-#   3. Encode it to base64:
-#        cat wallandshadow-firebase-adminsdk-xxxxx.json | base64 -w 0 > encoded.txt
-#      (The -w 0 flag prevents line wrapping)
-#   4. Copy the contents of encoded.txt
-#   5. DELETE the original JSON file and encoded.txt after adding to GitHub
-#
-# On Windows PowerShell:
-#   1. Open PowerShell
-#   2. Navigate to where you downloaded the JSON file
-#   3. Encode it to base64:
-#        [Convert]::ToBase64String([IO.File]::ReadAllBytes("wallandshadow-firebase-adminsdk-xxxxx.json")) | Out-File -Encoding ASCII encoded.txt
-#   4. Copy the contents of encoded.txt
-#   5. DELETE the original JSON file and encoded.txt after adding to GitHub
-#
-# ADD TO GITHUB ENVIRONMENT SECRETS:
-#   1. Go to your GitHub repository → Settings → Environments → production
-#   2. Under "Environment secrets", click "Add secret"
-#   3. Name: FIREBASE_SERVICE_ACCOUNT
-#   4. Value: Paste the base64-encoded string (the contents of encoded.txt)
-#   5. Click "Add secret"
-#
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ STEP 3: Add FIREBASE_PROJECT_ID secret to "production" environment      │
-# └─────────────────────────────────────────────────────────────────────────┘
-#
-# This is your PRODUCTION Firebase project ID (e.g., "wallandshadow").
-#
-# HOW TO FIND YOUR PROJECT ID:
-# -----------------------------
-# Option 1: From Firebase Console
-#   - Open Firebase Console: https://console.firebase.google.com
-#   - Select your PRODUCTION project
-#   - The project ID is shown under the project name at the top
-#
-# Option 2: From your local .firebaserc file
-#   - Look in was-web/.firebaserc
-#   - Use the "production" alias (e.g., "wallandshadow")
-#
-# ADD TO GITHUB ENVIRONMENT SECRETS:
-#   1. Go to your GitHub repository → Settings → Environments → production
-#   2. Under "Environment secrets", click "Add secret"
-#   3. Name: FIREBASE_PROJECT_ID
-#   4. Value: Your PRODUCTION project ID (e.g., "wallandshadow")
-#   5. Click "Add secret"
-#
-# =============================================================================
-# SECURITY NOTES FOR PRODUCTION
-# =============================================================================
-#
-# ✅ DO:
-#   - Rotate service account keys every 90 days (more frequently for production)
-#   - Use a SEPARATE service account from test environment
-#   - Enable required reviewers if on GitHub Enterprise
-#   - Monitor Firebase Console for unexpected deployments
-#   - Set up Firebase budget alerts
-#   - Keep a backup of the previous deployment (git tags)
-#   - Test thoroughly in test environment before deploying to production
-#   - Document each production deployment (release notes, version tags)
-#
-# ❌ DON'T:
-#   - Never commit the service account JSON to git
-#   - Never use the same credentials as test environment
-#   - Never deploy to production without testing first
-#   - Never bypass manual approval process
-#   - Don't grant unnecessary permissions to the service account
+# RECOMMENDED WORKFLOW:
+#   1. Push changes to main (auto-deploys to test environment)
+#   2. Test thoroughly in test environment
+#   3. Create a git tag for the release (e.g., `git tag v1.5.0 && git push --tags`)
+#   4. Manually trigger this workflow to deploy to production
+#   5. Monitor for errors and verify functionality
+#   6. If issues occur, deploy the previous tagged version
 #
 # =============================================================================
 # TRIGGERING DEPLOYMENTS
 # =============================================================================
 #
-# ⚠️  This workflow ONLY runs when manually triggered.
-# ⚠️  There is NO automatic deployment on push for production.
-#
-# To deploy to production:
+# This workflow ONLY runs when manually triggered:
 #   1. Go to your repository on GitHub
 #   2. Click "Actions" tab
 #   3. Select "Deploy to Production" workflow
@@ -167,17 +66,6 @@
 #   5. Select branch (usually "main")
 #   6. ⚠️  DOUBLE-CHECK you're deploying the correct branch!
 #   7. Click "Run workflow"
-#   8. Monitor the deployment in the Actions tab
-#   9. Verify the deployment at https://YOUR-PRODUCTION-PROJECT-ID.web.app
-#
-# RECOMMENDED WORKFLOW:
-# ---------------------
-# 1. Push changes to main (auto-deploys to test environment)
-# 2. Test thoroughly in test environment
-# 3. Create a git tag for the release (e.g., `git tag v1.5.0 && git push --tags`)
-# 4. Manually trigger this workflow to deploy to production
-# 5. Monitor for errors and verify functionality
-# 6. If issues occur, deploy the previous tagged version
 #
 # =============================================================================
 
@@ -186,8 +74,6 @@ name: Deploy to Production
 on:
   workflow_dispatch: # ONLY manual triggering - no auto-deploy
 
-# Least-privilege permissions: only read access to repository contents
-# Deployment to Firebase is handled via service account credentials (not GITHUB_TOKEN)
 permissions:
   contents: read
 
