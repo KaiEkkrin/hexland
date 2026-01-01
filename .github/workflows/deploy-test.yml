@@ -6,183 +6,43 @@
 # environment when code is pushed to the main branch.
 #
 # This is a CALLER WORKFLOW that invokes the shared deployment logic in
-# deploy-firebase.yml. See that file for the actual deployment steps.
+# deploy-firebase.yml. See that file for:
+#   - Complete setup instructions
+#   - How to configure secrets
+#   - Security best practices
+#   - Troubleshooting tips
 #
 # =============================================================================
-# SETUP INSTRUCTIONS - Read this before first deployment!
+# QUICK SETUP CHECKLIST
 # =============================================================================
 #
-# You need to configure a GitHub ENVIRONMENT with TWO secrets:
+# Before first deployment, complete these steps (details in deploy-firebase.yml):
 #
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ STEP 1: Create the "test" GitHub Environment                            │
-# └─────────────────────────────────────────────────────────────────────────┘
+# 1. Create GitHub Environment named "test"
+#    Settings → Environments → New environment → "test"
 #
-# 1. Go to your GitHub repository
-# 2. Click "Settings" tab
-# 3. In left sidebar: "Environments"
-# 4. Click "New environment"
-# 5. Name: test
-# 6. Click "Configure environment"
-# 7. (Optional) Configure protection rules:
-#    - Deployment branches: Limit to "main" branch only
-#    - You probably DON'T want required reviewers for test environment
+# 2. Generate Firebase service account key
+#    Firebase Console → Project Settings → Service Accounts → Generate New Private Key
 #
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ STEP 2: Add FIREBASE_SERVICE_ACCOUNT secret to "test" environment       │
-# └─────────────────────────────────────────────────────────────────────────┘
+# 3. Add "Firebase Admin" role to the service account
+#    Google Cloud Console → IAM → Edit service account → Add role
 #
-# This is the Firebase service account credentials that allow GitHub to deploy
-# to your TEST Firebase project.
+# 4. Add FIREBASE_SERVICE_ACCOUNT secret (base64-encoded JSON)
+#    GitHub → Settings → Environments → test → Add secret
 #
-# HOW TO GENERATE A NEW SERVICE ACCOUNT KEY:
-# -------------------------------------------
-# 1. Go to Firebase Console: https://console.firebase.google.com
-# 2. Select your TEST project (e.g., "hexland-test-25")
-# 3. Click the gear icon (⚙️) → "Project settings"
-# 4. Navigate to the "Service Accounts" tab
-# 5. Click "Generate New Private Key" button
-# 6. Click "Generate Key" to confirm
-# 7. A JSON file will download (e.g., "hexland-test-25-firebase-adminsdk-xxxxx.json")
-#    ⚠️  KEEP THIS FILE SECURE - It contains sensitive credentials!
+# 5. Add FIREBASE_PROJECT_ID secret
+#    GitHub → Settings → Environments → test → Add secret
 #
-# IMPORTANT: Generating a new key does NOT invalidate old keys!
-# Old keys remain valid until you explicitly delete them.
-#
-# REQUIRED PERMISSIONS:
-# ---------------------
-# Add the "Firebase Admin" and "Service Account User" roles to the service account for full deployment access.
-#
-# HOW TO ADD FIREBASE ADMIN ROLE:
-# --------------------------------
-# 1. Go to: https://console.cloud.google.com/iam-admin/iam?project=YOUR_TEST_PROJECT_ID
-# 2. Find your Firebase Admin SDK service account:
-#    firebase-adminsdk-xxxxx@YOUR-TEST-PROJECT-ID.iam.gserviceaccount.com
-# 3. Click the ✏️ (pencil/edit) icon
-# 4. Click "Add Another Role"
-# 5. Search for and select: "Firebase Admin"
-# 6. Click "Save"
-# 7. Wait 2-5 minutes for IAM changes to propagate
-#
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ ONE-TIME SETUP: Cloud Storage Trigger Permissions                       │
-# └─────────────────────────────────────────────────────────────────────────┘
-#
-# If deploying Cloud Storage-triggered functions (like onUpload), you must
-# grant the Cloud Storage service agent the Pub/Sub Publisher role. This is
-# a ONE-TIME setup per project. Without this, you'll get:
-#   "Failed to configure trigger providers/cloud.storage/eventTypes/object.change"
-#
-# OPTION A: Using Google Cloud Console (Recommended)
-# ---------------------------------------------------
-# 1. Go to: https://console.cloud.google.com/iam-admin/iam?project=YOUR_TEST_PROJECT_ID
-# 2. Check "Include Google-provided role grants" checkbox
-# 3. Find the Cloud Storage service agent:
-#    service-PROJECT_NUMBER@gs-project-accounts.iam.gserviceaccount.com
-#    (Note: PROJECT_NUMBER is numeric, not the project ID)
-# 4. Click the ✏️ (pencil/edit) icon
-# 5. Click "Add Another Role"
-# 6. Search for and select: "Pub/Sub Publisher" (roles/pubsub.publisher)
-# 7. Click "Save"
-# 8. Wait 2-5 minutes for IAM changes to propagate
-#
-# OPTION B: Using gcloud CLI
-# --------------------------
-# Run these commands (requires gcloud CLI installed and authenticated):
-#
-#   # Get your project number
-#   PROJECT_NUMBER=$(gcloud projects describe YOUR_TEST_PROJECT_ID --format="value(projectNumber)")
-#
-#   # Grant Pub/Sub Publisher role to Cloud Storage service agent
-#   gcloud projects add-iam-policy-binding YOUR_TEST_PROJECT_ID \
-#     --member="serviceAccount:service-${PROJECT_NUMBER}@gs-project-accounts.iam.gserviceaccount.com" \
-#     --role="roles/pubsub.publisher"
-#
-# For more details, see:
-# https://cloud.google.com/functions/docs/calling/storage
-#
-# HOW TO ENCODE AND ADD TO GITHUB ENVIRONMENT:
-# ---------------------------------------------
-# On Linux/macOS/WSL:
-#   1. Open terminal
-#   2. Navigate to where you downloaded the JSON file
-#   3. Encode it to base64:
-#        cat hexland-test-25-firebase-adminsdk-xxxxx.json | base64 -w 0 > encoded.txt
-#      (The -w 0 flag prevents line wrapping)
-#   4. Copy the contents of encoded.txt
-#   5. DELETE the original JSON file and encoded.txt after adding to GitHub
-#
-# On Windows PowerShell:
-#   1. Open PowerShell
-#   2. Navigate to where you downloaded the JSON file
-#   3. Encode it to base64:
-#        [Convert]::ToBase64String([IO.File]::ReadAllBytes("hexland-test-25-firebase-adminsdk-xxxxx.json")) | Out-File -Encoding ASCII encoded.txt
-#   4. Copy the contents of encoded.txt
-#   5. DELETE the original JSON file and encoded.txt after adding to GitHub
-#
-# ADD TO GITHUB ENVIRONMENT SECRETS:
-#   1. Go to your GitHub repository → Settings → Environments → test
-#   2. Under "Environment secrets", click "Add secret"
-#   3. Name: FIREBASE_SERVICE_ACCOUNT
-#   4. Value: Paste the base64-encoded string (the contents of encoded.txt)
-#   5. Click "Add secret"
-#
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ STEP 3: Add FIREBASE_PROJECT_ID secret to "test" environment            │
-# └─────────────────────────────────────────────────────────────────────────┘
-#
-# This is your TEST Firebase project ID (e.g., "hexland-test-25").
-#
-# HOW TO FIND YOUR PROJECT ID:
-# -----------------------------
-# Option 1: From Firebase Console
-#   - Open Firebase Console: https://console.firebase.google.com
-#   - Select your TEST project
-#   - The project ID is shown under the project name at the top
-#
-# Option 2: From your local .firebaserc file
-#   - Look in was-web/.firebaserc
-#   - Use the "default" alias (e.g., "hexland-test-25")
-#
-# ADD TO GITHUB ENVIRONMENT SECRETS:
-#   1. Go to your GitHub repository → Settings → Environments → test
-#   2. Under "Environment secrets", click "Add secret"
-#   3. Name: FIREBASE_PROJECT_ID
-#   4. Value: Your TEST project ID (e.g., "hexland-test-25")
-#   5. Click "Add secret"
-#
-# =============================================================================
-# SECURITY NOTES
-# =============================================================================
-#
-# ✅ DO:
-#   - Rotate service account keys every 90 days (regenerate and update secret)
-#   - Use SEPARATE service accounts for test and production environments
-#   - Delete service account keys from your local machine after adding to GitHub
-#   - Review GitHub's audit log periodically for secret access
-#   - Set up Firebase budget alerts to monitor usage
-#
-# ❌ DON'T:
-#   - Never commit the service account JSON to git (it's in .gitignore)
-#   - Don't use the same service account across multiple repositories
-#   - Don't share the base64-encoded secret outside of GitHub
-#   - Don't grant more permissions than necessary to the service account
+# 6. Grant Pub/Sub Publisher role to Cloud Storage service agent (one-time)
+#    Required for storage-triggered functions like onUpload
 #
 # =============================================================================
 # TRIGGERING DEPLOYMENTS
 # =============================================================================
 #
-# This workflow will automatically run when:
-#   - Code is pushed to the main branch (auto-deploy)
-#   - You manually trigger it via GitHub Actions UI (Actions tab → Deploy to Test → Run workflow)
-#
-# To deploy manually without pushing:
-#   1. Go to your repository on GitHub
-#   2. Click "Actions" tab
-#   3. Select "Deploy to Test" workflow
-#   4. Click "Run workflow" dropdown
-#   5. Select branch (usually "main")
-#   6. Click "Run workflow"
+# This workflow runs automatically when:
+#   - Code is pushed to the main branch
+#   - You manually trigger it (Actions tab → Deploy to Test → Run workflow)
 #
 # =============================================================================
 
@@ -193,8 +53,6 @@ on:
     branches: [main]
   workflow_dispatch: # Allow manual triggering from GitHub UI
 
-# Least-privilege permissions: only read access to repository contents
-# Deployment to Firebase is handled via service account credentials (not GITHUB_TOKEN)
 permissions:
   contents: read
 
