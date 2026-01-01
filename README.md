@@ -1,6 +1,6 @@
 # Wall & Shadow
 
-This project contains the source code for Wall & Shadow. It is available under the terms of the [Apache License, version 2.0](http://www.apache.org/licenses/LICENSE-2.0) -- see the LICENSE file.
+This project contains the source code for [Wall & Shadow](https://wallandshadow.web.app). It is available under the terms of the [Apache License, version 2.0](http://www.apache.org/licenses/LICENSE-2.0) -- see the LICENSE file.
 
 Wall & Shadow is a lightweight VTT (virtual tabletop) focused on providing a fast, on-the-fly battle map creation experience. It's aimed at groups who might:
 
