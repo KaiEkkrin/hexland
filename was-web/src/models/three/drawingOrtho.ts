@@ -377,6 +377,8 @@ export class DrawingOrtho implements IDrawing {
     this._outlinedRectangle.addToScene(this._overlayScene);
   }
 
+  get renderer() { return this._renderer; }
+
   get areas() { return this._areas; }
   get playerAreas() { return this._playerAreas; }
   get tokens() { return this._tokens; }
@@ -418,7 +420,7 @@ export class DrawingOrtho implements IDrawing {
 
     // Check that we have enough grid.
     // If we don't, we'll fill it in on the next frame:
-    this._grid.fitGridToFrame();
+    this._grid.fitGridToFrame(this._renderer);
 
     // Don't re-render the visible scene unless something changed:
     // (Careful -- don't chain these method calls up with ||, it's important
@@ -482,16 +484,16 @@ export class DrawingOrtho implements IDrawing {
     postAnimate?.();
   }
 
-  checkLoS(cp: THREE.Vector3) {
-    return this._showLoS ? (this._los.checkLoS(cp) ?? false) : true;
+  checkLoS(renderer: THREE.WebGLRenderer, cp: THREE.Vector3) {
+    return this._showLoS ? (this._los.checkLoS(renderer, cp) ?? false) : true;
   }
 
-  getGridCoordAt(cp: THREE.Vector3): GridCoord & { isTokenFace: boolean } | undefined {
-    return this._grid.getGridCoordAt(cp);
+  getGridCoordAt(renderer: THREE.WebGLRenderer, cp: THREE.Vector3): GridCoord & { isTokenFace: boolean } | undefined {
+    return this._grid.getGridCoordAt(renderer, cp);
   }
 
-  getGridVertexAt(cp: THREE.Vector3): GridVertex | undefined {
-    return this._grid.getGridVertexAt(this._renderer, cp);
+  getGridVertexAt(renderer: THREE.WebGLRenderer, cp: THREE.Vector3): GridVertex | undefined {
+    return this._grid.getGridVertexAt(renderer, cp);
   }
 
   getViewportToWorld(target: THREE.Matrix4): THREE.Matrix4 {

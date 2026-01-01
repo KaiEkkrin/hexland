@@ -6,10 +6,8 @@ import { IGridGeometry } from "../gridGeometry";
 import { InstancedFeatureObject } from "./instancedFeatureObject";
 import { InstancedFeatures } from "./instancedFeatures";
 import { RedrawFlag } from "../redrawFlag";
-import { RenderTargetReader } from "./renderTargetReader";
 
 import * as THREE from "three";
-import fluent from "fluent-iterable";
 
 // Shader-based LoS.
 // Careful with this!  In order for it to work correctly, we need to not use the built-in
@@ -177,7 +175,7 @@ export class LoS extends Drawn {
   private readonly _composeRenderTarget: THREE.WebGLRenderTarget;
   private readonly _composeScene: THREE.Scene;
 
-  private readonly _composedTargetReader: RenderTargetReader;
+  private readonly _losTexelReadBuf = new Uint8Array(36); // 3x3 pixels × 4 bytes
 
   private _tokenPositions: LoSPosition[] = [];
 
@@ -267,10 +265,6 @@ export class LoS extends Drawn {
       this._losHeight
     );
     this._composeScene = new THREE.Scene();
-
-    this._composedTargetReader = new RenderTargetReader(
-      this._composeRenderTarget
-    );
 
     // Create the geometry we use to compose the LoS together
     this._composeGeometry = new THREE.BufferGeometry().setFromPoints([
@@ -413,29 +407,52 @@ export class LoS extends Drawn {
 
   // Checks the LoS for the given client position and returns true if the position
   // is visible, else false.
-  checkLoS(cp: THREE.Vector3) {
+  checkLoS(renderer: THREE.WebGLRenderer, cp: THREE.Vector3) {
     // Use the tracked LoS dimensions (reduced resolution)
-    const x = Math.floor((cp.x + 1) * 0.5 * this._losWidth);
-    const y = Math.floor((cp.y + 1) * 0.5 * this._losHeight);
-    // Sample offset reduced to 1 since we're at 1/4 resolution (1 pixel = 4 original pixels)
-    function* enumerateSamplePositions() {
-      yield [x, y];
-      yield [x - 1, y - 1];
-      yield [x + 1, y - 1];
-      yield [x - 1, y + 1];
-      yield [x + 1, y + 1];
+    const cx = Math.floor((cp.x + 1) * 0.5 * this._losWidth);
+    const cy = Math.floor((cp.y + 1) * 0.5 * this._losHeight);
+
+    // Calculate clipped 3x3 region (handle edges)
+    const x0 = Math.max(0, cx - 1);
+    const y0 = Math.max(0, cy - 1);
+    const x1 = Math.min(this._losWidth, cx + 2); // exclusive
+    const y1 = Math.min(this._losHeight, cy + 2); // exclusive
+    const w = x1 - x0;
+    const h = y1 - y0;
+
+    if (w <= 0 || h <= 0) {
+      return false; // Completely out of bounds
     }
 
-    // Invert sample values since black (0) = visible, white (255) = shadow
-    const visibleCount = fluent(enumerateSamplePositions())
-      .map((p) =>
-        this._composedTargetReader.sample(
-          p[0],
-          p[1],
-          (buf, offset) => 255 - (buf[offset] ?? 255)
-        )
-      )
-      .sum();
+    // Read the clipped region
+    renderer.readRenderTargetPixels(
+      this._composeRenderTarget,
+      x0,
+      y0,
+      w,
+      h,
+      this._losTexelReadBuf
+    );
+
+    // Sample the 5 positions (center + 4 corners) that fall within the read region
+    // Positions relative to read origin (x0, y0)
+    const positions = [
+      [cx - x0, cy - y0], // center
+      [cx - 1 - x0, cy - 1 - y0], // top-left
+      [cx + 1 - x0, cy - 1 - y0], // top-right
+      [cx - 1 - x0, cy + 1 - y0], // bottom-left
+      [cx + 1 - x0, cy + 1 - y0], // bottom-right
+    ];
+
+    let visibleCount = 0;
+    for (const [px, py] of positions) {
+      if (px < 0 || py < 0 || px >= w || py >= h) {
+        continue; // This sample is outside the clipped region
+      }
+      const offset = (py * w + px) * 4;
+      visibleCount += 255 - (this._losTexelReadBuf[offset] ?? 255);
+    }
+
     return visibleCount > 0.1;
   }
 
@@ -520,7 +537,6 @@ export class LoS extends Drawn {
     }
 
     renderer.setRenderTarget(null);
-    this._composedTargetReader.refresh(renderer);
   }
 
   resize(width: number, height: number) {

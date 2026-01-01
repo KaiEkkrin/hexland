@@ -6,7 +6,6 @@ import { IGridGeometry } from '../gridGeometry';
 import { InstancedFeatureObject } from './instancedFeatureObject';
 import { IGridBounds } from '../interfaces';
 import { RedrawFlag } from '../redrawFlag';
-import { RenderTargetReader } from './renderTargetReader';
 import { createVertexGeometry, Vertices, createVertices } from './vertices';
 
 import * as THREE from 'three';
@@ -233,7 +232,6 @@ export class Grid extends Drawn {
   private readonly _faceCoordRenderTarget: THREE.WebGLRenderTarget;
   private readonly _vertexCoordRenderTarget: THREE.WebGLRenderTarget;
 
-  private readonly _faceCoordTargetReader: RenderTargetReader;
   private readonly _texelReadBuf = new Uint8Array(4);
 
   private readonly _temp: FeatureDictionary<GridCoord, IFeature<GridCoord>>;
@@ -297,10 +295,6 @@ export class Grid extends Drawn {
 
     this._temp = new FeatureDictionary<GridCoord, IFeature<GridCoord>>(coordString);
 
-    // We'll be wanting to sample the coord render target a lot in order to detect what grid to draw,
-    // so we'll set up a reader
-    this._faceCoordTargetReader = new RenderTargetReader(this._faceCoordRenderTarget);
-
     // We always start up with the middle of the grid by default:
     this.extendAcrossRange({ minS: -1, minT: -1, maxS: 1, maxT: 1 });
   }
@@ -356,21 +350,21 @@ export class Grid extends Drawn {
     return countAdded;
   }
 
-  private *getGridSamples(width: number, height: number) {
+  private *getGridSamples(renderer: THREE.WebGLRenderer, width: number, height: number) {
     const cp = new THREE.Vector3(Math.floor(width * 0.5), Math.floor(height * 0.5), 0);
-    yield this.getGridCoordAt(cp);
+    yield this.getGridCoordAt(renderer, cp);
 
     cp.set(0, 0, 0);
-    yield this.getGridCoordAt(cp);
+    yield this.getGridCoordAt(renderer, cp);
 
     cp.set(width - 1, 0, 0);
-    yield this.getGridCoordAt(cp);
+    yield this.getGridCoordAt(renderer, cp);
 
     cp.set(width - 1, height - 1, 0);
-    yield this.getGridCoordAt(cp);
+    yield this.getGridCoordAt(renderer, cp);
 
     cp.set(0, height - 1, 0);
-    yield this.getGridCoordAt(cp);
+    yield this.getGridCoordAt(renderer, cp);
   }
 
   // Makes sure this range is filled and removes all tiles outside it.
@@ -426,13 +420,13 @@ export class Grid extends Drawn {
     }
   }
 
-  fitGridToFrame() {
+  fitGridToFrame(renderer: THREE.WebGLRenderer) {
     const width = this._faceCoordRenderTarget.width;
     const height = this._faceCoordRenderTarget.height;
 
     // Take our control samples, which will be in grid coords, and map them
     // back into tile coords
-    const samples = [...fluent(this.getGridSamples(width, height)).map(c => c === undefined ? undefined : {
+    const samples = [...fluent(this.getGridSamples(renderer, width, height)).map(c => c === undefined ? undefined : {
       x: Math.floor(c.x / this.geometry.tileDim),
       y: Math.floor(c.y / this.geometry.tileDim)
     })];
@@ -469,17 +463,25 @@ export class Grid extends Drawn {
     }
   }
 
-  getGridCoordAt(cp: THREE.Vector3): GridCoord & { isTokenFace: boolean } | undefined {
-    return this._faceCoordTargetReader.sample(
-      cp.x, cp.y,
-      (buf, offset) => this.geometry.decodeCoordSample(buf, offset, this._tileOrigin)
-    );
+  getGridCoordAt(renderer: THREE.WebGLRenderer, cp: THREE.Vector3): GridCoord & { isTokenFace: boolean } | undefined {
+    const x = Math.floor(cp.x);
+    const y = Math.floor(cp.y);
+    if (x < 0 || y < 0 || x >= this._faceCoordRenderTarget.width || y >= this._faceCoordRenderTarget.height) {
+      return undefined;
+    }
+
+    renderer.readRenderTargetPixels(this._faceCoordRenderTarget, x, y, 1, 1, this._texelReadBuf);
+    return this.geometry.decodeCoordSample(this._texelReadBuf, 0, this._tileOrigin);
   }
 
   getGridVertexAt(renderer: THREE.WebGLRenderer, cp: THREE.Vector3): GridVertex | undefined {
-    // This is not done very often and only for one texel at a time, so we forego
-    // pre-reading everything
-    renderer.readRenderTargetPixels(this._vertexCoordRenderTarget, cp.x, cp.y, 1, 1, this._texelReadBuf);
+    const x = Math.floor(cp.x);
+    const y = Math.floor(cp.y);
+    if (x < 0 || y < 0 || x >= this._vertexCoordRenderTarget.width || y >= this._vertexCoordRenderTarget.height) {
+      return undefined;
+    }
+
+    renderer.readRenderTargetPixels(this._vertexCoordRenderTarget, x, y, 1, 1, this._texelReadBuf);
     return this.geometry.decodeVertexSample(this._texelReadBuf, 0, this._tileOrigin);
   }
 
@@ -495,7 +497,6 @@ export class Grid extends Drawn {
     renderer.render(this._vertexCoordScene, camera);
 
     renderer.setRenderTarget(null);
-    this._faceCoordTargetReader.refresh(renderer);
   }
 
   resize(width: number, height: number) {
