@@ -215,7 +215,7 @@ Combine services with comma-separated list.
    gsutil cors set cors.json gs://YOUR_PROJECT_ID.firebasestorage.app
    ```
 
-   Replace `YOUR_PROJECT_ID` with your actual Firebase project ID.
+   Replace `YOUR_PROJECT_ID` with your actual Firebase project ID. For the production deployment, use the file `cors_production.json` rather than `cors.json`.
 
    **Bucket URL format:**
 
