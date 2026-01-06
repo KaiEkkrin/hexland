@@ -4,38 +4,6 @@
 
 This document tracks dependency updates that should be addressed in the near term (Q1 2026).
 
-## Node.js 20 → 22
-
-**Current:** Node 20 (in `functions/package.json`)
-**Target:** Node.js 22 LTS
-**Deadline:** Before April 30, 2026 (Node 20 EOL)
-
-Node.js 20 is in maintenance mode and reaches end-of-life on April 30, 2026. Node.js 22 is the active LTS release with support until April 2027. Firebase Cloud Functions fully supports Node.js 20 and 22.
-
-### Steps
-
-1. Update `was-web/functions/package.json`:
-   ```json
-   "engines": {
-     "node": "22"
-   }
-   ```
-
-2. Update `.devcontainer/` to use Node.js 22 base image
-
-3. Test all Firebase Functions locally with emulators
-
-4. Test deployment to Firebase
-
-5. Update any CI/CD pipelines
-
-### References
-
-- [Node.js Releases](https://nodejs.org/en/about/previous-releases)
-- [Firebase Cloud Functions Node.js Support](https://firebase.google.com/docs/functions/get-started)
-
----
-
 ## React 18 → 19
 
 **Current:** React 18.3.1
@@ -194,7 +162,6 @@ The functions package shares code with the web app via symlinks, so versions sho
 
 ## Update Checklist
 
-- [ ] Node.js 20 → 22
 - [ ] React 18 → 19
 - [ ] Playwright 1.40 → 1.57+
 - [ ] Vitest 3.2 → 4.x
