@@ -319,6 +319,20 @@ export class AdminDataService implements IAdminDataService {
     });
   }
 
+  /**
+   * Waits until all currently pending writes have been acknowledged by the backend.
+   *
+   * Note: In the Admin SDK (server-side), there are no pending writes.
+   * All writes complete synchronously when their Promise resolves.
+   * This method is a no-op to maintain interface compatibility with the client SDK.
+   *
+   * @returns Promise that resolves immediately
+   */
+  async waitForPendingWrites(): Promise<void> {
+    // Admin SDK doesn't have pending writes - all writes are synchronous
+    return Promise.resolve();
+  }
+
   watch<T>(
     d: IDataReference<T>,
     onNext: (r: T | undefined) => void,
