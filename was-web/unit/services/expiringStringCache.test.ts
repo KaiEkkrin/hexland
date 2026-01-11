@@ -44,7 +44,7 @@ test('Entries are cached successfully', async () => {
 test('Failed entries do not stay in the cache', async () => {
   // Here's a canned failure
   const failingFetch = vi.fn(
-    (id: string) => new Promise<string>((resolve, reject) => reject('blah'))
+    (_id: string) => new Promise<string>((resolve, reject) => reject('blah'))
   );
 
   // We map string -> 'fetched_{string}'
