@@ -181,7 +181,7 @@ service firebase.storage {
     await testEnv?.cleanup();
 
     // Cleanup Firebase apps
-    for (let uid in emul) {
+    for (const uid in emul) {
       await deleteApp(emul[uid].app);
     }
   });
@@ -249,7 +249,7 @@ service firebase.storage {
     }
 
     // We should be able to fetch the map records
-    let m1Record = await dataService.get(dataService.getMapRef(a1Id, m1Id));
+    const m1Record = await dataService.get(dataService.getMapRef(a1Id, m1Id));
     expect(m1Record?.name).toBe('Map One');
     expect(m1Record?.adventureName).toBe('Adventure One');
     expect(m1Record?.ty).toBe(MapType.Square);
@@ -356,7 +356,7 @@ service firebase.storage {
   ) {
     // Verifies that the token created with createAddToken1 and moved with createMoveToken1 (above)
     // was moved to the expected place
-    let changes = await getAllMapChanges(dataService, a1Id, m1Id, 499);
+    const changes = await getAllMapChanges(dataService, a1Id, m1Id, 499);
     expect(changes).toHaveLength(1);
     expect(changes?.[0].user).toBe(uid);
 
@@ -414,7 +414,7 @@ service firebase.storage {
     await dataService.addChanges(a1Id, user.uid, m1Id, [addWall1]);
 
     // Check that the changes went in successfully and we can read them back:
-    let changes = await getAllMapChanges(dataService, a1Id, m1Id, 2 + moveCount);
+    const changes = await getAllMapChanges(dataService, a1Id, m1Id, 2 + moveCount);
     expect(changes).toHaveLength(2 + moveCount);
 
     // Call the consolidate function:
@@ -486,10 +486,9 @@ service firebase.storage {
     let userProfile = await ensureProfile(userDataService, user, undefined);
 
     // If I try to fetch that map without being invited I should get an error
-    try {
-      await userDataService.get(userDataService.getMapRef(a1Id, m1Id));
-      assert.fail("Fetched map in un-joined adventure");
-    } catch {}
+    await expect(
+      userDataService.get(userDataService.getMapRef(a1Id, m1Id))
+    ).rejects.toThrow();
 
     // Join the adventure.
     let joinedId = await userFunctionsService.joinAdventure(invite ?? "");
@@ -546,12 +545,9 @@ service firebase.storage {
     expect(userProfile?.latestMaps?.find(m => m.id === m1Id)).toBeUndefined();
 
     // ...and I should no longer be able to fetch the map
-    try
-    {
-      await userDataService.get(userDataService.getMapRef(a1Id, m1Id));
-      assert.fail("Fetched map in un-joined adventure");
-    }
-    catch {}
+    await expect(
+      userDataService.get(userDataService.getMapRef(a1Id, m1Id))
+    ).rejects.toThrow();
   });
 
   test('change my display name', async () => {
@@ -583,7 +579,7 @@ service firebase.storage {
 
     // As user 1, join user 2's adventure (which will make it recent)
     const user1Functions = new FunctionsService(user1Emul.functions);
-    let joinedId = await user1Functions.joinAdventure(invite ?? "");
+    const joinedId = await user1Functions.joinAdventure(invite ?? "");
     expect(joinedId).toBe(a2Id);
     const a2 = await user1DataService.get(user1DataService.getAdventureRef(a2Id));
 
@@ -628,7 +624,7 @@ service firebase.storage {
     expect(p2Record?.playerName).toBe("New Name"); // this is our name
 
     // and it will rename itself in their profile if they visit it
-    let a2Record = await user1DataService.get(user1DataService.getAdventureRef(a2Id));
+    const a2Record = await user1DataService.get(user1DataService.getAdventureRef(a2Id));
     expect(a2Record?.name).toBe("Renamed Adventure");
     if (a2Record === undefined) return; // should have failed already
     await registerAdventureAsRecent(user1DataService, user1.uid, a2Id, { ...a2Record });
@@ -674,13 +670,12 @@ service firebase.storage {
     await ensureProfile(userDataService, user, undefined);
 
     // If I try to fetch that map without being invited I should get an error
-    try {
-      await userDataService.get(userDataService.getMapRef(a1Id, m1Id));
-      assert.fail("Fetched map in un-joined adventure");
-    } catch {}
+    await expect(
+      userDataService.get(userDataService.getMapRef(a1Id, m1Id))
+    ).rejects.toThrow();
 
     // Join the adventure.
-    let joinedId = await userFunctionsService.joinAdventure(invite ?? "");
+    const joinedId = await userFunctionsService.joinAdventure(invite ?? "");
     expect(joinedId).toBe(a1Id);
 
     // Check I can fetch that map now
@@ -693,24 +688,21 @@ service firebase.storage {
     await dataService.update(playerRef, { allowed: false });
 
     // As the player, I can no longer see that map
-    try {
-      await userDataService.get(userDataService.getMapRef(a1Id, m1Id));
-      assert.fail("Fetched map when blocked");
-    } catch {}
+    await expect(
+      userDataService.get(userDataService.getMapRef(a1Id, m1Id))
+    ).rejects.toThrow();
 
     // ...and I can't unblock myself...
-    try {
-      playerRef = userDataService.getPlayerRef(a1Id, user.uid);
-      await userDataService.update(playerRef, { allowed: true });
-      assert.fail("Unblocked myself");
-    } catch {}
+    playerRef = userDataService.getPlayerRef(a1Id, user.uid);
+    await expect(
+      userDataService.update(playerRef, { allowed: true })
+    ).rejects.toThrow();
 
     // As a blocked player, I can't leave an adventure, because that would delete
     // the record that I was blocked (and I could simply re-join)
-    try {
-      await leaveAdventure(userDataService, user.uid, a1Id);
-      assert.fail("Left an adventure I was blocked in")
-    } catch {}
+    await expect(
+      leaveAdventure(userDataService, user.uid, a1Id)
+    ).rejects.toThrow();
 
     // The owner *can* unblock me, though, and then I see it again
     playerRef = dataService.getPlayerRef(a1Id, user.uid);
@@ -759,7 +751,7 @@ service firebase.storage {
     expect(joinedId).toBe(a1Id);
 
     // Having done that, I can open it and see my player record in it:
-    let a1Record = await userDataService.get(userDataService.getAdventureRef(a1Id));
+    const a1Record = await userDataService.get(userDataService.getAdventureRef(a1Id));
     expect(a1Record).not.toBeUndefined();
     expect(a1Record?.description).toBe("First adventure");
 
@@ -778,12 +770,9 @@ service firebase.storage {
 
     // Wait long enough for that invite to have expired
     await new Promise(r => setTimeout(r, 4000));
-    try {
-      await user2FunctionsService.joinAdventure(invite ?? "", testPolicy);
-      assert.fail('Invite should have expired');
-    } catch (e: any) {
-      expect(e?.toString()).toMatch(/expired/i);
-    }
+    await expect(
+      user2FunctionsService.joinAdventure(invite ?? "", testPolicy)
+    ).rejects.toThrow(/expired/i);
 
     // That should *not* have joined user 2:
     // (as determined by the player record; adventure records are public right now)
@@ -809,7 +798,7 @@ service firebase.storage {
     const emul = await initializeEmul(user);
     const dataService = new DataService(emul.db, serverTimestamp);
     const functionsService = new FunctionsService(emul.functions);
-    let profile = await ensureProfile(dataService, user, undefined);
+    const profile = await ensureProfile(dataService, user, undefined);
 
     // There should be no adventures in the profile now
     expect(profile?.adventures).toHaveLength(0);
@@ -839,7 +828,7 @@ service firebase.storage {
       undefined
     );
 
-    let changesSeen = new Subject<IChangesEvent>();
+    const changesSeen = new Subject<IChangesEvent>();
     function onNext(changes: Changes) {
       const accepted = trackChanges(mapRecord as IMap, changeTracker, changes.chs, user.uid);
       changesSeen.next({ changes: changes, accepted: accepted });
@@ -1048,7 +1037,7 @@ service firebase.storage {
     await dataService.addChanges(a1Id, user.uid, m1Id, [addWall1]);
 
     // Check that the changes went in successfully and we can read them back:
-    let changes = await getAllMapChanges(dataService, a1Id, m1Id, 2 + moveCount);
+    const changes = await getAllMapChanges(dataService, a1Id, m1Id, 2 + moveCount);
     expect(changes).toHaveLength(2 + moveCount);
 
     // Clone map 1 again:
@@ -1297,7 +1286,7 @@ service firebase.storage {
       // Upload an image for it
       const buffer = await readFile(testImages[0]);
       const path = `images/${owner.uid}/one`;
-      await storage.ref(path).put(buffer, { contentType: 'image/png', customMetadata: { originalName: 'st01.png' } });
+      await storage.ref(path).put(new Blob([buffer], { type: 'image/png' }), { contentType: 'image/png', customMetadata: { originalName: 'st01.png' } });
 
       // Wait for the storage trigger (onFinalize) to process the upload
       await waitForImageRecord(dataService, owner.uid, path);
@@ -1318,7 +1307,7 @@ service firebase.storage {
       a1 = await dataService.get(dataService.getAdventureRef(a1Id));
       expect(a1?.imagePath).toBe(path);
 
-      let profile = await dataService.get(dataService.getProfileRef(owner.uid));
+      const profile = await dataService.get(dataService.getProfileRef(owner.uid));
       expect(profile?.adventures).toHaveLength(1);
       expect(profile?.adventures?.[0].name).toBe(a1?.name);
       expect(profile?.adventures?.[0].imagePath).toBe(path);
@@ -1372,11 +1361,11 @@ service firebase.storage {
       // Upload both images
       const buffer01 = await readFile(testImages[0]);
       const path01 = `images/${owner.uid}/one`;
-      await storage.ref(path01).put(buffer01, { contentType: 'image/png', customMetadata: { originalName: 'st01.png' } });
+      await storage.ref(path01).put(new Blob([buffer01], { type: 'image/png' }), { contentType: 'image/png', customMetadata: { originalName: 'st01.png' } });
 
       const buffer02 = await readFile(testImages[1]);
       const path02 = `images/${owner.uid}/two`;
-      await storage.ref(path02).put(buffer02, { contentType: 'image/png', customMetadata: { originalName: 'st02.png' } });
+      await storage.ref(path02).put(new Blob([buffer02], { type: 'image/png' }), { contentType: 'image/png', customMetadata: { originalName: 'st02.png' } });
 
       // Wait for the storage triggers to process both uploads
       await Promise.all([
@@ -1470,14 +1459,14 @@ service firebase.storage {
 
       // Add a new adventure
       const a1Id = await functionsService.createAdventure('Adventure One', 'First adventure');
-      let a1 = await dataService.get(dataService.getAdventureRef(a1Id));
+      const a1 = await dataService.get(dataService.getAdventureRef(a1Id));
       expect(a1).not.toBeUndefined();
       expect(a1?.imagePath).toBe("");
 
       // Upload an image for it
       const buffer = await readFile(testImages[0]);
       const path = `images/${owner.uid}/one`;
-      await storage.ref(path).put(buffer, { contentType: 'image/png', customMetadata: { originalName: 'st01.png' } });
+      await storage.ref(path).put(new Blob([buffer], { type: 'image/png' }), { contentType: 'image/png', customMetadata: { originalName: 'st01.png' } });
 
       // Wait for the storage trigger to process the upload
       await waitForImageRecord(dataService, owner.uid, path);
@@ -1499,7 +1488,7 @@ service firebase.storage {
       // Upload another image
       const buffer2 = await readFile(testImages[1]);
       const path2 = `images/${owner.uid}/two`;
-      await storage.ref(path2).put(buffer2, { contentType: 'image/png', customMetadata: { originalName: 'st02.png' } });
+      await storage.ref(path2).put(new Blob([buffer2], { type: 'image/png' }), { contentType: 'image/png', customMetadata: { originalName: 'st02.png' } });
 
       // Wait for the storage trigger to process the upload
       await waitForImageRecord(dataService, owner.uid, path2);
