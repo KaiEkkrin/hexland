@@ -18,7 +18,8 @@ import {
   limit as limitFn,
   collectionGroup,
   onSnapshot,
-  runTransaction
+  runTransaction,
+  waitForPendingWrites
 } from 'firebase/firestore';
 
 import * as Convert from './converter';
@@ -280,6 +281,20 @@ export class DataService implements IDataService {
       const tdv = new TransactionalDataView(tr);
       return fn(tdv);
     });
+  }
+
+  /**
+   * Waits until all currently pending writes have been acknowledged by the backend.
+   * Use this before calling Cloud Functions that need to see recent writes.
+   *
+   * Firestore provides strong consistency guarantees: once this Promise resolves,
+   * all subsequent reads (including by Cloud Functions) will see the committed data.
+   *
+   * @returns Promise that resolves when all pending writes are acknowledged
+   * @throws Error if user signs out during wait
+   */
+  waitForPendingWrites(): Promise<void> {
+    return waitForPendingWrites(this._db);
   }
 
   watch<T>(

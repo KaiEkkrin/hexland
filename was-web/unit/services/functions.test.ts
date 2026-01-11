@@ -1515,4 +1515,42 @@ service firebase.storage {
       // deleting images and having their spaces re-used.
     });
   });
+
+  test('waitForPendingWrites ensures Functions see committed data', async () => {
+    const user = createTestUser('Owner', 'owner@example.com', 'google.com');
+    const emul = await initializeEmul(user);
+    const dataService = new DataService(emul.db, serverTimestamp);
+    const functionsService = new FunctionsService(emul.functions);
+
+    // Ensure the user profile exists
+    await ensureProfile(dataService, user, undefined);
+
+    // Perform multiple writes
+    const a1Id = await functionsService.createAdventure('Test Adventure', 'Test description');
+    const m1Id = await functionsService.createMap(a1Id, 'Test Map', 'Test map description', MapType.Square, false);
+
+    // Make some additional writes to the map
+    await dataService.addChanges(a1Id, user.uid, m1Id, [createAddToken1(user.uid)]);
+    await dataService.addChanges(a1Id, user.uid, m1Id, [createAddWall1()]);
+
+    // Wait for all pending writes to be committed
+    await dataService.waitForPendingWrites();
+
+    // Now query the data - it should see all the writes
+    // We'll use getAllMapChanges which reads the changes we just wrote
+    const changes = await getAllMapChanges(dataService, a1Id, m1Id, 100);
+
+    // Verify we got the committed data
+    expect(changes).not.toBeUndefined();
+    // Should have 2 incremental changes (one for token, one for wall)
+    // Note: base change is only created during consolidation
+    expect(changes).toHaveLength(2);
+
+    // The changes should include the token and wall we added
+    const tokenChange = changes?.find(c => c.chs?.some(ch => ch.cat === ChangeCategory.Token));
+    const wallChange = changes?.find(c => c.chs?.some(ch => ch.cat === ChangeCategory.Wall));
+
+    expect(tokenChange).not.toBeUndefined();
+    expect(wallChange).not.toBeUndefined();
+  });
 });
