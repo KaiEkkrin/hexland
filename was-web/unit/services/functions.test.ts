@@ -414,6 +414,7 @@ service firebase.storage {
     await dataService.addChanges(a1Id, user.uid, m1Id, [addWall1]);
 
     // Check that the changes went in successfully and we can read them back:
+    await dataService.waitForPendingWrites();
     const changes = await getAllMapChanges(dataService, a1Id, m1Id, 2 + moveCount);
     expect(changes).toHaveLength(2 + moveCount);
 
@@ -429,6 +430,7 @@ service firebase.storage {
       await dataService.addChanges(a1Id, user.uid, m1Id, [createMoveToken1(i)]);
     }
 
+    await dataService.waitForPendingWrites();
     await functionsService.consolidateMapChanges(a1Id, m1Id, false);
     await verifyBaseChangesRecord(dataService, user.uid, a1Id, m1Id, moveCount * 2);
   }
@@ -1037,6 +1039,7 @@ service firebase.storage {
     await dataService.addChanges(a1Id, user.uid, m1Id, [addWall1]);
 
     // Check that the changes went in successfully and we can read them back:
+    await dataService.waitForPendingWrites();
     const changes = await getAllMapChanges(dataService, a1Id, m1Id, 2 + moveCount);
     expect(changes).toHaveLength(2 + moveCount);
 
